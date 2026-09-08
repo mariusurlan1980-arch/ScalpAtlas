@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07101f"/>
+      <stop offset="1" stop-color="#02050a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff2b2"/>
+      <stop offset="0.45" stop-color="#f6c453"/>
+      <stop offset="1" stop-color="#a86a09"/>
+    </linearGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#dbe4ef"/>
+      <stop offset="1" stop-color="#7b8794"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="210" fill="url(#bg)"/>
+  <rect x="34" y="34" width="956" height="956" rx="184" fill="none" stroke="url(#gold)" stroke-width="16"/>
+
+  <text x="180" y="690" font-family="Arial, Helvetica, sans-serif" font-size="500" font-weight="900" fill="url(#silver)">S</text>
+  <text x="470" y="690" font-family="Arial, Helvetica, sans-serif" font-size="500" font-weight="900" fill="url(#gold)">A</text>
+
+  <g filter="url(#glow)">
+    <line x1="270" y1="740" x2="790" y2="330" stroke="url(#gold)" stroke-width="34" stroke-linecap="round"/>
+    <polygon points="780,300 910,245 850,380" fill="url(#gold)"/>
+  </g>
+
+  <g stroke-width="8" stroke-linecap="round">
+    <line x1="520" y1="690" x2="520" y2="805" stroke="#45e99a"/>
+    <rect x="500" y="720" width="40" height="58" rx="4" fill="#2eea8d"/>
+
+    <line x1="600" y1="635" x2="600" y2="760" stroke="#ff6161"/>
+    <rect x="580" y="660" width="40" height="58" rx="4" fill="#ff4d4d"/>
+
+    <line x1="680" y1="565" x2="680" y2="700" stroke="#45e99a"/>
+    <rect x="660" y="600" width="40" height="62" rx="4" fill="#2eea8d"/>
+
+    <line x1="760" y1="480" x2="760" y2="625" stroke="#45e99a"/>
+    <rect x="738" y="515" width="44" height="68" rx="4" fill="#2eea8d"/>
+  </g>
+
+  <circle cx="512" cy="512" r="360" fill="none" stroke="#c98a21" stroke-width="8" opacity="0.45"/>
+  <path d="M512 120 L538 170 L486 170 Z M512 904 L486 854 L538 854 Z M120 512 L170 486 L170 538 Z M904 512 L854 538 L854 486 Z" fill="url(#gold)" opacity="0.9"/>
+</svg>
