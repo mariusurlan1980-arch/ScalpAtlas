@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -60,11 +60,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-New-Standalone.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.2.3-BUY-SELL-FIX.apk
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-New-Standalone-APK
-          path: ScalpAtlas-New-Standalone.apk
+          name: ScalpAtlas-v0.2.3-BUY-SELL-FIX
+          path: ScalpAtlas-v0.2.3-BUY-SELL-FIX.apk
           if-no-files-found: error
+
+      - name: Publish test APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete scalp-atlas-v0.2.3-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.2.3-test \
+            ScalpAtlas-v0.2.3-BUY-SELL-FIX.apk \
+            --target "$GITHUB_SHA" \
+            --title "SCALP ATLAS v0.2.3 Test" \
+            --notes "Test build: corecție pentru bias-ul BUY. Motorul poate returna BUY, SELL sau FĂRĂ SEMNAL CLAR, în funcție de fotografia analizată." \
+            --prerelease
