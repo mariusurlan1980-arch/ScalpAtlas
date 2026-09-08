@@ -2,7 +2,7 @@
   "expo": {
     "name": "SCALP ATLAS",
     "slug": "scalp-atlas",
-    "version": "0.1.0",
+    "version": "0.2.1",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -11,7 +11,9 @@
       "bundleIdentifier": "com.scalpatlas.app"
     },
     "android": {
-      "package": "com.scalpatlas.app"
+      "package": "com.scalpatlas.app",
+      "versionCode": 2,
+      "permissions": ["CAMERA"]
     },
     "web": {
       "name": "SCALP ATLAS"
