@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "SCALP ATLAS",
+    "slug": "scalp-atlas",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.scalpatlas.app"
+    },
+    "android": {
+      "package": "com.scalpatlas.app"
+    },
+    "web": {
+      "name": "SCALP ATLAS"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SCALP ATLAS folosește fotografia selectată doar pentru analiza graficului.",
+          "cameraPermission": "SCALP ATLAS folosește camera pentru a fotografia graficul pe care dorești să îl analizezi.",
+          "microphonePermission": false
+        }
+      ]
+    ]
+  }
+}
