@@ -1,0 +1,60 @@
+name: Build SCALP ATLAS New APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scalp-atlas-new/**'
+      - '.github/workflows/build-scalp-atlas-new.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: npm install
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build debug APK
+        working-directory: scalp-atlas-new/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Collect APK
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/debug/app-debug.apk ScalpAtlas-New.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-New-APK
+          path: ScalpAtlas-New.apk
+          if-no-files-found: error
