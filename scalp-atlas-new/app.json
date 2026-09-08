@@ -2,21 +2,24 @@
   "expo": {
     "name": "SCALP ATLAS",
     "slug": "scalp-atlas",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "icon": "./assets/app-icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.scalpatlas.app"
     },
     "android": {
       "package": "com.scalpatlas.app",
-      "versionCode": 2,
-      "permissions": ["CAMERA"]
+      "versionCode": 3,
+      "permissions": ["CAMERA"],
+      "icon": "./assets/app-icon.png"
     },
     "web": {
-      "name": "SCALP ATLAS"
+      "name": "SCALP ATLAS",
+      "favicon": "./assets/app-icon.png"
     },
     "plugins": [
       [
