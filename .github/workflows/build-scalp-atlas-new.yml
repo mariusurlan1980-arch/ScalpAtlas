@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS New APK
+name: Build SCALP ATLAS Standalone APK
 
 on:
   push:
@@ -43,18 +43,20 @@ jobs:
           CI: '1'
         run: npx expo prebuild --platform android --clean
 
-      - name: Build debug APK
+      - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/debug/app-debug.apk ScalpAtlas-New.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-New-Standalone.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-New-APK
-          path: ScalpAtlas-New.apk
+          name: ScalpAtlas-New-Standalone-APK
+          path: ScalpAtlas-New-Standalone.apk
           if-no-files-found: error
