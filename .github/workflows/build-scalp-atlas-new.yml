@@ -37,6 +37,22 @@ jobs:
         working-directory: scalp-atlas-new
         run: npm install
 
+      - name: Normalize launcher icon
+        run: |
+          set -e
+          ICON="scalp-atlas-new/assets/app-icon.png"
+          TMP="scalp-atlas-new/assets/app-icon-normalized.png"
+          if command -v ffmpeg >/dev/null 2>&1; then
+            ffmpeg -hide_banner -loglevel error -y -i "$ICON" -vf scale=512:512 -pix_fmt rgb24 "$TMP"
+          elif command -v convert >/dev/null 2>&1; then
+            convert "$ICON" -resize 512x512! -alpha off -colorspace sRGB "$TMP"
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq imagemagick
+            convert "$ICON" -resize 512x512! -alpha off -colorspace sRGB "$TMP"
+          fi
+          mv "$TMP" "$ICON"
+
       - name: Generate Android project
         working-directory: scalp-atlas-new
         env:
