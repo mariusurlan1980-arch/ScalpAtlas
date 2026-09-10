@@ -217,7 +217,6 @@ export default function App() {
             <Text style={styles.logo}>SCALP ATLAS</Text>
             <Text style={styles.subtitle}>{SCALP_ATLAS_COUNT} modele • Cameră + Galerie • Atlas Engine</Text>
           </View>
-          <View style={styles.timer}><Text style={styles.timerText}>{timerLabel}</Text></View>
         </View>
 
         <View style={styles.timeframeRow}>
