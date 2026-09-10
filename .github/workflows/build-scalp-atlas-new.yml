@@ -19,6 +19,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Apply v0.2.7 neon title update
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          app = Path('scalp-atlas-new/App.tsx')
+          text = app.read_text(encoding='utf-8')
+
+          old_title = '<Text style={styles.logo}>SCALP ATLAS</Text>'
+          new_title = "<Text style={styles.logo}><Text style={{ color: '#20E0FF' }}>SC</Text><Text style={{ color: '#28BFFF' }}>AL</Text><Text style={{ color: '#557FFF' }}>P </Text><Text style={{ color: '#8758FF' }}>AT</Text><Text style={{ color: '#C43AF2' }}>LA</Text><Text style={{ color: '#FF2DB8' }}>S</Text></Text>"
+          if old_title not in text:
+              raise SystemExit('Titlul SCALP ATLAS nu a fost găsit; build oprit pentru siguranță.')
+          text = text.replace(old_title, new_title, 1)
+
+          old_style = "logo: { color: '#f7fafc', fontSize: 25, fontWeight: '900', letterSpacing: 1.4 },"
+          new_style = "logo: { color: '#f7fafc', fontSize: 25, fontWeight: '900', letterSpacing: 1.4, textShadowColor: 'rgba(139,92,246,0.48)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 5 },"
+          if old_style not in text:
+              raise SystemExit('Stilul titlului nu a fost găsit; build oprit pentru siguranță.')
+          text = text.replace(old_style, new_style, 1)
+          app.write_text(text, encoding='utf-8')
+
+          cfg_path = Path('scalp-atlas-new/app.json')
+          cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
+          cfg['expo']['version'] = '0.2.7'
+          cfg['expo']['android']['versionCode'] = 7
+          cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
       - name: Node 22
         uses: actions/setup-node@v4
         with:
@@ -60,23 +89,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.2.6-EXPIRY-FIX.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.2.7-NEON-TITLE.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.2.6-EXPIRY-FIX
-          path: ScalpAtlas-v0.2.6-EXPIRY-FIX.apk
+          name: ScalpAtlas-v0.2.7-NEON-TITLE
+          path: ScalpAtlas-v0.2.7-NEON-TITLE.apk
           if-no-files-found: error
 
       - name: Publish test APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v0.2.6-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.2.6-test \
-            ScalpAtlas-v0.2.6-EXPIRY-FIX.apk \
+          gh release delete scalp-atlas-v0.2.7-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.2.7-test \
+            ScalpAtlas-v0.2.7-NEON-TITLE.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.2.6 Test" \
-            --notes "Test build: expirarea recomandată este separată de timeframe. M1=3m, M2=6m, M3=9m, M5=12m, M10=15m, M15=20m, M30=30m, H1=45m. Camera, galeria și logica BUY/SELL rămân neschimbate." \
+            --title "SCALP ATLAS v0.2.7 Test" \
+            --notes "Actualizare vizuală: titlul SCALP ATLAS păstrează aceeași poziție, dimensiune și tipografie, dar folosește culorile cyan → albastru → violet → magenta, cu glow discret. Camera, galeria, atlasul de 70 de modele, logica BUY/SELL și timpii de expirare rămân neschimbate." \
             --prerelease
