@@ -1,12 +1,8 @@
 import { ANALYSIS_ENGINE_HTML as RAW_ENGINE_HTML } from './analysisEngine.ts';
 
-// Android compatibility: normalize any escaped closing SCRIPT tag before
-// the hidden WebView receives the HTML. Different bundler/transpiler paths
-// may leave one or more backslashes before /script.
+// iOS uses the same expiry recommendation logic as Android.
 const normalizedEngineHtml = RAW_ENGINE_HTML.replace(/<\\+\/script>/g, '</script>');
 
-// v0.2.6: expiration is a separate recommendation from the chart timeframe.
-// Keep BUY/SELL analysis untouched and use one clear, predictable expiry map.
 const expiryPatchedEngineHtml = normalizedEngineHtml
   .replace("const ENGINE_VERSION='0.2.3';", "const ENGINE_VERSION='0.2.6';")
   .replace(
