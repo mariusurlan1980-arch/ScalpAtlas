@@ -47,7 +47,23 @@ export default function App() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [message, setMessage] = useState('Alege Camera sau Galerie pentru analiză.');
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 390 });
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
   const analyzerRef = useRef<WebView>(null);
+
+  const timerRunning = remainingSeconds > 0;
+  const timerLabel = useMemo(() => {
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, [remainingSeconds]);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const interval = setInterval(() => {
+      setRemainingSeconds((seconds) => (seconds > 1 ? seconds - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerRunning]);
 
   const useAsset = (asset: ImagePicker.ImagePickerAsset, source: 'camera' | 'gallery') => {
     setImage({
@@ -58,6 +74,7 @@ export default function App() {
       base64: asset.base64,
     });
     setAnalysis(null);
+    setRemainingSeconds(0);
     setMessage(
       source === 'camera'
         ? 'Fotografie realizată. Apasă ANALIZEAZĂ.'
@@ -129,6 +146,7 @@ export default function App() {
     }
     setBusy(true);
     setAnalysis(null);
+    setRemainingSeconds(0);
     setMessage(`Analizez fotografia cu atlasul de ${SCALP_ATLAS_COUNT} modele…`);
     analyzerRef.current.postMessage(
       JSON.stringify({ type: 'ANALYZE', dataUrl: `data:image/jpeg;base64,${image.base64}`, timeframe })
@@ -146,6 +164,11 @@ export default function App() {
         const result = payload.result as AnalysisResult;
         setAnalysis(result);
         setBusy(false);
+        if (result.signal !== 'NONE' && result.expiry && result.expiry > 0) {
+          setRemainingSeconds(Math.max(1, Math.round(result.expiry * 60)));
+        } else {
+          setRemainingSeconds(0);
+        }
         setMessage(
           result.signal === 'NONE'
             ? result.reason || 'Fără semnal clar.'
@@ -155,10 +178,12 @@ export default function App() {
       }
       if (payload.type === 'ERROR') {
         setBusy(false);
+        setRemainingSeconds(0);
         setMessage(`Analiza nu a reușit: ${payload.message || 'eroare necunoscută'}`);
       }
     } catch {
       setBusy(false);
+      setRemainingSeconds(0);
       setMessage('Motorul Atlas a trimis un rezultat invalid.');
     }
   };
@@ -192,14 +217,14 @@ export default function App() {
             <Text style={styles.logo}>SCALP ATLAS</Text>
             <Text style={styles.subtitle}>{SCALP_ATLAS_COUNT} modele • Cameră + Galerie • Atlas Engine</Text>
           </View>
-          <View style={styles.timer}><Text style={styles.timerText}>00:00</Text></View>
+          <View style={styles.timer}><Text style={styles.timerText}>{timerLabel}</Text></View>
         </View>
 
         <View style={styles.timeframeRow}>
           {TIMEFRAMES.map((item) => (
             <Pressable
               key={item}
-              onPress={() => { setTimeframe(item); setAnalysis(null); }}
+              onPress={() => { setTimeframe(item); setAnalysis(null); setRemainingSeconds(0); }}
               style={[styles.tfButton, timeframe === item && styles.tfButtonActive]}
             >
               <Text style={[styles.tfText, timeframe === item && styles.tfTextActive]}>{item}</Text>
