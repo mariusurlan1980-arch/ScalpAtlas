@@ -26,6 +26,13 @@ import {
   consumeCompletedAnalysis,
   freeAnalysesRemaining,
 } from './commercialAccess';
+import {
+  commercialAccessStateFromPayload,
+  commercialBackendConfigured,
+  completeCommercialAnalysis,
+  createClientAnalysisId,
+  fetchCommercialAccess,
+} from './commercialBackend';
 import { useCommercialBilling } from './useCommercialBilling';
 import type { VerifiedSubscription } from './subscriptionVerification';
 
@@ -80,13 +87,17 @@ export default function App() {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [commercialAccess, setCommercialAccess] = useState<CommercialAccessState>(INITIAL_COMMERCIAL_ACCESS);
   const [commercialAccessReady, setCommercialAccessReady] = useState(false);
+  const [authoritativeAccessLoaded, setAuthoritativeAccessLoaded] = useState(false);
   const analyzerRef = useRef<WebView>(null);
+  const pendingAnalysisIdRef = useRef<string | null>(null);
+  const backendConfigured = commercialBackendConfigured();
 
   const applyVerifiedEntitlement = useCallback((entitlement: VerifiedSubscription) => {
     if (!entitlement.subscriptionActive || !entitlement.productId) return;
     setCommercialAccess((current) =>
       activateSubscription(current, entitlement.productId as string, entitlement.expiresAt)
     );
+    if (commercialBackendConfigured()) setAuthoritativeAccessLoaded(true);
   }, []);
 
   const {
@@ -106,27 +117,52 @@ export default function App() {
     () => freeAnalysesRemaining(commercialAccess),
     [commercialAccess]
   );
-  const analysisAllowed = commercialAccessReady && canAnalyze(commercialAccess);
+  const analysisAllowed = commercialAccessReady && (
+    backendConfigured
+      ? (!authoritativeAccessLoaded || canAnalyze(commercialAccess))
+      : canAnalyze(commercialAccess)
+  );
   const timerRunning = remainingSeconds > 0;
 
   useEffect(() => {
     let mounted = true;
     (async () => {
+      let localState = INITIAL_COMMERCIAL_ACCESS;
       try {
         const raw = await AsyncStorage.getItem(COMMERCIAL_ACCESS_STORAGE_KEY);
-        if (raw && mounted) {
-          setCommercialAccess(sanitizeCommercialAccess(JSON.parse(raw)));
-        }
+        if (raw) localState = sanitizeCommercialAccess(JSON.parse(raw));
+        if (mounted) setCommercialAccess(localState);
       } catch {
         if (mounted) setCommercialAccess(INITIAL_COMMERCIAL_ACCESS);
-      } finally {
-        if (mounted) setCommercialAccessReady(true);
       }
+
+      if (backendConfigured) {
+        try {
+          const remote = await fetchCommercialAccess();
+          if (mounted) {
+            setCommercialAccess(commercialAccessStateFromPayload(remote));
+            setAuthoritativeAccessLoaded(true);
+          }
+        } catch (error) {
+          if (mounted) {
+            setAuthoritativeAccessLoaded(false);
+            setMessage(
+              error instanceof Error
+                ? error.message
+                : 'Accesul contului nu a putut fi verificat. Conectează-te și încearcă din nou.'
+            );
+          }
+        }
+      } else if (mounted) {
+        setAuthoritativeAccessLoaded(true);
+      }
+
+      if (mounted) setCommercialAccessReady(true);
     })();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [backendConfigured]);
 
   useEffect(() => {
     if (!commercialAccessReady) return;
@@ -211,13 +247,9 @@ export default function App() {
     }
   };
 
-  const analyzeImage = () => {
+  const analyzeImage = async () => {
     if (!commercialAccessReady) {
       setMessage('Se încarcă accesul comercial. Încearcă din nou imediat.');
-      return;
-    }
-    if (!canAnalyze(commercialAccess)) {
-      setMessage('Cele 5 analize gratuite au fost folosite. Activează un abonament pentru a continua.');
       return;
     }
     if (!image?.base64) {
@@ -228,6 +260,36 @@ export default function App() {
       setMessage('Motorul Atlas se inițializează. Încearcă din nou imediat.');
       return;
     }
+
+    if (backendConfigured) {
+      setBusy(true);
+      setMessage('Verific accesul contului…');
+      try {
+        const remote = await fetchCommercialAccess();
+        const remoteState = commercialAccessStateFromPayload(remote);
+        setCommercialAccess(remoteState);
+        setAuthoritativeAccessLoaded(true);
+        if (!remote.canAnalyze) {
+          setBusy(false);
+          setMessage('Cele 5 analize gratuite au fost folosite. Activează un abonament pentru a continua.');
+          return;
+        }
+      } catch (error) {
+        setBusy(false);
+        setAuthoritativeAccessLoaded(false);
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Accesul contului nu a putut fi verificat. Încearcă din nou.'
+        );
+        return;
+      }
+    } else if (!canAnalyze(commercialAccess)) {
+      setMessage('Cele 5 analize gratuite au fost folosite. Activează un abonament pentru a continua.');
+      return;
+    }
+
+    pendingAnalysisIdRef.current = createClientAnalysisId();
     setBusy(true);
     setAnalysis(null);
     setRemainingSeconds(0);
@@ -237,7 +299,7 @@ export default function App() {
     );
   };
 
-  const onAnalyzerMessage = (event: WebViewMessageEvent) => {
+  const onAnalyzerMessage = async (event: WebViewMessageEvent) => {
     try {
       const payload = JSON.parse(event.nativeEvent.data);
       if (payload.type === 'READY') {
@@ -247,8 +309,27 @@ export default function App() {
       if (payload.type === 'RESULT') {
         const result = payload.result as AnalysisResult;
         setAnalysis(result);
+
+        if (backendConfigured) {
+          const clientAnalysisId = pendingAnalysisIdRef.current || createClientAnalysisId();
+          try {
+            const remote = await completeCommercialAnalysis(clientAnalysisId);
+            setCommercialAccess(commercialAccessStateFromPayload(remote));
+            setAuthoritativeAccessLoaded(true);
+          } catch (error) {
+            setAuthoritativeAccessLoaded(false);
+            setMessage(
+              error instanceof Error
+                ? `Rezultatul a fost calculat, dar accesul contului nu s-a sincronizat: ${error.message}`
+                : 'Rezultatul a fost calculat, dar accesul contului nu s-a sincronizat.'
+            );
+          }
+        } else {
+          setCommercialAccess((current) => consumeCompletedAnalysis(current));
+        }
+
+        pendingAnalysisIdRef.current = null;
         setBusy(false);
-        setCommercialAccess((current) => consumeCompletedAnalysis(current));
 
         if (result.signal !== 'NONE' && result.expiry && result.expiry > 0) {
           setRemainingSeconds(Math.max(1, Math.round(result.expiry * 60)));
@@ -263,11 +344,13 @@ export default function App() {
         return;
       }
       if (payload.type === 'ERROR') {
+        pendingAnalysisIdRef.current = null;
         setBusy(false);
         setRemainingSeconds(0);
         setMessage(`Analiza nu a reușit: ${payload.message || 'eroare necunoscută'}`);
       }
     } catch {
+      pendingAnalysisIdRef.current = null;
       setBusy(false);
       setRemainingSeconds(0);
       setMessage('Motorul Atlas a trimis un rezultat invalid.');
@@ -371,11 +454,13 @@ export default function App() {
           <Text style={styles.analyzeText}>
             {!commercialAccessReady
               ? 'ÎNCARC ACCESUL…'
-              : !canAnalyze(commercialAccess)
-                ? 'ABONAMENT NECESAR'
-                : busy
-                  ? 'ANALIZEZ…'
-                  : `ANALIZEAZĂ CU ${SCALP_ATLAS_COUNT} MODELE`}
+              : backendConfigured && !authoritativeAccessLoaded
+                ? 'VERIFICĂ ACCESUL'
+                : !canAnalyze(commercialAccess)
+                  ? 'ABONAMENT NECESAR'
+                  : busy
+                    ? 'ANALIZEZ…'
+                    : `ANALIZEAZĂ CU ${SCALP_ATLAS_COUNT} MODELE`}
           </Text>
         </Pressable>
 
