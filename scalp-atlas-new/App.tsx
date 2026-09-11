@@ -38,6 +38,7 @@ type AnalysisResult = {
 };
 
 const TIMEFRAMES = ['M1', 'M2', 'M3', 'M5', 'M10', 'M15', 'M30', 'H1'];
+const FREE_ANALYSIS_LIMIT = 5;
 
 export default function App() {
   const [image, setImage] = useState<SelectedImage | null>(null);
@@ -48,8 +49,11 @@ export default function App() {
   const [message, setMessage] = useState('Alege Camera sau Galerie pentru analiză.');
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 390 });
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [freeAnalysesUsed, setFreeAnalysesUsed] = useState(0);
   const analyzerRef = useRef<WebView>(null);
 
+  const freeAnalysesRemaining = Math.max(0, FREE_ANALYSIS_LIMIT - freeAnalysesUsed);
+  const trialLocked = freeAnalysesRemaining === 0;
   const timerRunning = remainingSeconds > 0;
   const timerLabel = useMemo(() => {
     const minutes = Math.floor(remainingSeconds / 60);
@@ -136,6 +140,10 @@ export default function App() {
   };
 
   const analyzeImage = () => {
+    if (trialLocked) {
+      setMessage('Cele 5 analize gratuite au fost folosite. Pentru continuare va fi necesar un abonament.');
+      return;
+    }
     if (!image?.base64) {
       setMessage('Imaginea nu conține datele necesare analizei. Reîncarcă fotografia din Cameră sau Galerie.');
       return;
@@ -164,6 +172,7 @@ export default function App() {
         const result = payload.result as AnalysisResult;
         setAnalysis(result);
         setBusy(false);
+        setFreeAnalysesUsed((used) => Math.min(FREE_ANALYSIS_LIMIT, used + 1));
         if (result.signal !== 'NONE' && result.expiry && result.expiry > 0) {
           setRemainingSeconds(Math.max(1, Math.round(result.expiry * 60)));
         } else {
@@ -219,6 +228,16 @@ export default function App() {
           </View>
         </View>
 
+        <View style={[styles.trialCard, trialLocked && styles.trialCardLocked]}>
+          <View>
+            <Text style={styles.trialTitle}>{trialLocked ? 'TEST GRATUIT ÎNCHEIAT' : 'TEST GRATUIT'}</Text>
+            <Text style={styles.trialHint}>O încercare se consumă numai după un rezultat finalizat.</Text>
+          </View>
+          <Text style={[styles.trialCount, trialLocked && styles.trialCountLocked]}>
+            {freeAnalysesRemaining}/5
+          </Text>
+        </View>
+
         <View style={styles.timeframeRow}>
           {TIMEFRAMES.map((item) => (
             <Pressable
@@ -265,11 +284,17 @@ export default function App() {
         </View>
 
         <Pressable
-          disabled={!image || busy}
+          disabled={!image || busy || trialLocked}
           onPress={analyzeImage}
-          style={[styles.analyzeButton, (!image || busy) && styles.analyzeButtonDisabled]}
+          style={[styles.analyzeButton, (!image || busy || trialLocked) && styles.analyzeButtonDisabled]}
         >
-          <Text style={styles.analyzeText}>{busy ? 'ANALIZEZ…' : `ANALIZEAZĂ CU ${SCALP_ATLAS_COUNT} MODELE`}</Text>
+          <Text style={styles.analyzeText}>
+            {busy
+              ? 'ANALIZEZ…'
+              : trialLocked
+                ? 'ABONAMENT NECESAR'
+                : `ANALIZEAZĂ CU ${SCALP_ATLAS_COUNT} MODELE`}
+          </Text>
         </Pressable>
 
         <View style={styles.statusCard}>
@@ -322,6 +347,12 @@ const styles = StyleSheet.create({
   subtitle: { color: '#7f8b9e', marginTop: 4, fontSize: 12 },
   timer: { borderWidth: 1, borderColor: '#253044', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
   timerText: { color: '#aeb8c8', fontWeight: '700', fontVariant: ['tabular-nums'] },
+  trialCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#2a3a52', backgroundColor: '#0c1521', borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11, gap: 12 },
+  trialCardLocked: { borderColor: '#5b3030', backgroundColor: '#171012' },
+  trialTitle: { color: '#dce7f5', fontSize: 11, fontWeight: '900', letterSpacing: 0.8 },
+  trialHint: { color: '#718096', marginTop: 3, fontSize: 10 },
+  trialCount: { color: '#38d996', fontSize: 22, fontWeight: '900' },
+  trialCountLocked: { color: '#ff6464' },
   timeframeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   tfButton: { minWidth: 46, paddingHorizontal: 9, paddingVertical: 8, borderRadius: 9, borderWidth: 1, borderColor: '#253044', alignItems: 'center' },
   tfButtonActive: { backgroundColor: '#f1f5f9', borderColor: '#f1f5f9' },
