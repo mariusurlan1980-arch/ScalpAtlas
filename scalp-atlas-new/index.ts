@@ -1,4 +1,7 @@
 import { registerRootComponent } from 'expo';
-import CommercialRoot from './CommercialRoot';
+import App from './App';
 
-registerRootComponent(CommercialRoot);
+// SAFE START: pentru APK-ul instalat direct pornim aplicația principală fără
+// autentificarea Supabase la bootstrap. Contul va fi reactivat după ce
+// stabilitatea de pornire este confirmată pe dispozitiv.
+registerRootComponent(App);
