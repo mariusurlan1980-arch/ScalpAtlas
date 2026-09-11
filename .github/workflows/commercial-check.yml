@@ -1,0 +1,36 @@
+name: Check SCALP ATLAS Commercial
+
+on:
+  push:
+    branches: [commercial-v1]
+    paths:
+      - 'scalp-atlas-new/**'
+      - '.github/workflows/commercial-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: npm install
+
+      - name: TypeScript check
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
+
+      - name: Expo dependency check
+        working-directory: scalp-atlas-new
+        run: npx expo install --check
