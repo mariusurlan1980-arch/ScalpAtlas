@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -21,10 +21,13 @@ import SubscriptionPaywall from './SubscriptionPaywall';
 import {
   CommercialAccessState,
   INITIAL_COMMERCIAL_ACCESS,
+  activateSubscription,
   canAnalyze,
   consumeCompletedAnalysis,
   freeAnalysesRemaining,
 } from './commercialAccess';
+import { useCommercialBilling } from './useCommercialBilling';
+import type { VerifiedSubscription } from './subscriptionVerification';
 
 type SelectedImage = {
   uri: string;
@@ -78,6 +81,26 @@ export default function App() {
   const [commercialAccess, setCommercialAccess] = useState<CommercialAccessState>(INITIAL_COMMERCIAL_ACCESS);
   const [commercialAccessReady, setCommercialAccessReady] = useState(false);
   const analyzerRef = useRef<WebView>(null);
+
+  const applyVerifiedEntitlement = useCallback((entitlement: VerifiedSubscription) => {
+    if (!entitlement.subscriptionActive || !entitlement.productId) return;
+    setCommercialAccess((current) =>
+      activateSubscription(current, entitlement.productId as string, entitlement.expiresAt)
+    );
+  }, []);
+
+  const {
+    storeConnected,
+    billingBusy,
+    billingVerificationConfigured,
+    monthlyPrice,
+    annualPrice,
+    purchaseSubscription,
+    restorePurchases,
+  } = useCommercialBilling({
+    onEntitlementVerified: applyVerifiedEntitlement,
+    onMessage: setMessage,
+  });
 
   const remainingFreeAnalyses = useMemo(
     () => freeAnalysesRemaining(commercialAccess),
@@ -271,16 +294,6 @@ export default function App() {
     };
   }, [analysis, image, previewSize]);
 
-  const showBillingNotConnected = (plan: 'lunar' | 'anual') => {
-    setMessage(
-      `Planul ${plan} este pregătit în interfață. Următorul pas este conectarea produsului real din Google Play / App Store.`
-    );
-  };
-
-  const restorePurchases = () => {
-    setMessage('Restabilirea achizițiilor va fi activată odată cu integrarea Google Play Billing / App Store.');
-  };
-
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
@@ -295,9 +308,13 @@ export default function App() {
         <SubscriptionPaywall
           remainingFreeAnalyses={remainingFreeAnalyses}
           subscriptionActive={commercialAccess.subscriptionActive}
-          busy={busy}
-          onSubscribeMonthly={() => showBillingNotConnected('lunar')}
-          onSubscribeAnnual={() => showBillingNotConnected('anual')}
+          busy={busy || billingBusy}
+          monthlyPrice={monthlyPrice}
+          annualPrice={annualPrice}
+          storeConnected={storeConnected}
+          verificationReady={billingVerificationConfigured}
+          onSubscribeMonthly={() => purchaseSubscription('monthly')}
+          onSubscribeAnnual={() => purchaseSubscription('annual')}
           onRestorePurchases={restorePurchases}
         />
 
