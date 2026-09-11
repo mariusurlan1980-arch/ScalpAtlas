@@ -1,0 +1,73 @@
+name: Build SCALP ATLAS Commercial Test APK
+
+on:
+  push:
+    branches: [commercial-v1]
+    paths:
+      - 'scalp-atlas-new/**'
+      - '.github/workflows/build-commercial-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: npm install
+
+      - name: Generate launcher icon if SVG is present
+        run: |
+          if [ -f scalp-atlas-new/assets/app-icon.svg ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq librsvg2-bin
+            rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+          fi
+
+      - name: TypeScript check
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build release APK
+        working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.0-COMMERCIAL-TEST.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-v0.3.0-COMMERCIAL-TEST
+          path: ScalpAtlas-v0.3.0-COMMERCIAL-TEST.apk
+          if-no-files-found: error
