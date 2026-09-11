@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS Diagnostic APK
+name: Build SCALP ATLAS Trial Step APK
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply known-good v0.2.7 neon title and diagnostic version
+      - name: Apply neon title and trial-step version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -43,8 +43,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.2'
-          cfg['expo']['android']['versionCode'] = 10
+          cfg['expo']['version'] = '0.3.3'
+          cfg['expo']['android']['versionCode'] = 11
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -88,11 +88,11 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.2-DIAGNOSTIC-KNOWN-GOOD.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.3-TRIAL-STEP1.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.2-DIAGNOSTIC-KNOWN-GOOD
-          path: ScalpAtlas-v0.3.2-DIAGNOSTIC-KNOWN-GOOD.apk
+          name: ScalpAtlas-v0.3.3-TRIAL-STEP1
+          path: ScalpAtlas-v0.3.3-TRIAL-STEP1.apk
           if-no-files-found: error
