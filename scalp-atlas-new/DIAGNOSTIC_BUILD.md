@@ -1,0 +1,1 @@
+SCALP ATLAS diagnostic control build based on the known-good v0.2.7 source. No commercial modules are included in this diagnostic APK.
