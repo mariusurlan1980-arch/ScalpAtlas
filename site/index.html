@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070b12" />
+  <meta name="description" content="SCALP ATLAS — analiză vizuală de grafice, semnal BUY/SELL, probabilitate estimată și expirare recomandată." />
+  <title>SCALP ATLAS — Smart Chart Analysis</title>
+  <style>
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#070b12;color:#eef4ff}a{color:inherit}.wrap{width:min(1080px,calc(100% - 32px));margin:auto}
+    header{position:sticky;top:0;z-index:10;background:rgba(7,11,18,.88);backdrop-filter:blur(16px);border-bottom:1px solid #1e2938}.nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0}.brand{font-size:20px;font-weight:950;letter-spacing:1.4px;background:linear-gradient(90deg,#5fe2ff,#637eff,#c264ff,#ff4bcf);-webkit-background-clip:text;background-clip:text;color:transparent}.nav-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border:0;border-radius:12px;padding:12px 16px;font-weight:850;cursor:pointer}.btn.primary{background:#f1f5f9;color:#090d14}.btn.ghost{background:#111824;color:#edf4ff;border:1px solid #2b394d}.btn.disabled{opacity:.55;cursor:not-allowed}
+    .hero{padding:68px 0 48px;display:grid;grid-template-columns:1.06fr .94fr;gap:36px;align-items:center}.eyebrow{font-size:12px;font-weight:850;letter-spacing:1.2px;text-transform:uppercase;color:#87a0bf}.hero h1{font-size:clamp(44px,7vw,76px);line-height:.95;letter-spacing:-3px;margin:10px 0 18px}.grad{background:linear-gradient(90deg,#5fe2ff,#637eff,#c264ff,#ff4bcf);-webkit-background-clip:text;background-clip:text;color:transparent}.lead{font-size:clamp(16px,2vw,21px);line-height:1.62;color:#b6c2d2;max-width:660px}.hero-ctas{display:flex;gap:10px;flex-wrap:wrap;margin-top:25px}.micro{color:#8190a4;font-size:12px;line-height:1.5;margin-top:12px}
+    .device{background:linear-gradient(180deg,#111824,#0b1019);border:1px solid #2b394d;border-radius:30px;padding:18px;box-shadow:0 30px 85px rgba(0,0,0,.46)}.screen{background:#05080e;border:1px solid #1f2937;border-radius:20px;padding:16px;min-height:460px}.sub{color:#8190a4;font-size:12px;margin-top:4px}.tf{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.tf span{padding:7px 8px;border:1px solid #263347;border-radius:8px;color:#91a0b4;font-size:11px;font-weight:800}.tf .active{background:#f1f5f9;color:#0b0f16}.pickers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.picker{text-align:center;padding:12px;border-radius:10px;font-weight:900}.picker.cam{background:#f1f5f9;color:#090d14}.picker.gal{border:1px solid #4b5b73;color:#eef2f7}.chart{height:255px;margin-top:12px;border-radius:14px;background:linear-gradient(180deg,rgba(15,23,35,.2),rgba(15,23,35,.45)),repeating-linear-gradient(0deg,#0f1723 0 1px,transparent 1px 48px),repeating-linear-gradient(90deg,#0f1723 0 1px,transparent 1px 52px);position:relative;overflow:hidden}.chart:before{content:"";position:absolute;left:7%;right:7%;bottom:66px;height:3px;background:linear-gradient(90deg,#45df88,#45df88,#ff6666,#45df88,#45df88);transform:skewY(-16deg);box-shadow:0 0 18px rgba(95,226,255,.35)}.result{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}.result>div{background:#0d141f;border:1px solid #1f2b39;border-radius:12px;padding:12px}.result strong{display:block;font-size:20px}.buy{color:#55df8b}
+    section{padding:58px 0}.section-title{font-size:clamp(29px,4vw,45px);margin:0 0 10px}.section-lead{color:#95a4b8;line-height:1.62;max-width:760px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}.card{background:#0d131d;border:1px solid #1f2b39;border-radius:16px;padding:19px}.card h3{margin-top:0}.card p{color:#98a7ba;line-height:1.55;margin-bottom:0}
+    .video-wrap{margin-top:24px;background:#05070b;border:1px solid #1f2b39;border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35)}video{display:block;width:100%;aspect-ratio:16/9;background:#000}
+    .download{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;background:linear-gradient(135deg,#101926,#0c121c);border:1px solid #243245;border-radius:18px;padding:22px;margin-top:24px}.badge{display:inline-block;padding:6px 9px;border-radius:999px;background:#121b2a;color:#a8f3c9;font-size:11px;font-weight:850}.note{color:#93a1b5;font-size:12px;line-height:1.6}
+    footer{border-top:1px solid #1f2937;padding:24px 0 38px;color:#7f8b9e;font-size:12px}.footer-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    @media(max-width:840px){.hero{grid-template-columns:1fr;padding-top:44px}.grid3{grid-template-columns:1fr}.download{grid-template-columns:1fr}.nav{align-items:flex-start}.nav-actions{justify-content:flex-start}.hero h1{letter-spacing:-2px}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <div class="brand">SCALP ATLAS</div>
+    <div class="nav-actions">
+      <a class="btn ghost" href="#demo">Demo</a>
+      <button class="btn ghost" id="shareBtn">Distribuie</button>
+      <a class="btn primary" href="https://github.com/mariusurlan1980-arch/ScalpAtlas/releases/download/scalp-atlas-v0.2.7-test/ScalpAtlas-v0.2.7-NEON-TITLE.apk">Descarcă Android</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="wrap hero">
+    <div>
+      <div class="eyebrow">70 modele • Cameră + Galerie • Atlas Engine</div>
+      <h1>Analizează graficul în <span class="grad">secunde</span>.</h1>
+      <p class="lead">SCALP ATLAS procesează o fotografie a graficului, caută o potrivire structurală și poate afișa BUY, SELL sau „Fără semnal clar”, împreună cu probabilitatea estimată și expirarea recomandată.</p>
+      <div class="hero-ctas">
+        <a class="btn primary" href="https://github.com/mariusurlan1980-arch/ScalpAtlas/releases/download/scalp-atlas-v0.2.7-test/ScalpAtlas-v0.2.7-NEON-TITLE.apk">Descarcă APK v0.2.7</a>
+        <a class="btn ghost" href="#demo">Vezi video</a>
+        <span class="btn ghost disabled">iPhone — în pregătire</span>
+      </div>
+      <div class="micro">Versiune publică de test pentru Android. Instalarea din afara Magazin Play poate necesita permisiunea pentru surse externe.</div>
+    </div>
+
+    <div class="device" aria-label="Previzualizare SCALP ATLAS">
+      <div class="screen">
+        <div class="brand" style="font-size:22px">SCALP ATLAS</div>
+        <div class="sub">Motor pregătit • Atlas 70/70</div>
+        <div class="tf"><span class="active">M1</span><span>M2</span><span>M3</span><span>M5</span><span>M10</span><span>M15</span><span>M30</span><span>H1</span></div>
+        <div class="pickers"><div class="picker cam">CAMERĂ</div><div class="picker gal">GALERIE</div></div>
+        <div class="chart"></div>
+        <div class="result"><div><strong class="buy">BUY ↑</strong><span class="sub">Probabilitate: 78%</span></div><div><strong>3 min</strong><span class="sub">Expirare • M1</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <h2 class="section-title">Cum funcționează</h2>
+    <p class="section-lead">Un flux simplu, gândit pentru telefon: încarci graficul, alegi timeframe-ul și rulezi analiza.</p>
+    <div class="grid3">
+      <div class="card"><h3>1. Capture</h3><p>Folosește Camera sau Galeria. Imaginea originală a graficului rămâne curată.</p></div>
+      <div class="card"><h3>2. Analiză</h3><p>Motorul compară structura vizuală cu atlasul intern de 70 de modele.</p></div>
+      <div class="card"><h3>3. Rezultat</h3><p>Primești BUY, SELL sau Fără semnal clar, plus probabilitate estimată și expirare recomandată.</p></div>
+    </div>
+  </section>
+
+  <section id="demo" class="wrap">
+    <h2 class="section-title">Demo video — 30 secunde</h2>
+    <p class="section-lead">Previzualizare promo cu muzică originală. Pornește sunetul din controlul videoclipului.</p>
+    <div class="video-wrap">
+      <video controls playsinline preload="metadata">
+        <source src="assets/scalp-atlas-demo.mp4" type="video/mp4" />
+        Browserul tău nu poate reda videoclipul.
+      </video>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <h2 class="section-title">Descarcă și distribuie</h2>
+    <div class="download">
+      <div>
+        <span class="badge">ANDROID • TEST</span>
+        <h3 style="font-size:27px;margin:10px 0 6px">SCALP ATLAS v0.2.7</h3>
+        <p class="section-lead" style="margin:0">Descarcă APK-ul direct pe telefon. Pentru distribuire, folosește butonul „Distribuie” din partea de sus și trimite linkul paginii.</p>
+      </div>
+      <a class="btn primary" href="https://github.com/mariusurlan1980-arch/ScalpAtlas/releases/download/scalp-atlas-v0.2.7-test/ScalpAtlas-v0.2.7-NEON-TITLE.apk">Descarcă APK</a>
+    </div>
+    <p class="note">SCALP ATLAS este un instrument de analiză structurală. Probabilitatea afișată și expirarea recomandată sunt estimări, nu garanții. Tranzacționarea implică risc; pentru versiunea de test, nu utiliza sume pe care nu îți permiți să le pierzi.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap footer-row"><span>© 2026 SCALP ATLAS • Versiune de test</span><a href="privacy.html">Politica de confidențialitate</a></div>
+</footer>
+
+<script>
+  document.getElementById('shareBtn').addEventListener('click', async () => {
+    const data={title:'SCALP ATLAS',text:'SCALP ATLAS — analiză vizuală de grafice.',url:location.href.split('#')[0]};
+    if(navigator.share){try{await navigator.share(data);return}catch(e){}}
+    try{await navigator.clipboard.writeText(data.url);alert('Linkul a fost copiat.')}catch(e){prompt('Copiază linkul:',data.url)}
+  });
+</script>
+</body>
+</html>
