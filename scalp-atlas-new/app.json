@@ -2,7 +2,7 @@
   "expo": {
     "name": "SCALP ATLAS",
     "slug": "scalp-atlas",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.scalpatlas.app",
-      "versionCode": 8,
+      "versionCode": 9,
       "permissions": ["CAMERA"],
       "icon": "./assets/app-icon.png"
     },
@@ -22,7 +22,6 @@
       "favicon": "./assets/app-icon.png"
     },
     "plugins": [
-      "expo-iap",
       [
         "expo-image-picker",
         {
