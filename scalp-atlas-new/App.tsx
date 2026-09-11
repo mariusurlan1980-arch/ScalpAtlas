@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   preview: { height: 390, borderRadius: 18, borderWidth: 1, borderColor: '#1f2937', overflow: 'hidden', backgroundColor: '#0c121c' },
   image: { width: '100%', height: '100%', backgroundColor: '#05070b' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 12 },
-  busyOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(5,7,11,0.78)' },
+  busyOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(5,7,11,0.78)' },
   placeholderTitle: { color: '#cbd5e1', fontSize: 18, fontWeight: '900', letterSpacing: 1.2 },
   hint: { color: '#93a1b5', textAlign: 'center', lineHeight: 19 },
   arrowWrap: { position: 'absolute', width: 38, height: 44, alignItems: 'center', justifyContent: 'center' },
