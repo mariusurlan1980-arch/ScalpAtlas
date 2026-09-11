@@ -1,7 +1,11 @@
 import { Platform } from 'react-native';
-import type { Purchase } from 'expo-iap';
 import { commercialAuthorizationHeader } from './commercialAuth';
 import { commercialBackendBaseUrl, commercialBackendConfigured } from './commercialBackend';
+
+export type StorePurchase = {
+  productId: string;
+  [key: string]: unknown;
+};
 
 export type VerifiedSubscription = {
   subscriptionActive: boolean;
@@ -14,7 +18,7 @@ export function subscriptionVerificationConfigured(): boolean {
 }
 
 export async function verifySubscriptionOnBackend(
-  purchase: Purchase
+  purchase: StorePurchase
 ): Promise<VerifiedSubscription> {
   if (!commercialBackendConfigured()) {
     throw new Error('Serverul de verificare a abonamentelor nu este configurat încă.');
