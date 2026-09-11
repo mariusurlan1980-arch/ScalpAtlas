@@ -389,7 +389,7 @@ export default function App() {
       <ScrollView contentContainerStyle={styles.page}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.logo}>SCALP ATLAS</Text>
+            <Text style={styles.logo}><Text style={{ color: '#20E0FF' }}>SC</Text><Text style={{ color: '#28BFFF' }}>AL</Text><Text style={{ color: '#557FFF' }}>P </Text><Text style={{ color: '#8758FF' }}>AT</Text><Text style={{ color: '#C43AF2' }}>LA</Text><Text style={{ color: '#FF2DB8' }}>S</Text></Text>
             <Text style={styles.subtitle}>{SCALP_ATLAS_COUNT} modele • Cameră + Galerie • Atlas Engine</Text>
           </View>
         </View>
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#070b12' },
   page: { flexGrow: 1, padding: 18, gap: 16, backgroundColor: '#070b12' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  logo: { color: '#f7fafc', fontSize: 25, fontWeight: '900', letterSpacing: 1.4 },
+  logo: { color: '#f7fafc', fontSize: 25, fontWeight: '900', letterSpacing: 1.4, textShadowColor: 'rgba(139,92,246,0.48)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 5 },
   subtitle: { color: '#7f8b9e', marginTop: 4, fontSize: 12 },
   timeframeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   tfButton: { minWidth: 46, paddingHorizontal: 9, paddingVertical: 8, borderRadius: 9, borderWidth: 1, borderColor: '#253044', alignItems: 'center' },
