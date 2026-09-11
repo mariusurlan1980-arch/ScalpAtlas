@@ -1,4 +1,4 @@
-import { ANALYSIS_ENGINE_HTML as RAW_ENGINE_HTML } from './analysisEngine.ts';
+import { ANALYSIS_ENGINE_HTML as RAW_ENGINE_HTML } from './analysisEngine';
 
 // Android compatibility: Metro may resolve TypeScript before JavaScript.
 // Keep the same normalization here so the hidden WebView always receives
