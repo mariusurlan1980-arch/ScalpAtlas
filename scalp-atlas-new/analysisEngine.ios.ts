@@ -1,4 +1,4 @@
-import { ANALYSIS_ENGINE_HTML as RAW_ENGINE_HTML } from './analysisEngine.ts';
+import { ANALYSIS_ENGINE_HTML as RAW_ENGINE_HTML } from './analysisEngine';
 
 // iOS uses the same expiry recommendation logic as Android.
 const normalizedEngineHtml = RAW_ENGINE_HTML.replace(/<\\+\/script>/g, '</script>');
