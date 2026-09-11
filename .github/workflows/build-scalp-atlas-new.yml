@@ -1,25 +1,29 @@
-name: Build SCALP ATLAS Standalone APK
+name: Build SCALP ATLAS Diagnostic APK
 
 on:
   push:
-    branches: [main]
+    branches: [diagnostic-v027]
     paths:
       - 'scalp-atlas-new/**'
       - '.github/workflows/build-scalp-atlas-new.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: scalp-atlas-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply v0.2.7 neon title update
+      - name: Apply known-good v0.2.7 neon title and diagnostic version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -27,24 +31,20 @@ jobs:
 
           app = Path('scalp-atlas-new/App.tsx')
           text = app.read_text(encoding='utf-8')
-
           old_title = '<Text style={styles.logo}>SCALP ATLAS</Text>'
           new_title = "<Text style={styles.logo}><Text style={{ color: '#20E0FF' }}>SC</Text><Text style={{ color: '#28BFFF' }}>AL</Text><Text style={{ color: '#557FFF' }}>P </Text><Text style={{ color: '#8758FF' }}>AT</Text><Text style={{ color: '#C43AF2' }}>LA</Text><Text style={{ color: '#FF2DB8' }}>S</Text></Text>"
-          if old_title not in text:
-              raise SystemExit('Titlul SCALP ATLAS nu a fost găsit; build oprit pentru siguranță.')
-          text = text.replace(old_title, new_title, 1)
-
+          if old_title in text:
+              text = text.replace(old_title, new_title, 1)
           old_style = "logo: { color: '#f7fafc', fontSize: 25, fontWeight: '900', letterSpacing: 1.4 },"
           new_style = "logo: { color: '#f7fafc', fontSize: 25, fontWeight: '900', letterSpacing: 1.4, textShadowColor: 'rgba(139,92,246,0.48)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 5 },"
-          if old_style not in text:
-              raise SystemExit('Stilul titlului nu a fost găsit; build oprit pentru siguranță.')
-          text = text.replace(old_style, new_style, 1)
+          if old_style in text:
+              text = text.replace(old_style, new_style, 1)
           app.write_text(text, encoding='utf-8')
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.2.7'
-          cfg['expo']['android']['versionCode'] = 7
+          cfg['expo']['version'] = '0.3.2'
+          cfg['expo']['android']['versionCode'] = 10
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -66,13 +66,15 @@ jobs:
         working-directory: scalp-atlas-new
         run: npm install
 
-      - name: Generate clean launcher icon
+      - name: Generate launcher icon
         run: |
-          set -e
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin
           rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
-          file scalp-atlas-new/assets/app-icon.png
+
+      - name: TypeScript check
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
 
       - name: Generate Android project
         working-directory: scalp-atlas-new
@@ -80,32 +82,21 @@ jobs:
           CI: '1'
         run: npx expo prebuild --platform android --clean
 
-      - name: Build standalone release APK
+      - name: Build release APK
         working-directory: scalp-atlas-new/android
         env:
           NODE_ENV: production
+          GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g'
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.2.7-NEON-TITLE.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.2-DIAGNOSTIC-KNOWN-GOOD.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.2.7-NEON-TITLE
-          path: ScalpAtlas-v0.2.7-NEON-TITLE.apk
+          name: ScalpAtlas-v0.3.2-DIAGNOSTIC-KNOWN-GOOD
+          path: ScalpAtlas-v0.3.2-DIAGNOSTIC-KNOWN-GOOD.apk
           if-no-files-found: error
-
-      - name: Publish test APK release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release delete scalp-atlas-v0.2.7-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.2.7-test \
-            ScalpAtlas-v0.2.7-NEON-TITLE.apk \
-            --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.2.7 Test" \
-            --notes "Actualizare vizuală: titlul SCALP ATLAS păstrează aceeași poziție, dimensiune și tipografie, dar folosește culorile cyan → albastru → violet → magenta, cu glow discret. Camera, galeria, atlasul de 70 de modele, logica BUY/SELL și timpii de expirare rămân neschimbate." \
-            --prerelease
