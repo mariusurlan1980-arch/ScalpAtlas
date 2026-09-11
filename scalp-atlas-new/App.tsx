@@ -308,27 +308,33 @@ export default function App() {
       }
       if (payload.type === 'RESULT') {
         const result = payload.result as AnalysisResult;
-        setAnalysis(result);
 
         if (backendConfigured) {
           const clientAnalysisId = pendingAnalysisIdRef.current || createClientAnalysisId();
+          setMessage('Confirm analiza pe cont…');
           try {
             const remote = await completeCommercialAnalysis(clientAnalysisId);
             setCommercialAccess(commercialAccessStateFromPayload(remote));
             setAuthoritativeAccessLoaded(true);
           } catch (error) {
+            pendingAnalysisIdRef.current = null;
+            setAnalysis(null);
+            setBusy(false);
+            setRemainingSeconds(0);
             setAuthoritativeAccessLoaded(false);
             setMessage(
               error instanceof Error
-                ? `Rezultatul a fost calculat, dar accesul contului nu s-a sincronizat: ${error.message}`
-                : 'Rezultatul a fost calculat, dar accesul contului nu s-a sincronizat.'
+                ? `Rezultatul nu a fost afișat deoarece accesul contului nu a putut fi confirmat: ${error.message}`
+                : 'Rezultatul nu a fost afișat deoarece accesul contului nu a putut fi confirmat.'
             );
+            return;
           }
         } else {
           setCommercialAccess((current) => consumeCompletedAnalysis(current));
         }
 
         pendingAnalysisIdRef.current = null;
+        setAnalysis(result);
         setBusy(false);
 
         if (result.signal !== 'NONE' && result.expiry && result.expiry > 0) {
