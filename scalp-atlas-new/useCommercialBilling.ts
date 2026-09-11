@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import {
   finishTransaction,
+  getAvailablePurchases as getAvailablePurchasesDirect,
   useIAP,
   type ProductSubscription,
   type Purchase,
@@ -47,9 +48,7 @@ export function useCommercialBilling({ onEntitlementVerified, onMessage }: Optio
     subscriptions,
     fetchProducts,
     requestPurchase,
-    getAvailablePurchases,
   } = useIAP({
-    autoFinishTransactions: false,
     onPurchaseSuccess: async (purchase: Purchase) => {
       setBillingBusy(true);
       try {
@@ -70,7 +69,8 @@ export function useCommercialBilling({ onEntitlementVerified, onMessage }: Optio
     },
     onPurchaseError: (error) => {
       setBillingBusy(false);
-      if ((error as { code?: string })?.code === 'user-cancelled') {
+      const code = String((error as { code?: unknown })?.code || '').toLowerCase();
+      if (code.includes('cancel')) {
         onMessage('Achiziția a fost anulată.');
         return;
       }
@@ -152,8 +152,8 @@ export function useCommercialBilling({ onEntitlementVerified, onMessage }: Optio
 
     setBillingBusy(true);
     try {
-      const purchases = await getAvailablePurchases();
-      const relevant = purchases.filter((purchase) =>
+      const purchases = await getAvailablePurchasesDirect();
+      const relevant = purchases.filter((purchase: Purchase) =>
         (SUBSCRIPTION_PRODUCT_IDS as readonly string[]).includes(purchase.productId)
       );
 
