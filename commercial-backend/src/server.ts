@@ -5,6 +5,8 @@ import { z } from 'zod';
 const PORT = Number(process.env.PORT || 8080);
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const AUTH_INTROSPECTION_URL = (process.env.AUTH_INTROSPECTION_URL || '').trim();
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
+const SUPABASE_PUBLISHABLE_KEY = (process.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
 const STORE_VERIFIER_URL = (process.env.STORE_VERIFIER_URL || '').trim();
 const DEV_USER_ID = (process.env.DEV_USER_ID || '').trim();
 
@@ -18,6 +20,37 @@ app.use(express.json({ limit: '512kb' }));
 
 type AuthenticatedRequest = Request & { scalpUserId?: string };
 
+async function resolveSupabaseUser(token: string): Promise<string | null> {
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) return null;
+
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) return null;
+  const payload = await response.json() as { id?: unknown };
+  return typeof payload.id === 'string' && payload.id ? payload.id : null;
+}
+
+async function resolveIntrospectionUser(token: string): Promise<string | null> {
+  if (!AUTH_INTROSPECTION_URL) return null;
+
+  const response = await fetch(AUTH_INTROSPECTION_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ token }),
+  });
+
+  if (!response.ok) return null;
+  const payload = await response.json() as { userId?: unknown; active?: unknown };
+  if (payload.active === false || typeof payload.userId !== 'string' || !payload.userId) return null;
+  return payload.userId;
+}
+
 async function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const auth = req.header('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
@@ -28,27 +61,27 @@ async function authenticate(req: AuthenticatedRequest, res: Response, next: Next
     return;
   }
 
-  if (!token || !AUTH_INTROSPECTION_URL) {
+  if (!token) {
     res.status(401).json({ error: 'authentication_required' });
     return;
   }
 
+  if (!SUPABASE_URL && !AUTH_INTROSPECTION_URL) {
+    res.status(503).json({ error: 'identity_provider_not_configured' });
+    return;
+  }
+
   try {
-    const response = await fetch(AUTH_INTROSPECTION_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify({ token }),
-    });
-    if (!response.ok) {
+    const userId = SUPABASE_URL
+      ? await resolveSupabaseUser(token)
+      : await resolveIntrospectionUser(token);
+
+    if (!userId) {
       res.status(401).json({ error: 'invalid_token' });
       return;
     }
-    const payload = await response.json() as { userId?: unknown; active?: unknown };
-    if (payload.active === false || typeof payload.userId !== 'string' || !payload.userId) {
-      res.status(401).json({ error: 'invalid_token' });
-      return;
-    }
-    req.scalpUserId = payload.userId;
+
+    req.scalpUserId = userId;
     next();
   } catch {
     res.status(503).json({ error: 'authentication_unavailable' });
