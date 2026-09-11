@@ -6,6 +6,10 @@ type Props = {
   remainingFreeAnalyses: number;
   subscriptionActive: boolean;
   busy?: boolean;
+  monthlyPrice?: string | null;
+  annualPrice?: string | null;
+  storeConnected?: boolean;
+  verificationReady?: boolean;
   onSubscribeMonthly: () => void;
   onSubscribeAnnual: () => void;
   onRestorePurchases: () => void;
@@ -15,6 +19,10 @@ export default function SubscriptionPaywall({
   remainingFreeAnalyses,
   subscriptionActive,
   busy = false,
+  monthlyPrice,
+  annualPrice,
+  storeConnected = false,
+  verificationReady = false,
   onSubscribeMonthly,
   onSubscribeAnnual,
   onRestorePurchases,
@@ -41,25 +49,37 @@ export default function SubscriptionPaywall({
     );
   }
 
+  const monthlyLabel = monthlyPrice ? `ABONAMENT LUNAR • ${monthlyPrice}` : 'ABONAMENT LUNAR';
+  const annualLabel = annualPrice ? `ABONAMENT ANUAL • ${annualPrice}` : 'ABONAMENT ANUAL';
+
   return (
     <View style={[styles.card, styles.paywall]}>
       <Text style={styles.eyebrow}>SCALP ATLAS PREMIUM</Text>
       <Text style={styles.title}>Cele {FREE_ANALYSIS_LIMIT} analize gratuite au fost folosite</Text>
       <Text style={styles.body}>
-        Pentru a continua analiza graficelor, activează un abonament. Prețurile vor fi afișate direct de magazinul aplicației.
+        Pentru a continua analiza graficelor, activează un abonament. Prețul este furnizat direct de magazinul dispozitivului și poate varia în funcție de țară.
       </Text>
 
       <Pressable disabled={busy} onPress={onSubscribeMonthly} style={styles.primaryButton}>
-        <Text style={styles.primaryButtonText}>{busy ? 'SE PROCESEAZĂ…' : 'ABONAMENT LUNAR'}</Text>
+        <Text style={styles.primaryButtonText}>{busy ? 'SE PROCESEAZĂ…' : monthlyLabel}</Text>
       </Pressable>
 
       <Pressable disabled={busy} onPress={onSubscribeAnnual} style={styles.secondaryButton}>
-        <Text style={styles.secondaryButtonText}>ABONAMENT ANUAL</Text>
+        <Text style={styles.secondaryButtonText}>{annualLabel}</Text>
       </Pressable>
 
       <Pressable disabled={busy} onPress={onRestorePurchases} style={styles.restoreButton}>
         <Text style={styles.restoreText}>Restabilește achiziția</Text>
       </Pressable>
+
+      {!storeConnected && (
+        <Text style={styles.setupText}>Magazinul se conectează…</Text>
+      )}
+      {storeConnected && !verificationReady && (
+        <Text style={styles.setupText}>
+          Modul de plată este integrat; serverul securizat de verificare trebuie conectat înainte de lansarea publică.
+        </Text>
+      )}
 
       <Text style={styles.legal}>
         Abonamentul se gestionează prin magazinul dispozitivului. Poți anula din setările contului de magazin, conform condițiilor platformei.
@@ -126,6 +146,12 @@ const styles = StyleSheet.create({
   restoreText: {
     color: '#9fb6ff',
     fontWeight: '800',
+  },
+  setupText: {
+    color: '#d6b86a',
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'center',
   },
   legal: {
     color: '#66758c',
