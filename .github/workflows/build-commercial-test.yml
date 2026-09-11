@@ -69,11 +69,11 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.0-COMMERCIAL-TEST.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.1-SAFE-START.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.0-COMMERCIAL-TEST
-          path: ScalpAtlas-v0.3.0-COMMERCIAL-TEST.apk
+          name: ScalpAtlas-v0.3.1-SAFE-START
+          path: ScalpAtlas-v0.3.1-SAFE-START.apk
           if-no-files-found: error
