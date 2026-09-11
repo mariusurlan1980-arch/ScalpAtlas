@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 import type { Purchase } from 'expo-iap';
+import { commercialAuthorizationHeader } from './commercialAuth';
+import { commercialBackendBaseUrl, commercialBackendConfigured } from './commercialBackend';
 
 export type VerifiedSubscription = {
   subscriptionActive: boolean;
@@ -7,24 +9,24 @@ export type VerifiedSubscription = {
   expiresAt: string | null;
 };
 
-const verificationApiUrl = (process.env.EXPO_PUBLIC_ENTITLEMENT_API_URL || '').trim();
-
 export function subscriptionVerificationConfigured(): boolean {
-  return verificationApiUrl.length > 0;
+  return commercialBackendConfigured();
 }
 
 export async function verifySubscriptionOnBackend(
   purchase: Purchase
 ): Promise<VerifiedSubscription> {
-  if (!verificationApiUrl) {
+  if (!commercialBackendConfigured()) {
     throw new Error('Serverul de verificare a abonamentelor nu este configurat încă.');
   }
 
-  const response = await fetch(`${verificationApiUrl.replace(/\/$/, '')}/v1/subscriptions/verify`, {
+  const authHeaders = await commercialAuthorizationHeader();
+  const response = await fetch(`${commercialBackendBaseUrl()}/v1/subscriptions/verify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...authHeaders,
     },
     body: JSON.stringify({
       platform: Platform.OS,
@@ -35,6 +37,9 @@ export async function verifySubscriptionOnBackend(
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('Contul trebuie autentificat înainte de activarea abonamentului.');
+    }
     throw new Error(`Verificarea abonamentului a eșuat (${response.status}).`);
   }
 
