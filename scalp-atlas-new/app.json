@@ -22,6 +22,7 @@
       "favicon": "./assets/app-icon.png"
     },
     "plugins": [
+      "expo-iap",
       [
         "expo-image-picker",
         {
