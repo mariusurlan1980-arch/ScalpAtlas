@@ -1,0 +1,32 @@
+name: Check SCALP ATLAS Commercial Backend
+
+on:
+  push:
+    branches: [commercial-v1]
+    paths:
+      - 'commercial-backend/**'
+      - '.github/workflows/check-commercial-backend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: commercial-backend
+        run: npm install
+
+      - name: TypeScript check
+        working-directory: commercial-backend
+        run: npm run typecheck
