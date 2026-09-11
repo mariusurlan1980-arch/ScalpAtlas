@@ -1,0 +1,38 @@
+name: Generate SCALP ATLAS web demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/generate_demo.py'
+      - '.github/workflows/generate-site-demo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          python -m pip install --upgrade pip
+          pip install pillow numpy
+      - name: Generate 30 second demo video
+        run: python site/generate_demo.py
+      - name: Commit generated video
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/assets/scalp-atlas-demo.mp4
+          git commit -m "Add generated SCALP ATLAS web demo [skip ci]" || exit 0
+          git push
