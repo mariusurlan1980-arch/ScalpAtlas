@@ -11,11 +11,20 @@ import {
   Text,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { ANALYSIS_ENGINE_HTML } from './analysisEngine';
 import { SCALP_ATLAS_COUNT } from './atlas';
+import SubscriptionPaywall from './SubscriptionPaywall';
+import {
+  CommercialAccessState,
+  INITIAL_COMMERCIAL_ACCESS,
+  canAnalyze,
+  consumeCompletedAnalysis,
+  freeAnalysesRemaining,
+} from './commercialAccess';
 
 type SelectedImage = {
   uri: string;
@@ -38,6 +47,24 @@ type AnalysisResult = {
 };
 
 const TIMEFRAMES = ['M1', 'M2', 'M3', 'M5', 'M10', 'M15', 'M30', 'H1'];
+const COMMERCIAL_ACCESS_STORAGE_KEY = '@scalp_atlas/commercial_access_v1';
+
+function sanitizeCommercialAccess(value: unknown): CommercialAccessState {
+  if (!value || typeof value !== 'object') return INITIAL_COMMERCIAL_ACCESS;
+  const candidate = value as Partial<CommercialAccessState>;
+  const freeAnalysesUsed = Number.isFinite(candidate.freeAnalysesUsed)
+    ? Math.max(0, Math.min(5, Math.floor(candidate.freeAnalysesUsed as number)))
+    : 0;
+
+  return {
+    freeAnalysesUsed,
+    subscriptionActive: candidate.subscriptionActive === true,
+    subscriptionProductId:
+      typeof candidate.subscriptionProductId === 'string' ? candidate.subscriptionProductId : null,
+    subscriptionExpiresAt:
+      typeof candidate.subscriptionExpiresAt === 'string' ? candidate.subscriptionExpiresAt : null,
+  };
+}
 
 export default function App() {
   const [image, setImage] = useState<SelectedImage | null>(null);
@@ -48,14 +75,40 @@ export default function App() {
   const [message, setMessage] = useState('Alege Camera sau Galerie pentru analiză.');
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 390 });
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [commercialAccess, setCommercialAccess] = useState<CommercialAccessState>(INITIAL_COMMERCIAL_ACCESS);
+  const [commercialAccessReady, setCommercialAccessReady] = useState(false);
   const analyzerRef = useRef<WebView>(null);
 
+  const remainingFreeAnalyses = useMemo(
+    () => freeAnalysesRemaining(commercialAccess),
+    [commercialAccess]
+  );
+  const analysisAllowed = commercialAccessReady && canAnalyze(commercialAccess);
   const timerRunning = remainingSeconds > 0;
-  const timerLabel = useMemo(() => {
-    const minutes = Math.floor(remainingSeconds / 60);
-    const seconds = remainingSeconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  }, [remainingSeconds]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(COMMERCIAL_ACCESS_STORAGE_KEY);
+        if (raw && mounted) {
+          setCommercialAccess(sanitizeCommercialAccess(JSON.parse(raw)));
+        }
+      } catch {
+        if (mounted) setCommercialAccess(INITIAL_COMMERCIAL_ACCESS);
+      } finally {
+        if (mounted) setCommercialAccessReady(true);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!commercialAccessReady) return;
+    AsyncStorage.setItem(COMMERCIAL_ACCESS_STORAGE_KEY, JSON.stringify(commercialAccess)).catch(() => {});
+  }, [commercialAccess, commercialAccessReady]);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -136,6 +189,14 @@ export default function App() {
   };
 
   const analyzeImage = () => {
+    if (!commercialAccessReady) {
+      setMessage('Se încarcă accesul comercial. Încearcă din nou imediat.');
+      return;
+    }
+    if (!canAnalyze(commercialAccess)) {
+      setMessage('Cele 5 analize gratuite au fost folosite. Activează un abonament pentru a continua.');
+      return;
+    }
     if (!image?.base64) {
       setMessage('Imaginea nu conține datele necesare analizei. Reîncarcă fotografia din Cameră sau Galerie.');
       return;
@@ -164,6 +225,8 @@ export default function App() {
         const result = payload.result as AnalysisResult;
         setAnalysis(result);
         setBusy(false);
+        setCommercialAccess((current) => consumeCompletedAnalysis(current));
+
         if (result.signal !== 'NONE' && result.expiry && result.expiry > 0) {
           setRemainingSeconds(Math.max(1, Math.round(result.expiry * 60)));
         } else {
@@ -208,6 +271,16 @@ export default function App() {
     };
   }, [analysis, image, previewSize]);
 
+  const showBillingNotConnected = (plan: 'lunar' | 'anual') => {
+    setMessage(
+      `Planul ${plan} este pregătit în interfață. Următorul pas este conectarea produsului real din Google Play / App Store.`
+    );
+  };
+
+  const restorePurchases = () => {
+    setMessage('Restabilirea achizițiilor va fi activată odată cu integrarea Google Play Billing / App Store.');
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
@@ -218,6 +291,15 @@ export default function App() {
             <Text style={styles.subtitle}>{SCALP_ATLAS_COUNT} modele • Cameră + Galerie • Atlas Engine</Text>
           </View>
         </View>
+
+        <SubscriptionPaywall
+          remainingFreeAnalyses={remainingFreeAnalyses}
+          subscriptionActive={commercialAccess.subscriptionActive}
+          busy={busy}
+          onSubscribeMonthly={() => showBillingNotConnected('lunar')}
+          onSubscribeAnnual={() => showBillingNotConnected('anual')}
+          onRestorePurchases={restorePurchases}
+        />
 
         <View style={styles.timeframeRow}>
           {TIMEFRAMES.map((item) => (
@@ -265,11 +347,19 @@ export default function App() {
         </View>
 
         <Pressable
-          disabled={!image || busy}
+          disabled={!image || busy || !analysisAllowed}
           onPress={analyzeImage}
-          style={[styles.analyzeButton, (!image || busy) && styles.analyzeButtonDisabled]}
+          style={[styles.analyzeButton, (!image || busy || !analysisAllowed) && styles.analyzeButtonDisabled]}
         >
-          <Text style={styles.analyzeText}>{busy ? 'ANALIZEZ…' : `ANALIZEAZĂ CU ${SCALP_ATLAS_COUNT} MODELE`}</Text>
+          <Text style={styles.analyzeText}>
+            {!commercialAccessReady
+              ? 'ÎNCARC ACCESUL…'
+              : !canAnalyze(commercialAccess)
+                ? 'ABONAMENT NECESAR'
+                : busy
+                  ? 'ANALIZEZ…'
+                  : `ANALIZEAZĂ CU ${SCALP_ATLAS_COUNT} MODELE`}
+          </Text>
         </Pressable>
 
         <View style={styles.statusCard}>
@@ -291,6 +381,9 @@ export default function App() {
             <Text style={styles.statusText}>{message}</Text>
           )}
           <Text style={styles.statusSmall}>Timeframe selectat: {timeframe} • Motor: {engineReady ? 'PREGĂTIT' : 'INIȚIALIZARE'}</Text>
+          <Text style={styles.statusSmall}>
+            Acces: {commercialAccess.subscriptionActive ? 'PREMIUM' : `${remainingFreeAnalyses}/5 analize gratuite rămase`}
+          </Text>
         </View>
 
         <Text style={styles.footer}>
@@ -320,8 +413,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   logo: { color: '#f7fafc', fontSize: 25, fontWeight: '900', letterSpacing: 1.4 },
   subtitle: { color: '#7f8b9e', marginTop: 4, fontSize: 12 },
-  timer: { borderWidth: 1, borderColor: '#253044', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
-  timerText: { color: '#aeb8c8', fontWeight: '700', fontVariant: ['tabular-nums'] },
   timeframeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   tfButton: { minWidth: 46, paddingHorizontal: 9, paddingVertical: 8, borderRadius: 9, borderWidth: 1, borderColor: '#253044', alignItems: 'center' },
   tfButtonActive: { backgroundColor: '#f1f5f9', borderColor: '#f1f5f9' },
