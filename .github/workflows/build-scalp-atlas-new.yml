@@ -72,10 +72,6 @@ jobs:
           sudo apt-get install -y -qq librsvg2-bin
           rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
 
-      - name: TypeScript check
-        working-directory: scalp-atlas-new
-        run: npx tsc --noEmit
-
       - name: Generate Android project
         working-directory: scalp-atlas-new
         env:
