@@ -1,0 +1,165 @@
+name: Build SCALP ATLAS Play Internal Prep
+
+on:
+  push:
+    branches: [diagnostic-v027]
+    paths:
+      - '.github/workflows/build-play-internal-prep.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scalp-atlas-play-internal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Recreate stable v0.3.9 source then prepare v0.4.0
+        run: |
+          python3 - <<'BOOTSTRAP'
+          from pathlib import Path
+          import json
+          import textwrap
+
+          workflow = Path('.github/workflows/build-scalp-atlas-new.yml').read_text(encoding='utf-8')
+          lines = workflow.splitlines()
+          start = None
+          end = None
+          for i, line in enumerate(lines):
+              if line.strip() == "python3 - <<'PY'":
+                  start = i + 1
+                  break
+          if start is None:
+              raise SystemExit('Nu am găsit patch-ul stabil v0.3.9.')
+          for i in range(start, len(lines)):
+              if lines[i].strip() == 'PY':
+                  end = i
+                  break
+          if end is None:
+              raise SystemExit('Patch-ul stabil v0.3.9 nu are delimitator final.')
+
+          patch_code = textwrap.dedent('\n'.join(lines[start:end]))
+          exec(compile(patch_code, 'v039-bootstrap.py', 'exec'), {})
+
+          app = Path('scalp-atlas-new/App.tsx')
+          text = app.read_text(encoding='utf-8')
+          old_price_block = """      if (product) {
+        const price = product.displayPrice || product.localizedPrice || product.price || 'Preț disponibil în Google Play';
+        if (selectedPlan === 'monthly') setMonthlyPrice(String(price));
+        else setAnnualPrice(String(price));
+        setMessage(`Google Play Billing este conectat. Plan ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} detectat: ${price}. Nu s-a inițiat nicio plată.`);
+      } else {
+"""
+          new_price_block = """      if (product) {
+        const rawPrice = product.displayPrice || product.localizedPrice || null;
+        const price = typeof rawPrice === 'string' && rawPrice.trim().length > 0 ? rawPrice.trim() : null;
+        if (selectedPlan === 'monthly') setMonthlyPrice(price);
+        else setAnnualPrice(price);
+        if (price) {
+          setMessage(`Google Play Billing este conectat. Plan ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} detectat cu prețul real ${price}. Nu s-a inițiat nicio plată.`);
+        } else {
+          setMessage(`Google Play Billing este conectat și produsul ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} a fost detectat, dar Google Play nu a returnat încă un preț localizat. Nu s-a inițiat nicio plată.`);
+        }
+      } else {
+"""
+          if old_price_block not in text:
+              raise SystemExit('Nu am găsit blocul de preț v0.3.9 pentru corectare.')
+          text = text.replace(old_price_block, new_price_block, 1)
+          text = text.replace("monthlyPrice || 'Preț în magazin'", "monthlyPrice || 'Preț neconfirmat'", 1)
+          text = text.replace("annualPrice || 'Preț în magazin'", "annualPrice || 'Preț neconfirmat'", 1)
+          text = text.replace(
+              'Test sigur: verifică Google Play Billing și produsul selectat. Nu inițiază încă requestPurchase și nu poate retrage bani.',
+              'Pregătire Google Play: afișează numai prețul localizat returnat efectiv de magazin. Achiziția nu este încă pornită în acest build.',
+              1,
+          )
+          app.write_text(text, encoding='utf-8')
+
+          pkg_path = Path('scalp-atlas-new/package.json')
+          pkg = json.loads(pkg_path.read_text(encoding='utf-8'))
+          pkg['version'] = '0.4.0'
+          pkg_path.write_text(json.dumps(pkg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          cfg_path = Path('scalp-atlas-new/app.json')
+          cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
+          cfg['expo']['version'] = '0.4.0'
+          cfg['expo']['android']['versionCode'] = 18
+          cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          BOOTSTRAP
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: npm install
+
+      - name: Generate launcher icon
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build APK and AAB
+        working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
+          GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g'
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+
+      - name: Inspect AAB signature
+        run: |
+          set +e
+          AAB='scalp-atlas-new/android/app/build/outputs/bundle/release/app-release.aab'
+          echo '=== jarsigner verify ===' | tee aab-signing-info.txt
+          jarsigner -verify -verbose -certs "$AAB" 2>&1 | tee -a aab-signing-info.txt
+          echo '=== certificate ===' | tee -a aab-signing-info.txt
+          keytool -printcert -jarfile "$AAB" 2>&1 | tee -a aab-signing-info.txt
+          exit 0
+
+      - name: Collect artifacts
+        run: |
+          cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP.apk
+          cp scalp-atlas-new/android/app/build/outputs/bundle/release/app-release.aab ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP.aab
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP-APK
+          path: ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP.apk
+          if-no-files-found: error
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP-AAB
+          path: |
+            ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP.aab
+            aab-signing-info.txt
+          if-no-files-found: error
