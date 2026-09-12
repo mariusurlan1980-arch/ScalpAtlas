@@ -215,13 +215,13 @@ jobs:
           pkg_path = Path('scalp-atlas-new/package.json')
           pkg = json.loads(pkg_path.read_text(encoding='utf-8'))
           pkg['version'] = '0.3.13'
-          pkg_path.write_text(json.dumps(pkg, ensure_ascii=False, indent=2) + '\\n', encoding='utf-8')
+          pkg_path.write_text(json.dumps(pkg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
           cfg['expo']['version'] = '0.3.13'
           cfg['expo']['android']['versionCode'] = 22
-          cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\\n', encoding='utf-8')
+          cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           OWNER
 
       - name: Node 22
