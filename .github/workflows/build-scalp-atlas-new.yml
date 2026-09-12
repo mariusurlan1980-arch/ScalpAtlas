@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS Visual Paywall APK
+name: Build SCALP ATLAS Plan Select APK
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply v0.3.6 persistent trial and visual paywall
+      - name: Apply v0.3.7 persistent trial, paywall and plan selection
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -48,7 +48,7 @@ jobs:
 
           state_anchor = "  const [freeAnalysesUsed, setFreeAnalysesUsed] = useState(0);"
           if "trialLoaded" not in text:
-              text = text.replace(state_anchor, state_anchor + "\n  const [trialLoaded, setTrialLoaded] = useState(false);", 1)
+              text = text.replace(state_anchor, state_anchor + "\n  const [trialLoaded, setTrialLoaded] = useState(false);\n  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual' | null>(null);", 1)
 
           ref_anchor = "  const analyzerRef = useRef<WebView>(null);"
           if "analysisInFlightRef" not in text:
@@ -101,16 +101,19 @@ jobs:
                   "            <Text style={styles.paywallTitle}>Continuă analizele cu abonament</Text>\n"
                   "            <Text style={styles.paywallText}>Ai folosit cele 5 analize gratuite. Alege planul dorit pentru acces complet.</Text>\n"
                   "            <View style={styles.planRow}>\n"
-                  "              <Pressable onPress={() => setMessage('Plata lunară va fi activată prin Google Play / App Store în versiunea comercială.')} style={styles.planButton}>\n"
+                  "              <Pressable onPress={() => { setSelectedPlan('monthly'); setMessage('Plan LUNAR selectat. Plata reală va fi activată în etapa următoare.'); }} style={[styles.planButton, selectedPlan === 'monthly' && styles.planButtonSelected]}>\n"
+                  "                {selectedPlan === 'monthly' && <Text style={styles.planSelected}>SELECTAT</Text>}\n"
                   "                <Text style={styles.planTitle}>LUNAR</Text>\n"
                   "                <Text style={styles.planPrice}>Preț în magazin</Text>\n"
                   "              </Pressable>\n"
-                  "              <Pressable onPress={() => setMessage('Plata anuală va fi activată prin Google Play / App Store în versiunea comercială.')} style={[styles.planButton, styles.planButtonFeatured]}>\n"
+                  "              <Pressable onPress={() => { setSelectedPlan('annual'); setMessage('Plan ANUAL selectat. Plata reală va fi activată în etapa următoare.'); }} style={[styles.planButton, styles.planButtonFeatured, selectedPlan === 'annual' && styles.planButtonSelected]}>\n"
                   "                <Text style={styles.planBadge}>RECOMANDAT</Text>\n"
+                  "                {selectedPlan === 'annual' && <Text style={styles.planSelected}>SELECTAT</Text>}\n"
                   "                <Text style={styles.planTitle}>ANUAL</Text>\n"
                   "                <Text style={styles.planPrice}>Preț în magazin</Text>\n"
                   "              </Pressable>\n"
                   "            </View>\n"
+                  "            <Text style={styles.selectedPlanText}>{selectedPlan === 'monthly' ? 'Plan selectat: LUNAR' : selectedPlan === 'annual' ? 'Plan selectat: ANUAL' : 'Alege LUNAR sau ANUAL.'}</Text>\n"
                   "            <Text style={styles.paywallNote}>Plățile reale sunt dezactivate în acest APK de test.</Text>\n"
                   "          </View>\n"
                   "        )}\n\n"
@@ -126,11 +129,14 @@ jobs:
                   "  paywallTitle: { color: '#f5f7fb', fontSize: 20, fontWeight: '900' },\n"
                   "  paywallText: { color: '#9aa8ba', fontSize: 13, lineHeight: 19 },\n"
                   "  planRow: { flexDirection: 'row', gap: 10 },\n"
-                  "  planButton: { flex: 1, minHeight: 88, borderRadius: 13, borderWidth: 1, borderColor: '#344158', backgroundColor: '#101827', padding: 12, justifyContent: 'center', alignItems: 'center', gap: 6 },\n"
+                  "  planButton: { flex: 1, minHeight: 94, borderRadius: 13, borderWidth: 1, borderColor: '#344158', backgroundColor: '#101827', padding: 12, justifyContent: 'center', alignItems: 'center', gap: 5 },\n"
                   "  planButtonFeatured: { borderColor: '#9b62ff', backgroundColor: '#17112a' },\n"
+                  "  planButtonSelected: { borderColor: '#20e0ff', borderWidth: 2, backgroundColor: '#102033' },\n"
                   "  planBadge: { color: '#d5b7ff', fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },\n"
+                  "  planSelected: { color: '#20e0ff', fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },\n"
                   "  planTitle: { color: '#f4f7fb', fontSize: 15, fontWeight: '900', letterSpacing: 0.7 },\n"
                   "  planPrice: { color: '#8795aa', fontSize: 11 },\n"
+                  "  selectedPlanText: { color: '#cbd5e1', fontSize: 11, fontWeight: '700', textAlign: 'center' },\n"
                   "  paywallNote: { color: '#6f7d90', fontSize: 10, lineHeight: 15, textAlign: 'center' },\n"
                   + style_anchor
               )
@@ -156,8 +162,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.6'
-          cfg['expo']['android']['versionCode'] = 14
+          cfg['expo']['version'] = '0.3.7'
+          cfg['expo']['android']['versionCode'] = 15
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -201,11 +207,11 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.6-PAYWALL-VISUAL.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.7-PLAN-SELECT.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.6-PAYWALL-VISUAL
-          path: ScalpAtlas-v0.3.6-PAYWALL-VISUAL.apk
+          name: ScalpAtlas-v0.3.7-PLAN-SELECT
+          path: ScalpAtlas-v0.3.7-PLAN-SELECT.apk
           if-no-files-found: error
