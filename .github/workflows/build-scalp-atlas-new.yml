@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS Trial Fix APK
+name: Build SCALP ATLAS Trial Persistent APK
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply v0.3.4 duplicate-result guard and version
+      - name: Apply v0.3.5 persistent trial counter and version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -31,6 +31,19 @@ jobs:
 
           app = Path('scalp-atlas-new/App.tsx')
           text = app.read_text(encoding='utf-8')
+
+          if "@react-native-async-storage/async-storage" not in text:
+              text = text.replace(
+                  "import { StatusBar } from 'expo-status-bar';",
+                  "import AsyncStorage from '@react-native-async-storage/async-storage';\nimport { StatusBar } from 'expo-status-bar';",
+                  1,
+              )
+
+          text = text.replace(
+              "const FREE_ANALYSIS_LIMIT = 5;",
+              "const FREE_ANALYSIS_LIMIT = 5;\nconst TRIAL_STORAGE_KEY = 'scalp_atlas_free_analyses_used_v1';",
+              1,
+          )
 
           old_title = '<Text style={styles.logo}>SCALP ATLAS</Text>'
           new_title = "<Text style={styles.logo}><Text style={{ color: '#20E0FF' }}>SC</Text><Text style={{ color: '#28BFFF' }}>AL</Text><Text style={{ color: '#557FFF' }}>P </Text><Text style={{ color: '#8758FF' }}>AT</Text><Text style={{ color: '#C43AF2' }}>LA</Text><Text style={{ color: '#FF2DB8' }}>S</Text></Text>"
@@ -41,9 +54,42 @@ jobs:
           if old_style in text:
               text = text.replace(old_style, new_style, 1)
 
+          state_anchor = "  const [freeAnalysesUsed, setFreeAnalysesUsed] = useState(0);"
+          if "trialLoaded" not in text:
+              text = text.replace(state_anchor, state_anchor + "\n  const [trialLoaded, setTrialLoaded] = useState(false);", 1)
+
           ref_anchor = "  const analyzerRef = useRef<WebView>(null);"
           if "analysisInFlightRef" not in text:
               text = text.replace(ref_anchor, ref_anchor + "\n  const analysisInFlightRef = useRef(false);", 1)
+
+          if "AsyncStorage.getItem(TRIAL_STORAGE_KEY)" not in text:
+              persistence = """
+
+  useEffect(() => {
+    let mounted = true;
+    AsyncStorage.getItem(TRIAL_STORAGE_KEY)
+      .then((stored) => {
+        if (!mounted) return;
+        const parsed = stored == null ? 0 : Number.parseInt(stored, 10);
+        const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.min(FREE_ANALYSIS_LIMIT, parsed)) : 0;
+        setFreeAnalysesUsed(safeValue);
+      })
+      .catch(() => {
+        if (mounted) setFreeAnalysesUsed(0);
+      })
+      .finally(() => {
+        if (mounted) setTrialLoaded(true);
+      });
+    return () => { mounted = false; };
+  }, []);
+"""
+              insert_after = "  const analysisInFlightRef = useRef(false);"
+              text = text.replace(insert_after, insert_after + persistence, 1)
+
+          analyze_start = "  const analyzeImage = () => {\n    if (trialLocked) {"
+          analyze_ready = "  const analyzeImage = () => {\n    if (!trialLoaded) {\n      setMessage('Se încarcă starea testului gratuit. Încearcă din nou imediat.');\n      return;\n    }\n    if (trialLocked) {"
+          if analyze_start in text:
+              text = text.replace(analyze_start, analyze_ready, 1)
 
           analyze_anchor = "    setBusy(true);\n    setAnalysis(null);\n    setRemainingSeconds(0);\n    setMessage(`Analizez fotografia cu atlasul de ${SCALP_ATLAS_COUNT} modele…`);"
           analyze_guard = "    if (analysisInFlightRef.current) return;\n    analysisInFlightRef.current = true;\n    setBusy(true);\n    setAnalysis(null);\n    setRemainingSeconds(0);\n    setMessage(`Analizez fotografia cu atlasul de ${SCALP_ATLAS_COUNT} modele…`);"
@@ -55,6 +101,15 @@ jobs:
           if result_anchor in text:
               text = text.replace(result_anchor, result_guard, 1)
 
+          old_increment = "        setFreeAnalysesUsed((used) => Math.min(FREE_ANALYSIS_LIMIT, used + 1));"
+          new_increment = """        setFreeAnalysesUsed((used) => {
+          const next = Math.min(FREE_ANALYSIS_LIMIT, used + 1);
+          AsyncStorage.setItem(TRIAL_STORAGE_KEY, String(next)).catch(() => {});
+          return next;
+        });"""
+          if old_increment in text:
+              text = text.replace(old_increment, new_increment, 1)
+
           error_anchor = "      if (payload.type === 'ERROR') {\n        setBusy(false);"
           error_guard = "      if (payload.type === 'ERROR') {\n        analysisInFlightRef.current = false;\n        setBusy(false);"
           if error_anchor in text:
@@ -64,6 +119,13 @@ jobs:
           catch_guard = "    } catch {\n      analysisInFlightRef.current = false;\n      setBusy(false);\n      setRemainingSeconds(0);\n      setMessage('Motorul Atlas a trimis un rezultat invalid.');"
           if catch_anchor in text:
               text = text.replace(catch_anchor, catch_guard, 1)
+
+          disabled_old = "          disabled={!image || busy || trialLocked}"
+          disabled_new = "          disabled={!image || busy || trialLocked || !trialLoaded}"
+          text = text.replace(disabled_old, disabled_new, 1)
+          style_old = "          style={[styles.analyzeButton, (!image || busy || trialLocked) && styles.analyzeButtonDisabled]}"
+          style_new = "          style={[styles.analyzeButton, (!image || busy || trialLocked || !trialLoaded) && styles.analyzeButtonDisabled]}"
+          text = text.replace(style_old, style_new, 1)
 
           app.write_text(text, encoding='utf-8')
 
@@ -85,8 +147,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.4'
-          cfg['expo']['android']['versionCode'] = 12
+          cfg['expo']['version'] = '0.3.5'
+          cfg['expo']['android']['versionCode'] = 13
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -130,11 +192,11 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.4-TRIAL-FIX.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.5-TRIAL-PERSISTENT.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.4-TRIAL-FIX
-          path: ScalpAtlas-v0.3.4-TRIAL-FIX.apk
+          name: ScalpAtlas-v0.3.5-TRIAL-PERSISTENT
+          path: ScalpAtlas-v0.3.5-TRIAL-PERSISTENT.apk
           if-no-files-found: error
