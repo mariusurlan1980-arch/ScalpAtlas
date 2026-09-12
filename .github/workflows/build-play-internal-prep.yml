@@ -51,25 +51,27 @@ jobs:
 
           app = Path('scalp-atlas-new/App.tsx')
           text = app.read_text(encoding='utf-8')
-          old_price_block = """      if (product) {
-        const price = product.displayPrice || product.localizedPrice || product.price || 'Preț disponibil în Google Play';
-        if (selectedPlan === 'monthly') setMonthlyPrice(String(price));
-        else setAnnualPrice(String(price));
-        setMessage(`Google Play Billing este conectat. Plan ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} detectat: ${price}. Nu s-a inițiat nicio plată.`);
-      } else {
-"""
-          new_price_block = """      if (product) {
-        const rawPrice = product.displayPrice || product.localizedPrice || null;
-        const price = typeof rawPrice === 'string' && rawPrice.trim().length > 0 ? rawPrice.trim() : null;
-        if (selectedPlan === 'monthly') setMonthlyPrice(price);
-        else setAnnualPrice(price);
-        if (price) {
-          setMessage(`Google Play Billing este conectat. Plan ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} detectat cu prețul real ${price}. Nu s-a inițiat nicio plată.`);
-        } else {
-          setMessage(`Google Play Billing este conectat și produsul ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} a fost detectat, dar Google Play nu a returnat încă un preț localizat. Nu s-a inițiat nicio plată.`);
-        }
-      } else {
-"""
+          old_price_block = (
+              "      if (product) {\n"
+              "        const price = product.displayPrice || product.localizedPrice || product.price || 'Preț disponibil în Google Play';\n"
+              "        if (selectedPlan === 'monthly') setMonthlyPrice(String(price));\n"
+              "        else setAnnualPrice(String(price));\n"
+              "        setMessage(`Google Play Billing este conectat. Plan ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} detectat: ${price}. Nu s-a inițiat nicio plată.`);\n"
+              "      } else {\n"
+          )
+          new_price_block = (
+              "      if (product) {\n"
+              "        const rawPrice = product.displayPrice || product.localizedPrice || null;\n"
+              "        const price = typeof rawPrice === 'string' && rawPrice.trim().length > 0 ? rawPrice.trim() : null;\n"
+              "        if (selectedPlan === 'monthly') setMonthlyPrice(price);\n"
+              "        else setAnnualPrice(price);\n"
+              "        if (price) {\n"
+              "          setMessage(`Google Play Billing este conectat. Plan ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} detectat cu prețul real ${price}. Nu s-a inițiat nicio plată.`);\n"
+              "        } else {\n"
+              "          setMessage(`Google Play Billing este conectat și produsul ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} a fost detectat, dar Google Play nu a returnat încă un preț localizat. Nu s-a inițiat nicio plată.`);\n"
+              "        }\n"
+              "      } else {\n"
+          )
           if old_price_block not in text:
               raise SystemExit('Nu am găsit blocul de preț v0.3.9 pentru corectare.')
           text = text.replace(old_price_block, new_price_block, 1)
