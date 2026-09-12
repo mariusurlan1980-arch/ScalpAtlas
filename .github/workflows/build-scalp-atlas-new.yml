@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS Trial Persistent APK
+name: Build SCALP ATLAS Visual Paywall APK
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply v0.3.5 persistent trial counter and version
+      - name: Apply v0.3.6 persistent trial and visual paywall
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -91,6 +91,51 @@ jobs:
           text = text.replace("          disabled={!image || busy || trialLocked}", "          disabled={!image || busy || trialLocked || !trialLoaded}", 1)
           text = text.replace("          style={[styles.analyzeButton, (!image || busy || trialLocked) && styles.analyzeButtonDisabled]}", "          style={[styles.analyzeButton, (!image || busy || trialLocked || !trialLoaded) && styles.analyzeButtonDisabled]}", 1)
 
+          paywall_anchor = "        </Pressable>\n\n        <View style={styles.statusCard}>"
+          if "SCALP ATLAS PREMIUM" not in text:
+              paywall_block = (
+                  "        </Pressable>\n\n"
+                  "        {trialLocked && (\n"
+                  "          <View style={styles.paywallCard}>\n"
+                  "            <Text style={styles.paywallEyebrow}>SCALP ATLAS PREMIUM</Text>\n"
+                  "            <Text style={styles.paywallTitle}>Continuă analizele cu abonament</Text>\n"
+                  "            <Text style={styles.paywallText}>Ai folosit cele 5 analize gratuite. Alege planul dorit pentru acces complet.</Text>\n"
+                  "            <View style={styles.planRow}>\n"
+                  "              <Pressable onPress={() => setMessage('Plata lunară va fi activată prin Google Play / App Store în versiunea comercială.')} style={styles.planButton}>\n"
+                  "                <Text style={styles.planTitle}>LUNAR</Text>\n"
+                  "                <Text style={styles.planPrice}>Preț în magazin</Text>\n"
+                  "              </Pressable>\n"
+                  "              <Pressable onPress={() => setMessage('Plata anuală va fi activată prin Google Play / App Store în versiunea comercială.')} style={[styles.planButton, styles.planButtonFeatured]}>\n"
+                  "                <Text style={styles.planBadge}>RECOMANDAT</Text>\n"
+                  "                <Text style={styles.planTitle}>ANUAL</Text>\n"
+                  "                <Text style={styles.planPrice}>Preț în magazin</Text>\n"
+                  "              </Pressable>\n"
+                  "            </View>\n"
+                  "            <Text style={styles.paywallNote}>Plățile reale sunt dezactivate în acest APK de test.</Text>\n"
+                  "          </View>\n"
+                  "        )}\n\n"
+                  "        <View style={styles.statusCard}>"
+              )
+              text = text.replace(paywall_anchor, paywall_block, 1)
+
+          style_anchor = "  statusCard: { backgroundColor: '#0c121c', borderRadius: 14, borderWidth: 1, borderColor: '#1f2937', padding: 14, gap: 7 },"
+          if "paywallCard:" not in text:
+              paywall_styles = (
+                  "  paywallCard: { backgroundColor: '#0b1220', borderRadius: 16, borderWidth: 1, borderColor: '#6d45d9', padding: 16, gap: 10 },\n"
+                  "  paywallEyebrow: { color: '#bd8cff', fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },\n"
+                  "  paywallTitle: { color: '#f5f7fb', fontSize: 20, fontWeight: '900' },\n"
+                  "  paywallText: { color: '#9aa8ba', fontSize: 13, lineHeight: 19 },\n"
+                  "  planRow: { flexDirection: 'row', gap: 10 },\n"
+                  "  planButton: { flex: 1, minHeight: 88, borderRadius: 13, borderWidth: 1, borderColor: '#344158', backgroundColor: '#101827', padding: 12, justifyContent: 'center', alignItems: 'center', gap: 6 },\n"
+                  "  planButtonFeatured: { borderColor: '#9b62ff', backgroundColor: '#17112a' },\n"
+                  "  planBadge: { color: '#d5b7ff', fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },\n"
+                  "  planTitle: { color: '#f4f7fb', fontSize: 15, fontWeight: '900', letterSpacing: 0.7 },\n"
+                  "  planPrice: { color: '#8795aa', fontSize: 11 },\n"
+                  "  paywallNote: { color: '#6f7d90', fontSize: 10, lineHeight: 15, textAlign: 'center' },\n"
+                  + style_anchor
+              )
+              text = text.replace(style_anchor, paywall_styles, 1)
+
           app.write_text(text, encoding='utf-8')
 
           engine = Path('scalp-atlas-new/analysisEngine.ts')
@@ -111,8 +156,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.5'
-          cfg['expo']['android']['versionCode'] = 13
+          cfg['expo']['version'] = '0.3.6'
+          cfg['expo']['android']['versionCode'] = 14
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -156,11 +201,11 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.5-TRIAL-PERSISTENT.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.6-PAYWALL-VISUAL.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.5-TRIAL-PERSISTENT
-          path: ScalpAtlas-v0.3.5-TRIAL-PERSISTENT.apk
+          name: ScalpAtlas-v0.3.6-PAYWALL-VISUAL
+          path: ScalpAtlas-v0.3.6-PAYWALL-VISUAL.apk
           if-no-files-found: error
