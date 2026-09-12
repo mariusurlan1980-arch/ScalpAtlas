@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Recreate stable v0.3.9 source then prepare v0.4.0
+      - name: Recreate stable v0.3.12 source then prepare v0.4.1
         run: |
           python3 - <<'BOOTSTRAP'
           from pathlib import Path
@@ -38,13 +38,13 @@ jobs:
                   start = i + 1
                   break
           if start is None:
-              raise SystemExit('Nu am găsit patch-ul stabil v0.3.9.')
+              raise SystemExit('Nu am găsit generatorul stabil v0.3.12.')
           for i in range(start, len(lines)):
               if lines[i].strip() == 'PY':
                   end = i
                   break
           if end is None:
-              raise SystemExit('Patch-ul stabil v0.3.9 nu are delimitator final.')
+              raise SystemExit('Generatorul stabil v0.3.12 nu are delimitator final.')
 
           patch_code = textwrap.dedent('\n'.join(lines[start:end]))
           exec(compile(patch_code, 'v039-bootstrap.py', 'exec'), {})
@@ -72,9 +72,8 @@ jobs:
               "        }\n"
               "      } else {\n"
           )
-          if old_price_block not in text:
-              raise SystemExit('Nu am găsit blocul de preț v0.3.9 pentru corectare.')
-          text = text.replace(old_price_block, new_price_block, 1)
+          if old_price_block in text:
+              text = text.replace(old_price_block, new_price_block, 1)
           text = text.replace("monthlyPrice || 'Preț în magazin'", "monthlyPrice || 'Preț neconfirmat'", 1)
           text = text.replace("annualPrice || 'Preț în magazin'", "annualPrice || 'Preț neconfirmat'", 1)
           text = text.replace(
@@ -86,13 +85,13 @@ jobs:
 
           pkg_path = Path('scalp-atlas-new/package.json')
           pkg = json.loads(pkg_path.read_text(encoding='utf-8'))
-          pkg['version'] = '0.4.0'
+          pkg['version'] = '0.4.1'
           pkg_path.write_text(json.dumps(pkg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.4.0'
-          cfg['expo']['android']['versionCode'] = 18
+          cfg['expo']['version'] = '0.4.1'
+          cfg['expo']['android']['versionCode'] = 21
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           BOOTSTRAP
 
@@ -147,21 +146,21 @@ jobs:
 
       - name: Collect artifacts
         run: |
-          cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP.apk
-          cp scalp-atlas-new/android/app/build/outputs/bundle/release/app-release.aab ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP.aab
+          cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.4.1-PLAY-INTERNAL-PREP.apk
+          cp scalp-atlas-new/android/app/build/outputs/bundle/release/app-release.aab ScalpAtlas-v0.4.1-PLAY-INTERNAL-PREP.aab
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP-APK
-          path: ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP.apk
+          name: ScalpAtlas-v0.4.1-PLAY-INTERNAL-PREP-APK
+          path: ScalpAtlas-v0.4.1-PLAY-INTERNAL-PREP.apk
           if-no-files-found: error
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP-AAB
+          name: ScalpAtlas-v0.4.1-PLAY-INTERNAL-PREP-AAB
           path: |
-            ScalpAtlas-v0.4.0-PLAY-INTERNAL-PREP.aab
+            ScalpAtlas-v0.4.1-PLAY-INTERNAL-PREP.aab
             aab-signing-info.txt
           if-no-files-found: error
