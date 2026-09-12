@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS Checkout Bridge APK
+name: Build SCALP ATLAS IAP Safe Load APK
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply v0.3.8 persistent trial, paywall, plan selection and checkout bridge
+      - name: Apply v0.3.9 persistent trial, paywall and lazy IAP check
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -33,7 +33,11 @@ jobs:
           text = app.read_text(encoding='utf-8')
 
           if "@react-native-async-storage/async-storage" not in text:
-              text = text.replace("import { StatusBar } from 'expo-status-bar';", "import AsyncStorage from '@react-native-async-storage/async-storage';\nimport { StatusBar } from 'expo-status-bar';", 1)
+              text = text.replace(
+                  "import { StatusBar } from 'expo-status-bar';",
+                  "import AsyncStorage from '@react-native-async-storage/async-storage';\nimport { StatusBar } from 'expo-status-bar';",
+                  1,
+              )
 
           text = text.replace(
               "const FREE_ANALYSIS_LIMIT = 5;",
@@ -52,7 +56,11 @@ jobs:
 
           state_anchor = "  const [freeAnalysesUsed, setFreeAnalysesUsed] = useState(0);"
           if "trialLoaded" not in text:
-              text = text.replace(state_anchor, state_anchor + "\n  const [trialLoaded, setTrialLoaded] = useState(false);\n  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual' | null>(null);", 1)
+              text = text.replace(
+                  state_anchor,
+                  state_anchor + "\n  const [trialLoaded, setTrialLoaded] = useState(false);\n  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual' | null>(null);\n  const [billingBusy, setBillingBusy] = useState(false);\n  const [monthlyPrice, setMonthlyPrice] = useState<string | null>(null);\n  const [annualPrice, setAnnualPrice] = useState<string | null>(null);",
+                  1,
+              )
 
           ref_anchor = "  const analyzerRef = useRef<WebView>(null);"
           if "analysisInFlightRef" not in text:
@@ -92,6 +100,10 @@ jobs:
           if catch_anchor in text:
               text = text.replace(catch_anchor, catch_guard, 1)
 
+          if "const checkStoreBilling = async () =>" not in text:
+              billing_fn = "\n\n  const checkStoreBilling = async () => {\n    if (!selectedPlan || billingBusy) return;\n    if (Platform.OS !== 'android') {\n      setMessage('Acest APK testează Google Play Billing pe Android.');\n      return;\n    }\n    const productId = selectedPlan === 'monthly' ? MONTHLY_PRODUCT_ID : ANNUAL_PRODUCT_ID;\n    setBillingBusy(true);\n    setMessage('Conectez SCALP ATLAS la Google Play Billing…');\n    let cleanup: null | (() => Promise<void>) = null;\n    try {\n      const iap = await import('expo-iap');\n      cleanup = iap.endConnection;\n      const connected = await iap.initConnection();\n      if (!connected) throw new Error('Conexiunea cu Google Play nu a putut fi inițializată.');\n      const products = await iap.fetchProducts({ skus: [productId], type: 'subs' });\n      const product = products?.[0] as any;\n      if (product) {\n        const price = product.displayPrice || product.localizedPrice || product.price || 'Preț disponibil în Google Play';\n        if (selectedPlan === 'monthly') setMonthlyPrice(String(price));\n        else setAnnualPrice(String(price));\n        setMessage(`Google Play Billing este conectat. Plan ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'} detectat: ${price}. Nu s-a inițiat nicio plată.`);\n      } else {\n        setMessage('Google Play Billing s-a încărcat fără să închidă aplicația. Produsul nu este încă disponibil pentru acest APK instalat direct; următorul test se face prin Google Play Internal Testing.');\n      }\n    } catch (error) {\n      const detail = error instanceof Error ? error.message : String(error);\n      setMessage(`Modulul de plată a răspuns fără crash: ${detail}. Pentru produse reale este necesară distribuirea prin Google Play Internal Testing.`);\n    } finally {\n      if (cleanup) {\n        try { await cleanup(); } catch {}\n      }\n      setBillingBusy(false);\n    }\n  };\n"
+              text = text.replace("  const onAnalyzerMessage = (event: WebViewMessageEvent) => {", billing_fn + "\n  const onAnalyzerMessage = (event: WebViewMessageEvent) => {", 1)
+
           text = text.replace("          disabled={!image || busy || trialLocked}", "          disabled={!image || busy || trialLocked || !trialLoaded}", 1)
           text = text.replace("          style={[styles.analyzeButton, (!image || busy || trialLocked) && styles.analyzeButtonDisabled]}", "          style={[styles.analyzeButton, (!image || busy || trialLocked || !trialLoaded) && styles.analyzeButtonDisabled]}", 1)
 
@@ -105,23 +117,23 @@ jobs:
                   "            <Text style={styles.paywallTitle}>Continuă analizele cu abonament</Text>\n"
                   "            <Text style={styles.paywallText}>Ai folosit cele 5 analize gratuite. Alege planul dorit pentru acces complet.</Text>\n"
                   "            <View style={styles.planRow}>\n"
-                  "              <Pressable onPress={() => { setSelectedPlan('monthly'); setMessage('Plan LUNAR selectat. Poți continua către pasul de plată.'); }} style={[styles.planButton, selectedPlan === 'monthly' && styles.planButtonSelected]}>\n"
+                  "              <Pressable onPress={() => { setSelectedPlan('monthly'); setMessage('Plan LUNAR selectat. Poți verifica legătura cu Google Play.'); }} style={[styles.planButton, selectedPlan === 'monthly' && styles.planButtonSelected]}>\n"
                   "                {selectedPlan === 'monthly' && <Text style={styles.planSelected}>SELECTAT</Text>}\n"
                   "                <Text style={styles.planTitle}>LUNAR</Text>\n"
-                  "                <Text style={styles.planPrice}>Preț în magazin</Text>\n"
+                  "                <Text style={styles.planPrice}>{monthlyPrice || 'Preț în magazin'}</Text>\n"
                   "              </Pressable>\n"
-                  "              <Pressable onPress={() => { setSelectedPlan('annual'); setMessage('Plan ANUAL selectat. Poți continua către pasul de plată.'); }} style={[styles.planButton, styles.planButtonFeatured, selectedPlan === 'annual' && styles.planButtonSelected]}>\n"
+                  "              <Pressable onPress={() => { setSelectedPlan('annual'); setMessage('Plan ANUAL selectat. Poți verifica legătura cu Google Play.'); }} style={[styles.planButton, styles.planButtonFeatured, selectedPlan === 'annual' && styles.planButtonSelected]}>\n"
                   "                <Text style={styles.planBadge}>RECOMANDAT</Text>\n"
                   "                {selectedPlan === 'annual' && <Text style={styles.planSelected}>SELECTAT</Text>}\n"
                   "                <Text style={styles.planTitle}>ANUAL</Text>\n"
-                  "                <Text style={styles.planPrice}>Preț în magazin</Text>\n"
+                  "                <Text style={styles.planPrice}>{annualPrice || 'Preț în magazin'}</Text>\n"
                   "              </Pressable>\n"
                   "            </View>\n"
                   "            <Text style={styles.selectedPlanText}>{selectedPlan === 'monthly' ? 'Plan selectat: LUNAR' : selectedPlan === 'annual' ? 'Plan selectat: ANUAL' : 'Alege LUNAR sau ANUAL.'}</Text>\n"
-                  "            <Pressable disabled={!selectedPlan} onPress={() => { const productId = selectedPlan === 'monthly' ? MONTHLY_PRODUCT_ID : ANNUAL_PRODUCT_ID; setMessage(`Checkout pregătit pentru planul ${selectedPlan === 'monthly' ? 'LUNAR' : 'ANUAL'}. Produs: ${productId}. Plata reală se activează numai în buildul distribuit prin magazin.`); }} style={[styles.checkoutButton, !selectedPlan && styles.checkoutButtonDisabled]}>\n"
-                  "              <Text style={styles.checkoutButtonText}>{selectedPlan ? 'CONTINUĂ LA PLATĂ' : 'ALEGE UN PLAN'}</Text>\n"
+                  "            <Pressable disabled={!selectedPlan || billingBusy} onPress={checkStoreBilling} style={[styles.checkoutButton, (!selectedPlan || billingBusy) && styles.checkoutButtonDisabled]}>\n"
+                  "              <Text style={styles.checkoutButtonText}>{billingBusy ? 'CONECTEZ GOOGLE PLAY…' : selectedPlan ? 'CONTINUĂ LA PLATĂ' : 'ALEGE UN PLAN'}</Text>\n"
                   "            </Pressable>\n"
-                  "            <Text style={styles.paywallNote}>Acest APK verifică fluxul de checkout. Nu inițiază încă o plată reală.</Text>\n"
+                  "            <Text style={styles.paywallNote}>Test sigur: verifică Google Play Billing și produsul selectat. Nu inițiază încă requestPurchase și nu poate retrage bani.</Text>\n"
                   "          </View>\n"
                   "        )}\n\n"
                   "        <View style={styles.statusCard}>"
@@ -170,10 +182,19 @@ jobs:
               eng = eng.replace(old_msg, new_msg, 1)
           engine.write_text(eng, encoding='utf-8')
 
+          pkg_path = Path('scalp-atlas-new/package.json')
+          pkg = json.loads(pkg_path.read_text(encoding='utf-8'))
+          pkg['version'] = '0.3.9'
+          pkg.setdefault('dependencies', {})['expo-iap'] = '5.5.1'
+          pkg_path.write_text(json.dumps(pkg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.8'
-          cfg['expo']['android']['versionCode'] = 16
+          cfg['expo']['version'] = '0.3.9'
+          cfg['expo']['android']['versionCode'] = 17
+          plugins = cfg['expo'].setdefault('plugins', [])
+          if 'expo-iap' not in plugins:
+              plugins.insert(0, 'expo-iap')
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -217,11 +238,11 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.8-CHECKOUT-BRIDGE.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.9-IAP-SAFE-LOAD.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.8-CHECKOUT-BRIDGE
-          path: ScalpAtlas-v0.3.8-CHECKOUT-BRIDGE.apk
+          name: ScalpAtlas-v0.3.9-IAP-SAFE-LOAD
+          path: ScalpAtlas-v0.3.9-IAP-SAFE-LOAD.apk
           if-no-files-found: error
