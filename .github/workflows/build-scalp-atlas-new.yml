@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS IAP Safe Load APK
+name: Build SCALP ATLAS Premium 19.99 APK
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply v0.3.9 persistent trial, paywall and lazy IAP check
+      - name: Apply v0.3.10 monthly price, persistent trial and safe IAP check
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -58,7 +58,7 @@ jobs:
           if "trialLoaded" not in text:
               text = text.replace(
                   state_anchor,
-                  state_anchor + "\n  const [trialLoaded, setTrialLoaded] = useState(false);\n  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual' | null>(null);\n  const [billingBusy, setBillingBusy] = useState(false);\n  const [monthlyPrice, setMonthlyPrice] = useState<string | null>(null);\n  const [annualPrice, setAnnualPrice] = useState<string | null>(null);",
+                  state_anchor + "\n  const [trialLoaded, setTrialLoaded] = useState(false);\n  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual' | null>('monthly');\n  const [billingBusy, setBillingBusy] = useState(false);\n  const [monthlyPrice, setMonthlyPrice] = useState<string | null>(null);\n  const [annualPrice, setAnnualPrice] = useState<string | null>(null);",
                   1,
               )
 
@@ -184,14 +184,14 @@ jobs:
 
           pkg_path = Path('scalp-atlas-new/package.json')
           pkg = json.loads(pkg_path.read_text(encoding='utf-8'))
-          pkg['version'] = '0.3.9'
+          pkg['version'] = '0.3.10'
           pkg.setdefault('dependencies', {})['expo-iap'] = '5.5.1'
           pkg_path.write_text(json.dumps(pkg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.9'
-          cfg['expo']['android']['versionCode'] = 17
+          cfg['expo']['version'] = '0.3.10'
+          cfg['expo']['android']['versionCode'] = 18
           plugins = cfg['expo'].setdefault('plugins', [])
           if 'expo-iap' not in plugins:
               plugins.insert(0, 'expo-iap')
@@ -238,11 +238,11 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.9-IAP-SAFE-LOAD.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.10-PREMIUM-19-99.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.9-IAP-SAFE-LOAD
-          path: ScalpAtlas-v0.3.9-IAP-SAFE-LOAD.apk
+          name: ScalpAtlas-v0.3.10-PREMIUM-19-99
+          path: ScalpAtlas-v0.3.10-PREMIUM-19-99.apk
           if-no-files-found: error
