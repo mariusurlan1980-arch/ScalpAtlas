@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS Trial Step APK
+name: Build SCALP ATLAS Trial Fix APK
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply neon title and trial-step version
+      - name: Apply v0.3.4 duplicate-result guard and version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -31,6 +31,7 @@ jobs:
 
           app = Path('scalp-atlas-new/App.tsx')
           text = app.read_text(encoding='utf-8')
+
           old_title = '<Text style={styles.logo}>SCALP ATLAS</Text>'
           new_title = "<Text style={styles.logo}><Text style={{ color: '#20E0FF' }}>SC</Text><Text style={{ color: '#28BFFF' }}>AL</Text><Text style={{ color: '#557FFF' }}>P </Text><Text style={{ color: '#8758FF' }}>AT</Text><Text style={{ color: '#C43AF2' }}>LA</Text><Text style={{ color: '#FF2DB8' }}>S</Text></Text>"
           if old_title in text:
@@ -39,12 +40,53 @@ jobs:
           new_style = "logo: { color: '#f7fafc', fontSize: 25, fontWeight: '900', letterSpacing: 1.4, textShadowColor: 'rgba(139,92,246,0.48)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 5 },"
           if old_style in text:
               text = text.replace(old_style, new_style, 1)
+
+          ref_anchor = "  const analyzerRef = useRef<WebView>(null);"
+          if "analysisInFlightRef" not in text:
+              text = text.replace(ref_anchor, ref_anchor + "\n  const analysisInFlightRef = useRef(false);", 1)
+
+          analyze_anchor = "    setBusy(true);\n    setAnalysis(null);\n    setRemainingSeconds(0);\n    setMessage(`Analizez fotografia cu atlasul de ${SCALP_ATLAS_COUNT} modele…`);"
+          analyze_guard = "    if (analysisInFlightRef.current) return;\n    analysisInFlightRef.current = true;\n    setBusy(true);\n    setAnalysis(null);\n    setRemainingSeconds(0);\n    setMessage(`Analizez fotografia cu atlasul de ${SCALP_ATLAS_COUNT} modele…`);"
+          if analyze_anchor in text:
+              text = text.replace(analyze_anchor, analyze_guard, 1)
+
+          result_anchor = "      if (payload.type === 'RESULT') {\n        const result = payload.result as AnalysisResult;"
+          result_guard = "      if (payload.type === 'RESULT') {\n        if (!analysisInFlightRef.current) return;\n        analysisInFlightRef.current = false;\n        const result = payload.result as AnalysisResult;"
+          if result_anchor in text:
+              text = text.replace(result_anchor, result_guard, 1)
+
+          error_anchor = "      if (payload.type === 'ERROR') {\n        setBusy(false);"
+          error_guard = "      if (payload.type === 'ERROR') {\n        analysisInFlightRef.current = false;\n        setBusy(false);"
+          if error_anchor in text:
+              text = text.replace(error_anchor, error_guard, 1)
+
+          catch_anchor = "    } catch {\n      setBusy(false);\n      setRemainingSeconds(0);\n      setMessage('Motorul Atlas a trimis un rezultat invalid.');"
+          catch_guard = "    } catch {\n      analysisInFlightRef.current = false;\n      setBusy(false);\n      setRemainingSeconds(0);\n      setMessage('Motorul Atlas a trimis un rezultat invalid.');"
+          if catch_anchor in text:
+              text = text.replace(catch_anchor, catch_guard, 1)
+
           app.write_text(text, encoding='utf-8')
+
+          engine = Path('scalp-atlas-new/analysisEngine.ts')
+          eng = engine.read_text(encoding='utf-8')
+          eng = eng.replace("const ENGINE_VERSION='0.2.3';", "const ENGINE_VERSION='0.2.4';", 1)
+          tf_anchor = "  const TF_MIN={M1:1,M2:2,M3:3,M5:5,M10:10,M15:15,M30:30,H1:60};"
+          if "let analysisRunning=false;" not in eng:
+              eng = eng.replace(tf_anchor, tf_anchor + "\n  let analysisRunning=false;", 1)
+          old_send = "  function send(payload){try{window.ReactNativeWebView.postMessage(JSON.stringify(payload));}catch(e){}}"
+          new_send = "  function send(payload){if(payload&&(payload.type==='RESULT'||payload.type==='ERROR'))analysisRunning=false;try{window.ReactNativeWebView.postMessage(JSON.stringify(payload));}catch(e){}}"
+          if old_send in eng:
+              eng = eng.replace(old_send, new_send, 1)
+          old_msg = "      if(msg.type==='ANALYZE'&&msg.dataUrl)run(msg.dataUrl,msg.timeframe||'M15');"
+          new_msg = "      if(msg.type==='ANALYZE'&&msg.dataUrl&&!analysisRunning){analysisRunning=true;run(msg.dataUrl,msg.timeframe||'M15');}"
+          if old_msg in eng:
+              eng = eng.replace(old_msg, new_msg, 1)
+          engine.write_text(eng, encoding='utf-8')
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.3'
-          cfg['expo']['android']['versionCode'] = 11
+          cfg['expo']['version'] = '0.3.4'
+          cfg['expo']['android']['versionCode'] = 12
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -88,11 +130,11 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.3-TRIAL-STEP1.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.4-TRIAL-FIX.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.3-TRIAL-STEP1
-          path: ScalpAtlas-v0.3.3-TRIAL-STEP1.apk
+          name: ScalpAtlas-v0.3.4-TRIAL-FIX
+          path: ScalpAtlas-v0.3.4-TRIAL-FIX.apk
           if-no-files-found: error
