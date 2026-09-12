@@ -33,17 +33,9 @@ jobs:
           text = app.read_text(encoding='utf-8')
 
           if "@react-native-async-storage/async-storage" not in text:
-              text = text.replace(
-                  "import { StatusBar } from 'expo-status-bar';",
-                  "import AsyncStorage from '@react-native-async-storage/async-storage';\nimport { StatusBar } from 'expo-status-bar';",
-                  1,
-              )
+              text = text.replace("import { StatusBar } from 'expo-status-bar';", "import AsyncStorage from '@react-native-async-storage/async-storage';\nimport { StatusBar } from 'expo-status-bar';", 1)
 
-          text = text.replace(
-              "const FREE_ANALYSIS_LIMIT = 5;",
-              "const FREE_ANALYSIS_LIMIT = 5;\nconst TRIAL_STORAGE_KEY = 'scalp_atlas_free_analyses_used_v1';",
-              1,
-          )
+          text = text.replace("const FREE_ANALYSIS_LIMIT = 5;", "const FREE_ANALYSIS_LIMIT = 5;\nconst TRIAL_STORAGE_KEY = 'scalp_atlas_free_analyses_used_v1';", 1)
 
           old_title = '<Text style={styles.logo}>SCALP ATLAS</Text>'
           new_title = "<Text style={styles.logo}><Text style={{ color: '#20E0FF' }}>SC</Text><Text style={{ color: '#28BFFF' }}>AL</Text><Text style={{ color: '#557FFF' }}>P </Text><Text style={{ color: '#8758FF' }}>AT</Text><Text style={{ color: '#C43AF2' }}>LA</Text><Text style={{ color: '#FF2DB8' }}>S</Text></Text>"
@@ -63,28 +55,8 @@ jobs:
               text = text.replace(ref_anchor, ref_anchor + "\n  const analysisInFlightRef = useRef(false);", 1)
 
           if "AsyncStorage.getItem(TRIAL_STORAGE_KEY)" not in text:
-              persistence = """
-
-  useEffect(() => {
-    let mounted = true;
-    AsyncStorage.getItem(TRIAL_STORAGE_KEY)
-      .then((stored) => {
-        if (!mounted) return;
-        const parsed = stored == null ? 0 : Number.parseInt(stored, 10);
-        const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.min(FREE_ANALYSIS_LIMIT, parsed)) : 0;
-        setFreeAnalysesUsed(safeValue);
-      })
-      .catch(() => {
-        if (mounted) setFreeAnalysesUsed(0);
-      })
-      .finally(() => {
-        if (mounted) setTrialLoaded(true);
-      });
-    return () => { mounted = false; };
-  }, []);
-"""
-              insert_after = "  const analysisInFlightRef = useRef(false);"
-              text = text.replace(insert_after, insert_after + persistence, 1)
+              persistence = "\n\n  useEffect(() => {\n    let mounted = true;\n    AsyncStorage.getItem(TRIAL_STORAGE_KEY)\n      .then((stored) => {\n        if (!mounted) return;\n        const parsed = stored == null ? 0 : Number.parseInt(stored, 10);\n        const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.min(FREE_ANALYSIS_LIMIT, parsed)) : 0;\n        setFreeAnalysesUsed(safeValue);\n      })\n      .catch(() => {\n        if (mounted) setFreeAnalysesUsed(0);\n      })\n      .finally(() => {\n        if (mounted) setTrialLoaded(true);\n      });\n    return () => { mounted = false; };\n  }, []);\n"
+              text = text.replace("  const analysisInFlightRef = useRef(false);", "  const analysisInFlightRef = useRef(false);" + persistence, 1)
 
           analyze_start = "  const analyzeImage = () => {\n    if (trialLocked) {"
           analyze_ready = "  const analyzeImage = () => {\n    if (!trialLoaded) {\n      setMessage('Se încarcă starea testului gratuit. Încearcă din nou imediat.');\n      return;\n    }\n    if (trialLocked) {"
@@ -102,11 +74,7 @@ jobs:
               text = text.replace(result_anchor, result_guard, 1)
 
           old_increment = "        setFreeAnalysesUsed((used) => Math.min(FREE_ANALYSIS_LIMIT, used + 1));"
-          new_increment = """        setFreeAnalysesUsed((used) => {
-          const next = Math.min(FREE_ANALYSIS_LIMIT, used + 1);
-          AsyncStorage.setItem(TRIAL_STORAGE_KEY, String(next)).catch(() => {});
-          return next;
-        });"""
+          new_increment = "        setFreeAnalysesUsed((used) => {\n          const next = Math.min(FREE_ANALYSIS_LIMIT, used + 1);\n          AsyncStorage.setItem(TRIAL_STORAGE_KEY, String(next)).catch(() => {});\n          return next;\n        });"
           if old_increment in text:
               text = text.replace(old_increment, new_increment, 1)
 
@@ -120,12 +88,8 @@ jobs:
           if catch_anchor in text:
               text = text.replace(catch_anchor, catch_guard, 1)
 
-          disabled_old = "          disabled={!image || busy || trialLocked}"
-          disabled_new = "          disabled={!image || busy || trialLocked || !trialLoaded}"
-          text = text.replace(disabled_old, disabled_new, 1)
-          style_old = "          style={[styles.analyzeButton, (!image || busy || trialLocked) && styles.analyzeButtonDisabled]}"
-          style_new = "          style={[styles.analyzeButton, (!image || busy || trialLocked || !trialLoaded) && styles.analyzeButtonDisabled]}"
-          text = text.replace(style_old, style_new, 1)
+          text = text.replace("          disabled={!image || busy || trialLocked}", "          disabled={!image || busy || trialLocked || !trialLoaded}", 1)
+          text = text.replace("          style={[styles.analyzeButton, (!image || busy || trialLocked) && styles.analyzeButtonDisabled]}", "          style={[styles.analyzeButton, (!image || busy || trialLocked || !trialLoaded) && styles.analyzeButtonDisabled]}", 1)
 
           app.write_text(text, encoding='utf-8')
 
