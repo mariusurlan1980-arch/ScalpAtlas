@@ -1,0 +1,140 @@
+name: Build SCALP ATLAS Signed Play AAB
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SCALP_UPLOAD_KEYSTORE_B64: ${{ secrets.SCALP_UPLOAD_KEYSTORE_B64 }}
+      SCALP_UPLOAD_STORE_PASSWORD: ${{ secrets.SCALP_UPLOAD_STORE_PASSWORD }}
+      SCALP_UPLOAD_KEY_ALIAS: ${{ secrets.SCALP_UPLOAD_KEY_ALIAS }}
+      SCALP_UPLOAD_KEY_PASSWORD: ${{ secrets.SCALP_UPLOAD_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require secure signing secrets
+        run: |
+          test -n "$SCALP_UPLOAD_KEYSTORE_B64" || (echo 'Missing SCALP_UPLOAD_KEYSTORE_B64' && exit 1)
+          test -n "$SCALP_UPLOAD_STORE_PASSWORD" || (echo 'Missing SCALP_UPLOAD_STORE_PASSWORD' && exit 1)
+          test -n "$SCALP_UPLOAD_KEY_ALIAS" || (echo 'Missing SCALP_UPLOAD_KEY_ALIAS' && exit 1)
+          test -n "$SCALP_UPLOAD_KEY_PASSWORD" || (echo 'Missing SCALP_UPLOAD_KEY_PASSWORD' && exit 1)
+
+      - name: Recreate v0.4.0 Play source
+        run: |
+          python3 - <<'RECREATE'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/build-play-internal-prep.yml').read_text(encoding='utf-8')
+          lines = workflow.splitlines()
+          start = None
+          end = None
+          for i, line in enumerate(lines):
+              if line.strip() == "python3 - <<'BOOTSTRAP'":
+                  start = i + 1
+                  break
+          if start is None:
+              raise SystemExit('Nu am găsit sursa de pregătire v0.4.0.')
+          for i in range(start, len(lines)):
+              if lines[i].strip() == 'BOOTSTRAP':
+                  end = i
+                  break
+          if end is None:
+              raise SystemExit('Blocul v0.4.0 nu are delimitator final.')
+          code = textwrap.dedent('\n'.join(lines[start:end]))
+          exec(compile(code, 'v040-bootstrap.py', 'exec'), {})
+          RECREATE
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: npm install
+
+      - name: Generate launcher icon
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+
+      - name: Restore upload keystore
+        run: |
+          python3 - <<'KEYSTORE'
+          import base64, os
+          from pathlib import Path
+          data = os.environ['SCALP_UPLOAD_KEYSTORE_B64'].strip()
+          Path('scalp-atlas-new/android/app/scalpatlas-upload.jks').write_bytes(base64.b64decode(data))
+          KEYSTORE
+
+      - name: Configure release signing
+        run: |
+          cat >> scalp-atlas-new/android/app/build.gradle <<'GRADLE'
+
+          // SCALP ATLAS secure Play upload signing (CI only)
+          android {
+              signingConfigs {
+                  scalpAtlasUpload {
+                      storeFile file('scalpatlas-upload.jks')
+                      storePassword System.getenv('SCALP_UPLOAD_STORE_PASSWORD')
+                      keyAlias System.getenv('SCALP_UPLOAD_KEY_ALIAS')
+                      keyPassword System.getenv('SCALP_UPLOAD_KEY_PASSWORD')
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.scalpAtlasUpload
+                  }
+              }
+          }
+          GRADLE
+
+      - name: Build signed Play AAB
+        working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
+          GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g'
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon --stacktrace
+
+      - name: Verify signed AAB
+        run: |
+          AAB='scalp-atlas-new/android/app/build/outputs/bundle/release/app-release.aab'
+          jarsigner -verify "$AAB"
+          keytool -printcert -jarfile "$AAB" | grep -E 'Owner:|SHA256:'
+
+      - name: Collect signed AAB
+        run: cp scalp-atlas-new/android/app/build/outputs/bundle/release/app-release.aab ScalpAtlas-v0.4.0-PLAY-SIGNED.aab
+
+      - name: Upload signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-v0.4.0-PLAY-SIGNED
+          path: ScalpAtlas-v0.4.0-PLAY-SIGNED.aab
+          if-no-files-found: error
+          retention-days: 7
