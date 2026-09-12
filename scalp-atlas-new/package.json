@@ -1,6 +1,6 @@
 {
   "name": "scalp-atlas",
-  "version": "0.2.0",
+  "version": "0.3.5",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -11,6 +11,7 @@
     "build:web": "expo export --platform web"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "^57.0.17",
     "expo-image-picker": "~57.0.16",
     "expo-status-bar": "~57.0.1",
