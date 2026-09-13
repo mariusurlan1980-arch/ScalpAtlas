@@ -263,6 +263,26 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return mins;
   }
 
+  function trendLinesFor(curve,result){
+    const pv=pivots(curve.pts,curve.h);
+    const highs=pv.filter(p=>p.type==='H').slice(-2),lows=pv.filter(p=>p.type==='L').slice(-2);
+    const lines=[];
+    const addExtended=(items,kind)=>{
+      if(items.length<2)return;
+      const a=items[0],b=items[1],endX=Math.min(curve.w*.94,Math.max(b.x+curve.w*.12,b.x));
+      const endY=b.y+(endX-b.x)*(b.y-a.y)/Math.max(1,b.x-a.x);
+      lines.push({kind,x1:a.x/curve.w,y1:a.y/curve.h,x2:endX/curve.w,y2:Math.max(0,Math.min(1,endY/curve.h))});
+    };
+    addExtended(lows,'support');
+    addExtended(highs,'resistance');
+    const anchor=curve.anchor;
+    if(anchor){
+      const y=result.clear?(result.dir==='BUY'?Math.max(0,anchor.lo-curve.h*.018):Math.min(curve.h,anchor.hi+curve.h*.018)):((anchor.lo+anchor.hi)/2);
+      lines.push({kind:'confirmation',x1:Math.max(0,anchor.x-curve.w*.13)/curve.w,y1:y/curve.h,x2:Math.min(curve.w,anchor.x+curve.w*.09)/curve.w,y2:y/curve.h});
+    }
+    return lines;
+  }
+
   function run(dataUrl,timeframe){
     const img=new Image();
     img.onload=function(){
@@ -282,6 +302,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             anchorX:anchor?anchor.x/curve.w:null,
             anchorY:anchor?((anchor.lo+anchor.hi)/2)/curve.h:null,
             quality:Math.round(curve.quality*100),
+            trendLines:trendLinesFor(curve,r),
             engineVersion:ENGINE_VERSION
           }
         });

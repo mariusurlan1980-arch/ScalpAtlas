@@ -35,6 +35,10 @@ type AnalysisResult = {
   anchorX: number | null;
   anchorY: number | null;
   quality: number;
+  trendLines?: Array<{
+    kind: 'support' | 'resistance' | 'confirmation';
+    x1: number; y1: number; x2: number; y2: number;
+  }>;
 };
 
 const TIMEFRAMES = ['M1', 'M2', 'M3', 'M5', 'M10', 'M15', 'M30', 'H1'];
@@ -208,6 +212,21 @@ export default function App() {
     };
   }, [analysis, image, previewSize]);
 
+  const imageFrame = useMemo(() => {
+    if (!image?.width || !image?.height || !previewSize.width) return null;
+    const scale = Math.min(previewSize.width / image.width, previewSize.height / image.height);
+    const width = image.width * scale, height = image.height * scale;
+    return { width, height, left: (previewSize.width - width) / 2, top: (previewSize.height - height) / 2 };
+  }, [image, previewSize]);
+
+  const trendLineStyle = (line: NonNullable<AnalysisResult['trendLines']>[number]) => {
+    if (!imageFrame) return null;
+    const x1=imageFrame.left+line.x1*imageFrame.width, y1=imageFrame.top+line.y1*imageFrame.height;
+    const x2=imageFrame.left+line.x2*imageFrame.width, y2=imageFrame.top+line.y2*imageFrame.height;
+    const width=Math.hypot(x2-x1,y2-y1), angle=Math.atan2(y2-y1,x2-x1)+'rad';
+    return {position:'absolute' as const,left:x1,top:y1,width,height:2,transform:[{translateX:width/2},{rotate:angle},{translateX:-width/2}]};
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
@@ -255,6 +274,10 @@ export default function App() {
               <Text style={styles.hint}>Se procesează…</Text>
             </View>
           )}
+          {analysis?.trendLines?.map((line,index) => {
+            const position=trendLineStyle(line); if(!position)return null;
+            return <View key={`${line.kind}-${index}`} pointerEvents="none" style={[position,styles.trendLine,line.kind==='support'?styles.supportLine:line.kind==='resistance'?styles.resistanceLine:styles.confirmationLine]} />;
+          })}
           {arrowStyle && analysis && (
             <View style={[styles.arrowWrap, arrowStyle]} pointerEvents="none">
               <Text style={[styles.arrow, analysis.signal === 'BUY' ? styles.buy : styles.sell]}>
@@ -335,11 +358,15 @@ const styles = StyleSheet.create({
   preview: { height: 390, borderRadius: 18, borderWidth: 1, borderColor: '#1f2937', overflow: 'hidden', backgroundColor: '#0c121c' },
   image: { width: '100%', height: '100%', backgroundColor: '#05070b' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 12 },
-  busyOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(5,7,11,0.78)' },
+  busyOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(5,7,11,0.78)' },
   placeholderTitle: { color: '#cbd5e1', fontSize: 18, fontWeight: '900', letterSpacing: 1.2 },
   hint: { color: '#93a1b5', textAlign: 'center', lineHeight: 19 },
   arrowWrap: { position: 'absolute', width: 38, height: 44, alignItems: 'center', justifyContent: 'center' },
   arrow: { fontSize: 42, lineHeight: 44, fontWeight: '900', textShadowColor: '#000', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  trendLine: { zIndex: 3, borderRadius: 2 },
+  supportLine: { backgroundColor: '#38d996' },
+  resistanceLine: { backgroundColor: '#31d8ee' },
+  confirmationLine: { backgroundColor: '#ffd34d', height: 3 },
   buy: { color: '#38d996' },
   sell: { color: '#ff6464' },
   neutral: { color: '#d5dde8' },

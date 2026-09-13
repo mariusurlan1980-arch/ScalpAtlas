@@ -19,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply v0.2.7 neon title update
+      - name: Apply v0.2.8 neon title and Trend Scalp update
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -43,8 +43,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.2.7'
-          cfg['expo']['android']['versionCode'] = 7
+          cfg['expo']['version'] = '0.2.8'
+          cfg['expo']['android']['versionCode'] = 8
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -89,23 +89,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.2.7-NEON-TITLE.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.2.8-TREND-SCALP.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.2.7-NEON-TITLE
-          path: ScalpAtlas-v0.2.7-NEON-TITLE.apk
+          name: ScalpAtlas-v0.2.8-TREND-SCALP
+          path: ScalpAtlas-v0.2.8-TREND-SCALP.apk
           if-no-files-found: error
 
       - name: Publish test APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v0.2.7-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.2.7-test \
-            ScalpAtlas-v0.2.7-NEON-TITLE.apk \
+          gh release delete scalp-atlas-v0.2.8-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.2.8-test \
+            ScalpAtlas-v0.2.8-TREND-SCALP.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.2.7 Test" \
-            --notes "Actualizare vizuală: titlul SCALP ATLAS păstrează aceeași poziție, dimensiune și tipografie, dar folosește culorile cyan → albastru → violet → magenta, cu glow discret. Camera, galeria, atlasul de 70 de modele, logica BUY/SELL și timpii de expirare rămân neschimbate." \
+            --title "SCALP ATLAS v0.2.8 Trend Scalp" \
+            --notes "Adaugă automat peste fotografie liniile Trend Scalp: suport verde, rezistență cyan și confirmare galbenă. Camera, galeria, atlasul de 70 de modele, logica BUY/SELL și timpii de expirare sunt păstrate." \
             --prerelease
