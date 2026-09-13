@@ -63,7 +63,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 
     const data=ctx.getImageData(0,0,w,h).data;
     // Exclude bottom trading buttons and the far-right action/price panel.
-    const x0=Math.floor(w*.02),x1=Math.floor(w*.89),y0=Math.floor(h*.05),y1=Math.floor(h*.79);
+    const x0=Math.floor(w*.02),x1=Math.floor(w*.84),y0=Math.floor(h*.12),y1=Math.floor(h*.73);
     const bins=64,binW=(x1-x0)/bins,pts=[];
     const minSpan=Math.max(3,h*.008),clusterGap=Math.max(4,h*.014);
 
@@ -137,12 +137,14 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const density=sm.reduce((s,p)=>s+p.n,0)/(sm.length||1);
     const quality=Math.min(1,coverage*1.15+Math.min(1,density/14)*.2);
     const anchor=sm[sm.length-1]||null;
-    return {pts:sm,w,h,quality,anchor};
+    const spanCoverage=sm.length>1?(sm[sm.length-1].x-sm[0].x)/w:0;
+    return {pts:sm,w,h,quality,anchor,spanCoverage};
   }
 
   function classify(curve){
     const {pts,w,h,quality}=curve;
     if(pts.length<10||quality<.25)return {clear:false,dir:'NONE',atlas:'—',idx:0,score:0,reason:'Imagine insuficient de clară'};
+    if((curve.spanCoverage||0)<.26)return {clear:false,dir:'NONE',atlas:'—',idx:0,score:0,reason:'Graficul ocupă o zonă prea mică. Încarcă fotografia originală, nu o captură a aplicației'};
 
     const full=linReg(pts);
     const recent=linReg(pts.slice(-Math.max(9,Math.floor(pts.length*.42))));
@@ -267,14 +269,22 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const pv=pivots(curve.pts,curve.h);
     const highs=pv.filter(p=>p.type==='H').slice(-2),lows=pv.filter(p=>p.type==='L').slice(-2);
     const lines=[];
-    const addExtended=(items,kind)=>{
-      if(items.length<2)return;
-      const a=items[0],b=items[1],endX=Math.min(curve.w*.94,Math.max(b.x+curve.w*.12,b.x));
+    const addExtended=(items,kind,envelopeKey)=>{
+      let a,b;
+      if(items.length>=2){a=items[0];b=items[1];}
+      else{
+        const sample=curve.pts.slice(-Math.max(10,Math.floor(curve.pts.length*.48))).map(p=>({x:p.x,y:p[envelopeKey]}));
+        if(sample.length<2)return;
+        const reg=linReg(sample),first=sample[0];
+        a={x:first.x,y:reg.slope*first.x+reg.intercept};
+        b={x:sample[sample.length-1].x,y:reg.slope*sample[sample.length-1].x+reg.intercept};
+      }
+      const endX=Math.min(curve.w*.94,Math.max(b.x+curve.w*.10,b.x));
       const endY=b.y+(endX-b.x)*(b.y-a.y)/Math.max(1,b.x-a.x);
-      lines.push({kind,x1:a.x/curve.w,y1:a.y/curve.h,x2:endX/curve.w,y2:Math.max(0,Math.min(1,endY/curve.h))});
+      lines.push({kind,x1:a.x/curve.w,y1:Math.max(0,Math.min(1,a.y/curve.h)),x2:endX/curve.w,y2:Math.max(0,Math.min(1,endY/curve.h))});
     };
-    addExtended(lows,'support');
-    addExtended(highs,'resistance');
+    addExtended(lows,'support','hi');
+    addExtended(highs,'resistance','lo');
     const anchor=curve.anchor;
     if(anchor){
       const y=result.clear?(result.dir==='BUY'?Math.max(0,anchor.lo-curve.h*.018):Math.min(curve.h,anchor.hi+curve.h*.018)):((anchor.lo+anchor.hi)/2);

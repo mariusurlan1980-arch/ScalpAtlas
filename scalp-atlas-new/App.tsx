@@ -207,8 +207,8 @@ export default function App() {
     const offsetX = (previewSize.width - displayW) / 2;
     const offsetY = (previewSize.height - displayH) / 2;
     return {
-      left: Math.min(previewSize.width - 42, Math.max(4, offsetX + analysis.anchorX * displayW + 8)),
-      top: Math.min(previewSize.height - 48, Math.max(4, offsetY + analysis.anchorY * displayH - 24)),
+      left: Math.min(previewSize.width - 42, Math.max(4, offsetX + analysis.anchorX * displayW + 3)),
+      top: Math.min(previewSize.height - 48, Math.max(4, offsetY + analysis.anchorY * displayH - 20)),
     };
   }, [analysis, image, previewSize]);
 
