@@ -53,6 +53,7 @@ export default function App() {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [freeAnalysesUsed, setFreeAnalysesUsed] = useState(0);
   const [videoVisible, setVideoVisible] = useState(false);
+  const [photoVisible, setPhotoVisible] = useState(false);
   const videoPlayer = useVideoPlayer(require('./assets/scalp-atlas-promo.mp4'), (player) => {
     player.loop = false;
   });
@@ -267,7 +268,10 @@ export default function App() {
 
         <View style={styles.preview} onLayout={onPreviewLayout}>
           {image ? (
-            <Image source={{ uri: image.uri }} style={styles.image} resizeMode="contain" />
+            <Pressable style={styles.fullImageTap} onPress={() => setPhotoVisible(true)}>
+              <Image source={{ uri: image.uri }} style={styles.image} resizeMode="contain" />
+              <View style={styles.expandHint}><Text style={styles.expandHintText}>⛶ ECRAN COMPLET</Text></View>
+            </Pressable>
           ) : (
             <View style={styles.center}>
               <Text style={styles.placeholderTitle}>PREVIZUALIZARE</Text>
@@ -340,6 +344,20 @@ export default function App() {
         </Text>
       </ScrollView>
 
+      <Modal visible={photoVisible} animationType="fade" onRequestClose={() => setPhotoVisible(false)}>
+        <View style={styles.photoScreen}>
+          {image && <Image source={{ uri: image.uri }} style={styles.fullPhoto} resizeMode="contain" />}
+          {analysis && analysis.signal !== 'NONE' && analysis.anchorX != null && analysis.anchorY != null && (
+            <Text style={[styles.fullPhotoArrow, analysis.signal === 'BUY' ? styles.buy : styles.sell, { left: `${Math.max(4, Math.min(90, analysis.anchorX * 100))}%`, top: `${Math.max(8, Math.min(88, analysis.anchorY * 100))}%` }]}>
+              {analysis.signal === 'BUY' ? '↑' : '↓'}
+            </Text>
+          )}
+          <Pressable onPress={() => setPhotoVisible(false)} style={styles.photoClose}>
+            <Text style={styles.videoCloseText}>ÎNCHIDE ✕</Text>
+          </Pressable>
+        </View>
+      </Modal>
+
       <Modal visible={videoVisible} animationType="fade" onRequestClose={() => { videoPlayer.pause(); setVideoVisible(false); }}>
         <View style={styles.videoScreen}>
           <VideoView player={videoPlayer} style={styles.video} nativeControls contentFit="contain" allowsFullscreen />
@@ -390,7 +408,14 @@ const styles = StyleSheet.create({
   secondaryButton: { flex: 1, borderWidth: 1, borderColor: '#49566d', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   secondaryButtonText: { color: '#eef2f7', fontWeight: '900', letterSpacing: 0.6 },
   preview: { height: 390, borderRadius: 18, borderWidth: 1, borderColor: '#1f2937', overflow: 'hidden', backgroundColor: '#0c121c' },
+  fullImageTap: { width: '100%', height: '100%' },
   image: { width: '100%', height: '100%', backgroundColor: '#05070b' },
+  expandHint: { position: 'absolute', right: 10, bottom: 10, backgroundColor: 'rgba(4,12,26,0.82)', borderRadius: 13, paddingHorizontal: 10, paddingVertical: 6 },
+  expandHintText: { color: '#ffffff', fontSize: 10, fontWeight: '900' },
+  photoScreen: { flex: 1, backgroundColor: '#000000' },
+  fullPhoto: { width: '100%', height: '100%' },
+  fullPhotoArrow: { position: 'absolute', fontSize: 58, lineHeight: 62, fontWeight: '900', textShadowColor: '#000000', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
+  photoClose: { position: 'absolute', top: 44, right: 18, backgroundColor: 'rgba(5,11,22,0.82)', borderWidth: 1, borderColor: '#20d6d0', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 12 },
   busyOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(5,7,11,0.78)' },
   placeholderTitle: { color: '#cbd5e1', fontSize: 18, fontWeight: '900', letterSpacing: 1.2 },
