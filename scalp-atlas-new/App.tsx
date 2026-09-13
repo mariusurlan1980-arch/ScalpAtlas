@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   LayoutChangeEvent,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -12,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { ANALYSIS_ENGINE_HTML } from './analysisEngine';
@@ -50,6 +52,10 @@ export default function App() {
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 390 });
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [freeAnalysesUsed, setFreeAnalysesUsed] = useState(0);
+  const [videoVisible, setVideoVisible] = useState(false);
+  const videoPlayer = useVideoPlayer(require('./assets/scalp-atlas-promo.mp4'), (player) => {
+    player.loop = false;
+  });
   const analyzerRef = useRef<WebView>(null);
 
   const freeAnalysesRemaining = Math.max(0, FREE_ANALYSIS_LIMIT - freeAnalysesUsed);
@@ -284,6 +290,17 @@ export default function App() {
         </View>
 
         <Pressable
+          onPress={() => {
+            videoPlayer.currentTime = 0;
+            setVideoVisible(true);
+            videoPlayer.play();
+          }}
+          style={styles.howButton}
+        >
+          <Text style={styles.howButtonText}>▶ CUM FUNCȚIONEAZĂ</Text>
+        </Pressable>
+
+        <Pressable
           disabled={!image || busy || trialLocked}
           onPress={analyzeImage}
           style={[styles.analyzeButton, (!image || busy || trialLocked) && styles.analyzeButtonDisabled]}
@@ -322,6 +339,15 @@ export default function App() {
           Semnalul este afișat numai când potrivirea depășește pragul intern; altfel aplicația afișează „Fără semnal clar”. Probabilitatea este o estimare structurală, nu o garanție de tranzacționare.
         </Text>
       </ScrollView>
+
+      <Modal visible={videoVisible} animationType="fade" onRequestClose={() => { videoPlayer.pause(); setVideoVisible(false); }}>
+        <View style={styles.videoScreen}>
+          <VideoView player={videoPlayer} style={styles.video} nativeControls contentFit="contain" allowsFullscreen />
+          <Pressable onPress={() => { videoPlayer.pause(); setVideoVisible(false); }} style={styles.videoClose}>
+            <Text style={styles.videoCloseText}>ÎNCHIDE ✕</Text>
+          </Pressable>
+        </View>
+      </Modal>
 
       {Platform.OS !== 'web' && (
         <WebView
@@ -374,6 +400,12 @@ const styles = StyleSheet.create({
   buy: { color: '#38d996' },
   sell: { color: '#ff6464' },
   neutral: { color: '#d5dde8' },
+  howButton: { backgroundColor: '#102652', borderRadius: 12, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: '#377dff' },
+  howButtonText: { color: '#ffffff', fontWeight: '900', fontSize: 15, letterSpacing: 0.5 },
+  videoScreen: { flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' },
+  video: { width: '100%', height: '100%' },
+  videoClose: { position: 'absolute', top: 44, right: 18, backgroundColor: 'rgba(5,11,22,0.82)', borderWidth: 1, borderColor: '#8b5cf6', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
+  videoCloseText: { color: '#ffffff', fontWeight: '900' },
   analyzeButton: { backgroundColor: '#182233', borderRadius: 12, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: '#2a3a52' },
   analyzeButtonDisabled: { opacity: 0.45 },
   analyzeText: { color: '#e6edf7', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
