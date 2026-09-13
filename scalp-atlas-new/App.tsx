@@ -151,7 +151,7 @@ export default function App() {
     setBusy(true);
     setAnalysis(null);
     setRemainingSeconds(0);
-    setMessage(`Analizez fotografia cu atlasul de ${SCALP_ATLAS_COUNT} modele…`);
+    setMessage(`Analizez fotografia pe ${timeframe} cu atlasul de ${SCALP_ATLAS_COUNT} modele…`);
     analyzerRef.current.postMessage(
       JSON.stringify({ type: 'ANALYZE', dataUrl: `data:image/jpeg;base64,${image.base64}`, timeframe })
     );
@@ -224,7 +224,8 @@ export default function App() {
     const x1=imageFrame.left+line.x1*imageFrame.width, y1=imageFrame.top+line.y1*imageFrame.height;
     const x2=imageFrame.left+line.x2*imageFrame.width, y2=imageFrame.top+line.y2*imageFrame.height;
     const width=Math.hypot(x2-x1,y2-y1), angle=Math.atan2(y2-y1,x2-x1)+'rad';
-    return {position:'absolute' as const,left:x1,top:y1,width,height:2,transform:[{translateX:width/2},{rotate:angle},{translateX:-width/2}]};
+    const midX=(x1+x2)/2, midY=(y1+y2)/2;
+    return {position:'absolute' as const,left:midX-width/2,top:midY-1,width,height:2,transform:[{rotate:angle}]};
   };
 
   return (
@@ -294,6 +295,8 @@ export default function App() {
         >
           <Text style={styles.analyzeText}>{busy ? 'ANALIZEZ…' : `ANALIZEAZĂ CU ${SCALP_ATLAS_COUNT} MODELE`}</Text>
         </Pressable>
+
+        <Text style={styles.timeframeWarning}>Verifică: timeframe-ul selectat trebuie să fie identic cu cel din fotografie.</Text>
 
         <View style={styles.statusCard}>
           <Text style={styles.statusTitle}>REZULTAT</Text>
@@ -373,6 +376,7 @@ const styles = StyleSheet.create({
   analyzeButton: { backgroundColor: '#182233', borderRadius: 12, paddingVertical: 15, alignItems: 'center', borderWidth: 1, borderColor: '#2a3a52' },
   analyzeButtonDisabled: { opacity: 0.45 },
   analyzeText: { color: '#e6edf7', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
+  timeframeWarning: { color: '#ffd34d', fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: -8 },
   statusCard: { backgroundColor: '#0c121c', borderRadius: 14, borderWidth: 1, borderColor: '#1f2937', padding: 14, gap: 7 },
   statusTitle: { color: '#7f8b9e', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   signalText: { fontSize: 26, fontWeight: '900', letterSpacing: 1 },
