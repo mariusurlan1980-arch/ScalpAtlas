@@ -159,8 +159,20 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const span2=lastThird.reduce((s,p)=>s+p.span,0)/lastThird.length;
     const narrowing=span2<span1*.78,expanding=span2>span1*1.22;
     const pred=full.slope*end.x+full.intercept,deviation=(end.y-pred)/h;
-    const breakoutUp=deviation<-.045||recentNorm>norm+.12||microNorm>.09;
-    const breakoutDown=deviation>.045||recentNorm<norm-.12||microNorm<-.09;
+    const structuralHighs=highs.filter(p=>p.x<end.x-w*.08);
+    const structuralLows=lows.filter(p=>p.x<end.x-w*.08);
+    const refHigh=structuralHighs[structuralHighs.length-1]||null;
+    const refLow=structuralLows[structuralLows.length-1]||null;
+    const candleHigh=curve.anchor?curve.anchor.lo:end.y;
+    const candleLow=curve.anchor?curve.anchor.hi:end.y;
+    // Breakout valid only after price clears the structural level by a real margin
+    // and both recent layers point in the same direction.
+    const breakoutUp=refHigh
+      ? candleHigh<refHigh.y-h*.012&&recentNorm>.035&&microNorm>.02
+      : deviation<-.045&&recentNorm>.06&&microNorm>.04;
+    const breakoutDown=refLow
+      ? candleLow>refLow.y+h*.012&&recentNorm<-.035&&microNorm<-.02
+      : deviation>.045&&recentNorm<-.06&&microNorm<-.04;
     const trendStrength=Math.min(1,Math.abs(norm)/.28);
     const recentStrength=Math.min(1,Math.abs(recentNorm)/.35);
     const microStrength=Math.min(1,Math.abs(microNorm)/.35);
@@ -245,6 +257,15 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     if(Math.sign(lastMove)!==Math.sign(microNorm)&&Math.abs(lastMove)>.02)disagreement+=.06;
     score-=disagreement;
     score=Math.max(.44,Math.min(.93,score));
+
+    const nearResistance=refHigh&&candleHigh>=refHigh.y-h*.012&&candleHigh<=refHigh.y+h*.06;
+    const nearSupport=refLow&&candleLow<=refLow.y+h*.012&&candleLow>=refLow.y-h*.06;
+    if(dir==='BUY'&&nearResistance&&!breakoutUp){
+      return {clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,score:Math.min(score,.69),reason:'Prețul este sub rezistență. BUY necesită o închidere clară deasupra liniei galbene'};
+    }
+    if(dir==='SELL'&&nearSupport&&!breakoutDown){
+      return {clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,score:Math.min(score,.69),reason:'Prețul este deasupra suportului. SELL necesită o închidere clară sub linia galbenă'};
+    }
 
     const clear=score>=.63&&consensus>=.28;
     return {
