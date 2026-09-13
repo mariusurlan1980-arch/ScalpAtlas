@@ -34,9 +34,9 @@ jobs:
           DIR=$(find buildsrc -name settings.gradle -printf '%h\n' | head -n 1)
           cd "$DIR"
           gradle :app:assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/ScalpAtlas-v1.1.4-CU-VIDEO.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/ScalpAtlas-v1.1.5-OWNER-VIDEO.apk"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.1.4-CU-VIDEO
-          path: ScalpAtlas-v1.1.4-CU-VIDEO.apk
+          name: ScalpAtlas-v1.1.5-OWNER-VIDEO
+          path: ScalpAtlas-v1.1.5-OWNER-VIDEO.apk
