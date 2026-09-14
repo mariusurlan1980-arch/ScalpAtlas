@@ -14,6 +14,7 @@ on:
       - '.github/scripts/patch_scalp_atlas_v038.py'
       - '.github/scripts/patch_scalp_atlas_v039.py'
       - '.github/scripts/patch_scalp_atlas_v0310.py'
+      - '.github/scripts/patch_scalp_atlas_v0311.py'
       - '.github/workflows/build-scalp-atlas-new.yml'
   workflow_dispatch:
 
@@ -55,7 +56,10 @@ jobs:
       - name: Apply v0.3.10 smart free-space arrow
         run: python3 .github/scripts/patch_scalp_atlas_v0310.py
 
-      - name: Apply v0.3.10 visual title and version
+      - name: Apply v0.3.11 anti-chasing exhaustion guard
+        run: python3 .github/scripts/patch_scalp_atlas_v0311.py
+
+      - name: Apply v0.3.11 visual title and version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -79,8 +83,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.10'
-          cfg['expo']['android']['versionCode'] = 20
+          cfg['expo']['version'] = '0.3.11'
+          cfg['expo']['android']['versionCode'] = 21
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -125,23 +129,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.10-SMART-ARROW.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.11-ANTI-CHASE.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.10-SMART-ARROW
-          path: ScalpAtlas-v0.3.10-SMART-ARROW.apk
+          name: ScalpAtlas-v0.3.11-ANTI-CHASE
+          path: ScalpAtlas-v0.3.11-ANTI-CHASE.apk
           if-no-files-found: error
 
       - name: Publish test APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v0.3.10-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.3.10-test \
-            ScalpAtlas-v0.3.10-SMART-ARROW.apk \
+          gh release delete scalp-atlas-v0.3.11-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.3.11-test \
+            ScalpAtlas-v0.3.11-ANTI-CHASE.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.3.10 Smart Arrow" \
-            --notes "Finisare a săgeții Varianta 3: corp mai mic, coadă mai scurtă și poziționare automată într-o zonă cu mai mult spațiu. Aplicația evaluează mai multe poziții în jurul ultimei lumânări și preferă poziția cu distanță mai mare față de linia de trend, anchor și margini. Motorul de analiză și regulile BUY/SELL/WAIT rămân neschimbate." \
+            --title "SCALP ATLAS v0.3.11 Anti-Chase" \
+            --notes "Corecție după testul CAD/JPY M10: după o mișcare deja foarte extinsă, motorul verifică ultra-recent încetinirea, respingerea minimului/maximului și revenirea. Dacă trendul mare spune încă SELL/BUY dar ultimele lumânări arată epuizare, aplicația afișează AȘTEAPTĂ CONFIRMAREA în loc să urmărească semnalul. SELL revine doar la un nou minim confirmat, BUY doar la un nou maxim confirmat. Săgeata smart din v0.3.10 rămâne neschimbată." \
             --prerelease
