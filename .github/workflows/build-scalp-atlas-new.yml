@@ -10,6 +10,7 @@ on:
       - '.github/scripts/patch_scalp_atlas_v034.py'
       - '.github/scripts/patch_scalp_atlas_v035.py'
       - '.github/scripts/patch_scalp_atlas_v036.py'
+      - '.github/scripts/patch_scalp_atlas_v037.py'
       - '.github/workflows/build-scalp-atlas-new.yml'
   workflow_dispatch:
 
@@ -39,7 +40,10 @@ jobs:
       - name: Apply v0.3.6 expanding triangle geometry validation
         run: python3 .github/scripts/patch_scalp_atlas_v036.py
 
-      - name: Apply v0.3.6 visual title and version
+      - name: Apply v0.3.7 breakout body-close confirmation
+        run: python3 .github/scripts/patch_scalp_atlas_v037.py
+
+      - name: Apply v0.3.7 visual title and version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -63,8 +67,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.6'
-          cfg['expo']['android']['versionCode'] = 16
+          cfg['expo']['version'] = '0.3.7'
+          cfg['expo']['android']['versionCode'] = 17
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -109,23 +113,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.6-GEOMETRY-VERIFY.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.7-BREAKOUT-CLOSE.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.6-GEOMETRY-VERIFY
-          path: ScalpAtlas-v0.3.6-GEOMETRY-VERIFY.apk
+          name: ScalpAtlas-v0.3.7-BREAKOUT-CLOSE
+          path: ScalpAtlas-v0.3.7-BREAKOUT-CLOSE.apk
           if-no-files-found: error
 
       - name: Publish test APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v0.3.6-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.3.6-test \
-            ScalpAtlas-v0.3.6-GEOMETRY-VERIFY.apk \
+          gh release delete scalp-atlas-v0.3.7-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.3.7-test \
+            ScalpAtlas-v0.3.7-BREAKOUT-CLOSE.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.3.6 Geometry Verify" \
-            --notes "Triunghi Expanding este acceptat numai dacă există două limite divergente reale: maxime în extindere și minime în extindere, pe o distanță structurală suficientă. Când geometria nu este confirmată, motorul revine la Canal Ascendent/Descendent sau la AȘTEAPTĂ CONFIRMAREA. Pentru un Triunghi Expanding valid sunt desenate ambele limite divergente. Se păstrează expirarea deterministă pe timeframe și toate corecțiile anterioare." \
+            --title "SCALP ATLAS v0.3.7 Breakout Close" \
+            --notes "Breakout Rezistență/Suport nu mai este confirmat de simpla străpungere cu fitilul. Motorul cere corp/închidere estimată clar dincolo de nivelul structural; dacă fitilul trece nivelul dar corpul revine, rezultatul devine AȘTEAPTĂ CONFIRMAREA. Se păstrează validarea geometrică, expirarea deterministă pe timeframe și toate corecțiile anterioare." \
             --prerelease
