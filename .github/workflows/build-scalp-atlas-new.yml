@@ -7,6 +7,7 @@ on:
       - 'scalp-atlas-new/**'
       - '.github/scripts/patch_scalp_atlas_v032.py'
       - '.github/scripts/patch_scalp_atlas_v033.py'
+      - '.github/scripts/patch_scalp_atlas_v034.py'
       - '.github/workflows/build-scalp-atlas-new.yml'
   workflow_dispatch:
 
@@ -27,7 +28,10 @@ jobs:
       - name: Apply v0.3.3 breakout level and Android spacing fix
         run: python3 .github/scripts/patch_scalp_atlas_v033.py
 
-      - name: Apply v0.3.3 visual title and version
+      - name: Apply v0.3.4 verified breakout level and result visibility fix
+        run: python3 .github/scripts/patch_scalp_atlas_v034.py
+
+      - name: Apply v0.3.4 visual title and version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -51,8 +55,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.3'
-          cfg['expo']['android']['versionCode'] = 13
+          cfg['expo']['version'] = '0.3.4'
+          cfg['expo']['android']['versionCode'] = 14
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -97,23 +101,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.3-BREAKOUT-LEVEL.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.4-LEVEL-VERIFY.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.3-BREAKOUT-LEVEL
-          path: ScalpAtlas-v0.3.3-BREAKOUT-LEVEL.apk
+          name: ScalpAtlas-v0.3.4-LEVEL-VERIFY
+          path: ScalpAtlas-v0.3.4-LEVEL-VERIFY.apk
           if-no-files-found: error
 
       - name: Publish test APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v0.3.3-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.3.3-test \
-            ScalpAtlas-v0.3.3-BREAKOUT-LEVEL.apk \
+          gh release delete scalp-atlas-v0.3.4-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.3.4-test \
+            ScalpAtlas-v0.3.4-LEVEL-VERIFY.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.3.3 Breakout Level" \
-            --notes "Corecții față de v0.3.2: pentru Breakout Suport/Rezistență este afișat și nivelul orizontal care a fost spart; cardul rezultat are spațiu inferior suplimentar ca probabilitatea și expirarea să nu mai fie acoperite de bara Android. Se păstrează trendul unic verde/roșu și starea AȘTEAPTĂ CONFIRMAREA." \
+            --title "SCALP ATLAS v0.3.4 Level Verify" \
+            --notes "Breakout Suport/Rezistență este permis numai când motorul are un nivel structural real; nivelul spart este desenat galben din aceeași valoare folosită la clasificare. Rezultatul se aduce automat în zona vizibilă, există spațiu suplimentar deasupra barei Android și pe ecran apare v0.3.4 TEST pentru verificarea instalării." \
             --prerelease
