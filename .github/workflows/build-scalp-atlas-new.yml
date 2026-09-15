@@ -18,6 +18,7 @@ on:
       - '.github/scripts/patch_scalp_atlas_v0312.py'
       - '.github/scripts/patch_scalp_atlas_v0313.py'
       - '.github/scripts/patch_scalp_atlas_v0314.py'
+      - '.github/scripts/patch_scalp_atlas_v0315.py'
       - '.github/workflows/build-scalp-atlas-new.yml'
   workflow_dispatch:
 
@@ -71,7 +72,10 @@ jobs:
       - name: Apply v0.3.14 confirmation filter
         run: python3 .github/scripts/patch_scalp_atlas_v0314.py
 
-      - name: Apply v0.3.14 visual title and version
+      - name: Apply v0.3.15 last-candle momentum guard
+        run: python3 .github/scripts/patch_scalp_atlas_v0315.py
+
+      - name: Apply v0.3.15 visual title and version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -95,8 +99,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.14'
-          cfg['expo']['android']['versionCode'] = 24
+          cfg['expo']['version'] = '0.3.15'
+          cfg['expo']['android']['versionCode'] = 25
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -143,23 +147,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.14-CONFIRMATION-FILTER.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.15-LAST-CANDLE-GUARD.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.14-CONFIRMATION-FILTER
-          path: ScalpAtlas-v0.3.14-CONFIRMATION-FILTER.apk
+          name: ScalpAtlas-v0.3.15-LAST-CANDLE-GUARD
+          path: ScalpAtlas-v0.3.15-LAST-CANDLE-GUARD.apk
           if-no-files-found: error
 
       - name: Publish test APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v0.3.14-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.3.14-test \
-            ScalpAtlas-v0.3.14-CONFIRMATION-FILTER.apk \
+          gh release delete scalp-atlas-v0.3.15-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.3.15-test \
+            ScalpAtlas-v0.3.15-LAST-CANDLE-GUARD.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.3.14 Confirmation Filter" \
-            --notes "Corecție după testul AUD/CHF OTC M10: trendul principal nu mai forțează BUY/SELL când ultimele lumânări au impuls opus. Conflictul dintre trend și impulsul recent produce AȘTEAPTĂ CONFIRMAREA. Scorurile 63–71% sunt tratate ca WAIT; BUY/SELL direct necesită minimum 72% și consens local mai bun. Interfața, săgeata v0.3.13 și timerul v0.3.12 sunt păstrate." \
+            --title "SCALP ATLAS v0.3.15 Last Candle Guard" \
+            --notes "Corecție după testul CHF/JPY OTC M10: un canal ascendent nu mai emite BUY când ultima zonă cade brusc, iar un canal descendent nu mai emite SELL când ultima zonă urcă brusc. Se verifică separat ultimele 1–3 segmente și impulsul ultra-recent. O contramișcare puternică produce AȘTEAPTĂ CONFIRMAREA chiar dacă scorul brut depășește 72%. Filtrul v0.3.14, timerul și săgeata rămân active." \
             --prerelease
