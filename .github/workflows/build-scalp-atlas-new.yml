@@ -20,6 +20,7 @@ on:
       - '.github/scripts/patch_scalp_atlas_v0314.py'
       - '.github/scripts/patch_scalp_atlas_v0315.py'
       - '.github/scripts/patch_scalp_atlas_v0316.py'
+      - '.github/scripts/patch_scalp_atlas_v0317.py'
       - '.github/workflows/build-scalp-atlas-new.yml'
   workflow_dispatch:
 
@@ -79,7 +80,10 @@ jobs:
       - name: Apply v0.3.16 countertrend reversal guard
         run: python3 .github/scripts/patch_scalp_atlas_v0316.py
 
-      - name: Apply v0.3.16 visual title and version
+      - name: Apply v0.3.17 concrete confirmation level
+        run: python3 .github/scripts/patch_scalp_atlas_v0317.py
+
+      - name: Apply v0.3.17 visual title and version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -103,8 +107,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.16'
-          cfg['expo']['android']['versionCode'] = 26
+          cfg['expo']['version'] = '0.3.17'
+          cfg['expo']['android']['versionCode'] = 27
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -151,23 +155,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.16-COUNTERTREND-GUARD.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.17-CONFIRMATION-LEVEL.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.16-COUNTERTREND-GUARD
-          path: ScalpAtlas-v0.3.16-COUNTERTREND-GUARD.apk
+          name: ScalpAtlas-v0.3.17-CONFIRMATION-LEVEL
+          path: ScalpAtlas-v0.3.17-CONFIRMATION-LEVEL.apk
           if-no-files-found: error
 
       - name: Publish test APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v0.3.16-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.3.16-test \
-            ScalpAtlas-v0.3.16-COUNTERTREND-GUARD.apk \
+          gh release delete scalp-atlas-v0.3.17-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.3.17-test \
+            ScalpAtlas-v0.3.17-CONFIRMATION-LEVEL.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.3.16 Countertrend Guard" \
-            --notes "Corecție după testul AUD/USD OTC M10: un rebound BUY într-un trend principal descendent nu mai devine semnal direct doar pentru că revenirea locală are scor peste 72%. Intrările contra trendului principal cer acum reversare structurală confirmată pe corp/închidere și minimum două confirmări locale; altfel aplicația afișează AȘTEAPTĂ CONFIRMAREA. Regula este simetrică pentru SELL contra trendului ascendent." \
+            --title "SCALP ATLAS v0.3.17 Confirmation Level" \
+            --notes "Corecție după testul MAD/USD OTC M10: când rezultatul este AȘTEAPTĂ CONFIRMAREA, linia diagonală de trend este ascunsă ca să nu fie confundată cu pragul de intrare. Se afișează o singură linie galbenă orizontală la ultimul nivel structural relevant, iar cardul explică explicit: pentru SELL se așteaptă închiderea lumânării sub linia galbenă; pentru BUY se așteaptă închiderea peste linia galbenă. Filtrele v0.3.14-v0.3.16 rămân active." \
             --prerelease
