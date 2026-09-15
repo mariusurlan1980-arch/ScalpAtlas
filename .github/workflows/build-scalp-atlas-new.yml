@@ -17,6 +17,7 @@ on:
       - '.github/scripts/patch_scalp_atlas_v0311.py'
       - '.github/scripts/patch_scalp_atlas_v0312.py'
       - '.github/scripts/patch_scalp_atlas_v0313.py'
+      - '.github/scripts/patch_scalp_atlas_v0314.py'
       - '.github/workflows/build-scalp-atlas-new.yml'
   workflow_dispatch:
 
@@ -67,7 +68,10 @@ jobs:
       - name: Apply v0.3.13 forward arrow placement
         run: python3 .github/scripts/patch_scalp_atlas_v0313.py
 
-      - name: Apply v0.3.13 visual title and version
+      - name: Apply v0.3.14 confirmation filter
+        run: python3 .github/scripts/patch_scalp_atlas_v0314.py
+
+      - name: Apply v0.3.14 visual title and version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -91,8 +95,8 @@ jobs:
 
           cfg_path = Path('scalp-atlas-new/app.json')
           cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
-          cfg['expo']['version'] = '0.3.13'
-          cfg['expo']['android']['versionCode'] = 23
+          cfg['expo']['version'] = '0.3.14'
+          cfg['expo']['android']['versionCode'] = 24
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -137,23 +141,23 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.13-FORWARD-ARROW.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.3.14-CONFIRMATION-FILTER.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v0.3.13-FORWARD-ARROW
-          path: ScalpAtlas-v0.3.13-FORWARD-ARROW.apk
+          name: ScalpAtlas-v0.3.14-CONFIRMATION-FILTER
+          path: ScalpAtlas-v0.3.14-CONFIRMATION-FILTER.apk
           if-no-files-found: error
 
       - name: Publish test APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v0.3.13-test --cleanup-tag --yes || true
-          gh release create scalp-atlas-v0.3.13-test \
-            ScalpAtlas-v0.3.13-FORWARD-ARROW.apk \
+          gh release delete scalp-atlas-v0.3.14-test --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.3.14-test \
+            ScalpAtlas-v0.3.14-CONFIRMATION-FILTER.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.3.13 Forward Arrow" \
-            --notes "Corecție vizuală după testul AUD/USD M10: săgeata BUY/SELL nu mai este lăsată în spatele sau în interiorul mișcării. Este proiectată predominant în fața ultimei zone detectate, spre dreapta graficului, cu spațiu față de lumânări, linia de trend și margini. Timerul de valabilitate din v0.3.12 și motorul de analiză rămân neschimbate." \
+            --title "SCALP ATLAS v0.3.14 Confirmation Filter" \
+            --notes "Corecție după testul AUD/CHF OTC M10: trendul principal nu mai forțează BUY/SELL când ultimele lumânări au impuls opus. Conflictul dintre trend și impulsul recent produce AȘTEAPTĂ CONFIRMAREA. Scorurile 63–71% sunt tratate ca WAIT; BUY/SELL direct necesită minimum 72% și consens local mai bun. Interfața, săgeata v0.3.13 și timerul v0.3.12 sunt păstrate." \
             --prerelease
