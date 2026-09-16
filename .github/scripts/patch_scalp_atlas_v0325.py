@@ -53,20 +53,15 @@ new_render = """            const lineStyle = line.kind==='channelUpper' || line
             return <View key={`${line.kind}-${index}`} pointerEvents="none" style={[position,styles.trendLine,lineStyle]} />;"""
 app = replace_once(app, old_render, new_render, 'randare linii culoar')
 
-# Introducem informația despre poziția în culoar în card după expirarea recomandată,
-# păstrând și cronometru de prospețime introdus în v0.3.12.
-needle_card = """              <Text style={styles.statusText}>Expirare recomandată: {analysis.state === 'WAIT' ? 'după confirmare' : analysis.expiry ? `${analysis.expiry} min • calcul ${timeframe}` : '—'}</Text>
-              {analysis.signal !== 'NONE' && ("""
+needle_card = """              <Text style={styles.statusText}>Expirare recomandată: {analysis.state === 'WAIT' ? 'după confirmare' : analysis.expiry ? `${analysis.expiry} min • calcul ${timeframe}` : '—'}</Text>"""
 channel_card = """              <Text style={styles.statusText}>Expirare recomandată: {analysis.state === 'WAIT' ? 'după confirmare' : analysis.expiry ? `${analysis.expiry} min • calcul ${timeframe}` : '—'}</Text>
               {analysis.channelType && analysis.channelPosition && (
                 <Text style={styles.channelInfo}>
                   Culoarul lumânărilor: {analysis.channelType} • {analysis.channelPosition}{analysis.channelQuality ? ` • ${analysis.channelQuality}%` : ''}
                 </Text>
-              )}
-              {analysis.signal !== 'NONE' && ("""
+              )}"""
 app = replace_once(app, needle_card, channel_card, 'card candle channel')
 
-# Stiluri albastre distincte pentru canal; mediana este punctată.
 needle_style = """  confirmationLine: { backgroundColor: '#ffd34d', height: 3 },"""
 channel_styles = """  confirmationLine: { backgroundColor: '#ffd34d', height: 3 },
   channelEdgeLine: { backgroundColor: '#63a8ff', height: 2, opacity: 0.95 },
@@ -79,7 +74,6 @@ channel_info_style = """  statusSmall: { color: '#728095', fontSize: 12 },
 app = replace_once(app, needle_small, channel_info_style, 'stil text culoar')
 APP.write_text(app, encoding='utf-8')
 
-
 engine = ENGINE.read_text(encoding='utf-8')
 engine = replace_once(
     engine,
@@ -88,7 +82,6 @@ engine = replace_once(
     'engine version 0.3.13',
 )
 
-# Detector robust de canal bazat pe envelope-ul fitilurilor și o pantă comună.
 marker = "  function trendLinesFor(curve,result){"
 if marker not in engine:
     raise SystemExit('trendLinesFor nu a fost găsită; build oprit pentru siguranță.')
@@ -165,8 +158,6 @@ channel_detector = r'''  function detectCandleChannel(curve){
 '''
 engine = engine.replace(marker, channel_detector + marker, 1)
 
-# Adăugăm canalul în trendLinesFor, înaintea ramurii WAIT, astfel încât culoarul să fie
-# vizibil și atunci când aplicația cere confirmare.
 start = engine.find("  function trendLinesFor(curve,result){")
 end = engine.find("\n  function run(dataUrl,timeframe){", start)
 if start < 0 or end < 0:
@@ -200,7 +191,6 @@ block = replace_once(
 )
 engine = engine[:start] + block + engine[end:]
 
-# Motorul folosește și poziția din canal pentru a evita intrările târzii la marginea opusă.
 old_run = """        const r=classify(curve),anchor=curve.anchor;
         send({"""
 new_run = """        let r=classify(curve); const anchor=curve.anchor;
@@ -219,24 +209,22 @@ new_run = """        let r=classify(curve); const anchor=curve.anchor;
               ...r,clear:false,state:'WAIT',wait:true,bias,dir:'NONE',
               score:Math.min(r.score,.72),confirmationLevelY:levelNorm,
               atlas:counterChannel
-                ? `${candleChannel.type} – semnal contra culoarului`
-                : `${candleChannel.type} – intrare la marginea opusă`,
+                ? candleChannel.type+' – semnal contra culoarului'
+                : candleChannel.type+' – intrare la marginea opusă',
               reason:counterChannel
-                ? `Semnalul ${bias} este contra direcției culoarului lumânărilor. Așteaptă ruperea și confirmarea marginii canalului înainte de intrare.`
+                ? 'Semnalul '+bias+' este contra direcției culoarului lumânărilor. Așteaptă ruperea și confirmarea marginii canalului înainte de intrare.'
                 : bias==='BUY'
                   ? 'BUY este deja aproape de marginea superioară a culoarului. Așteaptă breakout confirmat sau o revenire spre jumătatea inferioară.'
                   : 'SELL este deja aproape de marginea inferioară a culoarului. Așteaptă breakout confirmat sau o revenire spre jumătatea superioară.'
             };
           }else if((r.dir==='BUY'&&candleChannel.type==='Canal Ascendent'&&pos>=.60)||
                    (r.dir==='SELL'&&candleChannel.type==='Canal Descendent'&&pos<=.40)){
-            // Confluență cu marginea favorabilă a canalului: bonus mic, niciodată peste 88% doar din canal.
             r.score=Math.min(.88,r.score+.025);
           }
         }
         send({"""
 engine = replace_once(engine, old_run, new_run, 'folosire canal în decizia finală')
 
-# Expunem informația în rezultat pentru cardul aplicației.
 old_quality = """            quality:Math.round(curve.quality*100),
             trendLines:trendLinesFor(curve,r),"""
 new_quality = """            quality:Math.round(curve.quality*100),
