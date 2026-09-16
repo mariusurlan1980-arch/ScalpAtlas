@@ -53,14 +53,17 @@ new_render = """            const lineStyle = line.kind==='channelUpper' || line
             return <View key={`${line.kind}-${index}`} pointerEvents="none" style={[position,styles.trendLine,lineStyle]} />;"""
 app = replace_once(app, old_render, new_render, 'randare linii culoar')
 
-# Introducem informația despre poziția în culoar în card, fără să încărcăm graficul.
-needle_card = """              <Text style={styles.statusText}>Expirare recomandată: {analysis.state === 'WAIT' ? 'după confirmare' : analysis.expiry ? `${analysis.expiry} min` : '—'}</Text>"""
-channel_card = """              <Text style={styles.statusText}>Expirare recomandată: {analysis.state === 'WAIT' ? 'după confirmare' : analysis.expiry ? `${analysis.expiry} min` : '—'}</Text>
+# Introducem informația despre poziția în culoar în card după expirarea recomandată,
+# păstrând și cronometru de prospețime introdus în v0.3.12.
+needle_card = """              <Text style={styles.statusText}>Expirare recomandată: {analysis.state === 'WAIT' ? 'după confirmare' : analysis.expiry ? `${analysis.expiry} min • calcul ${timeframe}` : '—'}</Text>
+              {analysis.signal !== 'NONE' && ("""
+channel_card = """              <Text style={styles.statusText}>Expirare recomandată: {analysis.state === 'WAIT' ? 'după confirmare' : analysis.expiry ? `${analysis.expiry} min • calcul ${timeframe}` : '—'}</Text>
               {analysis.channelType && analysis.channelPosition && (
                 <Text style={styles.channelInfo}>
                   Culoarul lumânărilor: {analysis.channelType} • {analysis.channelPosition}{analysis.channelQuality ? ` • ${analysis.channelQuality}%` : ''}
                 </Text>
-              )}"""
+              )}
+              {analysis.signal !== 'NONE' && ("""
 app = replace_once(app, needle_card, channel_card, 'card candle channel')
 
 # Stiluri albastre distincte pentru canal; mediana este punctată.
