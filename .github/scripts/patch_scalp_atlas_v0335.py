@@ -16,6 +16,8 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
 # - buton nativ de distribuire prin aplicațiile instalate;
 # - buton DESCHIDE SCALP ATLAS care revine la începutul aplicației;
 # - nu modifică deloc motorul de analiză BUY/SELL/WAIT.
+#
+# Notă: aplicația are deja scrollRef din v0.3.4, deci v0.3.35 îl reutilizează.
 
 app = APP.read_text(encoding='utf-8')
 
@@ -52,13 +54,6 @@ const PLATFORM_HUB = [
     'constante Platform Hub',
 )
 
-app = replace_once(
-    app,
-    "  const analyzerRef = useRef<WebView>(null);",
-    "  const analyzerRef = useRef<WebView>(null);\n  const pageRef = useRef<ScrollView>(null);",
-    'ScrollView ref',
-)
-
 insert_functions = r'''
 
   const openPlatform = async (url: string, name: string) => {
@@ -88,13 +83,6 @@ app = replace_once(
     "\n  return (\n    <SafeAreaView style={styles.safe}>",
     insert_functions + "\n  return (\n    <SafeAreaView style={styles.safe}>",
     'funcții Platform Hub',
-)
-
-app = replace_once(
-    app,
-    "      <ScrollView contentContainerStyle={styles.page}>",
-    "      <ScrollView ref={pageRef} contentContainerStyle={styles.page}>",
-    'ref pe ScrollView',
 )
 
 platform_section = r'''
@@ -131,7 +119,7 @@ platform_section = r'''
             <Text style={styles.shareAllButtonSub}>Alege orice aplicație instalată pe telefon</Text>
           </Pressable>
 
-          <Pressable onPress={() => pageRef.current?.scrollTo({ y: 0, animated: true })} style={styles.openAtlasButton}>
+          <Pressable onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })} style={styles.openAtlasButton}>
             <Text style={styles.openAtlasButtonText}>🚀  DESCHIDE SCALP ATLAS</Text>
             <Text style={styles.openAtlasButtonSub}>Revino la analiză</Text>
           </Pressable>
