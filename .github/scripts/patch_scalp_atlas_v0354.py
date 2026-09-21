@@ -42,13 +42,6 @@ app = replace_once(
 
 app = replace_once(
     app,
-    """                analysis.state === 'WAIT' ? styles.wait : analysis.signal === 'BUY' ? styles.buy : analysis.signal === 'SELL' ? styles.sell : styles.neutral,""",
-    """                analysis.cancelledDirection ? styles.cancelled : analysis.state === 'WAIT' ? styles.wait : analysis.signal === 'BUY' ? styles.buy : analysis.signal === 'SELL' ? styles.sell : styles.neutral,""",
-    'culoare titlu anulare',
-)
-
-app = replace_once(
-    app,
     """                {analysis.state === 'WAIT' ? 'AȘTEAPTĂ CONFIRMAREA' : analysis.state === 'INVALID' ? 'FOTOGRAFIE DEJA ANALIZATĂ' : analysis.signal === 'NONE' ? 'FĂRĂ SEMNAL CLAR' : analysis.signal}""",
     """                {analysis.cancelledDirection
                   ? `CONFIRMARE ${analysis.cancelledDirection} ANULATĂ`
@@ -60,13 +53,6 @@ app = replace_once(
                         ? 'FĂRĂ SEMNAL CLAR'
                         : analysis.signal}""",
     'titlu explicit anulare',
-)
-
-app = replace_once(
-    app,
-    "  wait: { color: '#ffd34d' },",
-    "  wait: { color: '#ffd34d' },\n  cancelled: { color: '#ffb454' },",
-    'stil anulare',
 )
 
 APP.write_text(app, encoding='utf-8')
