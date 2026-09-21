@@ -40,21 +40,6 @@ app = replace_once(
     'tip cancelledDirection',
 )
 
-app = replace_once(
-    app,
-    """                {analysis.state === 'WAIT' ? 'AȘTEAPTĂ CONFIRMAREA' : analysis.state === 'INVALID' ? 'FOTOGRAFIE DEJA ANALIZATĂ' : analysis.signal === 'NONE' ? 'FĂRĂ SEMNAL CLAR' : analysis.signal}""",
-    """                {analysis.cancelledDirection
-                  ? `CONFIRMARE ${analysis.cancelledDirection} ANULATĂ`
-                  : analysis.state === 'WAIT'
-                    ? 'AȘTEAPTĂ CONFIRMAREA'
-                    : analysis.state === 'INVALID'
-                      ? 'FOTOGRAFIE DEJA ANALIZATĂ'
-                      : analysis.signal === 'NONE'
-                        ? 'FĂRĂ SEMNAL CLAR'
-                        : analysis.signal}""",
-    'titlu explicit anulare',
-)
-
 APP.write_text(app, encoding='utf-8')
 
 engine = ENGINE.read_text(encoding='utf-8')
