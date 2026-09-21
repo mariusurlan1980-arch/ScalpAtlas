@@ -32,23 +32,27 @@ app = replace_once(
 
 app = replace_once(
     app,
-    """                analysis.state === 'WAIT' ? styles.wait : analysis.signal === 'BUY' ? styles.buy : analysis.signal === 'SELL' ? styles.sell : styles.neutral,""",
-    """                analysis.state === 'WAIT'
-                  ? (analysis.bias === 'BUY' ? styles.buy : analysis.bias === 'SELL' ? styles.sell : styles.wait)
-                  : analysis.signal === 'BUY' ? styles.buy : analysis.signal === 'SELL' ? styles.sell : styles.neutral,""",
+    """                analysis.signal !== 'NONE' && remainingSeconds <= 0 ? styles.wait : analysis.state === 'WAIT' ? styles.wait : analysis.signal === 'BUY' ? styles.buy : analysis.signal === 'SELL' ? styles.sell : styles.neutral,""",
+    """                analysis.signal !== 'NONE' && remainingSeconds <= 0
+                  ? styles.wait
+                  : analysis.state === 'WAIT'
+                    ? (analysis.bias === 'BUY' ? styles.buy : analysis.bias === 'SELL' ? styles.sell : styles.wait)
+                    : analysis.signal === 'BUY' ? styles.buy : analysis.signal === 'SELL' ? styles.sell : styles.neutral,""",
     'culoare WAIT sincronizată cu direcția',
 )
 
 app = replace_once(
     app,
-    """                {analysis.state === 'WAIT' ? 'AȘTEAPTĂ CONFIRMAREA' : analysis.state === 'INVALID' ? 'FOTOGRAFIE DEJA ANALIZATĂ' : analysis.signal === 'NONE' ? 'FĂRĂ SEMNAL CLAR' : analysis.signal}""",
-    """                {analysis.state === 'WAIT'
-                  ? (analysis.bias ? `AȘTEAPTĂ CONFIRMARE ${analysis.bias}` : 'AȘTEAPTĂ CONFIRMAREA')
-                  : analysis.state === 'INVALID'
-                    ? 'FOTOGRAFIE DEJA ANALIZATĂ'
-                    : analysis.signal === 'NONE'
-                      ? 'FĂRĂ SEMNAL CLAR'
-                      : analysis.signal}""",
+    """                {analysis.signal !== 'NONE' && remainingSeconds <= 0 ? 'SEMNAL EXPIRAT' : analysis.state === 'WAIT' ? 'AȘTEAPTĂ CONFIRMAREA' : analysis.state === 'INVALID' ? 'FOTOGRAFIE DEJA ANALIZATĂ' : analysis.signal === 'NONE' ? 'FĂRĂ SEMNAL CLAR' : analysis.signal}""",
+    """                {analysis.signal !== 'NONE' && remainingSeconds <= 0
+                  ? 'SEMNAL EXPIRAT'
+                  : analysis.state === 'WAIT'
+                    ? (analysis.bias ? `AȘTEAPTĂ CONFIRMARE ${analysis.bias}` : 'AȘTEAPTĂ CONFIRMAREA')
+                    : analysis.state === 'INVALID'
+                      ? 'FOTOGRAFIE DEJA ANALIZATĂ'
+                      : analysis.signal === 'NONE'
+                        ? 'FĂRĂ SEMNAL CLAR'
+                        : analysis.signal}""",
     'titlu WAIT sincronizat cu direcția',
 )
 
