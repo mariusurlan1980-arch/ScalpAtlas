@@ -104,7 +104,7 @@ guard = """        // v0.3.54 — invalidarea unei confirmări înainte de intra
               score:Math.min(Number(r.score)||.58,.58),
               confirmationLevelY:null,
               cancelledDirection:cancelled,
-              atlas:`Confirmare ${cancelled} anulată – recalculare`,
+              atlas:'Confirmare '+cancelled+' anulată – recalculare',
               reason:cancelled==='BUY'
                 ? 'Revenirea BUY a eșuat înainte de confirmare: impulsul descendent a rupt suportul local sau marginea inferioară relevantă. Direcția BUY este anulată; așteaptă o structură nouă.'
                 : 'Revenirea SELL a eșuat înainte de confirmare: impulsul ascendent a rupt rezistența locală sau marginea superioară relevantă. Direcția SELL este anulată; așteaptă o structură nouă.'
