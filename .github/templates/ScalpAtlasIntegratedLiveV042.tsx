@@ -1,0 +1,676 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import { ANALYSIS_ENGINE_HTML } from './analysisEngine';
+import { SCALP_ATLAS_COUNT } from './atlas';
+
+type Signal = 'BUY' | 'SELL' | 'NONE';
+type Bias = 'BUY' | 'SELL' | null;
+type Screen = 'LIVE' | 'HISTORY' | 'STATS' | 'JOURNAL';
+type Outcome = 'PENDING' | 'WIN' | 'LOSS';
+
+type AnalysisResult = {
+  signal: Signal;
+  state?: 'SIGNAL' | 'WAIT' | 'NONE' | 'INVALID';
+  bias?: Bias;
+  pattern: string;
+  probability: number;
+  expiry: number | null;
+  reason: string;
+  atlasCount: number;
+  quality: number;
+};
+
+type HistoryItem = {
+  id: string;
+  createdAt: number;
+  signal: 'BUY' | 'SELL' | 'WAIT';
+  bias: Bias;
+  pattern: string;
+  probability: number;
+  expiry: number | null;
+  timeframe: string;
+  reason: string;
+  outcome: Outcome;
+  amount: string;
+  note: string;
+};
+
+const TIMEFRAMES = ['M1', 'M2', 'M3', 'M5', 'M10', 'M15', 'M30', 'H1'];
+const SCAN_INTERVAL_MS = 2000;
+const HISTORY_KEY = 'scalpAtlas.live.history.v1';
+
+function formatTime(ts: number) {
+  try {
+    return new Date(ts).toLocaleString('ro-RO', {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
+}
+
+export default function LiveAnalysisApp() {
+  const cameraRef = useRef<CameraView | null>(null);
+  const analyzerRef = useRef<WebView>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveRef = useRef(false);
+  const captureBusyRef = useRef(false);
+  const engineReadyRef = useRef(false);
+  const cameraReadyRef = useRef(false);
+  const lockedRef = useRef(false);
+  const timeframeRef = useRef('M15');
+
+  const [permission, requestPermission] = useCameraPermissions();
+  const [screen, setScreen] = useState<Screen>('LIVE');
+  const [cameraReady, setCameraReady] = useState(false);
+  const [engineReady, setEngineReady] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [live, setLive] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [timeframe, setTimeframe] = useState('M15');
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [message, setMessage] = useState('Poziționează camera pe grafic și apasă CAMERA LIVE.');
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    timeframeRef.current = timeframe;
+  }, [timeframe]);
+
+  useEffect(() => {
+    engineReadyRef.current = engineReady;
+  }, [engineReady]);
+
+  useEffect(() => {
+    cameraReadyRef.current = cameraReady;
+  }, [cameraReady]);
+
+  useEffect(() => {
+    lockedRef.current = locked;
+  }, [locked]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(HISTORY_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setHistory(parsed.slice(0, 100));
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      liveRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const saveHistory = (next: HistoryItem[]) => {
+    const trimmed = next.slice(0, 100);
+    setHistory(trimmed);
+    void AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+  };
+
+  const recordResult = (result: AnalysisResult) => {
+    const isWait = result.state === 'WAIT' || (result.signal === 'NONE' && !!result.bias);
+    if (result.signal === 'NONE' && !isWait) return;
+
+    const signal: HistoryItem['signal'] = isWait ? 'WAIT' : result.signal as 'BUY' | 'SELL';
+    const now = Date.now();
+    const first = history[0];
+    const signature = [signal, result.bias || '', result.pattern || '', timeframeRef.current].join('|');
+    const firstSignature = first
+      ? [first.signal, first.bias || '', first.pattern || '', first.timeframe].join('|')
+      : '';
+
+    if (first && signature === firstSignature && now - first.createdAt < 45000) return;
+
+    const item: HistoryItem = {
+      id: `live_${now}_${Math.random().toString(36).slice(2, 7)}`,
+      createdAt: now,
+      signal,
+      bias: result.bias || null,
+      pattern: result.pattern || '—',
+      probability: Number(result.probability || 0),
+      expiry: result.expiry || null,
+      timeframe: timeframeRef.current,
+      reason: result.reason || '',
+      outcome: 'PENDING',
+      amount: '',
+      note: '',
+    };
+    saveHistory([item, ...history]);
+  };
+
+  const updateRecord = (id: string, patch: Partial<HistoryItem>) => {
+    const next = history.map((item) => item.id === id ? { ...item, ...patch } : item);
+    saveHistory(next);
+  };
+
+  const clearHistory = () => {
+    saveHistory([]);
+  };
+
+  const scheduleNext = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (!liveRef.current) return;
+    timerRef.current = setTimeout(() => {
+      void captureAndAnalyze(false);
+    }, SCAN_INTERVAL_MS);
+  };
+
+  const captureAndAnalyze = async (manual: boolean) => {
+    if (!manual && !liveRef.current) return;
+    if (!lockedRef.current || !cameraReadyRef.current || !engineReadyRef.current || !cameraRef.current || !analyzerRef.current) {
+      setMessage('Camera, cadrul sau motorul Atlas nu este încă pregătit.');
+      if (!manual) scheduleNext();
+      return;
+    }
+    if (captureBusyRef.current) return;
+
+    captureBusyRef.current = true;
+    setScanning(true);
+    setMessage(manual ? 'Scanare manuală în curs…' : 'Analizez cadrul LIVE…');
+
+    try {
+      const picture = await cameraRef.current.takePictureAsync({
+        quality: 0.42,
+        base64: true,
+        skipProcessing: true,
+      });
+
+      if (!picture?.base64) {
+        captureBusyRef.current = false;
+        setScanning(false);
+        setMessage('Cadrul nu a putut fi citit. Reiau automat.');
+        if (!manual) scheduleNext();
+        return;
+      }
+
+      analyzerRef.current.postMessage(JSON.stringify({
+        type: 'ANALYZE',
+        dataUrl: `data:image/jpeg;base64,${picture.base64}`,
+        timeframe: timeframeRef.current,
+      }));
+    } catch (error) {
+      captureBusyRef.current = false;
+      setScanning(false);
+      setMessage(`Camera nu a putut captura cadrul: ${error instanceof Error ? error.message : 'eroare'}`);
+      if (!manual) scheduleNext();
+    }
+  };
+
+  const startLive = () => {
+    if (!cameraReadyRef.current || !engineReadyRef.current) {
+      setMessage('Camera sau motorul Atlas încă se pregătește.');
+      return;
+    }
+    lockedRef.current = true;
+    setLocked(true);
+    liveRef.current = true;
+    setLive(true);
+    setMessage('CAMERA LIVE activă. Graficul este urmărit automat.');
+    void captureAndAnalyze(false);
+  };
+
+  const pauseLive = () => {
+    liveRef.current = false;
+    setLive(false);
+    setScanning(false);
+    captureBusyRef.current = false;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setMessage('LIVE este în pauză. Camera rămâne poziționată.');
+  };
+
+  const stopLive = () => {
+    liveRef.current = false;
+    setLive(false);
+    setScanning(false);
+    captureBusyRef.current = false;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    lockedRef.current = false;
+    setLocked(false);
+    setAnalysis(null);
+    setMessage('CAMERA LIVE oprită. Repoziționează telefonul dacă este necesar.');
+  };
+
+  const changeScreen = (next: Screen) => {
+    if (next !== 'LIVE' && liveRef.current) pauseLive();
+    setScreen(next);
+  };
+
+  const toggleLock = () => {
+    if (liveRef.current) return;
+    const next = !lockedRef.current;
+    lockedRef.current = next;
+    setLocked(next);
+    setMessage(next
+      ? 'Grafic blocat. Poți porni LIVE sau SCANEAZĂ ACUM.'
+      : 'Blocarea a fost eliberată. Repoziționează camera.');
+  };
+
+  const onAnalyzerMessage = (event: WebViewMessageEvent) => {
+    try {
+      const payload = JSON.parse(event.nativeEvent.data || '{}');
+      if (payload.type === 'READY') {
+        const ok = payload.atlasCount === SCALP_ATLAS_COUNT;
+        setEngineReady(ok);
+        engineReadyRef.current = ok;
+        if (!ok) setMessage('Motorul Atlas nu a încărcat toate cele 70 de modele.');
+        return;
+      }
+
+      if (payload.type === 'RESULT') {
+        const result = payload.result as AnalysisResult;
+        setAnalysis(result);
+        captureBusyRef.current = false;
+        setScanning(false);
+        recordResult(result);
+
+        const isWait = result.state === 'WAIT' || (result.signal === 'NONE' && !!result.bias);
+        if (isWait) {
+          setMessage(`AȘTEAPTĂ CONFIRMARE${result.bias ? ' ' + result.bias : ''}. Urmărirea continuă.`);
+        } else if (result.signal === 'BUY' || result.signal === 'SELL') {
+          setMessage(`${result.signal} • ${result.pattern} • ${result.probability}%`);
+        } else {
+          setMessage(result.reason || 'Fără semnal clar. Urmărirea continuă.');
+        }
+
+        if (liveRef.current) scheduleNext();
+        return;
+      }
+
+      if (payload.type === 'ERROR') {
+        captureBusyRef.current = false;
+        setScanning(false);
+        setMessage(`Analiza nu a reușit: ${payload.message || 'eroare necunoscută'}`);
+        if (liveRef.current) scheduleNext();
+      }
+    } catch {
+      captureBusyRef.current = false;
+      setScanning(false);
+      setMessage('Motorul Atlas a returnat un răspuns invalid.');
+      if (liveRef.current) scheduleNext();
+    }
+  };
+
+  const stats = useMemo(() => {
+    const buy = history.filter((x) => x.signal === 'BUY').length;
+    const sell = history.filter((x) => x.signal === 'SELL').length;
+    const wait = history.filter((x) => x.signal === 'WAIT').length;
+    const decided = history.filter((x) => x.signal !== 'WAIT');
+    const avg = decided.length
+      ? Math.round(decided.reduce((sum, x) => sum + x.probability, 0) / decided.length)
+      : 0;
+    const wins = history.filter((x) => x.outcome === 'WIN').length;
+    const losses = history.filter((x) => x.outcome === 'LOSS').length;
+    const patterns: Record<string, number> = {};
+    const frames: Record<string, number> = {};
+    history.forEach((x) => {
+      patterns[x.pattern] = (patterns[x.pattern] || 0) + 1;
+      frames[x.timeframe] = (frames[x.timeframe] || 0) + 1;
+    });
+    const topPattern = Object.entries(patterns).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+    const topTf = Object.entries(frames).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+    return { total: history.length, buy, sell, wait, avg, wins, losses, topPattern, topTf };
+  }, [history]);
+
+  const isWait = analysis?.state === 'WAIT' || (analysis?.signal === 'NONE' && !!analysis?.bias);
+  const resultTitle = analysis
+    ? isWait
+      ? `AȘTEAPTĂ CONFIRMARE${analysis.bias ? ' ' + analysis.bias : ''}`
+      : analysis.signal === 'NONE'
+        ? 'FĂRĂ SEMNAL CLAR'
+        : analysis.signal
+    : 'ÎN AȘTEPTARE';
+
+  const resultTone =
+    analysis?.signal === 'BUY' || (isWait && analysis?.bias === 'BUY')
+      ? styles.buy
+      : analysis?.signal === 'SELL' || (isWait && analysis?.bias === 'SELL')
+        ? styles.sell
+        : isWait
+          ? styles.wait
+          : styles.neutral;
+
+  const nav = (
+    <View style={styles.nav}>
+      {(['LIVE', 'HISTORY', 'STATS', 'JOURNAL'] as Screen[]).map((item) => (
+        <Pressable key={item} onPress={() => changeScreen(item)} style={[styles.navButton, screen === item && styles.navActive]}>
+          <Text style={[styles.navText, screen === item && styles.navTextActive]}>
+            {item === 'HISTORY' ? 'ISTORIC' : item === 'STATS' ? 'STATISTICI' : item === 'JOURNAL' ? 'JURNAL' : 'LIVE'}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  const historyRow = (item: HistoryItem, journal = false) => (
+    <View key={item.id} style={styles.historyCard}>
+      <View style={styles.historyTop}>
+        <Text style={[
+          styles.historySignal,
+          item.signal === 'BUY' ? styles.buy : item.signal === 'SELL' ? styles.sell : styles.wait,
+        ]}>
+          {item.signal === 'WAIT' ? `AȘTEAPTĂ${item.bias ? ' ' + item.bias : ''}` : item.signal}
+        </Text>
+        <Text style={styles.historyTime}>{formatTime(item.createdAt)}</Text>
+      </View>
+      <Text style={styles.historyLine}>{item.pattern} • {item.probability}% • {item.timeframe}</Text>
+      <Text style={styles.historySmall}>Expirare: {item.expiry ? `${item.expiry} min` : '—'}</Text>
+      {!!item.reason && <Text style={styles.historySmall}>{item.reason}</Text>}
+
+      {journal && item.signal !== 'WAIT' && (
+        <>
+          <View style={styles.outcomeRow}>
+            {(['WIN', 'LOSS', 'PENDING'] as Outcome[]).map((outcome) => (
+              <Pressable
+                key={outcome}
+                onPress={() => updateRecord(item.id, { outcome })}
+                style={[
+                  styles.outcomeButton,
+                  item.outcome === outcome && styles.outcomeSelected,
+                  outcome === 'WIN' && item.outcome === outcome && styles.outcomeWin,
+                  outcome === 'LOSS' && item.outcome === outcome && styles.outcomeLoss,
+                ]}
+              >
+                <Text style={styles.outcomeText}>{outcome === 'PENDING' ? 'NEEVALUAT' : outcome}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <TextInput
+            value={item.amount}
+            onChangeText={(amount) => updateRecord(item.id, { amount })}
+            placeholder="Rezultat sumă (opțional)"
+            placeholderTextColor="#56667a"
+            keyboardType="decimal-pad"
+            style={styles.input}
+          />
+          <TextInput
+            value={item.note}
+            onChangeText={(note) => updateRecord(item.id, { note })}
+            placeholder="Notă jurnal"
+            placeholderTextColor="#56667a"
+            style={styles.input}
+          />
+        </>
+      )}
+    </View>
+  );
+
+  return (
+    <View style={styles.safe}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>SCALP ATLAS</Text>
+          <Text style={styles.subtitle}>LIVE • {SCALP_ATLAS_COUNT} modele • 2 dispozitive</Text>
+        </View>
+        <View style={[styles.livePill, live ? styles.liveOn : styles.liveOff]}>
+          <Text style={styles.liveText}>{live ? '● LIVE' : '○ OFF'}</Text>
+        </View>
+      </View>
+
+      {nav}
+
+      {screen === 'LIVE' && (
+        <ScrollView contentContainerStyle={styles.page}>
+          {!permission ? (
+            <View style={styles.permissionCard}>
+              <ActivityIndicator />
+              <Text style={styles.neutral}>Inițializez camera…</Text>
+            </View>
+          ) : !permission.granted ? (
+            <View style={styles.permissionCard}>
+              <Text style={styles.help}>Camera este necesară pentru analiza LIVE a graficului de pe al doilea dispozitiv.</Text>
+              <Pressable style={styles.primaryButton} onPress={() => void requestPermission()}>
+                <Text style={styles.primaryText}>PERMITE CAMERA</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <View style={styles.cameraWrap}>
+                <CameraView
+                  ref={cameraRef}
+                  style={StyleSheet.absoluteFill}
+                  facing="back"
+                  onCameraReady={() => {
+                    cameraReadyRef.current = true;
+                    setCameraReady(true);
+                  }}
+                />
+                <View pointerEvents="none" style={[styles.scanFrame, locked && styles.scanFrameLocked]}>
+                  <Text style={styles.frameLabel}>{locked ? 'GRAFIC BLOCAT' : 'ÎNCADREAZĂ GRAFICUL AICI'}</Text>
+                </View>
+                <View style={styles.overlayTop}>
+                  <Text style={styles.overlayText}>
+                    {scanning ? 'ANALIZEZ…' : live ? 'URMĂRIRE ACTIVĂ' : locked ? 'GATA DE LIVE' : 'POZIȚIONEAZĂ CAMERA'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.tfRow}>
+                {TIMEFRAMES.map((tf) => (
+                  <Pressable
+                    key={tf}
+                    disabled={live}
+                    onPress={() => setTimeframe(tf)}
+                    style={[styles.tfButton, timeframe === tf && styles.tfActive, live && styles.tfDisabled]}
+                  >
+                    <Text style={[styles.tfText, timeframe === tf && styles.tfTextActive]}>{tf}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Pressable
+                onPress={live ? stopLive : startLive}
+                style={[
+                  styles.cameraLiveButton,
+                  live && styles.cameraLiveButtonOn,
+                  (!cameraReady || !engineReady) && !live && styles.disabled,
+                ]}
+              >
+                <View style={[styles.cameraLiveLed, live ? styles.cameraLiveLedOn : styles.cameraLiveLedOff]} />
+                <View>
+                  <Text style={styles.cameraLiveTitle}>CAMERA LIVE</Text>
+                  <Text style={styles.cameraLiveSub}>
+                    {live ? 'ACTIVĂ • ANALIZĂ AUTOMATĂ' : 'APASĂ PENTRU PORNIRE'}
+                  </Text>
+                </View>
+              </Pressable>
+
+              <View style={styles.resultCard}>
+                <Text style={styles.resultLabel}>REZULTAT LIVE • {timeframe}</Text>
+                <Text style={[styles.resultTitle, resultTone]}>{resultTitle}</Text>
+                {analysis ? (
+                  <>
+                    <Text style={styles.resultLine}>Model: {analysis.pattern || '—'}</Text>
+                    <Text style={styles.resultLine}>Scor: {analysis.probability}%</Text>
+                    <Text style={styles.resultLine}>Expirare recomandată: {analysis.expiry ? `${analysis.expiry} min` : '—'}</Text>
+                    <Text style={styles.reason}>{analysis.reason}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.reason}>{message}</Text>
+                )}
+                <Text style={styles.status}>
+                  Cameră: {cameraReady ? 'PREGĂTITĂ' : 'INIȚIALIZARE'} • Motor: {engineReady ? 'PREGĂTIT' : 'INIȚIALIZARE'} • Scanare automată: ~2 sec
+                </Text>
+              </View>
+
+              <View style={styles.messageBar}>
+                <Text style={styles.messageText}>{message}</Text>
+              </View>
+            </>
+          )}
+        </ScrollView>
+      )}
+
+      {screen === 'HISTORY' && (
+        <ScrollView contentContainerStyle={styles.listPage}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>ISTORIC LIVE</Text>
+              <Text style={styles.sectionSub}>{history.length} înregistrări locale • maxim 100</Text>
+            </View>
+            <Pressable onPress={clearHistory} style={styles.clearButton}>
+              <Text style={styles.clearText}>ȘTERGE</Text>
+            </Pressable>
+          </View>
+          {history.length ? history.map((item) => historyRow(item)) : <Text style={styles.empty}>Nu există încă analize LIVE salvate.</Text>}
+        </ScrollView>
+      )}
+
+      {screen === 'STATS' && (
+        <ScrollView contentContainerStyle={styles.listPage}>
+          <Text style={styles.sectionTitle}>STATISTICI LIVE</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}><Text style={styles.statValue}>{stats.total}</Text><Text style={styles.statLabel}>TOTAL</Text></View>
+            <View style={styles.statCard}><Text style={[styles.statValue, styles.buy]}>{stats.buy}</Text><Text style={styles.statLabel}>BUY</Text></View>
+            <View style={styles.statCard}><Text style={[styles.statValue, styles.sell]}>{stats.sell}</Text><Text style={styles.statLabel}>SELL</Text></View>
+            <View style={styles.statCard}><Text style={[styles.statValue, styles.wait]}>{stats.wait}</Text><Text style={styles.statLabel}>AȘTEAPTĂ</Text></View>
+            <View style={styles.statCard}><Text style={styles.statValue}>{stats.avg}%</Text><Text style={styles.statLabel}>SCOR MEDIU</Text></View>
+            <View style={styles.statCard}><Text style={styles.statValue}>{stats.wins}/{stats.losses}</Text><Text style={styles.statLabel}>WIN / LOSS</Text></View>
+          </View>
+          <View style={styles.detailCard}>
+            <Text style={styles.detailLabel}>MODEL CEL MAI FRECVENT</Text>
+            <Text style={styles.detailValue}>{stats.topPattern}</Text>
+          </View>
+          <View style={styles.detailCard}>
+            <Text style={styles.detailLabel}>TIMEFRAME CEL MAI FOLOSIT</Text>
+            <Text style={styles.detailValue}>{stats.topTf}</Text>
+          </View>
+          <Text style={styles.disclaimer}>Statisticile sunt calculate numai din istoricul local al aplicației și nu reprezintă o promisiune de profit.</Text>
+        </ScrollView>
+      )}
+
+      {screen === 'JOURNAL' && (
+        <ScrollView contentContainerStyle={styles.listPage}>
+          <Text style={styles.sectionTitle}>JURNAL TRANZACȚII</Text>
+          <Text style={styles.sectionSub}>Marchează manual rezultatul semnalelor BUY/SELL și adaugă sumă/notă.</Text>
+          {history.filter((x) => x.signal !== 'WAIT').length
+            ? history.filter((x) => x.signal !== 'WAIT').map((item) => historyRow(item, true))
+            : <Text style={styles.empty}>Nu există încă semnale BUY/SELL pentru jurnal.</Text>}
+        </ScrollView>
+      )}
+
+      <WebView
+        ref={analyzerRef}
+        source={{ html: ANALYSIS_ENGINE_HTML }}
+        originWhitelist={['*']}
+        javaScriptEnabled
+        domStorageEnabled={false}
+        onMessage={onAnalyzerMessage}
+        style={styles.hiddenAnalyzer}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#070b12' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6 },
+  title: { color: '#f8fbff', fontSize: 22, fontWeight: '900', letterSpacing: 0.8 },
+  subtitle: { color: '#7f8b9e', fontSize: 10, marginTop: 2 },
+  help: { color: '#b6c2d1', textAlign: 'center', lineHeight: 20 },
+  livePill: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
+  liveOn: { borderColor: '#38d996', backgroundColor: 'rgba(13,55,40,0.55)' },
+  liveOff: { borderColor: '#39465a', backgroundColor: '#101722' },
+  liveText: { color: '#f7f9fc', fontSize: 11, fontWeight: '900' },
+
+  nav: { flexDirection: 'row', gap: 5, paddingHorizontal: 10, paddingBottom: 7 },
+  navButton: { flex: 1, borderWidth: 1, borderColor: '#27344a', borderRadius: 8, paddingVertical: 7, alignItems: 'center', backgroundColor: '#0b111a' },
+  navActive: { borderColor: '#38d996', backgroundColor: '#123a2b' },
+  navText: { color: '#718197', fontSize: 9, fontWeight: '900' },
+  navTextActive: { color: '#71f0b3' },
+
+  page: { paddingHorizontal: 12, paddingBottom: 18 },
+  listPage: { padding: 12, paddingBottom: 30, gap: 10 },
+  permissionCard: { minHeight: 360, alignItems: 'center', justifyContent: 'center', gap: 18, padding: 24 },
+  cameraWrap: { height: 315, borderRadius: 17, overflow: 'hidden', borderWidth: 1, borderColor: '#263247', backgroundColor: '#0d131d' },
+  scanFrame: { position: 'absolute', left: '5%', right: '5%', top: '10%', bottom: '10%', borderWidth: 2, borderColor: '#ffd34d', borderRadius: 12 },
+  scanFrameLocked: { borderColor: '#38d996', borderWidth: 3 },
+  frameLabel: { position: 'absolute', top: 6, alignSelf: 'center', color: '#fff', fontSize: 10, fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.58)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 7 },
+  overlayTop: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.58)', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+  overlayText: { color: '#fff', fontSize: 9, fontWeight: '900' },
+
+  tfRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 9 },
+  tfButton: { minWidth: 41, alignItems: 'center', borderWidth: 1, borderColor: '#2b374b', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 7 },
+  tfActive: { backgroundColor: '#edf2f7', borderColor: '#edf2f7' },
+  tfDisabled: { opacity: 0.55 },
+  tfText: { color: '#8fa0b8', fontWeight: '800', fontSize: 10 },
+  tfTextActive: { color: '#0a0f16' },
+
+  cameraLiveButton: { marginTop: 10, minHeight: 72, borderWidth: 2, borderColor: '#4a596d', borderRadius: 18, paddingHorizontal: 20, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 13, backgroundColor: '#101722' },
+  cameraLiveButtonOn: { borderColor: '#ff405b', backgroundColor: '#24131a' },
+  cameraLiveLed: { width: 15, height: 15, borderRadius: 8, borderWidth: 2 },
+  cameraLiveLedOn: { backgroundColor: '#ff263f', borderColor: '#ff8797' },
+  cameraLiveLedOff: { backgroundColor: '#4b5969', borderColor: '#718197' },
+  cameraLiveTitle: { color: '#f7f9fc', fontSize: 19, fontWeight: '900', letterSpacing: 0.9 },
+  cameraLiveSub: { color: '#9aabba', fontSize: 9, fontWeight: '900', marginTop: 2, letterSpacing: 0.4 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 9 },
+  lockButton: { flexGrow: 1, minWidth: 130, borderWidth: 1, borderColor: '#ffd34d', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  lockButtonActive: { borderColor: '#38d996', backgroundColor: 'rgba(13,55,40,0.42)' },
+  primaryButton: { flexGrow: 1, minWidth: 105, backgroundColor: '#eaf1f8', borderRadius: 10, paddingVertical: 10, alignItems: 'center', paddingHorizontal: 10 },
+  pauseButton: { flexGrow: 1, minWidth: 80, borderWidth: 1, borderColor: '#ffd34d', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  scanButton: { flexGrow: 1, minWidth: 110, borderWidth: 1, borderColor: '#31d8ee', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  stopButton: { flexGrow: 1, minWidth: 75, borderWidth: 1, borderColor: '#ff6464', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  disabled: { opacity: 0.4 },
+  actionText: { color: '#eef3f8', fontWeight: '900', fontSize: 10 },
+  primaryText: { color: '#0b1017', fontWeight: '900', fontSize: 10 },
+
+  resultCard: { marginTop: 9, borderWidth: 1, borderColor: '#253044', borderRadius: 14, padding: 12, backgroundColor: '#0e151f' },
+  resultLabel: { color: '#7f8b9e', fontSize: 10, fontWeight: '800' },
+  resultTitle: { fontSize: 21, fontWeight: '900', marginTop: 3, marginBottom: 5 },
+  resultLine: { color: '#dce5f0', fontSize: 12, lineHeight: 18 },
+  reason: { color: '#a9b7c9', fontSize: 10, lineHeight: 15, marginTop: 4 },
+  status: { color: '#65758a', fontSize: 9, marginTop: 6 },
+  messageBar: { marginTop: 7, borderRadius: 9, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#0b111a' },
+  messageText: { color: '#8ea0b6', fontSize: 10, lineHeight: 14 },
+
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  sectionTitle: { color: '#edf3f9', fontSize: 18, fontWeight: '900' },
+  sectionSub: { color: '#77879b', fontSize: 10, marginTop: 2 },
+  clearButton: { borderWidth: 1, borderColor: '#ff6464', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
+  clearText: { color: '#ff8a8a', fontSize: 9, fontWeight: '900' },
+  empty: { color: '#718197', textAlign: 'center', paddingVertical: 40 },
+
+  historyCard: { borderWidth: 1, borderColor: '#202c3e', borderRadius: 12, padding: 11, backgroundColor: '#0d141e', gap: 5 },
+  historyTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  historySignal: { fontSize: 16, fontWeight: '900' },
+  historyTime: { color: '#617188', fontSize: 9 },
+  historyLine: { color: '#e1e8f1', fontSize: 12, fontWeight: '700' },
+  historySmall: { color: '#8190a4', fontSize: 10, lineHeight: 14 },
+
+  outcomeRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
+  outcomeButton: { flex: 1, borderWidth: 1, borderColor: '#344158', borderRadius: 7, paddingVertical: 7, alignItems: 'center' },
+  outcomeSelected: { backgroundColor: '#182233' },
+  outcomeWin: { borderColor: '#38d996', backgroundColor: '#123a2b' },
+  outcomeLoss: { borderColor: '#ff6464', backgroundColor: '#421c25' },
+  outcomeText: { color: '#e4eaf2', fontSize: 9, fontWeight: '900' },
+  input: { borderWidth: 1, borderColor: '#27344a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, color: '#eef3f8', backgroundColor: '#080d14', fontSize: 11 },
+
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statCard: { width: '47.5%', borderWidth: 1, borderColor: '#202c3e', borderRadius: 12, padding: 14, backgroundColor: '#0d141e' },
+  statValue: { color: '#eef3f8', fontSize: 23, fontWeight: '900' },
+  statLabel: { color: '#6d7d92', fontSize: 9, fontWeight: '800', marginTop: 3 },
+  detailCard: { borderWidth: 1, borderColor: '#202c3e', borderRadius: 12, padding: 13, backgroundColor: '#0d141e' },
+  detailLabel: { color: '#6d7d92', fontSize: 9, fontWeight: '900' },
+  detailValue: { color: '#e8eef6', fontSize: 15, fontWeight: '800', marginTop: 4 },
+  disclaimer: { color: '#5d6b7e', fontSize: 9, lineHeight: 14, textAlign: 'center', marginTop: 4 },
+
+  buy: { color: '#38d996' },
+  sell: { color: '#ff6464' },
+  wait: { color: '#ffd34d' },
+  neutral: { color: '#dce3ed' },
+  hiddenAnalyzer: { position: 'absolute', width: 1, height: 1, opacity: 0, left: -20, top: -20 },
+});
