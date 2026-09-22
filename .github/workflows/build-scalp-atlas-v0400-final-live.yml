@@ -1,0 +1,155 @@
+name: Build SCALP ATLAS v0.4.0 FINAL LIVE APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-scalp-atlas-v0400-final-live.yml'
+      - '.github/templates/ScalpAtlasIntegratedApp.tsx'
+      - '.github/templates/ScalpAtlasIntegratedLive.tsx'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply stable Scalp Atlas patches through v0.3.57
+        run: |
+          set -e
+          for f in $(ls .github/scripts/patch_scalp_atlas_v03*.py | sort -V); do
+            echo "Applying $f"
+            python3 "$f"
+          done
+
+      - name: Integrate ANALIZĂ and LIVE into one application
+        run: |
+          set -e
+
+          # Preserve the fully patched stable v0.3.57 application unchanged.
+          cp scalp-atlas-new/App.tsx scalp-atlas-new/StableAnalysisApp.tsx
+
+          # Add the new LIVE module and the single-app shell.
+          cp .github/templates/ScalpAtlasIntegratedLive.tsx scalp-atlas-new/LiveAnalysisApp.tsx
+          cp .github/templates/ScalpAtlasIntegratedApp.tsx scalp-atlas-new/App.tsx
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          cfg_path = Path('scalp-atlas-new/app.json')
+          cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
+          expo = cfg['expo']
+
+          # One app, one icon, same package as the stable Scalp Atlas installation.
+          expo['name'] = 'SCALP ATLAS'
+          expo['slug'] = 'scalp-atlas'
+          expo['version'] = '0.4.0'
+          expo['android']['package'] = 'com.scalpatlas.app'
+          expo['android']['versionCode'] = 68
+          expo['ios']['bundleIdentifier'] = 'com.scalpatlas.app'
+
+          permissions = expo['android'].setdefault('permissions', [])
+          if 'CAMERA' not in permissions:
+              permissions.append('CAMERA')
+
+          plugins = expo.setdefault('plugins', [])
+          has_camera = any(
+              p == 'expo-camera' or (isinstance(p, list) and p and p[0] == 'expo-camera')
+              for p in plugins
+          )
+          if not has_camera:
+              plugins.append([
+                  'expo-camera',
+                  {
+                      'cameraPermission': 'SCALP ATLAS folosește camera pentru analiza LIVE a graficului de pe al doilea dispozitiv.'
+                  }
+              ])
+
+          cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Verify single package and 70-model atlas
+        run: |
+          set -e
+          grep -q "com.scalpatlas.app" scalp-atlas-new/app.json
+          grep -q "SCALP_ATLAS_COUNT !== 70" scalp-atlas-new/atlas.ts
+          grep -q "ANALIZĂ" scalp-atlas-new/App.tsx
+          grep -q "PORNEȘTE LIVE" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "SCAN_INTERVAL_MS = 10000" scalp-atlas-new/LiveAnalysisApp.tsx
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install base dependencies
+        working-directory: scalp-atlas-new
+        run: npm install
+
+      - name: Install LIVE dependencies compatible with Expo
+        working-directory: scalp-atlas-new
+        run: npx expo install expo-camera @react-native-async-storage/async-storage
+
+      - name: TypeScript check
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
+
+      - name: Generate clean launcher icon
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build standalone release APK
+        working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v0.4.0-FINAL-LIVE.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-v0.4.0-FINAL-LIVE
+          path: ScalpAtlas-v0.4.0-FINAL-LIVE.apk
+          if-no-files-found: error
+
+      - name: Publish final test APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete scalp-atlas-v0.4.0-final-live --cleanup-tag --yes || true
+          gh release create scalp-atlas-v0.4.0-final-live \
+            ScalpAtlas-v0.4.0-FINAL-LIVE.apk \
+            --target "$GITHUB_SHA" \
+            --title "SCALP ATLAS v0.4.0 FINAL LIVE" \
+            --notes "O singură aplicație com.scalpatlas.app. Modul ANALIZĂ păstrează baza stabilă v0.3.57 și butonul ANALIZĂ. Modul LIVE folosește camera continuă pe al doilea dispozitiv, timeframe M1-H1, blocare cadru, pornire/pauză/scanare manuală/oprire, reanalizare la aproximativ 10 secunde, BUY/SELL/AȘTEAPTĂ CONFIRMARE, istoric local, statistici și jurnal. Atlasul păstrează exact 70 de modele."
