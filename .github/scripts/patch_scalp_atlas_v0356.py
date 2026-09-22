@@ -24,13 +24,12 @@ app = replace_once(
     'badge v0.3.56',
 )
 
-import re
-
-pattern = r"<Text style=\{styles\.analyzeText\}>\{busy \? 'ANALIZEZ…' : [^}]+\}</Text>"
-replacement = "<Text style={styles.analyzeText}>{busy ? 'ANALIZEZ…' : 'ANALIZĂ'}</Text>"
-app, n = re.subn(pattern, replacement, app, count=1)
-if n != 1:
-    raise SystemExit('text buton ANALIZĂ: butonul de analiză nu a fost găsit; build oprit pentru siguranță.')
+app = replace_once(
+    app,
+    "          <Text style={styles.analyzeText}>{busy ? 'ANALIZEZ…' : timeframeDetecting ? 'CITESC TIMEFRAME…' : !engineReady && image ? 'PREGĂTESC MOTORUL…' : `ANALIZEAZĂ CU ${SCALP_ATLAS_COUNT} MODELE`}</Text>",
+    "          <Text style={styles.analyzeText}>{busy ? 'ANALIZEZ…' : timeframeDetecting ? 'CITESC TIMEFRAME…' : !engineReady && image ? 'PREGĂTESC MOTORUL…' : 'ANALIZĂ'}</Text>",
+    'text buton ANALIZĂ',
+)
 
 APP.write_text(app, encoding='utf-8')
 print('Patch v0.3.56 aplicat: butonul principal afișează doar ANALIZĂ; logica de analiză rămâne neschimbată.')
