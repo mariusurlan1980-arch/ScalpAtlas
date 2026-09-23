@@ -43,7 +43,7 @@ jobs:
           expo = cfg['expo']
           expo['name'] = 'SCALP ATLAS'
           expo['slug'] = 'scalp-atlas'
-          expo['version'] = '0.4.7'
+          expo['version'] = '0.4.8'
           expo['android']['package'] = 'com.scalpatlas.app'
           expo['android']['versionCode'] = 76
           expo['ios']['bundleIdentifier'] = 'com.scalpatlas.app'
