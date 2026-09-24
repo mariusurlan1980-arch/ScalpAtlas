@@ -1064,7 +1064,7 @@ export default function LiveAnalysisApp() {
             <View style={styles.languageHeader}>
               <View>
                 <Text style={styles.languageTitle}>LANGUAGE / LIMBĂ</Text>
-                <Text style={styles.languageSub}>AUTO: ${LANGUAGE_NAMES[systemLanguage]}${regionCode ? ` • ${regionCode}` : ''}</Text>
+                <Text style={styles.languageSub}>AUTO: {LANGUAGE_NAMES[systemLanguage]}{regionCode ? ` • ${regionCode}` : ''}</Text>
               </View>
               <Pressable onPress={() => setShowLanguagePicker(false)} style={styles.languageClose}>
                 <Text style={styles.languageCloseText}>×</Text>
