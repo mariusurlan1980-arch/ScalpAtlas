@@ -9,8 +9,10 @@ on:
       - '.github/templates/ScalpAtlasIntegratedLiveV0416.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
       - '.github/templates/ScalpAtlasLocalizationV0416.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.ts'
       - '.github/templates/ScalpAtlasOcrAdapterV0416.native.ts'
       - '.github/templates/ScalpAtlasOcrAdapterV0416.web.ts'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
   workflow_dispatch:
@@ -41,8 +43,10 @@ jobs:
           cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
           cp .github/templates/ScalpAtlasIntegratedAppV042.tsx scalp-atlas-new/App.tsx
           cp .github/templates/ScalpAtlasLocalizationV0416.ts scalp-atlas-new/localization.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.ts scalp-atlas-new/ocrAdapter.ts
           cp .github/templates/ScalpAtlasOcrAdapterV0416.native.ts scalp-atlas-new/ocrAdapter.native.ts
           cp .github/templates/ScalpAtlasOcrAdapterV0416.web.ts scalp-atlas-new/ocrAdapter.web.ts
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx scalp-atlas-new/AnalyzerBridge.tsx
           cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
           cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx scalp-atlas-new/AnalyzerBridge.web.tsx
 
@@ -125,6 +129,9 @@ jobs:
           grep -q '"hi"' scalp-atlas-new/localization.ts
           grep -q "AnalyzerBridge" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "createWorker" scalp-atlas-new/ocrAdapter.web.ts
+          grep -q "expo-ocr-kit" scalp-atlas-new/ocrAdapter.ts
+          grep -q "AnalyzerBridge.native" scalp-atlas-new/AnalyzerBridge.tsx
+          grep -q '"total": "TOTAL"' scalp-atlas-new/localization.ts
           grep -q "expo-ocr-kit" scalp-atlas-new/ocrAdapter.native.ts
           grep -q "react-native-webview" scalp-atlas-new/AnalyzerBridge.native.tsx
           grep -q "iframe" scalp-atlas-new/AnalyzerBridge.web.tsx
