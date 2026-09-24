@@ -201,6 +201,13 @@ jobs:
           write(assets/'sell-alert.wav')
           PY
 
+      - name: Generate clean launcher icon
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+
       - name: TypeScript check
         working-directory: scalp-atlas-new
         run: npx tsc --noEmit
@@ -216,13 +223,6 @@ jobs:
           cd scalp-atlas-new/dist
           zip -r ../../ScalpAtlas-v0.4.16-WEB.zip .
           cd ../..
-
-      - name: Generate clean launcher icon
-        run: |
-          set -e
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq librsvg2-bin
-          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
 
       - name: Generate Android project
         working-directory: scalp-atlas-new
