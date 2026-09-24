@@ -76,6 +76,12 @@ jobs:
         working-directory: scalp-atlas-new
         run: npx tsc --noEmit
 
+      - name: Generate clean iOS icon
+        run: |
+          set -e
+          brew install librsvg
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+
       - name: Generate iOS project
         working-directory: scalp-atlas-new
         env:
