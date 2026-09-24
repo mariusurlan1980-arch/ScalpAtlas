@@ -4,17 +4,17 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/build-scalp-atlas-v0417-multilang-crossplatform.yml'
+      - '.github/workflows/build-scalp-atlas-v0417-langselect.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV0417.tsx'
-      - '.github/templates/ScalpAtlasAnalysisEngineV0417.ts'
+      - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
       - '.github/templates/ScalpAtlasLocalizationV0417.ts'
-      - '.github/templates/ScalpAtlasOcrAdapterV0417.ts'
-      - '.github/templates/ScalpAtlasOcrAdapterV0417.native.ts'
-      - '.github/templates/ScalpAtlasOcrAdapterV0417.web.ts'
-      - '.github/templates/ScalpAtlasAnalyzerBridgeV0417.tsx'
-      - '.github/templates/ScalpAtlasAnalyzerBridgeV0417.native.tsx'
-      - '.github/templates/ScalpAtlasAnalyzerBridgeV0417.web.tsx'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.native.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.web.ts'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
   workflow_dispatch:
 
 permissions:
@@ -40,15 +40,15 @@ jobs:
         run: |
           set -e
           cp .github/templates/ScalpAtlasIntegratedLiveV0417.tsx scalp-atlas-new/LiveAnalysisApp.tsx
-          cp .github/templates/ScalpAtlasAnalysisEngineV0417.ts scalp-atlas-new/analysisEngine.ts
+          cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
           cp .github/templates/ScalpAtlasIntegratedAppV042.tsx scalp-atlas-new/App.tsx
           cp .github/templates/ScalpAtlasLocalizationV0417.ts scalp-atlas-new/localization.ts
-          cp .github/templates/ScalpAtlasOcrAdapterV0417.ts scalp-atlas-new/ocrAdapter.ts
-          cp .github/templates/ScalpAtlasOcrAdapterV0417.native.ts scalp-atlas-new/ocrAdapter.native.ts
-          cp .github/templates/ScalpAtlasOcrAdapterV0417.web.ts scalp-atlas-new/ocrAdapter.web.ts
-          cp .github/templates/ScalpAtlasAnalyzerBridgeV0417.tsx scalp-atlas-new/AnalyzerBridge.tsx
-          cp .github/templates/ScalpAtlasAnalyzerBridgeV0417.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
-          cp .github/templates/ScalpAtlasAnalyzerBridgeV0417.web.tsx scalp-atlas-new/AnalyzerBridge.web.tsx
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.ts scalp-atlas-new/ocrAdapter.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.native.ts scalp-atlas-new/ocrAdapter.native.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.web.ts scalp-atlas-new/ocrAdapter.web.ts
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx scalp-atlas-new/AnalyzerBridge.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx scalp-atlas-new/AnalyzerBridge.web.tsx
 
           python3 - <<'PY'
           from pathlib import Path
@@ -59,7 +59,7 @@ jobs:
           expo = cfg['expo']
           expo['name'] = 'SCALP ATLAS'
           expo['slug'] = 'scalp-atlas'
-          expo['version'] = '0.4.16'
+          expo['version'] = '0.4.17'
           expo['android']['package'] = 'com.scalpatlas.app'
           expo['android']['versionCode'] = 85
           expo['ios']['bundleIdentifier'] = 'com.scalpatlas.app'
