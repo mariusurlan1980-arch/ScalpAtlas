@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/build-scalp-atlas-v0418-langselect.yml'
+      - '.github/workflows/build-scalp-atlas-v0418-full-multilang.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV0418.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
