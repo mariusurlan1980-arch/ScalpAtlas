@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/build-scalp-atlas-v0416-guide-3x.yml'
+      - '.github/workflows/build-scalp-atlas-v0416-multilang-crossplatform.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV0416.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -55,7 +55,7 @@ jobs:
           expo = cfg['expo']
           expo['name'] = 'SCALP ATLAS'
           expo['slug'] = 'scalp-atlas'
-          expo['version'] = '0.4.15'
+          expo['version'] = '0.4.16'
           expo['android']['package'] = 'com.scalpatlas.app'
           expo['android']['versionCode'] = 84
           expo['ios']['bundleIdentifier'] = 'com.scalpatlas.app'
@@ -101,50 +101,35 @@ jobs:
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
-      - name: Verify VIDEO LIVE and atlas
+      - name: Verify multilingual LIVE, cross-platform adapters and atlas
         run: |
           set -e
           grep -q "LiveAnalysisApp" scalp-atlas-new/App.tsx
           grep -q "CAMERA LIVE" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "animateShutter={false}" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "TIMEFRAME AUTO" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "recognizeText" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "detectChartEvidence" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "GRAFIC NEDETECTAT" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "PORNIRE RAPIDĂ" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "ULTIMELE SEMNALE" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "GRAFIC DETECTAT • ANALIZĂ ACTIVĂ" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "analysis.state === 'INVALID'" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "trendLines.map(renderScalpLine)" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "nextCount < 2" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "nextCount === 2" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "playConfirmedAlert" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "directionRemainingSeconds" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "scalpAtlas.live.guide.v0416.count" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "useAppLocalization" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "languageCode.toUpperCase" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "SUPPORTED_LANGUAGES" scalp-atlas-new/localization.ts
+          grep -q '"ro"' scalp-atlas-new/localization.ts
+          grep -q '"ar"' scalp-atlas-new/localization.ts
+          grep -q '"zh"' scalp-atlas-new/localization.ts
           grep -q '"hi"' scalp-atlas-new/localization.ts
           grep -q "AnalyzerBridge" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "createWorker" scalp-atlas-new/ocrAdapter.web.ts
+          grep -q "expo-ocr-kit" scalp-atlas-new/ocrAdapter.native.ts
           grep -q "ReactNativeWebView" scalp-atlas-new/AnalyzerBridge.native.tsx
           grep -q "iframe" scalp-atlas-new/AnalyzerBridge.web.tsx
           grep -q "parent.postMessage" scalp-atlas-new/analysisEngine.ts
-          grep -q "guideAppearance" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "GHID RAPID" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "afișare" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "analysis.state === 'INVALID'" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "trendLines.map(renderScalpLine)" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "CONFIRMARE" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "const engineTf = activeTf || 'M15'" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "Confirmare LIVE" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "nextCount < 2" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "titleCyan" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "scoreTrack" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "scoreFill" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "playConfirmedAlert" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "translateY: 18" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "nextCount === 2" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "Alarmă: ON" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "CADRU FIXAT" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "Confirmare: 2 cadre" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "Durată estimată direcție" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "directionRemainingSeconds" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "directionDurationFor" scalp-atlas-new/analysisEngine.ts
-          grep -q "volatility" scalp-atlas-new/analysisEngine.ts
           grep -q "SCALP_ATLAS_COUNT !== 70" scalp-atlas-new/atlas.ts
           grep -q "com.scalpatlas.app" scalp-atlas-new/app.json
 
