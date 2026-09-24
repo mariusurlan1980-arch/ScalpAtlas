@@ -572,13 +572,13 @@ export default function LiveAnalysisApp() {
   const isWait = analysis?.state === 'WAIT' || (analysis?.signal === 'NONE' && !!analysis?.bias);
   const resultTitle = analysis
     ? analysis.state === 'INVALID'
-      ? 'GRAFIC NEDETECTAT'
+      ? t('chartMissing')
       : isWait
-        ? `AȘTEAPTĂ CONFIRMARE${analysis.bias ? ' ' + analysis.bias : ''}`
+        ? `${t('wait')}${analysis.bias ? ' ' + analysis.bias : ''}`
         : analysis.signal === 'NONE'
-          ? 'FĂRĂ SEMNAL CLAR'
+          ? t('noSignal')
           : analysis.signal
-    : 'ÎN AȘTEPTARE';
+    : t('pending');
 
   const resultTone =
     analysis?.signal === 'BUY' || (isWait && analysis?.bias === 'BUY')
@@ -988,7 +988,7 @@ export default function LiveAnalysisApp() {
                     <Text numberOfLines={1} style={styles.recentModel}>{item.pattern} • {item.timeframe}</Text>
                     <Text style={styles.recentScore}>{item.probability}%</Text>
                   </View>
-                )) : <Text style={styles.recentEmpty}>Primele semnale vor apărea aici după pornirea LIVE.</Text>}
+                )) : <Text style={styles.recentEmpty}>{t('recentEmpty')}</Text>}
               </View>
 
               <Text style={styles.clientFooter}>SCALP ATLAS • v0.4.16 • {t('disclaimer')}</Text>
@@ -1008,7 +1008,7 @@ export default function LiveAnalysisApp() {
               <Text style={styles.clearText}>{t('delete')}</Text>
             </Pressable>
           </View>
-          {history.length ? history.map((item) => historyRow(item)) : <Text style={styles.empty}>Nu există încă analize LIVE salvate.</Text>}
+          {history.length ? history.map((item) => historyRow(item)) : <Text style={styles.empty}>{t('noHistory')}</Text>}
         </ScrollView>
       )}
 
@@ -1038,10 +1038,10 @@ export default function LiveAnalysisApp() {
       {screen === 'JOURNAL' && (
         <ScrollView contentContainerStyle={styles.listPage}>
           <Text style={styles.sectionTitle}>{t('journal')}</Text>
-          <Text style={styles.sectionSub}>Marchează manual rezultatul semnalelor BUY/SELL și adaugă sumă/notă.</Text>
+          <Text style={styles.sectionSub}>{t('journalSub')}</Text>
           {history.filter((x) => x.signal !== 'WAIT').length
             ? history.filter((x) => x.signal !== 'WAIT').map((item) => historyRow(item, true))
-            : <Text style={styles.empty}>Nu există încă semnale BUY/SELL pentru jurnal.</Text>}
+            : <Text style={styles.empty}>{t('noJournal')}</Text>}
         </ScrollView>
       )}
 
