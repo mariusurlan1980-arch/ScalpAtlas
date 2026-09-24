@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS v0.4.16 MULTILANG APK
+name: Build SCALP ATLAS v0.4.16 MULTILANG + WEB
 
 on:
   push:
