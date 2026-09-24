@@ -79,6 +79,33 @@ jobs:
         working-directory: scalp-atlas-new
         run: npx tsc --noEmit
 
+      - name: Generate Bip 1 audio assets
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import math, struct, wave
+          assets=Path('scalp-atlas-new/assets')
+          assets.mkdir(parents=True, exist_ok=True)
+          rate=44100
+          duration=1.4
+          freq=880.0
+          amp=0.28
+          frames=bytearray()
+          total=int(rate*duration)
+          for i in range(total):
+              t=i/rate
+              fade=min(1.0, t/0.01, (duration-t)/0.03)
+              sample=int(32767*amp*max(0.0,fade)*math.sin(2*math.pi*freq*t))
+              frames += struct.pack('<h', sample)
+          for name in ('buy-alert.wav','sell-alert.wav'):
+              with wave.open(str(assets/name),'wb') as w:
+                  w.setnchannels(1)
+                  w.setsampwidth(2)
+                  w.setframerate(rate)
+                  w.writeframes(frames)
+          PY
+
       - name: Generate PWA icons
         run: |
           set -e
