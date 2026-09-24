@@ -1,0 +1,282 @@
+name: Deploy SCALP ATLAS v0.4.18 PWA to Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-scalp-atlas-v0418-pages.yml'
+      - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
+      - '.github/templates/ScalpAtlasIntegratedLiveV0418.tsx'
+      - '.github/templates/ScalpAtlasLocalizationV0418.ts'
+      - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.native.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.web.ts'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: scalp-atlas-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply stable Scalp Atlas patches
+        run: |
+          set -e
+          for f in $(ls .github/scripts/patch_scalp_atlas_v03*.py | sort -V); do
+            python3 "$f"
+          done
+
+      - name: Integrate v0.4.18 Pages sources
+        run: |
+          set -e
+          cp .github/templates/ScalpAtlasIntegratedLiveV0418.tsx scalp-atlas-new/LiveAnalysisApp.tsx
+          cp .github/templates/ScalpAtlasLocalizationV0418.ts scalp-atlas-new/localization.ts
+          cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
+          cp .github/templates/ScalpAtlasIntegratedAppV042.tsx scalp-atlas-new/App.tsx
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.ts scalp-atlas-new/ocrAdapter.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.native.ts scalp-atlas-new/ocrAdapter.native.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.web.ts scalp-atlas-new/ocrAdapter.web.ts
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx scalp-atlas-new/AnalyzerBridge.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx scalp-atlas-new/AnalyzerBridge.web.tsx
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('scalp-atlas-new/app.json')
+          cfg=json.loads(p.read_text(encoding='utf-8'))
+          expo=cfg['expo']
+          expo['name']='SCALP ATLAS'
+          expo['slug']='scalp-atlas'
+          expo['version']='0.4.18'
+          expo['orientation']='default'
+          expo.setdefault('web',{})['name']='SCALP ATLAS'
+          supported=['ro','en','de','es','fr','it','pt','nl','pl','uk','ru','tr','el','hu','cs','sk','bg','sr','hr','sl','ar','he','zh','ja','ko','hi']
+          plugins=expo.setdefault('plugins',[])
+          plugins[:]=[x for x in plugins if not (x=='expo-localization' or (isinstance(x,list) and x and x[0]=='expo-localization'))]
+          plugins.append(['expo-localization',{'supportedLocales':{'ios':supported,'android':supported},'supportsRTL':True,'forcesRTL':False}])
+          p.write_text(json.dumps(cfg,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: |
+          npm install
+          npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage
+          npm install tesseract.js
+
+      - name: TypeScript check
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
+
+      - name: Generate Bip 1 audio assets
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import math, struct, wave
+          assets=Path('scalp-atlas-new/assets')
+          assets.mkdir(parents=True, exist_ok=True)
+          rate=44100
+          duration=1.4
+          freq=880.0
+          amp=0.28
+          frames=bytearray()
+          total=int(rate*duration)
+          for i in range(total):
+              t=i/rate
+              fade=min(1.0, t/0.01, (duration-t)/0.03)
+              sample=int(32767*amp*max(0.0,fade)*math.sin(2*math.pi*freq*t))
+              frames += struct.pack('<h', sample)
+          for name in ('buy-alert.wav','sell-alert.wav'):
+              with wave.open(str(assets/name),'wb') as w:
+                  w.setnchannels(1)
+                  w.setsampwidth(2)
+                  w.setframerate(rate)
+                  w.writeframes(frames)
+          PY
+
+      - name: Generate clean PWA and launcher icons
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          mkdir -p scalp-atlas-new/pwa-icons
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+          rsvg-convert -w 192 -h 192 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/pwa-icons/icon-192.png
+          rsvg-convert -w 512 -h 512 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/pwa-icons/icon-512.png
+
+      - name: Export Web app
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo export --platform web --output-dir dist
+
+      - name: Add PWA shell and GitHub Pages base path
+        run: |
+          set -e
+          mkdir -p scalp-atlas-new/dist/icons
+          cp scalp-atlas-new/pwa-icons/icon-192.png scalp-atlas-new/dist/icons/icon-192.png
+          cp scalp-atlas-new/pwa-icons/icon-512.png scalp-atlas-new/dist/icons/icon-512.png
+
+          cat > scalp-atlas-new/dist/manifest.webmanifest <<'EOF'
+          {
+            "name": "SCALP ATLAS",
+            "short_name": "SCALP ATLAS",
+            "description": "Analiză vizuală tehnică pentru grafice de tranzacționare.",
+            "start_url": "/ScalpAtlas/",
+            "scope": "/ScalpAtlas/",
+            "display": "standalone",
+            "orientation": "any",
+            "background_color": "#060a10",
+            "theme_color": "#060a10",
+            "icons": [
+              {
+                "src": "/ScalpAtlas/icons/icon-192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+              },
+              {
+                "src": "/ScalpAtlas/icons/icon-512.png",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+              }
+            ]
+          }
+          EOF
+
+          cat > scalp-atlas-new/dist/service-worker.js <<'EOF'
+          const CACHE = 'scalp-atlas-v0418-pages-v1';
+          const BASE = '/ScalpAtlas/';
+          const CORE = [
+            BASE,
+            BASE + 'index.html',
+            BASE + 'manifest.webmanifest',
+            BASE + 'icons/icon-192.png',
+            BASE + 'icons/icon-512.png'
+          ];
+
+          self.addEventListener('install', (event) => {
+            event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
+            self.skipWaiting();
+          });
+
+          self.addEventListener('activate', (event) => {
+            event.waitUntil(
+              caches.keys().then((keys) =>
+                Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
+              )
+            );
+            self.clients.claim();
+          });
+
+          self.addEventListener('fetch', (event) => {
+            const request = event.request;
+            if (request.method !== 'GET') return;
+            const url = new URL(request.url);
+            if (url.origin !== self.location.origin) return;
+
+            if (request.mode === 'navigate') {
+              event.respondWith(
+                fetch(request)
+                  .then((response) => {
+                    const copy = response.clone();
+                    caches.open(CACHE).then((cache) => cache.put(request, copy));
+                    return response;
+                  })
+                  .catch(() => caches.match(request).then((cached) => cached || caches.match(BASE + 'index.html')))
+              );
+              return;
+            }
+
+            event.respondWith(
+              caches.match(request).then((cached) => {
+                if (cached) return cached;
+                return fetch(request).then((response) => {
+                  if (response && response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE).then((cache) => cache.put(request, copy));
+                  }
+                  return response;
+                });
+              })
+            );
+          });
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('scalp-atlas-new/dist')
+          p=root/'index.html'
+          html=p.read_text(encoding='utf-8')
+          html=html.replace('href="/favicon.ico"', 'href="/ScalpAtlas/favicon.ico"')
+          html=html.replace('src="/_expo/', 'src="/ScalpAtlas/_expo/')
+          head='''\n<link rel="manifest" href="/ScalpAtlas/manifest.webmanifest">\n<meta name="theme-color" content="#060a10">\n<link rel="apple-touch-icon" href="/ScalpAtlas/icons/icon-192.png">\n'''
+          register='''\n<script>\nif ("serviceWorker" in navigator) {\n  window.addEventListener("load", function () {\n    navigator.serviceWorker.register("/ScalpAtlas/service-worker.js", { scope: "/ScalpAtlas/" }).catch(function () {});\n  });\n}\n</script>\n'''
+          if '</head>' not in html or '</body>' not in html:
+              raise SystemExit('Unexpected exported index.html')
+          html=html.replace('</head>', head+'</head>')
+          html=html.replace('</body>', register+'</body>')
+          p.write_text(html,encoding='utf-8')
+
+          # Expo embeds root-absolute asset and lazy-bundle URLs in generated JS.
+          for js in root.rglob('*.js'):
+              text=js.read_text(encoding='utf-8',errors='ignore')
+              text=text.replace('"/assets/', '"/ScalpAtlas/assets/')
+              text=text.replace('"/_expo/', '"/ScalpAtlas/_expo/')
+              js.write_text(text,encoding='utf-8')
+
+          (root/'.nojekyll').write_text('',encoding='utf-8')
+          PY
+
+      - name: Verify Pages package
+        run: |
+          set -e
+          test -f scalp-atlas-new/dist/.nojekyll
+          test -f scalp-atlas-new/dist/manifest.webmanifest
+          test -f scalp-atlas-new/dist/service-worker.js
+          grep -q '/ScalpAtlas/_expo/' scalp-atlas-new/dist/index.html
+          grep -q '/ScalpAtlas/manifest.webmanifest' scalp-atlas-new/dist/index.html
+          grep -q '"start_url": "/ScalpAtlas/"' scalp-atlas-new/dist/manifest.webmanifest
+          grep -R -q '/ScalpAtlas/assets/assets/buy-alert' scalp-atlas-new/dist/_expo/static/js/web
+          ! grep -R -q 'm.exports="/assets/' scalp-atlas-new/dist/_expo/static/js/web
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: scalp-atlas-new/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
