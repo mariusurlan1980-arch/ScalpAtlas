@@ -101,9 +101,14 @@ jobs:
             echo "No Xcode workspace found"
             exit 1
           fi
-          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | python3 -c "import json,sys; d=json.load(sys.stdin); s=d.get('workspace',{}).get('schemes',[]); print(s[0] if s else '')")
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          AVAILABLE=$(xcodebuild -workspace "$WORKSPACE" -list -json | python3 -c "import json,sys; d=json.load(sys.stdin); print('\\n'.join(d.get('workspace',{}).get('schemes',[])))")
+          if ! printf '%s\\n' "$AVAILABLE" | grep -Fxq "$SCHEME"; then
+            SCHEME=$(printf '%s\\n' "$AVAILABLE" | grep -E '^SCALP|^Scalp|^scalp' | head -n 1)
+          fi
           if [ -z "$SCHEME" ]; then
-            echo "No Xcode scheme found"
+            echo "Main Xcode scheme not found"
+            printf '%s\\n' "$AVAILABLE"
             exit 1
           fi
           echo "Workspace: $WORKSPACE"
