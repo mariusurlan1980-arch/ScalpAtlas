@@ -103,7 +103,7 @@ const detectChartEvidence = (ocrText: string): boolean => {
 };
 
 const HISTORY_KEY = 'scalpAtlas.live.history.v1';
-const GUIDE_KEY = 'scalpAtlas.live.guide.v0415.count';
+const GUIDE_KEY = 'scalpAtlas.live.guide.v0416.count';
 
 function formatTime(ts: number) {
   try {
