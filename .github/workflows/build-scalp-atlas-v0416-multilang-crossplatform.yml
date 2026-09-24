@@ -126,7 +126,7 @@ jobs:
           grep -q "AnalyzerBridge" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "createWorker" scalp-atlas-new/ocrAdapter.web.ts
           grep -q "expo-ocr-kit" scalp-atlas-new/ocrAdapter.native.ts
-          grep -q "ReactNativeWebView" scalp-atlas-new/AnalyzerBridge.native.tsx
+          grep -q "react-native-webview" scalp-atlas-new/AnalyzerBridge.native.tsx
           grep -q "iframe" scalp-atlas-new/AnalyzerBridge.web.tsx
           grep -q "parent.postMessage" scalp-atlas-new/analysisEngine.ts
           grep -q "directionDurationFor" scalp-atlas-new/analysisEngine.ts
