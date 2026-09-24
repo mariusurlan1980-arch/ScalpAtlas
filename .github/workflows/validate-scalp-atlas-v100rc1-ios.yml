@@ -1,0 +1,168 @@
+name: Validate SCALP ATLAS 1.0.0 RC1 iPhone iPad
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-scalp-atlas-v100rc1-ios.yml'
+      - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
+      - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
+      - '.github/templates/ScalpAtlasLocalizationV0418.ts'
+      - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.native.ts'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
+  workflow_dispatch:
+
+jobs:
+  validate-ios:
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply stable Scalp Atlas patches
+        run: |
+          set -e
+          for f in $(ls .github/scripts/patch_scalp_atlas_v03*.py | sort -V); do
+            python3 "$f"
+          done
+
+      - name: Integrate v0.4.18 sources
+        run: |
+          set -e
+          cp .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx scalp-atlas-new/LiveAnalysisApp.tsx
+          cp .github/templates/ScalpAtlasLocalizationV0418.ts scalp-atlas-new/localization.ts
+          cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
+          cp .github/templates/ScalpAtlasIntegratedAppV042.tsx scalp-atlas-new/App.tsx
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.ts scalp-atlas-new/ocrAdapter.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.native.ts scalp-atlas-new/ocrAdapter.native.ts
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx scalp-atlas-new/AnalyzerBridge.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('scalp-atlas-new/app.json')
+          cfg=json.loads(p.read_text(encoding='utf-8'))
+          expo=cfg['expo']
+          expo['name']='SCALP ATLAS'
+          expo['slug']='scalp-atlas'
+          expo['version']='1.0.0'
+          expo['orientation']='default'
+          expo['ios']['bundleIdentifier']='com.scalpatlas.app'
+          expo['ios']['supportsTablet']=True
+          supported=['ro','en','de','es','fr','it','pt','nl','pl','uk','ru','tr','el','hu','cs','sk','bg','sr','hr','sl','ar','he','zh','ja','ko','hi']
+          plugins=expo.setdefault('plugins',[])
+          plugins[:]=[x for x in plugins if not (x=='expo-localization' or (isinstance(x,list) and x and x[0]=='expo-localization'))]
+          plugins.append(['expo-localization',{'supportedLocales':{'ios':supported,'android':supported},'supportsRTL':True,'forcesRTL':False}])
+          p.write_text(json.dumps(cfg,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: |
+          npm install
+          npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage
+          npm install tesseract.js
+
+      - name: TypeScript check
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
+
+      - name: Generate Bip 1 audio assets
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import math, struct, wave
+          assets=Path('scalp-atlas-new/assets')
+          assets.mkdir(parents=True, exist_ok=True)
+          rate=44100
+          duration=1.4
+          freq=880.0
+          amp=0.28
+          frames=bytearray()
+          total=int(rate*duration)
+          for i in range(total):
+              t=i/rate
+              fade=min(1.0, t/0.01, (duration-t)/0.03)
+              sample=int(32767*amp*max(0.0,fade)*math.sin(2*math.pi*freq*t))
+              frames += struct.pack('<h', sample)
+          for name in ('buy-alert.wav','sell-alert.wav'):
+              with wave.open(str(assets/name),'wb') as w:
+                  w.setnchannels(1)
+                  w.setsampwidth(2)
+                  w.setframerate(rate)
+                  w.writeframes(frames)
+          PY
+
+      - name: Generate clean iOS icon
+        run: |
+          set -e
+          brew install librsvg
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+
+      - name: Generate iOS project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods
+        working-directory: scalp-atlas-new
+        run: npx pod-install ios
+
+      - name: Build iPhone iPad simulator app without signing
+        working-directory: scalp-atlas-new/ios
+        run: |
+          set -e
+          WORKSPACE=$(find . -maxdepth 1 -name '*.xcworkspace' -print -quit)
+          if [ -z "$WORKSPACE" ]; then
+            echo "No Xcode workspace found"
+            exit 1
+          fi
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          AVAILABLE=$(xcodebuild -workspace "$WORKSPACE" -list -json | python3 -c "import json,sys; d=json.load(sys.stdin); print('\\n'.join(d.get('workspace',{}).get('schemes',[])))")
+          if ! printf '%s\\n' "$AVAILABLE" | grep -Fxq "$SCHEME"; then
+            SCHEME=$(printf '%s\\n' "$AVAILABLE" | grep -E '^SCALP|^Scalp|^scalp' | head -n 1)
+          fi
+          if [ -z "$SCHEME" ]; then
+            echo "Main Xcode scheme not found"
+            printf '%s\\n' "$AVAILABLE"
+            exit 1
+          fi
+          echo "Workspace: $WORKSPACE"
+          echo "Scheme: $SCHEME"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Package simulator build
+        run: |
+          set -e
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*/Build/Products/Release-iphonesimulator/*.app' -print -quit)
+          if [ -z "$APP" ]; then
+            echo "Simulator .app not found"
+            exit 1
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$APP" ScalpAtlas-1.0.0-RC1-iOS-SIMULATOR.zip
+
+      - name: Upload iOS validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-1.0.0-RC1-iOS-SIMULATOR
+          path: ScalpAtlas-1.0.0-RC1-iOS-SIMULATOR.zip
+          if-no-files-found: error
