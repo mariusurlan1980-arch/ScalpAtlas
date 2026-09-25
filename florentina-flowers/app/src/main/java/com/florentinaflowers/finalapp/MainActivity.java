@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new AppBridge(), "Android");
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient());
-        webView.loadUrl("file:///android_asset/index.html?build=11");
+        webView.loadUrl("file:///android_asset/index.html?build=12");
     }
 
     @Override
