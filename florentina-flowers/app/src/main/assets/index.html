@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Florentina Flowers</title>
+<style>
+:root{--wine:#5c1932;--rose:#c84b73;--cream:#fff8f5;--muted:#74686d;--line:#eadde1}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--cream);color:#26191f}
+header{position:sticky;top:0;z-index:10;background:#fffaf8f2;border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
+.logo{width:44px;height:44px;border-radius:14px;background:var(--wine);display:grid;place-items:center;color:white;font-weight:900}
+.brand{font-weight:900;line-height:1.05}.brand small{display:block;color:var(--muted);font-weight:600;font-size:11px;margin-top:3px}
+.cart{margin-left:auto;border:0;background:var(--wine);color:white;border-radius:14px;padding:10px 12px;font-weight:900}
+main{padding:14px 14px 90px;max-width:920px;margin:auto}.hero{background:linear-gradient(135deg,#fff0f4,#f7e9df);padding:22px;border-radius:24px;margin-bottom:14px}
+.hero h1{color:var(--wine);font-size:31px;line-height:1.02;margin:0 0 8px}.hero p{margin:0;color:var(--muted)}
+.search{width:100%;border:1px solid var(--line);border-radius:15px;padding:13px;background:white;font-size:16px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}.card{background:white;border:1px solid var(--line);border-radius:19px;overflow:hidden}
+.pic{height:125px;display:grid;place-items:center;font-size:54px;background:radial-gradient(circle at 30% 25%,white,#f5e4e9)}
+.body{padding:11px}.name{font-weight:900;min-height:38px}.price{font-weight:900;color:var(--wine);font-size:17px;margin-top:8px}
+.add{width:100%;border:0;background:var(--rose);color:white;border-radius:11px;padding:10px;margin-top:8px;font-weight:900}
+#order{display:none}.panel{background:white;border:1px solid var(--line);border-radius:20px;padding:15px;margin-bottom:14px}.panel h2{color:var(--wine);margin:0 0 12px}
+.line{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid #eee}.total{font-weight:900;color:var(--wine);font-size:20px;margin:15px 0}
+label{font-weight:800;font-size:13px;display:block;margin:10px 0 5px}input,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font:inherit;background:white}
+textarea{min-height:74px}.primary,.secondary{border:0;border-radius:13px;padding:12px;font-weight:900}.primary{width:100%;background:var(--wine);color:white;margin-top:12px}.secondary{background:#f2e5e9;color:var(--wine)}
+nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 6px 12px}
+nav button{border:0;background:transparent;font-weight:800;color:var(--wine);padding:8px 15px}
+.note{font-size:12px;color:var(--muted);line-height:1.4;margin-top:10px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="logo">FF</div><div class="brand">Florentina Flowers<small>Livrare internațională de flori</small></div><button class="cart" onclick="showOrder()">Coș <span id="count">0</span></button></header>
+<main>
+<section id="catalog">
+<div class="hero"><h1>Flori pentru cei dragi, oriunde.</h1><p>Alege buchetul, iar o florărie parteneră locală îl pregătește aproape de destinatar.</p></div>
+<input id="search" class="search" placeholder="Caută un buchet..." oninput="render()">
+<div id="grid" class="grid"></div>
+</section>
+<section id="order">
+<div class="panel"><h2>Rezumat comandă</h2><div id="lines"></div><div id="total" class="total"></div><button class="secondary" onclick="clearCart()">Golește coșul</button></div>
+<div class="panel"><h2>Date de livrare</h2>
+<label>Email client</label><input id="email" type="email">
+<label>Numele destinatarului</label><input id="recipient">
+<label>Telefon destinatar</label><input id="phone">
+<label>Țara</label><input id="country">
+<label>Orașul</label><input id="city">
+<label>Cod poștal</label><input id="zip">
+<label>Adresa</label><input id="address">
+<label>Data livrării</label><input id="date" type="date">
+<label>Mesaj pentru felicitare</label><textarea id="message"></textarea>
+<button class="primary" onclick="checkout()">Continuă la checkout Shopify</button>
+<div class="note">Produsele sunt încă Draft în Shopify. Checkout-ul comercial va deveni activ după publicarea produselor și configurarea plăților.</div>
+</div>
+</section>
+</main>
+<nav><button onclick="showCatalog()">Acasă</button><button onclick="document.getElementById('search').focus();showCatalog()">Caută</button><button onclick="showOrder()">Comandă</button></nav>
+<script>
+const SHOP='xdecdj-50.myshopify.com';
+const products=[
+{name:"Florist’s Choice",price:179,e:"💐",v:"53812390428938"},
+{name:"Pink Whisper",price:199,e:"🌸",v:"53812390527242"},
+{name:"Birthday Joy",price:229,e:"🌼",v:"53812392427786"},
+{name:"Pure Elegance",price:229,e:"🤍",v:"53812392558858"},
+{name:"Red Romance",price:249,e:"🌹",v:"53812392788234"},
+{name:"12 Premium Red Roses",price:279,e:"🌹",v:"53812395409674"},
+{name:"Pastel Luxury",price:299,e:"🌷",v:"53812395802890"},
+{name:"Love Forever",price:329,e:"❤️",v:"53812395868426"},
+{name:"24 Red Roses",price:399,e:"🌹",v:"53812398096650"},
+{name:"Luxury Rose Box",price:449,e:"🎁",v:"53812398850314"},
+{name:"Grand Romantic Bouquet",price:499,e:"💐",v:"53812402979082"},
+{name:"Designer’s Signature",price:599,e:"✨",v:"53812405109002"}];
+let cart=JSON.parse(localStorage.getItem('ff_cart')||'[]');
+function render(){let q=(search.value||'').toLowerCase();grid.innerHTML=products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>'<article class="card"><div class="pic">'+p.e+'</div><div class="body"><div class="name">'+p.name+'</div><div class="price">'+p.price+' lei</div><button class="add" onclick="add(\''+p.v+'\')">Adaugă în coș</button></div></article>').join('')}
+function add(v){cart.push(v);save()}
+function save(){localStorage.setItem('ff_cart',JSON.stringify(cart));count.textContent=cart.length;renderCart()}
+function clearCart(){cart=[];save()}
+function renderCart(){let c={};cart.forEach(v=>c[v]=(c[v]||0)+1);let entries=Object.entries(c);lines.innerHTML=entries.length?entries.map(([v,q])=>{let p=products.find(x=>x.v===v);return '<div class="line"><span>'+q+' × '+p.name+'</span><b>'+p.price*q+' lei</b></div>'}).join(''):'<p>Coșul este gol.</p>';let s=cart.reduce((a,v)=>a+(products.find(p=>p.v===v)?.price||0),0);total.textContent='Total: '+s+' lei'}
+function showOrder(){catalog.style.display='none';order.style.display='block';renderCart();window.scrollTo(0,0)}
+function showCatalog(){order.style.display='none';catalog.style.display='block';window.scrollTo(0,0)}
+function splitName(n){let a=n.trim().split(/\s+/);return {first:a[0]||'',last:a.slice(1).join(' ')||'-'}}
+function checkout(){if(!cart.length){alert('Coșul este gol.');return}let ids=['email','recipient','phone','country','city','zip','address','date'];if(ids.some(id=>!document.getElementById(id).value.trim())){alert('Completează câmpurile obligatorii.');return}let c={};cart.forEach(v=>c[v]=(c[v]||0)+1);let items=Object.entries(c).map(([v,q])=>v+':'+q).join(',');let n=splitName(recipient.value);let p=new URLSearchParams();p.set('checkout[email]',email.value.trim());p.set('checkout[shipping_address][first_name]',n.first);p.set('checkout[shipping_address][last_name]',n.last);p.set('checkout[shipping_address][address1]',address.value.trim());p.set('checkout[shipping_address][city]',city.value.trim());p.set('checkout[shipping_address][country]',country.value.trim());p.set('checkout[shipping_address][zip]',zip.value.trim());p.set('attributes[Recipient phone]',phone.value.trim());p.set('attributes[Delivery date]',date.value);if(message.value.trim())p.set('note',message.value.trim());let u='https://'+SHOP+'/cart/'+items+'?'+p.toString();if(window.Android&&Android.openCheckout)Android.openCheckout(u);else location.href=u}
+render();save();
+</script>
+</body>
+</html>
