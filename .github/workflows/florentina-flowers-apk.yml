@@ -34,11 +34,11 @@ jobs:
         run: gradle assembleDebug --stacktrace
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk FlorentinaFlowers-v1.1-FINAL.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk FlorentinaFlowers-v1.2-FINAL.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FlorentinaFlowers-APK
-          path: florentina-flowers/FlorentinaFlowers-v1.1-FINAL.apk
+          path: florentina-flowers/FlorentinaFlowers-v1.2-FINAL.apk
           if-no-files-found: error
