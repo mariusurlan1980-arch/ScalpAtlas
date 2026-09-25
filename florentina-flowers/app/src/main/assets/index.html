@@ -7,7 +7,7 @@
 <style>
 :root{--wine:#5c1932;--rose:#c84b73;--cream:#fff8f5;--muted:#74686d;--line:#eadde1}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--cream);color:#26191f}
-header{position:sticky;top:0;z-index:10;background:#fffaf8f2;border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
+header{position:relative;z-index:10;background:#fffaf8f2;border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
 .logo{width:44px;height:44px;border-radius:14px;background:var(--wine);display:grid;place-items:center;color:white;font-weight:900}
 .brand{font-weight:900;line-height:1.05}.brand small{display:block;color:var(--muted);font-weight:600;font-size:11px;margin-top:3px}
 .cart{margin-left:auto;border:0;background:var(--wine);color:white;border-radius:14px;padding:10px 12px;font-weight:900}
@@ -15,7 +15,7 @@ main{padding:14px 14px 90px;max-width:920px;margin:auto}.hero{background:linear-
 .hero h1{color:var(--wine);font-size:31px;line-height:1.02;margin:0 0 8px}.hero p{margin:0;color:var(--muted)}
 .search{width:100%;border:1px solid var(--line);border-radius:15px;padding:13px;background:white;font-size:16px;margin-bottom:12px}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}.card{background:white;border:1px solid var(--line);border-radius:19px;overflow:hidden}
-.pic{height:125px;display:grid;place-items:center;font-size:54px;background:radial-gradient(circle at 30% 25%,white,#f5e4e9)}
+.pic{height:155px;background:#f7eef0;overflow:hidden}.pic img{width:100%;height:100%;object-fit:cover;display:block}
 .body{padding:11px}.name{font-weight:900;min-height:38px}.price{font-weight:900;color:var(--wine);font-size:17px;margin-top:8px}
 .add{width:100%;border:0;background:var(--rose);color:white;border-radius:11px;padding:10px;margin-top:8px;font-weight:900}
 #order{display:none}.panel{background:white;border:1px solid var(--line);border-radius:20px;padding:15px;margin-bottom:14px}.panel h2{color:var(--wine);margin:0 0 12px}
@@ -57,18 +57,18 @@ nav button{border:0;background:transparent;font-weight:800;color:var(--wine);pad
 <script>
 const SHOP='xdecdj-50.myshopify.com';
 const products=[
-{name:"Florist’s Choice",price:179,e:"💐",v:"53812390428938"},
-{name:"Pink Whisper",price:199,e:"🌸",v:"53812390527242"},
-{name:"Birthday Joy",price:229,e:"🌼",v:"53812392427786"},
-{name:"Pure Elegance",price:229,e:"🤍",v:"53812392558858"},
-{name:"Red Romance",price:249,e:"🌹",v:"53812392788234"},
-{name:"12 Premium Red Roses",price:279,e:"🌹",v:"53812395409674"},
-{name:"Pastel Luxury",price:299,e:"🌷",v:"53812395802890"},
-{name:"Love Forever",price:329,e:"❤️",v:"53812395868426"},
-{name:"24 Red Roses",price:399,e:"🌹",v:"53812398096650"},
-{name:"Luxury Rose Box",price:449,e:"🎁",v:"53812398850314"},
-{name:"Grand Romantic Bouquet",price:499,e:"💐",v:"53812402979082"},
-{name:"Designer’s Signature",price:599,e:"✨",v:"53812405109002"}];
+{name:"Florist’s Choice",price:179,v:"53812390428938",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666"},
+{name:"Pink Whisper",price:199,v:"53812390527242",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679"},
+{name:"Birthday Joy",price:229,v:"53812392427786",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688"},
+{name:"Pure Elegance",price:229,v:"53812392558858",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695"},
+{name:"Red Romance",price:249,v:"53812392788234",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701"},
+{name:"12 Premium Red Roses",price:279,v:"53812395409674",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708"},
+{name:"Pastel Luxury",price:299,v:"53812395802890",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pastel-luxury.jpg?v=1790337715"},
+{name:"Love Forever",price:329,v:"53812395868426",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721"},
+{name:"24 Red Roses",price:399,v:"53812398096650",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728"},
+{name:"Luxury Rose Box",price:449,v:"53812398850314",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734"},
+{name:"Grand Romantic Bouquet",price:499,v:"53812402979082",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740"},
+{name:"Designer’s Signature",price:599,v:"53812405109002",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/designers-signature.jpg?v=1790337747"}];
 let cart=JSON.parse(localStorage.getItem('ff_cart')||'[]');
 function render(){let q=(search.value||'').toLowerCase();grid.innerHTML=products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>'<article class="card"><div class="pic">'+p.e+'</div><div class="body"><div class="name">'+p.name+'</div><div class="price">'+p.price+' lei</div><button class="add" onclick="add(\''+p.v+'\')">Adaugă în coș</button></div></article>').join('')}
 function add(v){cart.push(v);save()}
