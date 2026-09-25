@@ -70,7 +70,7 @@ const products=[
 {name:"Grand Romantic Bouquet",price:499,v:"53812402979082",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740"},
 {name:"Designer’s Signature",price:599,v:"53812405109002",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/designers-signature.jpg?v=1790337747"}];
 let cart=JSON.parse(localStorage.getItem('ff_cart')||'[]');
-function render(){let q=(search.value||'').toLowerCase();grid.innerHTML=products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>'<article class="card"><div class="pic">'+p.e+'</div><div class="body"><div class="name">'+p.name+'</div><div class="price">'+p.price+' lei</div><button class="add" onclick="add(\''+p.v+'\')">Adaugă în coș</button></div></article>').join('')}
+function render(){let q=(search.value||'').toLowerCase();grid.innerHTML=products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>'<article class="card"><div class="pic"><img src="'+p.img+'" alt="'+p.name+'" loading="lazy"></div><div class="body"><div class="name">'+p.name+'</div><div class="price">'+p.price+' lei</div><button class="add" onclick="add(\''+p.v+'\')">Adaugă în coș</button></div></article>').join('')}
 function add(v){cart.push(v);save()}
 function save(){localStorage.setItem('ff_cart',JSON.stringify(cart));count.textContent=cart.length;renderCart()}
 function clearCart(){cart=[];save()}
