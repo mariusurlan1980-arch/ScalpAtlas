@@ -3,127 +3,131 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#65172f">
+<meta name="theme-color" content="#08111d">
 <title>Florentina Flowers</title>
 <style>
 :root{
-  --wine:#65172f;--wine2:#7b2340;--rose:#d74b78;--rose2:#ef6f98;
-  --cream:#fff9f6;--card:#ffffff;--ink:#291a20;--muted:#786b70;--line:#eadde2;
-  --soft:#f8edf1;--gold:#c99a48;
+ --navy:#08111d;--navy2:#101a28;--gold:#d6a84f;--wine:#6b1832;--red:#d7152a;
+ --cream:#fff9f4;--card:#fff;--ink:#20191c;--muted:#6f686b;--line:#ebe4e0;
+ --soft:#f7f1ed;
 }
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--cream);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-button,input,textarea{font:inherit}
-body{padding-bottom:78px}
-#splash{
-  position:fixed;inset:0;z-index:1000;background:linear-gradient(145deg,#65172f,#8f2e52);
-  display:flex;align-items:center;justify-content:center;transition:opacity .35s ease,visibility .35s ease
-}
-#splash.hide{opacity:0;visibility:hidden}
-.splashBox{text-align:center;color:#fff;padding:24px}
-.splashFlower{width:92px;height:92px;border-radius:28px;background:#fff;display:grid;place-items:center;margin:0 auto 18px;box-shadow:0 18px 40px #0003;font-size:50px}
-.splashTitle{font-family:Georgia,serif;font-size:34px;font-weight:700;letter-spacing:-.5px}
-.splashSub{opacity:.86;margin-top:7px;font-size:14px}
+*{box-sizing:border-box}html,body{margin:0;background:#fff;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{padding-bottom:72px}
+button,input{font:inherit}
+.topbar{background:var(--navy);color:#fff;padding:10px 14px 9px;position:relative;z-index:20}
+.brandrow{display:flex;align-items:center;gap:10px}
+.logo{width:44px;height:44px;border:1px solid #d6a84f66;border-radius:14px;display:grid;place-items:center;color:var(--gold);font-weight:900;font-size:19px}
+.brand{line-height:1.02}.brand strong{font-family:Georgia,serif;color:var(--gold);font-size:19px;display:block}.brand small{font-size:10px;letter-spacing:.7px;color:#f4d994}
+.cartBtn{margin-left:auto;border:0;background:#fff;color:var(--navy);border-radius:13px;padding:9px 11px;font-weight:900}
+.searchrow{display:flex;gap:8px;margin-top:10px}
+.search{flex:1;border:0;border-radius:999px;padding:12px 14px;background:#fff;color:#222;outline:none}
+.lang{border:1px solid #ffffff33;background:#121d2c;color:#fff;border-radius:12px;padding:0 10px;font-size:12px}
+.quick{display:flex;gap:14px;overflow:auto;padding:10px 0 2px;scrollbar-width:none}
+.quick::-webkit-scrollbar{display:none}.quick span{white-space:nowrap;font-size:11px;color:#f4f4f4}
 
-header{
-  position:relative;z-index:20;background:#fffaf8f3;backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px
-}
-.logo{width:46px;height:46px;border-radius:15px;background:linear-gradient(145deg,var(--wine),#8b294b);display:grid;place-items:center;color:white;font-weight:900;font-size:20px;box-shadow:0 8px 18px #65172f22}
-.brand{font-weight:900;line-height:1.05;font-size:18px}.brand small{display:block;color:var(--muted);font-weight:650;font-size:11px;margin-top:4px}
-.cart{margin-left:auto;border:0;background:var(--wine);color:white;border-radius:14px;padding:10px 12px;font-weight:900;box-shadow:0 7px 16px #65172f24}
+.catbar{display:flex;gap:8px;overflow:auto;padding:10px 12px;border-bottom:1px solid var(--line);background:#fff;scrollbar-width:none}
+.catbar::-webkit-scrollbar{display:none}.catpill{white-space:nowrap;border:0;background:#fff;color:#141414;font-weight:800;font-size:12px;padding:8px 10px;border-radius:999px}
+.catpill.active{background:var(--navy);color:#fff}
 
-main{padding:14px 14px 20px;max-width:920px;margin:auto}
-.hero{background:linear-gradient(135deg,#fff0f4,#f9e9de);padding:22px;border-radius:26px;margin-bottom:14px;box-shadow:0 10px 28px #65172f10;border:1px solid #f1e0e5}
-.heroTop{display:flex;align-items:flex-start;gap:12px}
-.hero h1{color:var(--wine);font-family:Georgia,serif;font-size:31px;line-height:1.03;margin:0 0 9px}
-.hero p{margin:0;color:var(--muted);line-height:1.45;font-size:14px}
-.heroBadge{margin-left:auto;background:#fff;border:1px solid #eddbe1;border-radius:16px;padding:10px 11px;color:var(--wine);font-weight:850;font-size:12px;white-space:nowrap}
-.search{width:100%;border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:white;font-size:16px;outline:none;box-shadow:0 5px 14px #65172f08}
-.search:focus{border-color:#d59aaa;box-shadow:0 0 0 3px #d74b7815}
-.sectionTitle{display:flex;align-items:end;justify-content:space-between;margin:15px 2px 8px}
-.sectionTitle h2{margin:0;color:var(--wine);font-size:18px}.sectionTitle span{font-size:12px;color:var(--muted)}
-.chips{display:flex;gap:8px;overflow:auto;padding:4px 0 12px;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{white-space:nowrap;border:1px solid #dfcbd2;background:white;color:var(--wine);padding:9px 12px;border-radius:999px;font-weight:800;font-size:13px}
-.chip.active{background:var(--wine);border-color:var(--wine);color:white}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:21px;overflow:hidden;box-shadow:0 8px 22px #65172f0c;position:relative}
-.pic{height:160px;background:#f7eef0;overflow:hidden;position:relative}
-.pic img{width:100%;height:100%;object-fit:cover;display:block}
-.badge{position:absolute;left:8px;top:8px;background:#fffefeee;color:var(--wine);border:1px solid #f0dfe4;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900}
-.zoomBtn{position:absolute;right:8px;top:8px;border:0;width:34px;height:34px;border-radius:50%;background:#fffefeee;color:var(--wine);font-size:16px}
-.body{padding:12px}
-.name{font-weight:900;min-height:39px;font-size:15px;line-height:1.18}
-.descMini{font-size:11px;color:var(--muted);height:33px;overflow:hidden;margin-top:4px;line-height:1.35}
-.priceRow{display:flex;align-items:center;justify-content:space-between;margin-top:9px}
-.price{font-weight:950;color:var(--wine);font-size:18px}
-.viewLink{font-size:11px;color:var(--rose);font-weight:850}
-.add{width:100%;border:0;background:linear-gradient(135deg,var(--rose),var(--rose2));color:white;border-radius:12px;padding:10px;margin-top:9px;font-weight:900}
+main{padding-bottom:18px}
+.hero{margin:0;position:relative;background:linear-gradient(90deg,#f9e3ca 0%,#fff0dc 42%,#efd0b5 100%);overflow:hidden;min-height:300px}
+.heroText{position:relative;z-index:3;padding:24px 18px 170px;max-width:62%}
+.eyebrow{font-size:11px;letter-spacing:4px;font-weight:800;color:#5f4937}
+.hero h1{font-family:Georgia,serif;font-size:42px;line-height:.94;margin:7px 0 10px;color:#171214;font-weight:500}
+.hero h1 em{color:#c51225;font-style:normal}
+.hero .lead{font-weight:900;font-size:18px;margin-bottom:4px}.hero .sub{font-size:14px;color:#463a36}
+.heroCta{border:0;background:var(--red);color:#fff;border-radius:999px;padding:12px 18px;font-weight:900;margin-top:14px}
+.heroImg{position:absolute;right:-28px;bottom:0;width:64%;height:73%;object-fit:cover;object-position:center;border-radius:40% 0 0 0;filter:saturate(1.06)}
+.heroBenefits{position:absolute;right:10px;top:16px;z-index:4;display:grid;gap:8px}
+.heroBenefit{background:#fffef9e8;border:1px solid #ffffffaa;border-radius:12px;padding:7px 8px;font-size:10px;font-weight:800;max-width:118px}
 
-#order{display:none}
-.panel{background:white;border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:14px;box-shadow:0 8px 22px #65172f0b}
-.panel h2{color:var(--wine);margin:0 0 14px;font-size:20px}
-.line{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #eee}
-.total{font-size:22px;font-weight:950;color:var(--wine);margin:18px 0}
-label{font-weight:800;font-size:13px;display:block;margin:10px 0 5px}
-input,textarea{width:100%;border:1px solid var(--line);border-radius:13px;padding:12px;background:#fff;outline:none}
-textarea{min-height:82px;resize:vertical}
-.primary,.secondary{border:0;border-radius:14px;padding:13px;font-weight:900}
-.primary{background:var(--wine);color:#fff;width:100%;margin-top:12px}
-.secondary{background:#f2e5e9;color:var(--wine)}
-.note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:12px}
+.section{padding:14px 12px 0}.titleRow{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}.titleRow h2{margin:0;font-size:21px}.titleRow a{font-size:12px;color:var(--red);font-weight:800}
+.catgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.catcard{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 6px 16px #08111d0c}
+.catcard img{width:100%;height:110px;object-fit:cover;display:block}.catbody{padding:10px}.catbody b{display:block;font-size:15px}.catbody small{color:var(--muted)}
+.catArrow{float:right;width:28px;height:28px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;margin-top:-2px}
 
-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:7px 7px calc(7px + env(safe-area-inset-bottom));z-index:40}
-nav button{border:0;background:transparent;color:var(--muted);font-weight:800;padding:5px 12px;font-size:12px}
-nav button b{display:block;color:var(--wine);font-size:20px;margin-bottom:1px}
+.promos{display:grid;gap:10px}
+.promo{position:relative;border-radius:18px;overflow:hidden;min-height:120px;padding:18px;background:#10243c;color:#fff}
+.promo.red{background:linear-gradient(135deg,#6c0714,#b40818)}.promo img{position:absolute;right:0;top:0;width:52%;height:100%;object-fit:cover;opacity:.78}
+.promoContent{position:relative;z-index:2;max-width:56%}.promo h3{font-family:Georgia,serif;font-size:22px;margin:0 0 5px}.promo p{font-size:12px;margin:0 0 10px;color:#f3f3f3}.promo button{border:0;border-radius:999px;background:#f3c458;padding:8px 12px;font-weight:900}
 
-#detail{position:fixed;inset:0;z-index:200;background:#fff;display:none;overflow:auto;padding-bottom:30px}
-.detailHeader{position:sticky;top:0;z-index:5;background:#fffefa;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:10px 12px}
-.back{border:0;background:#f3e7eb;color:var(--wine);width:38px;height:38px;border-radius:50%;font-size:20px;font-weight:900}
-.detailBrand{margin-left:10px;font-family:Georgia,serif;color:var(--wine);font-weight:700;font-size:20px}
-.detailCart{margin-left:auto;border:0;background:var(--wine);color:#fff;border-radius:12px;padding:9px 11px;font-weight:900}
-.detailImg{width:100%;height:min(54vh,440px);object-fit:cover;display:block;background:#f5eaee}
-.detailBody{padding:18px 16px 28px;max-width:720px;margin:auto}
-.detailCat{display:inline-block;background:#f9e9ef;color:var(--wine);border-radius:999px;padding:6px 9px;font-weight:850;font-size:11px}
-.detailBody h2{font-family:Georgia,serif;color:var(--wine);font-size:30px;margin:10px 0 6px}
-.detailPrice{font-size:26px;color:var(--rose);font-weight:950;margin:4px 0 12px}
-.detailDesc{color:#5f5358;line-height:1.55;font-size:15px}
-.benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
-.benefit{background:#fff8fa;border:1px solid #f0dde3;border-radius:15px;padding:10px;text-align:center;font-size:11px;color:var(--muted);font-weight:750}
-.benefit b{display:block;color:var(--wine);font-size:18px;margin-bottom:3px}
-.detailAdd{width:100%;border:0;background:linear-gradient(135deg,var(--rose),var(--rose2));color:white;border-radius:15px;padding:14px;font-weight:950;font-size:16px;margin-top:8px}
+.products{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.product{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 5px 14px #08111d0b}
+.product img{width:100%;height:150px;object-fit:cover;display:block;background:#eee}
+.pbody{padding:10px}.pname{font-weight:900;font-size:14px;min-height:36px}.pdesc{font-size:11px;color:var(--muted);height:30px;overflow:hidden}.prow{display:flex;align-items:center;justify-content:space-between;margin-top:8px}.price{font-weight:950;font-size:17px}.bag{border:0;width:34px;height:34px;border-radius:50%;background:#111;color:#fff;font-size:16px}
 
-.toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:#281920;color:white;padding:10px 14px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:500;font-size:13px;font-weight:750}
-.toast.show{opacity:1}
-@media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr)}.pic{height:190px}}
+#order{display:none;padding:14px 12px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:12px}.panel h2{margin:0 0 12px}.line{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eee}.total{font-weight:950;font-size:20px;margin:15px 0}
+label{font-size:12px;font-weight:800;display:block;margin:9px 0 4px}input,textarea{width:100%;border:1px solid var(--line);border-radius:11px;padding:11px;background:#fff}textarea{min-height:76px}
+.primary{width:100%;border:0;border-radius:13px;padding:13px;background:var(--navy);color:#fff;font-weight:900;margin-top:11px}.secondary{border:0;border-radius:11px;padding:10px;background:#f0e8e4;font-weight:800}.note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.4}
+
+nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:7px 5px calc(7px + env(safe-area-inset-bottom));z-index:30}
+nav button{border:0;background:none;font-size:11px;color:#555;font-weight:800}nav b{display:block;font-size:20px;color:var(--navy);margin-bottom:1px}
+
+#detail{position:fixed;inset:0;background:#fff;z-index:100;display:none;overflow:auto}.dhead{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:3}.dback{border:0;width:36px;height:36px;border-radius:50%;background:#eee;font-size:20px}.dbrand{margin-left:10px;font-weight:900}.dcart{margin-left:auto;border:0;background:var(--navy);color:#fff;border-radius:10px;padding:8px 10px;font-weight:900}
+#dimg{width:100%;height:44vh;object-fit:cover;display:block}.dbody{padding:16px}.dbody h2{font-family:Georgia,serif;font-size:30px;margin:4px 0 6px}.dprice{font-size:26px;color:var(--red);font-weight:950}.ddesc{color:#5e5558;line-height:1.5}.dbadges{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.dbadge{border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;font-size:10px}.dadd{width:100%;border:0;border-radius:13px;background:var(--red);color:#fff;padding:14px;font-weight:950}
+@media(min-width:720px){.catgrid{grid-template-columns:repeat(4,1fr)}.products{grid-template-columns:repeat(3,1fr)}.heroText{max-width:50%}.heroImg{width:53%}}
 </style>
 </head>
 <body>
-<div id="splash"><div class="splashBox"><div class="splashFlower">🌸</div><div class="splashTitle">Florentina Flowers</div><div class="splashSub">Flori pentru cei dragi, oriunde.</div></div></div>
+<div class="topbar">
+  <div class="brandrow">
+    <div class="logo">FF</div>
+    <div class="brand"><strong>Florentina Flowers</strong><small>FLORI PENTRU ORICE OCAZIE</small></div>
+    <button class="cartBtn" onclick="showOrder()">🛒 <span id="count">0</span></button>
+  </div>
+  <div class="searchrow">
+    <input id="search" class="search" placeholder="Caută flori, buchete, cadouri..." oninput="renderProducts()">
+    <select class="lang"><option>RO</option><option>EN</option><option>DE</option><option>IT</option><option>ES</option></select>
+  </div>
+  <div class="quick"><span>♡ Favorite</span><span>👤 Contul meu</span><span>🚚 Livrare</span><span>☎ Contact</span></div>
+</div>
 
-<header>
-  <div class="logo">FF</div>
-  <div class="brand">Florentina Flowers<small>Livrare internațională de flori</small></div>
-  <button class="cart" onclick="showOrder()">Coș <span id="count">0</span></button>
-</header>
+<div id="catbar" class="catbar"></div>
 
 <main>
 <section id="catalog">
-  <div class="hero">
-    <div class="heroTop">
-      <div><h1>Flori pentru cei dragi, oriunde.</h1><p>Alege buchetul, iar o florărie parteneră locală îl pregătește și îl livrează aproape de destinatar.</p></div>
-      <div class="heroBadge">🌍 Local<br>delivery</div>
+  <section class="hero">
+    <div class="heroText">
+      <div class="eyebrow">FLORI PENTRU ORICE OCAZIE</div>
+      <h1>Spune totul<br>prin flori <em>♡</em></h1>
+      <div class="lead">Livrare oriunde în lume ✈</div>
+      <div class="sub">Surprize care rămân în suflet</div>
+      <button class="heroCta" onclick="scrollToProducts()">Descoperă colecțiile →</button>
     </div>
-  </div>
+    <img class="heroImg" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728">
+    <div class="heroBenefits">
+      <div class="heroBenefit">🚚 Livrare rapidă</div>
+      <div class="heroBenefit">🌿 Flori proaspete</div>
+      <div class="heroBenefit">💌 Mesaj personalizat</div>
+    </div>
+  </section>
 
-  <input id="search" class="search" placeholder="Caută un buchet..." oninput="render()">
+  <section class="section">
+    <div class="titleRow"><h2>Categorii</h2><a onclick="setCategory('Toate')">Vezi toate</a></div>
+    <div class="catgrid">
+      <div class="catcard" onclick="setCategory('Trandafiri')"><img src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708"><div class="catbody"><span class="catArrow">→</span><b>Trandafiri</b><small>Eleganță și pasiune</small></div></div>
+      <div class="catcard" onclick="setCategory('Romantic')"><img src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679"><div class="catbody"><span class="catArrow">→</span><b>Buchete romantice</b><small>Pentru persoana specială</small></div></div>
+      <div class="catcard" onclick="setCategory('Aniversări')"><img src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688"><div class="catbody"><span class="catArrow">→</span><b>Aniversări</b><small>Momente de neuitat</small></div></div>
+      <div class="catcard" onclick="setCategory('Premium')"><img src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734"><div class="catbody"><span class="catArrow">→</span><b>Premium</b><small>Aranjamente exclusive</small></div></div>
+    </div>
+  </section>
 
-  <div class="sectionTitle"><h2>Categorii</h2><span>12 produse</span></div>
-  <div id="chips" class="chips"></div>
+  <section class="section promos">
+    <div class="promo">
+      <div class="promoContent"><h3>Livrare internațională</h3><p>Comanda este pregătită de o florărie parteneră cât mai aproape de destinatar.</p><button onclick="showOrder()">Află mai multe →</button></div>
+      <img src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666">
+    </div>
+    <div class="promo red">
+      <div class="promoContent"><h3>Mesaj personalizat</h3><p>Adaugă un mesaj pentru felicitare direct în comandă.</p><button onclick="showOrder()">Vezi detalii →</button></div>
+      <img src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721">
+    </div>
+  </section>
 
-  <div class="sectionTitle"><h2>Buchetele noastre</h2><span>Pregătite local</span></div>
-  <div id="grid" class="grid"></div>
+  <section id="productSection" class="section">
+    <div class="titleRow"><h2>Produse recomandate</h2><a onclick="setCategory('Toate')">Vezi toate produsele →</a></div>
+    <div id="products" class="products"></div>
+  </section>
 </section>
 
 <section id="order">
@@ -139,119 +143,55 @@ nav button b{display:block;color:var(--wine);font-size:20px;margin-bottom:1px}
     <label>Data livrării</label><input id="date" type="date">
     <label>Mesaj pentru felicitare</label><textarea id="message"></textarea>
     <button class="primary" onclick="checkout()">Continuă la checkout Shopify</button>
-    <div class="note">Produsele sunt încă Draft în Shopify. Checkout-ul comercial devine activ după publicarea produselor și configurarea plăților.</div>
+    <div class="note">Produsele rămân Draft până la lansare. Plata devine activă după configurarea finală Shopify.</div>
   </div>
 </section>
 </main>
 
-<nav>
-  <button onclick="showCatalog()"><b>⌂</b>Acasă</button>
-  <button onclick="showCatalog();setTimeout(()=>search.focus(),100)"><b>⌕</b>Caută</button>
-  <button onclick="showOrder()"><b>🛒</b>Comandă</button>
-</nav>
+<nav><button onclick="showCatalog()"><b>⌂</b>Acasă</button><button onclick="showCatalog();search.focus()"><b>⌕</b>Caută</button><button onclick="showOrder()"><b>🛒</b>Comandă</button></nav>
 
 <section id="detail">
-  <div class="detailHeader">
-    <button class="back" onclick="closeDetail()">‹</button>
-    <div class="detailBrand">Florentina Flowers</div>
-    <button class="detailCart" onclick="closeDetail();showOrder()">Coș <span id="detailCount">0</span></button>
-  </div>
-  <img id="detailImg" class="detailImg">
-  <div class="detailBody">
-    <span id="detailCat" class="detailCat"></span>
-    <h2 id="detailName"></h2>
-    <div id="detailPrice" class="detailPrice"></div>
-    <div id="detailDesc" class="detailDesc"></div>
-    <div class="benefits">
-      <div class="benefit"><b>🚚</b>Livrare locală</div>
-      <div class="benefit"><b>🎁</b>Prezentare premium</div>
-      <div class="benefit"><b>🌿</b>Flori proaspete</div>
-    </div>
-    <button id="detailAdd" class="detailAdd">Adaugă în coș</button>
+  <div class="dhead"><button class="dback" onclick="closeDetail()">‹</button><div class="dbrand">Florentina Flowers</div><button class="dcart" onclick="closeDetail();showOrder()">Coș <span id="dcount">0</span></button></div>
+  <img id="dimg">
+  <div class="dbody"><div id="dcat" style="font-size:11px;font-weight:900;color:#7a2942"></div><h2 id="dname"></h2><div id="dprice" class="dprice"></div><p id="ddesc" class="ddesc"></p>
+    <div class="dbadges"><div class="dbadge">🚚<br>Livrare locală</div><div class="dbadge">🎁<br>Prezentare premium</div><div class="dbadge">🌿<br>Flori proaspete</div></div>
+    <button id="dadd" class="dadd">Adaugă în coș</button>
   </div>
 </section>
 
-<div id="toast" class="toast"></div>
-
 <script>
 const SHOP='xdecdj-50.myshopify.com';
-const products=[
-{name:"Florist’s Choice",price:179,v:"53812390428938",cat:"Sezon",mini:"Buchet sezonier creat de florarul local.",desc:"Un buchet de sezon realizat de o florărie parteneră folosind cele mai frumoase flori proaspete disponibile în ziua livrării. Aspectul poate varia natural în funcție de sezon, păstrând valoarea și stilul premium.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666"},
-{name:"Pink Whisper",price:199,v:"53812390527242",cat:"Romantic",mini:"Roz delicat și alb pentru surprize elegante.",desc:"Un buchet delicat în tonuri de roz și alb, potrivit pentru gesturi romantice, aniversări și surprize rafinate.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679"},
-{name:"Birthday Joy",price:229,v:"53812392427786",cat:"Aniversări",mini:"Culori vesele pentru zile de naștere.",desc:"Un buchet vesel și colorat, creat special pentru zile de naștere și momente de sărbătoare.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688"},
-{name:"Pure Elegance",price:229,v:"53812392558858",cat:"Elegant",mini:"Alb și crem, simplu și rafinat.",desc:"Un aranjament elegant în tonuri de alb și crem, creat pentru ocazii speciale și mesaje rafinate.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695"},
-{name:"Red Romance",price:249,v:"53812392788234",cat:"Romantic",mini:"Trandafiri roșii pentru un gest romantic.",desc:"Un buchet romantic cu trandafiri roșii și flori complementare, pregătit local de o florărie parteneră.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701"},
+const data=[
+{name:"Florist’s Choice",price:179,v:"53812390428938",cat:"Sezon",mini:"Buchet sezonier creat local.",desc:"Un buchet sezonier pregătit de o florărie parteneră cu cele mai frumoase flori proaspete disponibile în ziua livrării.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666"},
+{name:"Pink Whisper",price:199,v:"53812390527242",cat:"Romantic",mini:"Roz delicat și alb.",desc:"Un buchet delicat în tonuri de roz și alb, ideal pentru gesturi romantice, aniversări și surprize elegante.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679"},
+{name:"Birthday Joy",price:229,v:"53812392427786",cat:"Aniversări",mini:"Culori vesele pentru aniversări.",desc:"Un buchet vesel și colorat pentru zile de naștere și momente de sărbătoare.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688"},
+{name:"Pure Elegance",price:229,v:"53812392558858",cat:"Elegant",mini:"Alb și crem, rafinat.",desc:"Un aranjament elegant în tonuri de alb și crem, creat pentru ocazii speciale și mesaje rafinate.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695"},
+{name:"Red Romance",price:249,v:"53812392788234",cat:"Romantic",mini:"Trandafiri roșii și flori complementare.",desc:"Un buchet romantic cu trandafiri roșii, pregătit local de o florărie parteneră.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701"},
 {name:"12 Premium Red Roses",price:279,v:"53812395409674",cat:"Trandafiri",mini:"12 trandafiri roșii premium.",desc:"Doisprezece trandafiri roșii premium, aranjați elegant și pregătiți pentru livrare locală.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708"},
-{name:"Pastel Luxury",price:299,v:"53812395802890",cat:"Premium",mini:"Nuanțe pastel, volum generos.",desc:"Un buchet premium în nuanțe pastel delicate, cu aspect elegant și volum generos.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pastel-luxury.jpg?v=1790337715"},
-{name:"Love Forever",price:329,v:"53812395868426",cat:"Romantic",mini:"Creat pentru declarații de dragoste.",desc:"Un buchet romantic premium, creat pentru declarații de dragoste și ocazii importante.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721"},
-{name:"24 Red Roses",price:399,v:"53812398096650",cat:"Trandafiri",mini:"24 trandafiri roșii cu impact vizual.",desc:"Douăzeci și patru de trandafiri roșii premium pentru un cadou romantic cu impact vizual puternic.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728"},
+{name:"Pastel Luxury",price:299,v:"53812395802890",cat:"Premium",mini:"Nuanțe pastel și volum generos.",desc:"Un buchet premium în nuanțe pastel delicate, cu aspect elegant și volum generos.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pastel-luxury.jpg?v=1790337715"},
+{name:"Love Forever",price:329,v:"53812395868426",cat:"Romantic",mini:"Pentru declarații de dragoste.",desc:"Un buchet romantic premium creat pentru declarații de dragoste și ocazii importante.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721"},
+{name:"24 Red Roses",price:399,v:"53812398096650",cat:"Trandafiri",mini:"24 trandafiri roșii premium.",desc:"Douăzeci și patru de trandafiri roșii premium pentru un cadou romantic cu impact vizual puternic.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728"},
 {name:"Luxury Rose Box",price:449,v:"53812398850314",cat:"Premium",mini:"Cutie elegantă cu trandafiri.",desc:"O cutie elegantă cu trandafiri, creată pentru cadouri premium și momente speciale.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734"},
-{name:"Grand Romantic Bouquet",price:499,v:"53812402979082",cat:"Premium",mini:"Buchet mare pentru surprize memorabile.",desc:"Un buchet romantic de dimensiune mare, creat pentru aniversări, cereri speciale și surprize memorabile.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740"},
-{name:"Designer’s Signature",price:599,v:"53812405109002",cat:"Premium",mini:"Aranjament semnătură cu flori premium.",desc:"Un aranjament floral mare, creat în stilul semnătură al florarului local, folosind flori premium disponibile sezonier.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/designers-signature.jpg?v=1790337747"}
+{name:"Grand Romantic Bouquet",price:499,v:"53812402979082",cat:"Premium",mini:"Buchet mare, romantic.",desc:"Un buchet romantic de dimensiune mare pentru aniversări și surprize memorabile.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740"},
+{name:"Designer’s Signature",price:599,v:"53812405109002",cat:"Premium",mini:"Aranjament semnătură premium.",desc:"Un aranjament floral mare creat în stilul semnătură al florarului local, folosind flori premium disponibile sezonier.",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/designers-signature.jpg?v=1790337747"}
 ];
-const categories=["Toate","Romantic","Trandafiri","Aniversări","Premium","Elegant","Sezon"];
-let activeCat="Toate";
-let cart=JSON.parse(localStorage.getItem('ff_cart')||'[]');
+const cats=["Toate","Trandafiri","Romantic","Aniversări","Premium","Cadouri","Elegant","Sezon"];
+let category="Toate";let cart=JSON.parse(localStorage.getItem("ff_cart")||"[]");
 
-function renderChips(){
-  chips.innerHTML=categories.map(c=>'<button class="chip '+(activeCat===c?'active':'')+'" onclick="activeCat=\''+c+'\';renderChips();render()">'+c+'</button>').join('');
-}
-function render(){
-  const q=(search.value||'').toLowerCase().trim();
-  const list=products.filter(p=>(activeCat==="Toate"||p.cat===activeCat)&&(p.name.toLowerCase().includes(q)||p.mini.toLowerCase().includes(q)));
-  grid.innerHTML=list.map(p=>'<article class="card">'+
-    '<div class="pic" onclick="openDetail(\''+p.v+'\')"><img src="'+p.img+'" alt="'+p.name+'" loading="lazy"><span class="badge">'+p.cat+'</span><button class="zoomBtn">♡</button></div>'+
-    '<div class="body"><div class="name">'+p.name+'</div><div class="descMini">'+p.mini+'</div>'+
-    '<div class="priceRow"><div class="price">'+p.price+' lei</div><div class="viewLink" onclick="openDetail(\''+p.v+'\')">Vezi detalii</div></div>'+
-    '<button class="add" onclick="add(\''+p.v+'\')">Adaugă în coș</button></div></article>').join('');
-}
-function add(v){
-  cart.push(v);save();toast('Adăugat în coș');
-}
-function save(){
-  localStorage.setItem('ff_cart',JSON.stringify(cart));count.textContent=cart.length;detailCount.textContent=cart.length;renderCart();
-}
+function renderCats(){catbar.innerHTML=cats.map(c=>'<button class="catpill '+(c===category?'active':'')+'" onclick="setCategory(\''+c+'\')">'+c+'</button>').join('')}
+function setCategory(c){category=c;renderCats();renderProducts();showCatalog();setTimeout(()=>document.getElementById('productSection').scrollIntoView({behavior:'smooth'}),50)}
+function renderProducts(){let q=(search.value||'').toLowerCase();let list=data.filter(p=>(category==="Toate"||p.cat===category||(category==="Cadouri"&&["Premium","Romantic"].includes(p.cat)))&&(p.name.toLowerCase().includes(q)||p.mini.toLowerCase().includes(q)));products.innerHTML=list.map(p=>'<article class="product" onclick="openDetail(\''+p.v+'\')"><img src="'+p.img+'" alt="'+p.name+'"><div class="pbody"><div class="pname">'+p.name+'</div><div class="pdesc">'+p.mini+'</div><div class="prow"><span class="price">'+p.price+',00 lei</span><button class="bag" onclick="event.stopPropagation();add(\''+p.v+'\')">🛒</button></div></div></article>').join('')}
+function scrollToProducts(){document.getElementById('productSection').scrollIntoView({behavior:'smooth'})}
+function add(v){cart.push(v);save()}
+function save(){localStorage.setItem("ff_cart",JSON.stringify(cart));count.textContent=cart.length;dcount.textContent=cart.length;renderCart()}
 function clearCart(){cart=[];save()}
-function renderCart(){
-  let c={};cart.forEach(v=>c[v]=(c[v]||0)+1);let entries=Object.entries(c);
-  lines.innerHTML=entries.length?entries.map(([v,q])=>{let p=products.find(x=>x.v===v);return '<div class="line"><span>'+q+' × '+p.name+'</span><b>'+p.price*q+' lei</b></div>'}).join(''):'<p>Coșul este gol.</p>';
-  let s=cart.reduce((a,v)=>a+(products.find(p=>p.v===v)?.price||0),0);total.textContent='Total: '+s+' lei';
-}
-function showOrder(){catalog.style.display='none';order.style.display='block';renderCart();window.scrollTo(0,0)}
+function renderCart(){let c={};cart.forEach(v=>c[v]=(c[v]||0)+1);let entries=Object.entries(c);lines.innerHTML=entries.length?entries.map(([v,q])=>{let p=data.find(x=>x.v===v);return '<div class="line"><span>'+q+' × '+p.name+'</span><b>'+p.price*q+' lei</b></div>'}).join(''):'<p>Coșul este gol.</p>';total.textContent='Total: '+cart.reduce((s,v)=>s+(data.find(p=>p.v===v)?.price||0),0)+' lei'}
+function showOrder(){catalog.style.display='none';order.style.display='block';window.scrollTo(0,0);renderCart()}
 function showCatalog(){order.style.display='none';catalog.style.display='block';window.scrollTo(0,0)}
-function openDetail(v){
-  const p=products.find(x=>x.v===v);if(!p)return;
-  detailImg.src=p.img;detailImg.alt=p.name;detailCat.textContent=p.cat;detailName.textContent=p.name;detailPrice.textContent=p.price+' lei';detailDesc.textContent=p.desc;
-  detailAdd.onclick=()=>{add(p.v);};
-  detail.style.display='block';document.body.style.overflow='hidden';
-}
+function openDetail(v){let p=data.find(x=>x.v===v);if(!p)return;dimg.src=p.img;dcat.textContent=p.cat;dname.textContent=p.name;dprice.textContent=p.price+',00 lei';ddesc.textContent=p.desc;dadd.onclick=()=>add(p.v);detail.style.display='block';document.body.style.overflow='hidden'}
 function closeDetail(){detail.style.display='none';document.body.style.overflow='auto'}
 function splitName(n){let a=n.trim().split(/\s+/);return {first:a[0]||'',last:a.slice(1).join(' ')||'-'}}
-function checkout(){
-  if(!cart.length){alert('Coșul este gol.');return}
-  let ids=['email','recipient','phone','country','city','zip','address','date'];
-  if(ids.some(id=>!document.getElementById(id).value.trim())){alert('Completează câmpurile obligatorii.');return}
-  let c={};cart.forEach(v=>c[v]=(c[v]||0)+1);
-  let items=Object.entries(c).map(([v,q])=>v+':'+q).join(',');
-  let n=splitName(recipient.value);
-  let p=new URLSearchParams();
-  p.set('checkout[email]',email.value.trim());
-  p.set('checkout[shipping_address][first_name]',n.first);
-  p.set('checkout[shipping_address][last_name]',n.last);
-  p.set('checkout[shipping_address][address1]',address.value.trim());
-  p.set('checkout[shipping_address][city]',city.value.trim());
-  p.set('checkout[shipping_address][country]',country.value.trim());
-  p.set('checkout[shipping_address][zip]',zip.value.trim());
-  p.set('attributes[Recipient phone]',phone.value.trim());
-  p.set('attributes[Delivery date]',date.value);
-  p.set('attributes[Source]','Florentina Flowers Android');
-  if(message.value.trim())p.set('note',message.value.trim());
-  let u='https://'+SHOP+'/cart/'+items+'?'+p.toString();
-  if(window.Android&&Android.openCheckout)Android.openCheckout(u);else location.href=u;
-}
-function toast(m){toastEl.textContent=m;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),1500)}
-renderChips();render();save();
-setTimeout(()=>splash.classList.add('hide'),1100);
+function checkout(){if(!cart.length){alert('Coșul este gol.');return}let ids=['email','recipient','phone','country','city','zip','address','date'];if(ids.some(id=>!document.getElementById(id).value.trim())){alert('Completează câmpurile obligatorii.');return}let c={};cart.forEach(v=>c[v]=(c[v]||0)+1);let items=Object.entries(c).map(([v,q])=>v+':'+q).join(',');let n=splitName(recipient.value);let p=new URLSearchParams();p.set('checkout[email]',email.value.trim());p.set('checkout[shipping_address][first_name]',n.first);p.set('checkout[shipping_address][last_name]',n.last);p.set('checkout[shipping_address][address1]',address.value.trim());p.set('checkout[shipping_address][city]',city.value.trim());p.set('checkout[shipping_address][country]',country.value.trim());p.set('checkout[shipping_address][zip]',zip.value.trim());p.set('attributes[Recipient phone]',phone.value.trim());p.set('attributes[Delivery date]',date.value);if(message.value.trim())p.set('note',message.value.trim());let u='https://'+SHOP+'/cart/'+items+'?'+p.toString();if(window.Android&&Android.openCheckout)Android.openCheckout(u);else location.href=u}
+renderCats();renderProducts();save();
 </script>
-</body>
-</html>
+</body></html>
