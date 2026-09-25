@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
+        android:icon="@drawable/ic_launcher_flower"
+        android:roundIcon="@drawable/ic_launcher_flower"
         android:allowBackup="true"
-        android:label="Florentina Flowers v0.9"
+        android:label="Florentina Flowers"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <activity
