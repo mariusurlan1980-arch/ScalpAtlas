@@ -1,0 +1,16 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.florentinaflowers.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.florentinaflowers.app'
+        minSdk 24
+        targetSdk 35
+        versionCode 4
+        versionName '0.4'
+    }
+}
