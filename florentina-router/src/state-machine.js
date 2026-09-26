@@ -24,6 +24,7 @@ export const EVENTS = Object.freeze({
   PARTNER_ACCEPT: "PARTNER_ACCEPT",
   PARTNER_REJECT: "PARTNER_REJECT",
   PARTNER_TIMEOUT: "PARTNER_TIMEOUT",
+  PARTNER_NOTIFICATION_FAILED: "PARTNER_NOTIFICATION_FAILED",
   PREPARATION_STARTED: "PREPARATION_STARTED",
   PHOTO_SUBMITTED: "PHOTO_SUBMITTED",
   PHOTO_APPROVED: "PHOTO_APPROVED",
@@ -67,47 +68,42 @@ export function transition(order, event, payload = {}) {
       requireState(order, STATES.OFFERING_TO_PARTNER);
       requireOfferedPartner(order, payload.partnerId);
       next.partnerId = required(payload.partnerId, "partnerId");
-      delete next.currentOfferedPartnerId;
-      delete next.offerStartedAt;
-      delete next.offerExpiresAt;
+      clearOffer(next);
       next.state = STATES.PARTNER_ACCEPTED;
       break;
 
     case EVENTS.PARTNER_REJECT:
       requireState(order, STATES.OFFERING_TO_PARTNER);
       requireOfferedPartner(order, payload.partnerId);
-      next.attemptedPartnerIds = unique([
-        ...(order.attemptedPartnerIds ?? []),
-        required(payload.partnerId, "partnerId")
-      ]);
-      next.partnerAttempt = next.attemptedPartnerIds.length + 1;
-      delete next.currentOfferedPartnerId;
-      delete next.offerStartedAt;
-      delete next.offerExpiresAt;
+      recordAttempt(next, required(payload.partnerId, "partnerId"));
+      clearOffer(next);
       next.state = STATES.OFFERING_TO_PARTNER;
       break;
 
     case EVENTS.PARTNER_TIMEOUT: {
       requireState(order, STATES.OFFERING_TO_PARTNER);
-      const timedOutPartner = order.currentOfferedPartnerId;
-      if (!timedOutPartner) throw new Error("No florist offer is active");
-      next.attemptedPartnerIds = unique([
-        ...(order.attemptedPartnerIds ?? []),
-        timedOutPartner
-      ]);
-      next.partnerAttempt = next.attemptedPartnerIds.length + 1;
-      delete next.currentOfferedPartnerId;
-      delete next.offerStartedAt;
-      delete next.offerExpiresAt;
+      const partnerId = order.currentOfferedPartnerId;
+      if (!partnerId) throw new Error("No florist offer is active");
+      recordAttempt(next, partnerId);
+      clearOffer(next);
+      next.state = STATES.OFFERING_TO_PARTNER;
+      break;
+    }
+
+    case EVENTS.PARTNER_NOTIFICATION_FAILED: {
+      requireState(order, STATES.OFFERING_TO_PARTNER);
+      const partnerId = order.currentOfferedPartnerId;
+      if (!partnerId) throw new Error("No florist offer is active");
+      recordAttempt(next, partnerId);
+      next.lastNotificationFailurePartnerId = partnerId;
+      clearOffer(next);
       next.state = STATES.OFFERING_TO_PARTNER;
       break;
     }
 
     case EVENTS.ALL_PARTNERS_EXHAUSTED:
       requireState(order, STATES.OFFERING_TO_PARTNER);
-      delete next.currentOfferedPartnerId;
-      delete next.offerStartedAt;
-      delete next.offerExpiresAt;
+      clearOffer(next);
       next.state = order.paymentCaptured ? STATES.REFUND_PENDING : STATES.VOID_PENDING;
       break;
 
@@ -204,6 +200,17 @@ export function transition(order, event, payload = {}) {
 
   next.updatedAt = new Date().toISOString();
   return next;
+}
+
+function recordAttempt(order, partnerId) {
+  order.attemptedPartnerIds = unique([...(order.attemptedPartnerIds ?? []), partnerId]);
+  order.partnerAttempt = order.attemptedPartnerIds.length + 1;
+}
+
+function clearOffer(order) {
+  delete order.currentOfferedPartnerId;
+  delete order.offerStartedAt;
+  delete order.offerExpiresAt;
 }
 
 function requireState(order, state) {
