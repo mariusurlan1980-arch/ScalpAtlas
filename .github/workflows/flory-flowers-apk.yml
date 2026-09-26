@@ -5,7 +5,7 @@ on:
     branches:
       - flory-flowers-apk
     paths:
-      - 'FloryFlowers/**'
+      - 'FloryFlowersProject/**'
       - '.github/workflows/flory-flowers-apk.yml'
   workflow_dispatch:
 
@@ -27,17 +27,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Unpack Android project
-        run: |
-          mkdir -p build/FloryFlowers
-          unzip -q FloryFlowers/Flory-Flowers-Android-ready.zip -d build/FloryFlowers
-
       - name: Build debug APK
-        run: gradle -p build/FloryFlowers :app:assembleDebug
+        run: gradle -p FloryFlowersProject :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Flory-Flowers-APK
-          path: build/FloryFlowers/app/build/outputs/apk/debug/app-debug.apk
+          path: FloryFlowersProject/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
