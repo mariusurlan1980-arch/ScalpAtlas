@@ -10,6 +10,7 @@ export class RoutingEngine {
     portalBaseUrl,
     responseMinutes = 10,
     maxAttempts = 5,
+    portalTokenHours = 48,
     clock = () => Date.now()
   }) {
     this.repository = repository;
@@ -19,6 +20,7 @@ export class RoutingEngine {
     this.portalBaseUrl = portalBaseUrl.replace(/\/$/, "");
     this.responseMinutes = responseMinutes;
     this.maxAttempts = maxAttempts;
+    this.portalTokenHours = portalTokenHours;
     this.clock = clock;
   }
 
@@ -58,22 +60,23 @@ export class RoutingEngine {
 
   async #expireAndAdvance(order) {
     const expiredPartnerId = order.currentOfferedPartnerId;
-    let next = transition(order, EVENTS.PARTNER_TIMEOUT, { partnerId: expiredPartnerId });
-    next.attemptedPartnerIds = unique([...(order.attemptedPartnerIds ?? []), expiredPartnerId]);
+    const next = transition(order, EVENTS.PARTNER_TIMEOUT, { partnerId: expiredPartnerId });
     await this.repository.save(next);
     await this.#audit(next, expiredPartnerId, "PARTNER_TIMEOUT");
     return this.#offerNext(next);
   }
 
   async #offerNext(order) {
-    const attempted = new Set(order.attemptedPartnerIds ?? []);
-    const candidates = (await this.partnerDirectory.getEligiblePartners(order))
-      .filter(p => p.active !== false)
-      .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999))
-      .filter(p => !attempted.has(p.id))
-      .slice(0, this.maxAttempts);
+    if (order.state !== STATES.OFFERING_TO_PARTNER) return order;
 
-    const totalAttempts = order.attemptedPartnerIds?.length ?? 0;
+    const attempted = new Set(order.attemptedPartnerIds ?? []);
+    const eligible = (await this.partnerDirectory.getEligiblePartners(order))
+      .filter(p => p.active !== false)
+      .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
+
+    const candidates = eligible.filter(p => !attempted.has(p.id));
+    const totalAttempts = attempted.size;
+
     if (totalAttempts >= this.maxAttempts || candidates.length === 0) {
       const exhausted = transition(order, EVENTS.ALL_PARTNERS_EXHAUSTED);
       await this.repository.save(exhausted);
@@ -82,13 +85,15 @@ export class RoutingEngine {
     }
 
     const partner = candidates[0];
-    const offeredAt = new Date(this.clock()).toISOString();
-    const expiresAt = new Date(this.clock() + this.responseMinutes * 60_000).toISOString();
+    const now = this.clock();
+    const offeredAt = new Date(now).toISOString();
+    const offerExpiresAt = new Date(now + this.responseMinutes * 60_000).toISOString();
+    const portalExpiresAt = new Date(now + this.portalTokenHours * 60 * 60_000).toISOString();
 
-    let offered = transition(order, EVENTS.PARTNER_OFFERED, {
+    const offered = transition(order, EVENTS.PARTNER_OFFERED, {
       partnerId: partner.id,
       offeredAt,
-      expiresAt
+      expiresAt: offerExpiresAt
     });
     offered.routingMaxAttempts = this.maxAttempts;
     offered.routingResponseMinutes = this.responseMinutes;
@@ -98,11 +103,16 @@ export class RoutingEngine {
     const token = createPartnerPortalToken({
       orderId: offered.id,
       partnerId: partner.id,
-      expiresAt
+      expiresAt: portalExpiresAt
     }, this.tokenSecret);
 
     const portalUrl = `${this.portalBaseUrl}/partner?token=${encodeURIComponent(token)}`;
-    await this.notifier.sendOffer({ order: offered, partner, portalUrl, expiresAt });
+    await this.notifier.sendOffer({
+      order: offered,
+      partner,
+      portalUrl,
+      expiresAt: offerExpiresAt
+    });
     await this.#audit(offered, partner.id, "PARTNER_OFFERED");
 
     return offered;
@@ -149,8 +159,4 @@ export class LogOfferNotifier {
       expiresAt
     }));
   }
-}
-
-function unique(values) {
-  return [...new Set(values.filter(Boolean))];
 }
