@@ -211,7 +211,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Florentina Flowers router listening on http://localhost:${PORT}`);
+  console.log(`Flory Flowers router listening on http://localhost:${PORT}`);
   console.log(`Routing engine: ${ROUTING_ENABLED ? "ENABLED" : "DISABLED"}`);
   console.log(`Payment automation: ${PAYMENT_AUTOMATION_ENABLED ? "ENABLED" : "DISABLED"}`);
   console.log(`Supplier payouts: ${SUPPLIER_PAYOUTS_ENABLED ? "ENABLED" : "DISABLED"}`);
