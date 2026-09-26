@@ -12,6 +12,10 @@ export class InMemoryOrderRepository {
     return order ? structuredClone(order) : null;
   }
 
+  async list() {
+    return [...this.orders.values()].map(order => structuredClone(order));
+  }
+
   async save(order) {
     if (!order?.id) throw new Error("Order requires id");
     this.orders.set(order.id, structuredClone(order));
@@ -46,6 +50,11 @@ export class JsonOrderRepository {
   async get(id) {
     const state = await this.#readState();
     return state.orders[id] ? structuredClone(state.orders[id]) : null;
+  }
+
+  async list() {
+    const state = await this.#readState();
+    return Object.values(state.orders).map(order => structuredClone(order));
   }
 
   async save(order) {
