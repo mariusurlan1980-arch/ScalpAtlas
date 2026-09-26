@@ -49,6 +49,7 @@ export function transition(order, event, payload = {}) {
     case EVENTS.START_ROUTING:
       requireState(order, STATES.PAYMENT_AUTHORIZED);
       next.state = STATES.OFFERING_TO_PARTNER;
+      next.attemptedPartnerIds ??= [];
       break;
 
     case EVENTS.PARTNER_OFFERED:
@@ -56,7 +57,10 @@ export function transition(order, event, payload = {}) {
         throw new Error(`Invalid partner offer from ${order.state}`);
       }
       next.currentOfferedPartnerId = required(payload.partnerId, "partnerId");
+      next.offerStartedAt = required(payload.offeredAt, "offeredAt");
+      next.offerExpiresAt = required(payload.expiresAt, "expiresAt");
       next.state = STATES.OFFERING_TO_PARTNER;
+      next.attemptedPartnerIds ??= [];
       break;
 
     case EVENTS.PARTNER_ACCEPT:
@@ -64,26 +68,46 @@ export function transition(order, event, payload = {}) {
       requireOfferedPartner(order, payload.partnerId);
       next.partnerId = required(payload.partnerId, "partnerId");
       delete next.currentOfferedPartnerId;
+      delete next.offerStartedAt;
+      delete next.offerExpiresAt;
       next.state = STATES.PARTNER_ACCEPTED;
       break;
 
     case EVENTS.PARTNER_REJECT:
       requireState(order, STATES.OFFERING_TO_PARTNER);
       requireOfferedPartner(order, payload.partnerId);
-      next.partnerAttempt = (order.partnerAttempt ?? 1) + 1;
+      next.attemptedPartnerIds = unique([
+        ...(order.attemptedPartnerIds ?? []),
+        required(payload.partnerId, "partnerId")
+      ]);
+      next.partnerAttempt = next.attemptedPartnerIds.length + 1;
       delete next.currentOfferedPartnerId;
+      delete next.offerStartedAt;
+      delete next.offerExpiresAt;
       next.state = STATES.OFFERING_TO_PARTNER;
       break;
 
-    case EVENTS.PARTNER_TIMEOUT:
+    case EVENTS.PARTNER_TIMEOUT: {
       requireState(order, STATES.OFFERING_TO_PARTNER);
-      next.partnerAttempt = (order.partnerAttempt ?? 1) + 1;
+      const timedOutPartner = order.currentOfferedPartnerId;
+      if (!timedOutPartner) throw new Error("No florist offer is active");
+      next.attemptedPartnerIds = unique([
+        ...(order.attemptedPartnerIds ?? []),
+        timedOutPartner
+      ]);
+      next.partnerAttempt = next.attemptedPartnerIds.length + 1;
       delete next.currentOfferedPartnerId;
+      delete next.offerStartedAt;
+      delete next.offerExpiresAt;
       next.state = STATES.OFFERING_TO_PARTNER;
       break;
+    }
 
     case EVENTS.ALL_PARTNERS_EXHAUSTED:
       requireState(order, STATES.OFFERING_TO_PARTNER);
+      delete next.currentOfferedPartnerId;
+      delete next.offerStartedAt;
+      delete next.offerExpiresAt;
       next.state = order.paymentCaptured ? STATES.REFUND_PENDING : STATES.VOID_PENDING;
       break;
 
@@ -202,4 +226,8 @@ function required(value, name) {
     throw new Error(`Missing required field: ${name}`);
   }
   return value;
+}
+
+function unique(values) {
+  return [...new Set(values.filter(Boolean))];
 }
