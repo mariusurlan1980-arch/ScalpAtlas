@@ -25,7 +25,7 @@ test("pre-acceptance offer email never exposes recipient PII",()=>{
   });
 
   assert.equal(message.to,"florist@example.test");
-  assert.match(message.subject,/Florentina Flowers/);
+  assert.match(message.subject,/Flory Flowers/);
   assert.doesNotMatch(message.text,/Secret Recipient/);
   assert.doesNotMatch(message.text,/Secret Street/);
   assert.doesNotMatch(message.text,/33123456789/);
