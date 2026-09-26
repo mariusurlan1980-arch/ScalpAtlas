@@ -11,10 +11,12 @@ const ACTION_EVENT = Object.freeze({
 });
 
 export class PartnerOrderService {
-  constructor({ repository, tokenSecret, photoStore }) {
+  constructor({ repository, tokenSecret, photoStore, routingEngine = null, clock = () => Date.now() }) {
     this.repository = repository;
     this.tokenSecret = tokenSecret;
     this.photoStore = photoStore;
+    this.routingEngine = routingEngine;
+    this.clock = clock;
   }
 
   async getOrderView(token) {
@@ -33,6 +35,11 @@ export class PartnerOrderService {
       throw new Error("Action not allowed for this florist or order state");
     }
 
+    if ((action === "ACCEPT" || action === "REJECT") &&
+        (!order.offerExpiresAt || new Date(order.offerExpiresAt).getTime() <= this.clock())) {
+      throw new Error("This florist offer has expired");
+    }
+
     const event = ACTION_EVENT[action];
     if (!event) throw new Error("Unsupported florist action");
 
@@ -45,9 +52,13 @@ export class PartnerOrderService {
         payload.deliveryProof || `partner-report:${new Date().toISOString()}`;
     }
 
-    const next = transition(order, event, eventPayload);
+    let next = transition(order, event, eventPayload);
     await this.repository.save(next);
     await this.#audit(next, identity.partnerId, action);
+
+    if (action === "REJECT" && this.routingEngine) {
+      next = await this.routingEngine.advanceAfterPartnerDecision(next.id);
+    }
 
     return buildPartnerOrderView(next, partner);
   }
@@ -72,7 +83,12 @@ export class PartnerOrderService {
 
   async offerToPartner(orderId, partnerId) {
     const order = await this.#order(orderId);
-    const next = transition(order, EVENTS.PARTNER_OFFERED, { partnerId });
+    const now = this.clock();
+    const next = transition(order, EVENTS.PARTNER_OFFERED, {
+      partnerId,
+      offeredAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + 10 * 60_000).toISOString()
+    });
     await this.repository.save(next);
     await this.#audit(next, partnerId, "PARTNER_OFFERED");
     return next;
@@ -114,7 +130,7 @@ export class PartnerOrderService {
       partnerId: partnerId ?? null,
       event,
       state: order.state,
-      at: new Date().toISOString()
+      at: new Date(this.clock()).toISOString()
     });
   }
 }
