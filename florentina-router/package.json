@@ -1,6 +1,6 @@
 {
   "name": "florentina-flowers-router",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,8 @@
     "demo:seed": "node scripts/seed-demo.js"
   },
   "dependencies": {
-    "busboy": "^1.6.0"
+    "busboy": "^1.6.0",
+    "nodemailer": "^6.10.1"
   },
   "engines": {
     "node": ">=20"
