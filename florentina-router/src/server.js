@@ -9,9 +9,9 @@ import { PartnerOrderService } from "./partner-service.js";
 import { ShopifyClient } from "./shopify-client.js";
 import {
   InMemoryPartnerDirectory,
-  LogOfferNotifier,
   RoutingEngine
 } from "./routing-engine.js";
+import { LogOfferNotifier, SmtpOfferNotifier } from "./offer-notifier.js";
 import { ShopifyPartnerDirectory } from "./shopify-partner-directory.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,7 +34,7 @@ const partnerDirectory = buildPartnerDirectory();
 const routingEngine = new RoutingEngine({
   repository,
   partnerDirectory,
-  notifier: new LogOfferNotifier(),
+  notifier: buildOfferNotifier(),
   tokenSecret: TOKEN_SECRET,
   portalBaseUrl: PORTAL_BASE_URL,
   responseMinutes: RESPONSE_MINUTES,
@@ -160,6 +160,25 @@ server.listen(PORT, () => {
   console.log(`Florentina Flowers router listening on http://localhost:${PORT}`);
   console.log(`Routing engine: ${ROUTING_ENABLED ? "ENABLED" : "DISABLED"}`);
 });
+
+function buildOfferNotifier() {
+  if (process.env.SMTP_HOST) {
+    return new SmtpOfferNotifier({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === "true",
+      user: process.env.SMTP_USER || "",
+      pass: process.env.SMTP_PASS || "",
+      from: process.env.SMTP_FROM
+    });
+  }
+
+  if (process.env.NODE_ENV === "production" && ROUTING_ENABLED) {
+    throw new Error("Routing enabled in production but SMTP notifications are not configured");
+  }
+
+  return new LogOfferNotifier();
+}
 
 function buildPartnerDirectory() {
   const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
