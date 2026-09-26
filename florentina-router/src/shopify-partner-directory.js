@@ -9,35 +9,54 @@ export class ShopifyPartnerDirectory {
       this.#loadAll("ff_supplier_product_quote")
     ]);
 
-    const approved = new Set(
-      quotes
-        .map(toRecord)
-        .filter(q =>
-          q.quote_status === "approved" &&
-          q.product_id === order.productId &&
-          q.can_make !== "no"
-        )
-        .map(q => q.partner_id)
-    );
+    const approvedQuotes = quotes
+      .map(toRecord)
+      .filter(q =>
+        q.quote_status === "approved" &&
+        q.product_id === order.productId &&
+        q.can_make !== "no"
+      );
+
+    const quoteByPartner = new Map();
+    for (const quote of approvedQuotes) {
+      if (!quoteByPartner.has(quote.partner_id)) {
+        quoteByPartner.set(quote.partner_id, quote);
+      }
+    }
 
     return partners
       .map(toRecord)
       .filter(p =>
         p.active === "true" &&
         sameCity(p.city, order.city) &&
-        approved.has(p.id)
+        quoteByPartner.has(p.id)
       )
-      .map(p => ({
-        id: p.id,
-        name: p.partner_name,
-        city: p.city,
-        countryCode: p.country_code,
-        email: p.email,
-        whatsapp: p.whatsapp,
-        priority: numberOr(p.priority, 999),
-        responseMinutes: numberOr(p.response_minutes, 10),
-        active: true
-      }))
+      .map(p => {
+        const quote = quoteByPartner.get(p.id);
+        const supplierCost = supplierTotal(quote);
+
+        return {
+          id: p.id,
+          name: p.partner_name,
+          city: p.city,
+          countryCode: p.country_code,
+          email: p.email,
+          whatsapp: p.whatsapp,
+          priority: numberOr(p.priority, 999),
+          responseMinutes: numberOr(p.response_minutes, 10),
+          active: true,
+          quoteId: quote.id,
+          supplierCost,
+          supplierCurrency: "EUR",
+          payoutMode: p.payout_mode || "after_delivery_confirmation",
+          payoutCurrency: p.payout_currency || "EUR",
+          payoutProvider: p.payout_provider || "",
+          payoutOnboardingStatus: p.payout_onboarding_status || "not_connected",
+          payoutAccountReference: p.payout_account_reference || "",
+          payoutEnabled: p.payout_enabled === "true"
+        };
+      })
+      .filter(p => Number.isFinite(p.supplierCost) && p.supplierCost > 0)
       .sort((a,b)=>(a.priority??999)-(b.priority??999));
   }
 
@@ -68,6 +87,16 @@ export class ShopifyPartnerDirectory {
 
     return nodes;
   }
+}
+
+function supplierTotal(quote) {
+  const total = Number(quote.total_supplier_cost_eur);
+  if (Number.isFinite(total) && total > 0) return total;
+
+  const bouquet = Number(quote.bouquet_cost_eur || 0);
+  const delivery = Number(quote.delivery_fee_eur || 0);
+  const calculated = bouquet + delivery;
+  return Number.isFinite(calculated) ? calculated : NaN;
 }
 
 function toRecord(node) {
