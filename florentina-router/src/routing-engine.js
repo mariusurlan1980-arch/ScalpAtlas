@@ -61,6 +61,7 @@ export class RoutingEngine {
   async #expireAndAdvance(order) {
     const expiredPartnerId = order.currentOfferedPartnerId;
     const next = transition(order, EVENTS.PARTNER_TIMEOUT);
+    clearSupplierOfferData(next);
     await this.repository.save(next);
     await this.#audit(next, expiredPartnerId, "PARTNER_TIMEOUT");
     return this.#offerNext(next);
@@ -79,6 +80,7 @@ export class RoutingEngine {
       const candidates = eligible.filter(p => !attempted.has(p.id));
       if (attempted.size >= this.maxAttempts || candidates.length === 0) {
         const exhausted = transition(order, EVENTS.ALL_PARTNERS_EXHAUSTED);
+        clearSupplierOfferData(exhausted);
         await this.repository.save(exhausted);
         await this.#audit(exhausted, null, "ALL_PARTNERS_EXHAUSTED");
         return exhausted;
@@ -95,9 +97,22 @@ export class RoutingEngine {
         offeredAt,
         expiresAt: offerExpiresAt
       });
-      offered.routingMaxAttempts = this.maxAttempts;
-      offered.routingResponseMinutes = this.responseMinutes;
-      offered.currentPartnerPriority = partner.priority ?? null;
+
+      Object.assign(offered, {
+        routingMaxAttempts: this.maxAttempts,
+        routingResponseMinutes: this.responseMinutes,
+        currentPartnerPriority: partner.priority ?? null,
+        supplierQuoteId: partner.quoteId ?? null,
+        supplierCost: partner.supplierCost ?? null,
+        supplierCurrency: partner.supplierCurrency ?? "EUR",
+        supplierPayoutMode: partner.payoutMode ?? null,
+        supplierPayoutCurrency: partner.payoutCurrency ?? "EUR",
+        supplierPayoutProvider: partner.payoutProvider ?? "",
+        supplierPayoutOnboardingStatus: partner.payoutOnboardingStatus ?? "not_connected",
+        supplierPayoutAccountReference: partner.payoutAccountReference ?? "",
+        supplierPayoutEnabled: partner.payoutEnabled === true
+      });
+
       await this.repository.save(offered);
 
       const token = createPartnerPortalToken({
@@ -124,6 +139,7 @@ export class RoutingEngine {
         return offered;
       } catch {
         order = transition(offered, EVENTS.PARTNER_NOTIFICATION_FAILED);
+        clearSupplierOfferData(order);
         await this.repository.save(order);
         await this.#audit(order, partner.id, "PARTNER_NOTIFICATION_FAILED");
       }
@@ -161,4 +177,17 @@ export class InMemoryPartnerDirectory {
         partner.certifiedProductIds.includes(order.productId))
     );
   }
+}
+
+function clearSupplierOfferData(order) {
+  delete order.supplierQuoteId;
+  delete order.supplierCost;
+  delete order.supplierCurrency;
+  delete order.supplierPayoutMode;
+  delete order.supplierPayoutCurrency;
+  delete order.supplierPayoutProvider;
+  delete order.supplierPayoutOnboardingStatus;
+  delete order.supplierPayoutAccountReference;
+  delete order.supplierPayoutEnabled;
+  delete order.currentPartnerPriority;
 }
