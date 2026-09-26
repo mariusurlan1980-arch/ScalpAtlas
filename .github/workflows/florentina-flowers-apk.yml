@@ -1,4 +1,4 @@
-name: Build Florentina Flowers APK
+name: Build Flory Flowers APK
 
 on:
   push:
@@ -34,11 +34,11 @@ jobs:
         run: gradle assembleDebug --stacktrace
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk FlorentinaFlowers-v1.6-CLEAN.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk FloryFlowers-v1.7-CLEAN.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: FlorentinaFlowers-APK
-          path: florentina-flowers/FlorentinaFlowers-v1.6-CLEAN.apk
+          name: FloryFlowers-APK
+          path: florentina-flowers/FloryFlowers-v1.7-CLEAN.apk
           if-no-files-found: error
