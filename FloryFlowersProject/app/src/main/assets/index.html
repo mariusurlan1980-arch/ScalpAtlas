@@ -8,61 +8,67 @@
 </head>
 <body>
 <div class="app">
-<header class="top">
-  <div class="brandrow">
-    <div class="logo">FF</div>
-    <div class="brand"><div class="brandname">Flory Flowers</div><div class="tagline">FLORI PENTRU ORICE OCAZIE</div></div>
-    <button id="favTop" class="topicon">♡</button>
-    <button id="cartTop" class="topicon cart">🛒<b id="count">0</b></button>
+  <header class="top">
+    <div class="brand-row">
+      <div class="logo">FF</div>
+      <div class="brand">
+        <div class="brand-name">Flory Flowers</div>
+        <div class="tagline">FLORI PENTRU ORICE OCAZIE</div>
+      </div>
+      <button id="favTop" class="header-icon" aria-label="Favorite">♡</button>
+      <button id="cartTop" class="header-icon cart" aria-label="Coș">🛒<span id="count">0</span></button>
+    </div>
+
+    <div class="search-row">
+      <div class="search-box"><span>⌕</span><input id="q" placeholder="Caută flori, buchete, cadouri..."></div>
+      <select id="lang"><option>RO</option><option>EN</option></select>
+      <select id="cur"><option value="EUR">EUR</option><option value="RON">RON</option></select>
+    </div>
+
+    <div class="trust-row">
+      <span>🚚 Livrare</span>
+      <span>🛡 Plăți sigure</span>
+      <span>🌼 Flori proaspete</span>
+      <span>🎁 Mesaj personal</span>
+    </div>
+  </header>
+
+  <section class="hero-wrap">
+    <img src="hero.jpg" alt="Spune totul prin flori">
+    <button id="discover" class="hero-hotspot" aria-label="Descoperă colecțiile"></button>
+  </section>
+
+  <nav id="cats" class="categories"></nav>
+
+  <section class="popular" id="popular">
+    <div class="section-head">
+      <h2>Cele mai populare</h2>
+      <button id="all">Vezi toate →</button>
+    </div>
+    <div id="products" class="products"></div>
+  </section>
+
+  <section class="features">
+    <div>🚚<b>Livrare rapidă</b><small>în România<br>și internațional</small></div>
+    <div>🛡<b>Plăți sigure</b><small>Card, PayPal,<br>Apple Pay</small></div>
+    <div>🌺<b>Flori proaspete</b><small>Garanția calității</small></div>
+    <div>🎁<b>Mesaj personal</b><small>gratuit inclus</small></div>
+  </section>
+
+  <nav class="bottom">
+    <button data-n="home" class="active">⌂<span>Acasă</span></button>
+    <button data-n="search">⌕<span>Caută</span></button>
+    <button data-n="fav">♡<span>Favorite</span></button>
+    <button data-n="cart">🛒<span>Comandă</span></button>
+  </nav>
+
+  <div id="modal" class="modal hidden">
+    <div class="sheet">
+      <button id="close">×</button>
+      <h2 id="mt"></h2>
+      <div id="mb"></div>
+    </div>
   </div>
-  <div class="searchrow">
-    <div class="searchbox"><span>⌕</span><input id="q" placeholder="Caută flori, buchete, cadouri..."></div>
-    <select id="lang"><option>RO</option><option>EN</option></select>
-    <select id="cur"><option value="EUR">EUR</option><option value="RON">RON</option></select>
-  </div>
-  <div class="trust"><span>🚚 Livrare</span><span>🛡 Plăți sigure</span><span>🌼 Flori proaspete</span><span>🎁 Mesaj personal</span></div>
-</header>
-
-<section class="hero">
-  <div class="herocopy">
-    <div class="eyebrow">FLORI PENTRU<br>MOMENTE SPECIALE</div>
-    <div class="headline">Spune totul<br>prin flori</div>
-    <div class="heart">♡</div>
-    <div class="delivery">Livrare internațională<br>prin parteneri locali</div>
-    <div class="subcopy">Disponibilitatea depinde de oraș și de florăria parteneră.</div>
-    <button id="discover" class="discover">Descoperă colecțiile →</button>
-  </div>
-  <div class="heroimage">
-    <img src="https://unsplash.com/photos/YPW5RcYmCJQ/download?force=true&w=900" alt="Buchet de trandafiri roșii">
-    <div class="pill p1">🚚 Livrare locală</div>
-    <div class="pill p2">🌿 Flori proaspete</div>
-    <div class="pill p3">❤ Mesaj personal</div>
-    <div class="pill p4">🎁 Cadouri</div>
-  </div>
-</section>
-
-<nav id="cats" class="cats"></nav>
-
-<section class="popular" id="popular">
-  <div class="sectionhead"><h2>Cele mai populare</h2><button id="all">Vezi toate →</button></div>
-  <div id="products" class="products"></div>
-</section>
-
-<section class="features">
-  <div>🚚<b>Livrare rapidă</b><small>în România<br>și internațional</small></div>
-  <div>🛡<b>Plăți sigure</b><small>Card, PayPal,<br>Apple Pay</small></div>
-  <div>🌺<b>Flori proaspete</b><small>Garanția calității</small></div>
-  <div>🎁<b>Mesaj personal</b><small>gratuit inclus</small></div>
-</section>
-
-<nav class="bottom">
-  <button data-n="home" class="active">⌂<span>Acasă</span></button>
-  <button data-n="search">⌕<span>Caută</span></button>
-  <button data-n="fav">♡<span>Favorite</span></button>
-  <button data-n="cart">🛒<span>Comandă</span></button>
-</nav>
-
-<div id="modal" class="modal hidden"><div class="sheet"><button id="close">×</button><h2 id="mt"></h2><div id="mb"></div></div></div>
 </div>
 <script src="app.js"></script>
 </body>
