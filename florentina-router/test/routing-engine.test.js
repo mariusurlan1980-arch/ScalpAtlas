@@ -116,3 +116,35 @@ test("inactive or uncertified florist is skipped",async()=>{
   assert.equal(routed.currentOfferedPartnerId,"ok");
   assert.equal(sent.length,1);
 });
+
+
+test("notification failure skips immediately to the next florist",async()=>{
+  const order=makeOrder();
+  const repository=new InMemoryOrderRepository([order]);
+  const delivered=[];
+  const notifier={
+    async sendOffer(input){
+      if(input.partner.id==="f1") throw new Error("email delivery failed");
+      delivered.push(input.partner.id);
+      return {channel:"email",messageId:"m2"};
+    }
+  };
+  const engine=new RoutingEngine({
+    repository,
+    partnerDirectory:new InMemoryPartnerDirectory(partners(3)),
+    notifier,
+    tokenSecret:"secret",
+    portalBaseUrl:"https://partner.test",
+    responseMinutes:10,
+    maxAttempts:5,
+    clock:()=>Date.parse("2026-09-26T10:00:00Z")
+  });
+
+  const routed=await engine.start(order.id);
+  assert.equal(routed.currentOfferedPartnerId,"f2");
+  assert.deepEqual(routed.attemptedPartnerIds,["f1"]);
+  assert.deepEqual(delivered,["f2"]);
+
+  const audit=await repository.listAudit();
+  assert.ok(audit.some(x=>x.partnerId==="f1" && x.event==="PARTNER_NOTIFICATION_FAILED"));
+});
