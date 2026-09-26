@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 
 const COPY = {
   en: {
-    subject: order => `New Florentina Flowers order ${order.orderName}`,
+    subject: order => `New Flory Flowers order ${order.orderName}`,
     intro: "A new flower-delivery order is available for you.",
     product: "Product",
     city: "Delivery city",
@@ -13,7 +13,7 @@ const COPY = {
     privacy: "Recipient name, address and phone are revealed only after you accept the order."
   },
   de: {
-    subject: order => `Neue Florentina Flowers Bestellung ${order.orderName}`,
+    subject: order => `Neue Flory Flowers Bestellung ${order.orderName}`,
     intro: "Eine neue Blumenlieferung steht für Sie bereit.",
     product: "Produkt",
     city: "Lieferstadt",
@@ -24,7 +24,7 @@ const COPY = {
     privacy: "Name, Adresse und Telefonnummer des Empfängers werden erst nach Annahme angezeigt."
   },
   it: {
-    subject: order => `Nuovo ordine Florentina Flowers ${order.orderName}`,
+    subject: order => `Nuovo ordine Flory Flowers ${order.orderName}`,
     intro: "È disponibile un nuovo ordine di consegna fiori.",
     product: "Prodotto",
     city: "Città di consegna",
@@ -35,7 +35,7 @@ const COPY = {
     privacy: "Nome, indirizzo e telefono del destinatario saranno visibili solo dopo l'accettazione."
   },
   es: {
-    subject: order => `Nuevo pedido Florentina Flowers ${order.orderName}`,
+    subject: order => `Nuevo pedido Flory Flowers ${order.orderName}`,
     intro: "Hay un nuevo pedido de entrega de flores disponible.",
     product: "Producto",
     city: "Ciudad de entrega",
@@ -46,7 +46,7 @@ const COPY = {
     privacy: "El nombre, dirección y teléfono del destinatario se muestran solo después de aceptar."
   },
   fr: {
-    subject: order => `Nouvelle commande Florentina Flowers ${order.orderName}`,
+    subject: order => `Nouvelle commande Flory Flowers ${order.orderName}`,
     intro: "Une nouvelle commande de livraison de fleurs est disponible.",
     product: "Produit",
     city: "Ville de livraison",
