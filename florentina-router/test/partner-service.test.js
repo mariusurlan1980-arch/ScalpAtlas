@@ -6,8 +6,10 @@ import { PartnerOrderService, canCapturePayment } from "../src/partner-service.j
 import { InMemoryOrderRepository } from "../src/storage.js";
 
 const secret = "test-secret";
+const baseNow = Date.parse("2026-09-26T10:00:00Z");
 
-function setup() {
+function setup({now=baseNow}={}) {
+  let currentNow=now;
   let order = createOrderFinanceRecord({
     orderName: "#1001",
     shopifyOrderId: "order-1",
@@ -23,25 +25,34 @@ function setup() {
     recipient: { name: "Ana", address: "10 Rue Test", phone: "+331234" },
     photoRequired: true
   });
-  order = transition(order, EVENTS.PARTNER_OFFERED, { partnerId: "p1" });
+  order = transition(order, EVENTS.PARTNER_OFFERED, {
+    partnerId: "p1",
+    offeredAt:new Date(currentNow).toISOString(),
+    expiresAt:new Date(currentNow+10*60_000).toISOString()
+  });
 
   const repository = new InMemoryOrderRepository([order]);
   const photoStore = {
     async saveBuffer() { return "/uploads/test.jpg"; }
   };
-  const service = new PartnerOrderService({ repository, tokenSecret: secret, photoStore });
+  const service = new PartnerOrderService({
+    repository,
+    tokenSecret: secret,
+    photoStore,
+    clock:()=>currentNow
+  });
   const token = createPartnerPortalToken({
     orderId: order.id,
     partnerId: "p1",
-    expiresAt: new Date(Date.now() + 60_000).toISOString()
+    expiresAt: new Date(currentNow + 48*60*60_000).toISOString()
   }, secret);
   const wrongToken = createPartnerPortalToken({
     orderId: order.id,
     partnerId: "p2",
-    expiresAt: new Date(Date.now() + 60_000).toISOString()
+    expiresAt: new Date(currentNow + 48*60*60_000).toISOString()
   }, secret);
 
-  return { service, repository, token, wrongToken };
+  return { service, repository, token, wrongToken, setNow:v=>{currentNow=v;} };
 }
 
 test("only the currently offered florist can accept", async () => {
@@ -53,6 +64,12 @@ test("only the currently offered florist can accept", async () => {
   const view = await service.applyAction(token, "ACCEPT");
   assert.equal(view.recipient.address, "10 Rue Test");
   assert.deepEqual(view.actions, ["START_PREPARATION"]);
+});
+
+test("offer cannot be accepted after its ten-minute deadline", async()=>{
+  const {service,token,setNow}=setup();
+  setNow(baseNow+10*60_000+1);
+  await assert.rejects(()=>service.applyAction(token,"ACCEPT"),/expired/);
 });
 
 test("photo and delivery must be verified before capture becomes eligible", async () => {
