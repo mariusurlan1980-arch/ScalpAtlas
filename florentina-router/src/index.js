@@ -9,6 +9,7 @@ export function createOrderFinanceRecord({
   authorizationExpiresAt
 }) {
   return {
+    id: shopifyOrderId,
     orderName,
     shopifyOrderId,
     total,
@@ -20,6 +21,7 @@ export function createOrderFinanceRecord({
     paymentCaptured: false,
     supplierPaid: false,
     photoApproved: false,
+    deliveryVerified: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
