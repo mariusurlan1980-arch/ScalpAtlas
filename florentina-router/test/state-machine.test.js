@@ -13,11 +13,16 @@ function order() {
   });
 }
 
+function offeredOrder(partnerId="florist-1") {
+  return transition(order(), EVENTS.PARTNER_OFFERED, {
+    partnerId,
+    offeredAt:"2026-09-26T10:00:00Z",
+    expiresAt:"2026-09-26T10:10:00Z"
+  });
+}
+
 function acceptedOrder() {
-  let o = order();
-  o = transition(o, EVENTS.PARTNER_OFFERED, { partnerId: "florist-1" });
-  o = transition(o, EVENTS.PARTNER_ACCEPT, { partnerId: "florist-1" });
-  return o;
+  return transition(offeredOrder(), EVENTS.PARTNER_ACCEPT, { partnerId: "florist-1" });
 }
 
 test("happy path never pays supplier before verified delivery and capture", () => {
@@ -45,12 +50,18 @@ test("happy path never pays supplier before verified delivery and capture", () =
 });
 
 test("another florist cannot accept an offer", () => {
-  let o = order();
-  o = transition(o, EVENTS.PARTNER_OFFERED, { partnerId: "florist-1" });
+  const o = offeredOrder("florist-1");
   assert.throws(
     () => transition(o, EVENTS.PARTNER_ACCEPT, { partnerId: "florist-2" }),
     /another florist/
   );
+});
+
+test("rejected florist is recorded so it is not offered again", () => {
+  const o = offeredOrder("florist-1");
+  const next = transition(o, EVENTS.PARTNER_REJECT, { partnerId:"florist-1" });
+  assert.deepEqual(next.attemptedPartnerIds,["florist-1"]);
+  assert.equal(next.currentOfferedPartnerId,undefined);
 });
 
 test("all suppliers exhausted releases authorization when not captured", () => {
