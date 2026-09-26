@@ -20,7 +20,11 @@ const base={
 };
 
 test("recipient private data is hidden before florist accepts",()=>{
-  const view=buildPartnerOrderView({...base,state:STATES.OFFERING_TO_PARTNER},partner);
+  const view=buildPartnerOrderView({
+    ...base,
+    state:STATES.OFFERING_TO_PARTNER,
+    currentOfferedPartnerId:"p1"
+  },partner);
   assert.equal(view.recipient,null);
   assert.deepEqual(view.actions,["ACCEPT","REJECT"]);
 });
@@ -31,7 +35,8 @@ test("recipient details appear only for the accepted florist",()=>{
   assert.deepEqual(view.actions,["START_PREPARATION"]);
 });
 
-test("another florist cannot see recipient after someone else accepts",()=>{
+test("another florist cannot see recipient or continue after someone else accepts",()=>{
   const view=buildPartnerOrderView({...base,state:STATES.PARTNER_ACCEPTED,partnerId:"p2"},partner);
   assert.equal(view.recipient,null);
+  assert.deepEqual(view.actions,[]);
 });
