@@ -1,0 +1,26 @@
+name: Florentina Router Safety Tests
+
+on:
+  push:
+    branches:
+      - florentina-flowers-router
+    paths:
+      - "florentina-router/**"
+      - ".github/workflows/florentina-router-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: florentina-router
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run safety tests
+        run: npm test
