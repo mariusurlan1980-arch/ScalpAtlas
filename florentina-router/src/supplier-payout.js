@@ -54,7 +54,7 @@ export class SupplierPayoutOrchestrator {
         currency: order.supplierPayoutCurrency || order.supplierCurrency,
         accountReference: order.supplierPayoutAccountReference,
         provider: order.supplierPayoutProvider,
-        reference: `Florentina Flowers ${order.orderName}`,
+        reference: `Flory Flowers ${order.orderName}`,
         idempotencyKey
       });
 
