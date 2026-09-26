@@ -60,62 +60,76 @@ export class RoutingEngine {
 
   async #expireAndAdvance(order) {
     const expiredPartnerId = order.currentOfferedPartnerId;
-    const next = transition(order, EVENTS.PARTNER_TIMEOUT, { partnerId: expiredPartnerId });
+    const next = transition(order, EVENTS.PARTNER_TIMEOUT);
     await this.repository.save(next);
     await this.#audit(next, expiredPartnerId, "PARTNER_TIMEOUT");
     return this.#offerNext(next);
   }
 
-  async #offerNext(order) {
+  async #offerNext(initialOrder) {
+    let order = initialOrder;
     if (order.state !== STATES.OFFERING_TO_PARTNER) return order;
 
-    const attempted = new Set(order.attemptedPartnerIds ?? []);
-    const eligible = (await this.partnerDirectory.getEligiblePartners(order))
-      .filter(p => p.active !== false)
-      .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
+    while (order.state === STATES.OFFERING_TO_PARTNER) {
+      const attempted = new Set(order.attemptedPartnerIds ?? []);
+      const eligible = (await this.partnerDirectory.getEligiblePartners(order))
+        .filter(p => p.active !== false)
+        .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
 
-    const candidates = eligible.filter(p => !attempted.has(p.id));
-    const totalAttempts = attempted.size;
+      const candidates = eligible.filter(p => !attempted.has(p.id));
+      if (attempted.size >= this.maxAttempts || candidates.length === 0) {
+        const exhausted = transition(order, EVENTS.ALL_PARTNERS_EXHAUSTED);
+        await this.repository.save(exhausted);
+        await this.#audit(exhausted, null, "ALL_PARTNERS_EXHAUSTED");
+        return exhausted;
+      }
 
-    if (totalAttempts >= this.maxAttempts || candidates.length === 0) {
-      const exhausted = transition(order, EVENTS.ALL_PARTNERS_EXHAUSTED);
-      await this.repository.save(exhausted);
-      await this.#audit(exhausted, null, "ALL_PARTNERS_EXHAUSTED");
-      return exhausted;
+      const partner = candidates[0];
+      const now = this.clock();
+      const offeredAt = new Date(now).toISOString();
+      const offerExpiresAt = new Date(now + this.responseMinutes * 60_000).toISOString();
+      const portalExpiresAt = new Date(now + this.portalTokenHours * 60 * 60_000).toISOString();
+
+      const offered = transition(order, EVENTS.PARTNER_OFFERED, {
+        partnerId: partner.id,
+        offeredAt,
+        expiresAt: offerExpiresAt
+      });
+      offered.routingMaxAttempts = this.maxAttempts;
+      offered.routingResponseMinutes = this.responseMinutes;
+      offered.currentPartnerPriority = partner.priority ?? null;
+      await this.repository.save(offered);
+
+      const token = createPartnerPortalToken({
+        orderId: offered.id,
+        partnerId: partner.id,
+        expiresAt: portalExpiresAt
+      }, this.tokenSecret);
+
+      const portalUrl = `${this.portalBaseUrl}/partner?token=${encodeURIComponent(token)}`;
+
+      try {
+        const delivery = await this.notifier.sendOffer({
+          order: offered,
+          partner,
+          portalUrl,
+          expiresAt: offerExpiresAt
+        });
+
+        offered.notificationChannel = delivery?.channel ?? null;
+        offered.notificationMessageId = delivery?.messageId ?? null;
+        offered.notificationSentAt = new Date(this.clock()).toISOString();
+        await this.repository.save(offered);
+        await this.#audit(offered, partner.id, "PARTNER_OFFERED");
+        return offered;
+      } catch {
+        order = transition(offered, EVENTS.PARTNER_NOTIFICATION_FAILED);
+        await this.repository.save(order);
+        await this.#audit(order, partner.id, "PARTNER_NOTIFICATION_FAILED");
+      }
     }
 
-    const partner = candidates[0];
-    const now = this.clock();
-    const offeredAt = new Date(now).toISOString();
-    const offerExpiresAt = new Date(now + this.responseMinutes * 60_000).toISOString();
-    const portalExpiresAt = new Date(now + this.portalTokenHours * 60 * 60_000).toISOString();
-
-    const offered = transition(order, EVENTS.PARTNER_OFFERED, {
-      partnerId: partner.id,
-      offeredAt,
-      expiresAt: offerExpiresAt
-    });
-    offered.routingMaxAttempts = this.maxAttempts;
-    offered.routingResponseMinutes = this.responseMinutes;
-    offered.currentPartnerPriority = partner.priority ?? null;
-    await this.repository.save(offered);
-
-    const token = createPartnerPortalToken({
-      orderId: offered.id,
-      partnerId: partner.id,
-      expiresAt: portalExpiresAt
-    }, this.tokenSecret);
-
-    const portalUrl = `${this.portalBaseUrl}/partner?token=${encodeURIComponent(token)}`;
-    await this.notifier.sendOffer({
-      order: offered,
-      partner,
-      portalUrl,
-      expiresAt: offerExpiresAt
-    });
-    await this.#audit(offered, partner.id, "PARTNER_OFFERED");
-
-    return offered;
+    return order;
   }
 
   async #order(id) {
@@ -146,17 +160,5 @@ export class InMemoryPartnerDirectory {
       (!partner.certifiedProductIds?.length ||
         partner.certifiedProductIds.includes(order.productId))
     );
-  }
-}
-
-export class LogOfferNotifier {
-  async sendOffer({ order, partner, portalUrl, expiresAt }) {
-    console.log(JSON.stringify({
-      type: "FLORIST_OFFER",
-      order: order.orderName,
-      partner: partner.name ?? partner.id,
-      portalUrl,
-      expiresAt
-    }));
   }
 }
