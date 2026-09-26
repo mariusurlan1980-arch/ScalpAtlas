@@ -3,14 +3,14 @@ plugins {
 }
 
 android {
-    namespace 'com.florentinaflowers.finalapp'
+    namespace 'com.florentinaflowers.catalog16'
     compileSdk 35
 
     defaultConfig {
-        applicationId 'com.florentinaflowers.finalapp'
+        applicationId 'com.florentinaflowers.catalog16'
         minSdk 24
         targetSdk 35
-        versionCode 15
-        versionName '1.5'
+        versionCode 16
+        versionName '1.6'
     }
 }
