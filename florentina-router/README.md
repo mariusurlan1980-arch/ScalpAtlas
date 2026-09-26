@@ -18,7 +18,32 @@ The default rule is **pay supplier only after verified delivery and successful c
 10. After successful capture, supplier payout can be released.
 11. Remaining margin stays with Florentina Flowers, before fees and taxes.
 
-If no florist accepts, an uncaptured authorization is voided. If money had already been captured, a refund path is used.
+## Five-florist cascade
+
+The routing engine implements the pilot rule:
+
+- maximum 5 florist attempts,
+- one florist at a time,
+- 10-minute response window by default,
+- immediate advance after REJECT,
+- automatic advance when the 10-minute deadline expires,
+- previously rejected/timed-out florists are never offered the same order again,
+- first accepted florist locks the order,
+- after five unsuccessful attempts the order enters the payment-authorization void path.
+
+Portal links can stay valid during preparation/delivery, but ACCEPT/REJECT rights expire at the offer deadline.
+
+For production, eligible florists are loaded from Shopify internal metaobjects. A florist must be marked active and have an approved supplier-product quote for the requested product. Current unvalidated candidates therefore cannot receive live orders.
+
+## Safety switch
+
+Routing is disabled by default.
+
+Set:
+
+`ENABLE_ROUTING_ENGINE=true`
+
+only after the production partner directory, notification channel and operational checks are ready.
 
 ## Florist portal
 
@@ -33,7 +58,7 @@ Recipient address and phone remain hidden until the florist has accepted the ord
 
 ## Backend
 
-The router now includes:
+The router includes:
 - signed, expiring florist portal tokens,
 - state-checked partner actions,
 - persistent JSON storage for development/testing,
@@ -41,13 +66,15 @@ The router now includes:
 - pre-delivery photo upload with MIME and size restrictions,
 - internal photo review endpoint,
 - separate delivery verification endpoint,
+- automatic timed routing scheduler,
+- Shopify metaobject partner-directory reader,
 - Shopify payment capture and authorization-void client,
 - Shopify webhook HMAC verification,
 - automated safety tests.
 
 ## Important production boundary
 
-The JSON repository and local photo directory are for development only. Production should use durable database storage and private object storage. Real payment capture and supplier payout remain disabled until merchant onboarding, production secrets and deployment are complete.
+The JSON repository, local photo directory and console offer notifier are for development only. Production requires durable database storage, private object storage and a real notification provider. Real payment capture and supplier payout remain disabled until merchant onboarding, production secrets and deployment are complete.
 
 The Android app and Shopify storefront are not modified by this router branch.
 
@@ -75,5 +102,6 @@ Then open the portal URL printed by the seed script.
 - private image/object storage,
 - deployed HTTPS endpoint,
 - verified Shopify webhooks,
+- real email/SMS/WhatsApp florist notification channel,
 - payout-provider onboarding for florist partners,
 - production secrets stored outside the repository.
