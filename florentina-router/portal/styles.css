@@ -1,0 +1,33 @@
+:root{
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:#1f2937;background:#f7f4f5;color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#fff 0,#f7f1f3 100%);min-height:100vh}
+.shell{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+.brand{display:flex;gap:12px;align-items:center;margin:4px 0 20px}
+.mark{width:48px;height:48px;border-radius:16px;background:#721b3c;color:#fff;display:grid;place-items:center;font-weight:800;letter-spacing:.05em}
+.brand h1{font-size:20px;margin:0}.brand p{margin:2px 0 0;color:#6b7280}
+.card{background:#fff;border:1px solid #eadde2;border-radius:20px;padding:18px;margin:12px 0;box-shadow:0 8px 28px rgba(64,25,40,.06)}
+.center{text-align:center;padding:44px 18px}
+.hidden{display:none!important}
+.status-row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+.order-name{font-weight:800}.status{font-size:12px;font-weight:800;padding:7px 10px;border-radius:999px;background:#f0e6ea;color:#721b3c}
+.product-card{display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:center}
+.product-card img{width:120px;height:120px;border-radius:16px;object-fit:cover;background:#f2f2f2}
+h2,h3{margin:0 0 10px}.price{font-size:22px;font-weight:800;color:#721b3c}
+.notice{margin-top:12px;padding:12px;border-radius:14px;background:#fff5d9}
+.privacy{font-size:14px;color:#4b5563}
+.message{padding:12px;border-left:4px solid #721b3c;background:#faf5f7;border-radius:8px}
+.actions{display:grid;gap:10px;margin:16px 0}
+button{width:100%;border:0;border-radius:16px;padding:15px 18px;font-size:16px;font-weight:800;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.primary{background:#721b3c;color:#fff}
+.secondary{background:#e9d9df;color:#4d1730}
+.danger{background:#fff0f0;color:#9b1c1c;border:1px solid #f3cccc}
+.success{background:#e8f7ed;color:#126733}
+.feedback{padding:12px 14px;border-radius:14px;background:#eef6ff}
+.spinner{width:34px;height:34px;border:4px solid #eadde2;border-top-color:#721b3c;border-radius:50%;margin:0 auto 12px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#photoInput{display:block;width:100%;margin:12px 0 16px}
+@media(max-width:520px){.product-card{grid-template-columns:92px 1fr}.product-card img{width:92px;height:92px}.shell{padding:14px 12px 36px}}
