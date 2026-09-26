@@ -13,18 +13,27 @@ function order() {
   });
 }
 
-test("happy path never pays supplier before delivery and capture", () => {
+function acceptedOrder() {
   let o = order();
-  o = transition(o, EVENTS.START_ROUTING);
+  o = transition(o, EVENTS.PARTNER_OFFERED, { partnerId: "florist-1" });
   o = transition(o, EVENTS.PARTNER_ACCEPT, { partnerId: "florist-1" });
+  return o;
+}
+
+test("happy path never pays supplier before verified delivery and capture", () => {
+  let o = acceptedOrder();
   o = transition(o, EVENTS.PREPARATION_STARTED);
   o = transition(o, EVENTS.PHOTO_SUBMITTED, { photoUrl: "https://example.test/bouquet.jpg" });
   o = transition(o, EVENTS.PHOTO_APPROVED);
   o = transition(o, EVENTS.DELIVERY_STARTED);
-  o = transition(o, EVENTS.DELIVERY_CONFIRMED, { deliveryProof: "proof-1" });
+  o = transition(o, EVENTS.DELIVERY_REPORTED, { deliveryProof: "proof-1" });
 
-  assert.equal(o.state, STATES.CAPTURE_PENDING);
+  assert.equal(o.state, STATES.DELIVERY_REPORTED);
+  assert.equal(o.paymentCaptured, false);
   assert.equal(o.supplierPaid, false);
+
+  o = transition(o, EVENTS.DELIVERY_VERIFIED);
+  assert.equal(o.state, STATES.CAPTURE_PENDING);
 
   o = transition(o, EVENTS.CAPTURE_SUCCEEDED, { captureReference: "cap-1" });
   assert.equal(o.state, STATES.PAYOUT_PENDING);
@@ -35,6 +44,15 @@ test("happy path never pays supplier before delivery and capture", () => {
   assert.equal(o.supplierPaid, true);
 });
 
+test("another florist cannot accept an offer", () => {
+  let o = order();
+  o = transition(o, EVENTS.PARTNER_OFFERED, { partnerId: "florist-1" });
+  assert.throws(
+    () => transition(o, EVENTS.PARTNER_ACCEPT, { partnerId: "florist-2" }),
+    /another florist/
+  );
+});
+
 test("all suppliers exhausted releases authorization when not captured", () => {
   let o = order();
   o = transition(o, EVENTS.START_ROUTING);
@@ -43,9 +61,7 @@ test("all suppliers exhausted releases authorization when not captured", () => {
 });
 
 test("bad bouquet blocks automatic payout", () => {
-  let o = order();
-  o = transition(o, EVENTS.START_ROUTING);
-  o = transition(o, EVENTS.PARTNER_ACCEPT, { partnerId: "florist-1" });
+  let o = acceptedOrder();
   o = transition(o, EVENTS.PREPARATION_STARTED);
   o = transition(o, EVENTS.PHOTO_SUBMITTED, { photoUrl: "https://example.test/bad.jpg" });
   o = transition(o, EVENTS.PHOTO_REJECTED, { reason: "Wrong rose count" });
