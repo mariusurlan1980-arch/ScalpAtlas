@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Florentina Flowers · Partner Order</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <div class="mark">FF</div>
+      <div>
+        <h1>Florentina Flowers</h1>
+        <p id="partnerLabel">Florist Partner</p>
+      </div>
+    </header>
+
+    <section id="loading" class="card center">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="loadingText">Loading order…</p>
+    </section>
+
+    <section id="error" class="card hidden">
+      <h2 id="errorTitle">Link unavailable</h2>
+      <p id="errorText">This order link is invalid or has expired.</p>
+    </section>
+
+    <section id="order" class="hidden">
+      <div class="status-row">
+        <span id="orderName" class="order-name"></span>
+        <span id="status" class="status"></span>
+      </div>
+
+      <article class="card product-card">
+        <img id="productImage" alt="Bouquet reference">
+        <div>
+          <h2 id="productTitle"></h2>
+          <p class="price"><span id="price"></span> <span id="currency"></span></p>
+          <p><strong id="deliveryLabel">Delivery:</strong> <span id="delivery"></span></p>
+          <p><strong id="cityLabel">City:</strong> <span id="city"></span></p>
+        </div>
+      </article>
+
+      <article class="card">
+        <h3 id="standardTitle">Required standard</h3>
+        <p id="matchStandard"></p>
+        <p id="substitutionPolicy"></p>
+        <div class="notice" id="photoRule">Pre-delivery photo required.</div>
+      </article>
+
+      <article id="recipientCard" class="card hidden">
+        <h3 id="recipientTitle">Recipient</h3>
+        <p id="recipientName"></p>
+        <p id="recipientAddress"></p>
+        <p id="recipientPhone"></p>
+        <p id="greeting" class="message"></p>
+      </article>
+
+      <article class="card privacy">
+        <p id="privacyNotice"></p>
+      </article>
+
+      <section id="actions" class="actions"></section>
+
+      <section id="uploadPanel" class="card hidden">
+        <h3 id="uploadTitle">Upload finished bouquet photo</h3>
+        <input id="photoInput" type="file" accept="image/*" capture="environment">
+        <button id="submitPhoto" class="primary" type="button">Send photo</button>
+      </section>
+
+      <p id="feedback" class="feedback hidden" role="status"></p>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
