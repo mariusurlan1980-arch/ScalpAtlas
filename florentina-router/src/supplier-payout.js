@@ -65,6 +65,12 @@ export class SupplierPayoutOrchestrator {
       next.supplierPaidAmount = result.amount ?? Number(order.supplierCost);
       next.supplierPaidCurrency =
         result.currency ?? order.supplierPayoutCurrency ?? order.supplierCurrency;
+      next.grossMarginBeforeFees = gate.grossMarginBeforeFees;
+      if (Number.isFinite(Number(order.paymentFees))) {
+        next.marginAfterKnownPaymentFees = roundMoney(
+          gate.grossMarginBeforeFees - Number(order.paymentFees)
+        );
+      }
       next.payoutIdempotencyKey = idempotencyKey;
       delete next.payoutRetryAfter;
       delete next.lastPayoutErrorCode;
