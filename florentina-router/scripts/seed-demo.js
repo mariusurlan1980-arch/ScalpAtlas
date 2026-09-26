@@ -22,6 +22,7 @@ let order = createOrderFinanceRecord({
 });
 
 Object.assign(order, {
+  productId:"demo-24-red-roses",
   productTitle: "24 Red Roses",
   referenceImageUrl: "https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728",
   supplierCost: 85,
@@ -37,10 +38,15 @@ Object.assign(order, {
   photoRequired: true
 });
 
-order = transition(order, EVENTS.PARTNER_OFFERED, { partnerId: "demo-florist" });
+const now=Date.now();
+order = transition(order, EVENTS.PARTNER_OFFERED, {
+  partnerId: "demo-florist",
+  offeredAt:new Date(now).toISOString(),
+  expiresAt:new Date(now+10*60_000).toISOString()
+});
 await repository.save(order);
 
-const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+const expiresAt = new Date(now + 48 * 60 * 60 * 1000).toISOString();
 const token = createPartnerPortalToken({
   orderId: order.id,
   partnerId: "demo-florist",
@@ -48,4 +54,5 @@ const token = createPartnerPortalToken({
 }, secret);
 
 console.log(`Demo order: ${order.orderName}`);
+console.log(`Offer expires: ${order.offerExpiresAt}`);
 console.log(`Portal: http://localhost:8787/partner?token=${token}`);
