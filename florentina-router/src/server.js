@@ -14,6 +14,7 @@ import {
 import { LogOfferNotifier, SmtpOfferNotifier } from "./offer-notifier.js";
 import { ShopifyPartnerDirectory } from "./shopify-partner-directory.js";
 import { FinancialOrchestrator } from "./financial-orchestrator.js";
+import { HttpPayoutProvider, SupplierPayoutOrchestrator } from "./supplier-payout.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -24,11 +25,13 @@ const TOKEN_SECRET = requiredSecret("PARTNER_LINK_SECRET", "dev-only-change-me")
 const INTERNAL_API_KEY = requiredSecret("INTERNAL_API_KEY", "dev-internal-only");
 const ROUTING_ENABLED = process.env.ENABLE_ROUTING_ENGINE === "true";
 const PAYMENT_AUTOMATION_ENABLED = process.env.ENABLE_PAYMENT_AUTOMATION === "true";
+const SUPPLIER_PAYOUTS_ENABLED = process.env.ENABLE_SUPPLIER_PAYOUTS === "true";
 const PORTAL_BASE_URL = process.env.PORTAL_BASE_URL || `http://localhost:${PORT}`;
 const RESPONSE_MINUTES = Number(process.env.ROUTING_RESPONSE_MINUTES || 10);
 const MAX_ATTEMPTS = Number(process.env.ROUTING_MAX_ATTEMPTS || 5);
 const ROUTING_TICK_MS = Number(process.env.ROUTING_TICK_MS || 30_000);
 const FINANCIAL_TICK_MS = Number(process.env.FINANCIAL_TICK_MS || 30_000);
+const PAYOUT_TICK_MS = Number(process.env.PAYOUT_TICK_MS || 30_000);
 
 const repository = new JsonOrderRepository(DATA_FILE);
 await repository.init();
@@ -57,6 +60,11 @@ const financialOrchestrator = paymentProvider
   ? new FinancialOrchestrator({ repository, paymentProvider })
   : null;
 
+const supplierPayoutProvider = buildSupplierPayoutProvider();
+const supplierPayoutOrchestrator = supplierPayoutProvider
+  ? new SupplierPayoutOrchestrator({ repository, payoutProvider: supplierPayoutProvider })
+  : null;
+
 if (ROUTING_ENABLED) {
   const timer = setInterval(async () => {
     try {
@@ -79,6 +87,17 @@ if (PAYMENT_AUTOMATION_ENABLED && financialOrchestrator) {
   timer.unref();
 }
 
+if (SUPPLIER_PAYOUTS_ENABLED && supplierPayoutOrchestrator) {
+  const timer = setInterval(async () => {
+    try {
+      await supplierPayoutOrchestrator.processPending();
+    } catch (error) {
+      console.error("Supplier payout timer error:", error.message);
+    }
+  }, PAYOUT_TICK_MS);
+  timer.unref();
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -89,6 +108,7 @@ const server = http.createServer(async (req, res) => {
         mode: process.env.NODE_ENV || "development",
         routingEnabled: ROUTING_ENABLED,
         paymentAutomationEnabled: PAYMENT_AUTOMATION_ENABLED,
+        supplierPayoutsEnabled: SUPPLIER_PAYOUTS_ENABLED,
         responseMinutes: RESPONSE_MINUTES,
         maxAttempts: MAX_ATTEMPTS
       });
@@ -140,6 +160,13 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { processed: processed.length });
     }
 
+    if (req.method === "POST" && url.pathname === "/api/internal/payout-tick") {
+      requireInternal(req);
+      requireSupplierPayoutsEnabled();
+      const processed = await supplierPayoutOrchestrator.processPending();
+      return json(res, 200, { processed: processed.length });
+    }
+
     if (req.method === "POST" && url.pathname === "/api/internal/photo-review") {
       requireInternal(req);
       const body = await readJson(req);
@@ -187,7 +214,29 @@ server.listen(PORT, () => {
   console.log(`Florentina Flowers router listening on http://localhost:${PORT}`);
   console.log(`Routing engine: ${ROUTING_ENABLED ? "ENABLED" : "DISABLED"}`);
   console.log(`Payment automation: ${PAYMENT_AUTOMATION_ENABLED ? "ENABLED" : "DISABLED"}`);
+  console.log(`Supplier payouts: ${SUPPLIER_PAYOUTS_ENABLED ? "ENABLED" : "DISABLED"}`);
 });
+
+function buildSupplierPayoutProvider() {
+  if (process.env.PAYOUT_API_BASE_URL && process.env.PAYOUT_API_KEY) {
+    return new HttpPayoutProvider({
+      baseUrl: process.env.PAYOUT_API_BASE_URL,
+      apiKey: process.env.PAYOUT_API_KEY
+    });
+  }
+
+  if (SUPPLIER_PAYOUTS_ENABLED) {
+    throw new Error("Supplier payouts enabled but payout provider is not configured");
+  }
+
+  return null;
+}
+
+function requireSupplierPayoutsEnabled() {
+  if (!SUPPLIER_PAYOUTS_ENABLED || !supplierPayoutOrchestrator) {
+    throw new Error("Supplier payouts are disabled");
+  }
+}
 
 function buildPaymentProvider() {
   const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
