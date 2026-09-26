@@ -1,4 +1,4 @@
-# Florentina Flowers Order Router
+# Flory Flowers Order Router
 
 This service is the automation layer between Shopify orders, florist partners and supplier payouts.
 
@@ -18,7 +18,7 @@ The default rule is **pay supplier only after verified delivery and successful c
 10. After successful capture, supplier payout can be released.
 11. The supplier payout engine checks the florist's verified payout status, approved B2B amount and currency.
 12. Only then can the supplier payment be released.
-13. Remaining margin stays with Florentina Flowers, before fees and taxes.
+13. Remaining margin stays with Flory Flowers, before fees and taxes.
 
 ## Five-florist cascade
 
@@ -114,7 +114,7 @@ Then open the portal URL printed by the seed script.
 
 ## Supplier payout architecture
 
-Shopify Payments settles customer funds to the Florentina Flowers merchant account. It does not natively split the same Shopify transaction to each florist. Therefore supplier payout is deliberately a separate step after customer-payment capture.
+Shopify Payments settles customer funds to the Flory Flowers merchant account. It does not natively split the same Shopify transaction to each florist. Therefore supplier payout is deliberately a separate step after customer-payment capture.
 
 The router creates a payout instruction only when all safety gates pass. A real bank/SEPA payout provider must be connected to the provider adapter before `ENABLE_SUPPLIER_PAYOUTS=true` is allowed.
 
