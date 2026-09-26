@@ -13,6 +13,7 @@ import {
 } from "./routing-engine.js";
 import { LogOfferNotifier, SmtpOfferNotifier } from "./offer-notifier.js";
 import { ShopifyPartnerDirectory } from "./shopify-partner-directory.js";
+import { FinancialOrchestrator } from "./financial-orchestrator.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -22,10 +23,12 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(ROOT, "data", "uploads");
 const TOKEN_SECRET = requiredSecret("PARTNER_LINK_SECRET", "dev-only-change-me");
 const INTERNAL_API_KEY = requiredSecret("INTERNAL_API_KEY", "dev-internal-only");
 const ROUTING_ENABLED = process.env.ENABLE_ROUTING_ENGINE === "true";
+const PAYMENT_AUTOMATION_ENABLED = process.env.ENABLE_PAYMENT_AUTOMATION === "true";
 const PORTAL_BASE_URL = process.env.PORTAL_BASE_URL || `http://localhost:${PORT}`;
 const RESPONSE_MINUTES = Number(process.env.ROUTING_RESPONSE_MINUTES || 10);
 const MAX_ATTEMPTS = Number(process.env.ROUTING_MAX_ATTEMPTS || 5);
 const ROUTING_TICK_MS = Number(process.env.ROUTING_TICK_MS || 30_000);
+const FINANCIAL_TICK_MS = Number(process.env.FINANCIAL_TICK_MS || 30_000);
 
 const repository = new JsonOrderRepository(DATA_FILE);
 await repository.init();
@@ -49,6 +52,11 @@ const service = new PartnerOrderService({
   routingEngine
 });
 
+const paymentProvider = buildPaymentProvider();
+const financialOrchestrator = paymentProvider
+  ? new FinancialOrchestrator({ repository, paymentProvider })
+  : null;
+
 if (ROUTING_ENABLED) {
   const timer = setInterval(async () => {
     try {
@@ -57,6 +65,17 @@ if (ROUTING_ENABLED) {
       console.error("Routing timer error:", error.message);
     }
   }, ROUTING_TICK_MS);
+  timer.unref();
+}
+
+if (PAYMENT_AUTOMATION_ENABLED && financialOrchestrator) {
+  const timer = setInterval(async () => {
+    try {
+      await financialOrchestrator.processPending();
+    } catch (error) {
+      console.error("Financial timer error:", error.message);
+    }
+  }, FINANCIAL_TICK_MS);
   timer.unref();
 }
 
@@ -69,6 +88,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         mode: process.env.NODE_ENV || "development",
         routingEnabled: ROUTING_ENABLED,
+        paymentAutomationEnabled: PAYMENT_AUTOMATION_ENABLED,
         responseMinutes: RESPONSE_MINUTES,
         maxAttempts: MAX_ATTEMPTS
       });
@@ -110,6 +130,13 @@ const server = http.createServer(async (req, res) => {
       requireInternal(req);
       requireRoutingEnabled();
       const processed = await routingEngine.processDueOffers();
+      return json(res, 200, { processed: processed.length });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/internal/financial-tick") {
+      requireInternal(req);
+      requirePaymentAutomationEnabled();
+      const processed = await financialOrchestrator.processPending();
       return json(res, 200, { processed: processed.length });
     }
 
@@ -159,7 +186,29 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Florentina Flowers router listening on http://localhost:${PORT}`);
   console.log(`Routing engine: ${ROUTING_ENABLED ? "ENABLED" : "DISABLED"}`);
+  console.log(`Payment automation: ${PAYMENT_AUTOMATION_ENABLED ? "ENABLED" : "DISABLED"}`);
 });
+
+function buildPaymentProvider() {
+  const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+  const accessToken = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
+
+  if (shopDomain && accessToken) {
+    return new ShopifyClient({ shopDomain, accessToken });
+  }
+
+  if (PAYMENT_AUTOMATION_ENABLED) {
+    throw new Error("Payment automation enabled but Shopify credentials are not configured");
+  }
+
+  return null;
+}
+
+function requirePaymentAutomationEnabled() {
+  if (!PAYMENT_AUTOMATION_ENABLED || !financialOrchestrator) {
+    throw new Error("Payment automation is disabled");
+  }
+}
 
 function buildOfferNotifier() {
   if (process.env.SMTP_HOST) {
