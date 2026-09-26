@@ -4,7 +4,7 @@
         android:icon="@drawable/ic_launcher_flower"
         android:roundIcon="@drawable/ic_launcher_flower"
         android:allowBackup="true"
-        android:label="Florentina Flowers 1.6"
+        android:label="Flory Flowers 1.7"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <activity
