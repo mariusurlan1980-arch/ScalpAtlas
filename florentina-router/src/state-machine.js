@@ -6,7 +6,7 @@ export const STATES = Object.freeze({
   PHOTO_PENDING: "PHOTO_PENDING",
   PHOTO_APPROVED: "PHOTO_APPROVED",
   OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
-  DELIVERY_CONFIRMED: "DELIVERY_CONFIRMED",
+  DELIVERY_REPORTED: "DELIVERY_REPORTED",
   CAPTURE_PENDING: "CAPTURE_PENDING",
   PAYMENT_CAPTURED: "PAYMENT_CAPTURED",
   PAYOUT_PENDING: "PAYOUT_PENDING",
@@ -20,6 +20,7 @@ export const STATES = Object.freeze({
 
 export const EVENTS = Object.freeze({
   START_ROUTING: "START_ROUTING",
+  PARTNER_OFFERED: "PARTNER_OFFERED",
   PARTNER_ACCEPT: "PARTNER_ACCEPT",
   PARTNER_REJECT: "PARTNER_REJECT",
   PARTNER_TIMEOUT: "PARTNER_TIMEOUT",
@@ -28,7 +29,10 @@ export const EVENTS = Object.freeze({
   PHOTO_APPROVED: "PHOTO_APPROVED",
   PHOTO_REJECTED: "PHOTO_REJECTED",
   DELIVERY_STARTED: "DELIVERY_STARTED",
+  DELIVERY_REPORTED: "DELIVERY_REPORTED",
   DELIVERY_CONFIRMED: "DELIVERY_CONFIRMED",
+  DELIVERY_VERIFIED: "DELIVERY_VERIFIED",
+  DELIVERY_REJECTED: "DELIVERY_REJECTED",
   CAPTURE_SUCCEEDED: "CAPTURE_SUCCEEDED",
   CAPTURE_FAILED: "CAPTURE_FAILED",
   PAYOUT_SUCCEEDED: "PAYOUT_SUCCEEDED",
@@ -47,16 +51,34 @@ export function transition(order, event, payload = {}) {
       next.state = STATES.OFFERING_TO_PARTNER;
       break;
 
+    case EVENTS.PARTNER_OFFERED:
+      if (![STATES.PAYMENT_AUTHORIZED, STATES.OFFERING_TO_PARTNER].includes(order.state)) {
+        throw new Error(`Invalid partner offer from ${order.state}`);
+      }
+      next.currentOfferedPartnerId = required(payload.partnerId, "partnerId");
+      next.state = STATES.OFFERING_TO_PARTNER;
+      break;
+
     case EVENTS.PARTNER_ACCEPT:
       requireState(order, STATES.OFFERING_TO_PARTNER);
+      requireOfferedPartner(order, payload.partnerId);
       next.partnerId = required(payload.partnerId, "partnerId");
+      delete next.currentOfferedPartnerId;
       next.state = STATES.PARTNER_ACCEPTED;
       break;
 
     case EVENTS.PARTNER_REJECT:
+      requireState(order, STATES.OFFERING_TO_PARTNER);
+      requireOfferedPartner(order, payload.partnerId);
+      next.partnerAttempt = (order.partnerAttempt ?? 1) + 1;
+      delete next.currentOfferedPartnerId;
+      next.state = STATES.OFFERING_TO_PARTNER;
+      break;
+
     case EVENTS.PARTNER_TIMEOUT:
       requireState(order, STATES.OFFERING_TO_PARTNER);
       next.partnerAttempt = (order.partnerAttempt ?? 1) + 1;
+      delete next.currentOfferedPartnerId;
       next.state = STATES.OFFERING_TO_PARTNER;
       break;
 
@@ -94,10 +116,26 @@ export function transition(order, event, payload = {}) {
       next.state = STATES.OUT_FOR_DELIVERY;
       break;
 
+    case EVENTS.DELIVERY_REPORTED:
     case EVENTS.DELIVERY_CONFIRMED:
       requireState(order, STATES.OUT_FOR_DELIVERY);
       next.deliveryProof = required(payload.deliveryProof, "deliveryProof");
+      next.deliveryReportedAt = new Date().toISOString();
+      next.state = STATES.DELIVERY_REPORTED;
+      break;
+
+    case EVENTS.DELIVERY_VERIFIED:
+      requireState(order, STATES.DELIVERY_REPORTED);
+      next.deliveryVerified = true;
+      next.deliveryVerifiedAt = new Date().toISOString();
       next.state = STATES.CAPTURE_PENDING;
+      break;
+
+    case EVENTS.DELIVERY_REJECTED:
+      requireState(order, STATES.DELIVERY_REPORTED);
+      next.deliveryVerified = false;
+      next.exceptionReason = payload.reason ?? "Delivery could not be verified";
+      next.state = STATES.EXCEPTION;
       break;
 
     case EVENTS.CAPTURE_SUCCEEDED:
@@ -147,6 +185,15 @@ export function transition(order, event, payload = {}) {
 function requireState(order, state) {
   if (order.state !== state) {
     throw new Error(`Invalid transition from ${order.state}; expected ${state}`);
+  }
+}
+
+function requireOfferedPartner(order, partnerId) {
+  if (!order.currentOfferedPartnerId) {
+    throw new Error("No florist is currently assigned this offer");
+  }
+  if (order.currentOfferedPartnerId !== partnerId) {
+    throw new Error("This offer belongs to another florist");
   }
 }
 
