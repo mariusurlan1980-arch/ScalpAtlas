@@ -6,6 +6,13 @@ import Busboy from "busboy";
 import { JsonOrderRepository } from "./storage.js";
 import { LocalPhotoStore, isAllowedPhotoMime } from "./photo-storage.js";
 import { PartnerOrderService } from "./partner-service.js";
+import { ShopifyClient } from "./shopify-client.js";
+import {
+  InMemoryPartnerDirectory,
+  LogOfferNotifier,
+  RoutingEngine
+} from "./routing-engine.js";
+import { ShopifyPartnerDirectory } from "./shopify-partner-directory.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -14,19 +21,57 @@ const DATA_FILE = process.env.DATA_FILE || path.join(ROOT, "data", "orders.json"
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(ROOT, "data", "uploads");
 const TOKEN_SECRET = requiredSecret("PARTNER_LINK_SECRET", "dev-only-change-me");
 const INTERNAL_API_KEY = requiredSecret("INTERNAL_API_KEY", "dev-internal-only");
+const ROUTING_ENABLED = process.env.ENABLE_ROUTING_ENGINE === "true";
+const PORTAL_BASE_URL = process.env.PORTAL_BASE_URL || `http://localhost:${PORT}`;
+const RESPONSE_MINUTES = Number(process.env.ROUTING_RESPONSE_MINUTES || 10);
+const MAX_ATTEMPTS = Number(process.env.ROUTING_MAX_ATTEMPTS || 5);
+const ROUTING_TICK_MS = Number(process.env.ROUTING_TICK_MS || 30_000);
 
 const repository = new JsonOrderRepository(DATA_FILE);
 await repository.init();
 
+const partnerDirectory = buildPartnerDirectory();
+const routingEngine = new RoutingEngine({
+  repository,
+  partnerDirectory,
+  notifier: new LogOfferNotifier(),
+  tokenSecret: TOKEN_SECRET,
+  portalBaseUrl: PORTAL_BASE_URL,
+  responseMinutes: RESPONSE_MINUTES,
+  maxAttempts: MAX_ATTEMPTS
+});
+
 const photoStore = new LocalPhotoStore({ directory: UPLOAD_DIR });
-const service = new PartnerOrderService({ repository, tokenSecret: TOKEN_SECRET, photoStore });
+const service = new PartnerOrderService({
+  repository,
+  tokenSecret: TOKEN_SECRET,
+  photoStore,
+  routingEngine
+});
+
+if (ROUTING_ENABLED) {
+  const timer = setInterval(async () => {
+    try {
+      await routingEngine.processDueOffers();
+    } catch (error) {
+      console.error("Routing timer error:", error.message);
+    }
+  }, ROUTING_TICK_MS);
+  timer.unref();
+}
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
     if (req.method === "GET" && url.pathname === "/health") {
-      return json(res, 200, { ok: true, mode: process.env.NODE_ENV || "development" });
+      return json(res, 200, {
+        ok: true,
+        mode: process.env.NODE_ENV || "development",
+        routingEnabled: ROUTING_ENABLED,
+        responseMinutes: RESPONSE_MINUTES,
+        maxAttempts: MAX_ATTEMPTS
+      });
     }
 
     if (req.method === "GET" && url.pathname === "/api/partner/order") {
@@ -47,6 +92,25 @@ const server = http.createServer(async (req, res) => {
         originalName: upload.filename
       });
       return json(res, 200, { order });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/internal/route-start") {
+      requireInternal(req);
+      requireRoutingEnabled();
+      const body = await readJson(req);
+      const order = await routingEngine.start(body.orderId);
+      return json(res, 200, {
+        state: order.state,
+        currentOfferedPartnerId: order.currentOfferedPartnerId ?? null,
+        offerExpiresAt: order.offerExpiresAt ?? null
+      });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/internal/routing-tick") {
+      requireInternal(req);
+      requireRoutingEnabled();
+      const processed = await routingEngine.processDueOffers();
+      return json(res, 200, { processed: processed.length });
     }
 
     if (req.method === "POST" && url.pathname === "/api/internal/photo-review") {
@@ -87,14 +151,44 @@ const server = http.createServer(async (req, res) => {
 
     return notFound(res);
   } catch (error) {
-    const status = /invalid|not allowed|not found|unsupported|expired/i.test(error.message) ? 400 : 500;
+    const status = /invalid|not allowed|not found|unsupported|expired|disabled/i.test(error.message) ? 400 : 500;
     return json(res, status, { error: error.message });
   }
 });
 
 server.listen(PORT, () => {
   console.log(`Florentina Flowers router listening on http://localhost:${PORT}`);
+  console.log(`Routing engine: ${ROUTING_ENABLED ? "ENABLED" : "DISABLED"}`);
 });
+
+function buildPartnerDirectory() {
+  const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+  const accessToken = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
+
+  if (shopDomain && accessToken) {
+    return new ShopifyPartnerDirectory({
+      shopifyClient: new ShopifyClient({ shopDomain, accessToken })
+    });
+  }
+
+  if (process.env.ROUTING_PARTNERS_JSON) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("ROUTING_PARTNERS_JSON is development-only");
+    }
+    const partners = JSON.parse(process.env.ROUTING_PARTNERS_JSON);
+    return new InMemoryPartnerDirectory(partners);
+  }
+
+  if (ROUTING_ENABLED) {
+    throw new Error("Routing enabled but no Shopify partner directory is configured");
+  }
+
+  return new InMemoryPartnerDirectory([]);
+}
+
+function requireRoutingEnabled() {
+  if (!ROUTING_ENABLED) throw new Error("Routing engine is disabled");
+}
 
 function requiredSecret(name, developmentFallback) {
   const value = process.env[name];
