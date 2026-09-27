@@ -344,3 +344,46 @@ button{cursor:pointer}
   .price{font-size:12px}
   .add{font-size:7.5px}
 }
+
+/* Flory Flowers v1.14 — crisp scalable hero (text rendered natively, no blurry text image) */
+.hero8k{
+  position:relative;display:grid;grid-template-columns:45% 55%;
+  height:270px;margin:8px 8px 0;border-radius:17px;overflow:hidden;
+  background:
+    radial-gradient(circle at 62% 12%,#fff8ea 0 4%,transparent 5%),
+    linear-gradient(90deg,#fff1df 0%,#ffd6b6 100%);
+}
+.hero8k-copy{position:relative;z-index:3;padding:18px 2px 12px 17px}
+.hero8k-kicker{font-size:8.6px;line-height:1.4;letter-spacing:1.75px;font-weight:900;color:#07192a}
+.hero8k h1{margin:9px 0 0;font:500 34px/.95 Georgia,serif;color:#07192a;letter-spacing:-.4px}
+.hero8k-heart{height:31px;font:400 30px/1 Georgia,serif;color:var(--red)}
+.hero8k h2{margin:5px 0 0;font-size:11.4px;line-height:1.2;font-weight:900;color:#1d2430}
+.hero8k p{margin:4px 0 0;font-size:9.4px;line-height:1.25;color:#626b79}
+.hero8k-cta{border:0;background:var(--red);color:#fff;border-radius:25px;padding:11px 13px;margin-top:8px;font-size:11px;font-weight:900;white-space:nowrap}
+.hero8k-photo{position:relative;overflow:hidden}
+.hero8k-photo img{
+  position:absolute;right:-10px;bottom:-3px;width:245px;height:235px;
+  object-fit:cover;object-position:center;border-radius:48% 0 0 0;
+  filter:saturate(1.12) contrast(1.05) brightness(1.02);
+  image-rendering:auto;
+}
+.hero8k-photo:after{
+  content:"";position:absolute;left:-45px;bottom:-74px;width:225px;height:155px;
+  background:#171717;transform:rotate(33deg);border-radius:22px;opacity:.94
+}
+.hero8k-mainheart{position:absolute;left:25px;top:28px;color:#c3002c;font-size:27px;opacity:.75;z-index:2}
+.hero8k-badge{
+  position:absolute;right:5px;z-index:5;background:#fff;border-radius:999px;
+  padding:5px 8px;font-size:7.6px;font-weight:900;box-shadow:0 2px 8px #0002;white-space:nowrap
+}
+.hero8k-badge.b1{top:16px}.hero8k-badge.b2{top:47px}.hero8k-badge.b3{top:78px}.hero8k-badge.b4{top:109px}
+
+/* keep definitive four-products-per-row layout */
+.products{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+@media(max-width:390px){
+  .hero8k{height:258px}
+  .hero8k h1{font-size:31px}
+  .hero8k-photo img{width:225px;height:216px}
+  .hero8k-badge{font-size:7px}
+}
