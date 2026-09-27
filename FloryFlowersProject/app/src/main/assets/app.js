@@ -8,7 +8,7 @@ const categories=[
 ];
 
 const products=[
-{id:1,name:"Buchet 25 trandafiri roșii",cat:"Trandafiri",ron:249,eur:49.8,rating:"★★★★★ (124)",img:"prod1.jpg",desc:"Un buchet elegant cu 25 de trandafiri roșii, verdeață decorativă și ambalaj premium. Potrivit pentru declarații de dragoste și aniversări."},
+{id:1,name:"Buchet 25 trandafiri roșii",cat:"Trandafiri",ron:249,eur:49.8,rating:"★★★★★ (124)",img:"prod1_hd.jpg",desc:"Un buchet elegant cu 25 de trandafiri roșii, verdeață decorativă și ambalaj premium. Potrivit pentru declarații de dragoste și aniversări."},
 {id:2,name:"Buchet mixt elegant",cat:"Buchete romantice",ron:199,eur:39.8,rating:"★★★★★ (86)",img:"prod2.jpg",desc:"Buchet romantic în nuanțe de roz, roșu și crem, creat pentru momente speciale și surprize elegante."},
 {id:3,name:"Cutie 36 trandafiri roșii",cat:"Premium",ron:399,eur:79.8,rating:"★★★★☆ (73)",img:"prod3.jpg",desc:"36 de trandafiri roșii aranjați într-o cutie premium neagră. Un cadou impresionant pentru ocazii importante."},
 {id:4,name:"Buchet crini albi",cat:"Aniversări",ron:399,eur:79.8,rating:"★★★★★ (52)",img:"prod4.jpg",desc:"Crini albi proaspeți într-un aranjament luminos și rafinat, potrivit pentru aniversări și evenimente elegante."},
@@ -148,10 +148,13 @@ function showCheckout(){
    if(!name||!phone||!receiver||!city||!address){alert("Completează câmpurile obligatorii.");return;}
    const order={name,phone,receiver,city,address,date:$("#deliveryDate").value,items:state.cart,createdAt:new Date().toISOString()};
    localStorage.setItem("ffLastOrder",JSON.stringify(order));
+   const orders=JSON.parse(localStorage.getItem("ffOrders")||"[]");
+   orders.unshift(order);
+   localStorage.setItem("ffOrders",JSON.stringify(orders.slice(0,50)));
    const txt=buildOrderText(order);
    const orderNo="FF-"+Date.now().toString().slice(-6);
    localStorage.setItem("ffLastOrderNo",orderNo);
-   openModal("Comandă înregistrată",'<div class="order-ok">✓<h3>Comanda a fost înregistrată.</h3><p>Număr comandă: <b>'+orderNo+'</b></p><div class="order-preview" id="orderPreview"></div><button id="finishOrder" class="checkout">Închide</button><small class="detail-note">Comanda este salvată în aplicație. Următorul pas este conectarea la sistemul online Flory Flowers, astfel încât comenzile clienților să ajungă automat în panoul magazinului.</small></div>');
+   openModal("Comandă înregistrată",'<div class="order-ok">✓<h3>Comanda a fost înregistrată.</h3><p>Număr comandă: <b>'+orderNo+'</b></p><div class="order-preview" id="orderPreview"></div><button id="finishOrder" class="checkout">Închide</button><small class="detail-note">Comanda este salvată în aplicație pe acest dispozitiv.</small></div>');
    $("#orderPreview").textContent=txt;
    $("#finishOrder").onclick=()=>{
      state.cart=[];

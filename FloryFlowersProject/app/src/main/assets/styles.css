@@ -1,62 +1,63 @@
-:root{--navy:#07192a;--gold:#d9ae58;--red:#ef002b;--ink:#0c1828;--line:#ececf1;--cream:#fff0df}
+:root{--navy:#07192a;--gold:#d9ae58;--red:#ef002b;--ink:#0c1828;--muted:#667085;--line:#ececf1;--cream:#fff0df}
 *{box-sizing:border-box}
 html,body{margin:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:var(--ink)}
-button,input,select{font:inherit}
+button,input,select,textarea{font:inherit}
 button{cursor:pointer}
-.app{max-width:540px;margin:auto;background:#fff;min-height:100vh;padding-bottom:68px;overflow:hidden}
-.top{background:var(--navy);color:#fff;padding:12px 12px 10px}
-.brand-row{display:flex;align-items:center;gap:9px}
-.logo{width:48px;height:48px;border:1px solid var(--gold);border-radius:13px;display:grid;place-items:center;color:var(--gold);font-size:22px;font-weight:800}
+.app{max-width:540px;margin:auto;background:#fff;min-height:100vh;padding-bottom:72px;overflow:hidden}
+
+.top{background:var(--navy);color:#fff;padding:14px 14px 11px}
+.brand-row{display:flex;align-items:center;gap:10px}
+.logo{width:54px;height:54px;border:1px solid var(--gold);border-radius:15px;display:grid;place-items:center;color:var(--gold);font-size:24px;font-weight:800;flex:0 0 auto}
 .brand{flex:1;min-width:0}
-.brand-name{font:700 25px Georgia,serif;color:var(--gold);white-space:nowrap}
-.tagline{font-size:9px;letter-spacing:1.7px;color:#e7c578;margin-top:4px;white-space:nowrap}
-.header-icon{border:0;background:transparent;color:white;font-size:26px;padding:4px;position:relative}
-.cart span{position:absolute;right:-4px;top:-1px;width:19px;height:19px;border-radius:50%;background:var(--red);display:grid;place-items:center;font-size:10px;font-weight:800}
-.search-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 70px;gap:7px;margin-top:11px}
-.search-box{background:#fff;border-radius:22px;display:flex;align-items:center;padding:4px 9px;min-width:0}
+.brand-name{font:700 28px Georgia,serif;color:var(--gold);white-space:nowrap}
+.tagline{font-size:9.5px;letter-spacing:1.8px;color:#e7c578;margin-top:4px;white-space:nowrap}
+.header-icon{border:0;background:transparent;color:#fff;font-size:27px;padding:4px;position:relative}
+.cart span{position:absolute;right:-4px;top:-1px;width:20px;height:20px;border-radius:50%;background:var(--red);display:grid;place-items:center;font-size:10px;font-weight:800}
+.search-row{display:grid;grid-template-columns:minmax(0,1fr) 70px 78px;gap:8px;margin-top:13px}
+.search-box{background:#fff;border-radius:25px;display:flex;align-items:center;padding:5px 10px;min-width:0}
 .search-box span{color:#15233a;font-size:23px}
-.search-box input{border:0;outline:0;width:100%;min-width:0;padding:8px 5px;font-size:14px}
-.search-row select{border:1px solid #3f516a;background:#14243c;color:#fff;border-radius:12px;padding:8px 5px;font-weight:700}
-.trust-row{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:11px;white-space:nowrap;overflow:hidden}
+.search-box input{border:0;outline:0;width:100%;min-width:0;padding:9px 6px;font-size:15px}
+.search-row select{border:1px solid #3f516a;background:#14243c;color:#fff;border-radius:14px;padding:9px 6px;font-weight:700}
+.trust-row{display:flex;justify-content:space-between;gap:8px;margin-top:11px;font-size:11.5px;white-space:nowrap;overflow:hidden}
 
-.hero{height:232px;display:grid;grid-template-columns:47% 53%;background:linear-gradient(90deg,#fff3e3 0%,#ffe0c5 100%);overflow:hidden;position:relative}
-.hero-copy{padding:15px 2px 10px 16px;position:relative;z-index:3}
-.eyebrow{font-size:7.7px;letter-spacing:1.55px;line-height:1.35;font-weight:800}
-.hero h1{font:500 28px/.96 Georgia,serif;margin:7px 0 0}
-.heart{font:400 25px/1 Georgia,serif;color:var(--red);height:27px}
-.hero h2{font:700 12.5px/1.16 Georgia,serif;margin:4px 0}
-.hero p{font-size:8.7px;color:#5b6473;line-height:1.28;margin:4px 0;width:145px}
-.discover{border:0;background:var(--red);color:white;border-radius:22px;padding:9px 11px;font-size:10.5px;font-weight:800;margin-top:5px;white-space:nowrap}
+.hero8k{position:relative;display:grid;grid-template-columns:46% 54%;height:272px;margin:8px 8px 0;border-radius:17px;overflow:hidden;background:linear-gradient(90deg,#fff1df 0%,#ffd8bc 100%)}
+.hero8k-copy{position:relative;z-index:3;padding:18px 3px 12px 17px}
+.hero8k-kicker{font-size:8.8px;line-height:1.4;letter-spacing:1.8px;font-weight:900;color:#07192a}
+.hero8k h1{margin:9px 0 0;font:500 34px/.94 Georgia,serif;color:#07192a;letter-spacing:-.4px}
+.hero8k-heart{height:31px;font:400 30px/1 Georgia,serif;color:var(--red)}
+.hero8k h2{margin:5px 0 0;font-size:11.5px;line-height:1.2;font-weight:900;color:#1d2430}
+.hero8k p{margin:4px 0 0;font-size:9.5px;line-height:1.25;color:#626b79}
+.hero8k-cta{border:0;background:var(--red);color:#fff;border-radius:25px;padding:11px 13px;margin-top:8px;font-size:11px;font-weight:900;white-space:nowrap}
+.hero8k-photo{position:relative;overflow:hidden}
+.hero8k-photo img{position:absolute;right:-5px;bottom:-2px;width:235px;height:225px;object-fit:cover;object-position:center;border-radius:48% 0 0 0;filter:saturate(1.08) contrast(1.03);image-rendering:auto}
+.hero8k-photo:after{content:"";position:absolute;left:-43px;bottom:-74px;width:220px;height:154px;background:#171717;transform:rotate(33deg);border-radius:22px;opacity:.94}
+.hero8k-mainheart{position:absolute;left:25px;top:28px;color:#c3002c;font-size:27px;opacity:.75;z-index:2}
+.hero8k-badge{position:absolute;right:5px;z-index:5;background:#fff;border-radius:999px;padding:5px 8px;font-size:7.4px;font-weight:900;box-shadow:0 2px 8px #0002;white-space:nowrap}
+.hero8k-badge.b1{top:16px}.hero8k-badge.b2{top:47px}.hero8k-badge.b3{top:78px}.hero8k-badge.b4{top:109px}
 
-.hero-photo{position:relative;height:100%;overflow:hidden}
-.hero-photo img{position:absolute;right:-6px;bottom:-2px;width:205px;height:190px;object-fit:cover;object-position:center;border-radius:48% 0 0 0;filter:saturate(1.08) contrast(1.04)}
-.hero-photo:after{content:"";position:absolute;left:-42px;bottom:-72px;width:205px;height:145px;background:#161616;transform:rotate(34deg);border-radius:18px;opacity:.92}
-.soft-heart{position:absolute;left:18px;top:22px;color:#bb001e;font-size:23px;opacity:.72;z-index:2}
-.pill{position:absolute;right:5px;background:#fff;border-radius:999px;padding:5px 7px;font-size:7.2px;font-weight:800;box-shadow:0 2px 8px #0002;z-index:5;white-space:nowrap}
-.p1{top:14px}.p2{top:42px}.p3{top:70px}.p4{top:98px}
-
-.categories{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;padding:8px;border-bottom:1px solid var(--line);background:#fff}
-.cat{border:0;background:#f7f7f8;border-radius:10px;padding:3px 3px 6px;min-width:0}
-.cat-img{height:50px;border-radius:8px;overflow:hidden;background:#f6ece8;display:grid;place-items:center;font-size:29px}
+.categories{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;padding:9px 8px 10px;border-bottom:1px solid var(--line);background:#fff}
+.cat{border:0;background:#f7f7f8;border-radius:13px;padding:4px 4px 7px;min-width:0;box-shadow:0 3px 10px #0000000a}
+.cat-img{height:55px;border-radius:10px;overflow:hidden;background:#f6ece8;display:grid;place-items:center;font-size:29px}
 .cat-img img{width:100%;height:100%;object-fit:cover}
-.cat-label{font-size:8.4px;line-height:1.05;font-weight:800;margin-top:4px;min-height:18px}
-.cat.active{background:#ffe6ea;box-shadow:inset 0 -3px 0 var(--red)}
+.cat-label{font-size:8.8px;line-height:1.05;font-weight:800;margin-top:4px;min-height:20px}
+.cat.active{background:#ffe6ea;box-shadow:inset 0 -4px 0 var(--red),0 3px 10px #0000000a}
 .cat.active .cat-label{color:var(--red)}
 
-.popular{padding:12px 8px}
+.popular{padding:16px 10px 18px}
 .section-head{display:flex;align-items:center;justify-content:space-between}
-.section-head h2{font-size:23px;margin:0}
-.section-head button{border:0;background:none;color:var(--red);font-weight:800;font-size:12px}
-.products{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
-.card{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff;position:relative;min-width:0}
-.card-img{height:105px;background:#f6eae8}
+.section-head h2{font:700 27px Georgia,serif;margin:0}
+.section-head button{border:0;background:none;color:var(--red);font-weight:800;font-size:12.5px}
+.products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.card{border:1px solid #e3e6eb;border-radius:15px;overflow:hidden;background:#fff;position:relative;min-width:0;box-shadow:0 4px 14px #00000012}
+.product-open{display:block;width:100%;padding:0;border:0;background:#fff;text-align:left;color:inherit}
+.card-img{height:178px;background:#f6eae8}
 .card-img img{width:100%;height:100%;object-fit:cover}
-.fav{position:absolute;right:4px;top:4px;border:0;background:#fff;width:27px;height:27px;border-radius:50%;font-size:17px;color:var(--red);box-shadow:0 1px 5px #0002}
-.body{padding:6px 5px}
-.name{font-size:9.4px;line-height:1.08;font-weight:800;min-height:31px}
-.rating{font-size:8px;color:#f1a000;margin-top:4px;white-space:nowrap;overflow:hidden}
-.price{font-size:13px;color:#d20c2a;font-weight:900;margin:4px 0}
-.add{width:100%;border:0;background:var(--red);color:#fff;border-radius:8px;padding:7px 2px;font-size:8px;font-weight:800;white-space:nowrap}
+.fav{position:absolute;right:7px;top:7px;border:0;background:#fff;width:35px;height:35px;border-radius:50%;font-size:22px;color:var(--red);box-shadow:0 1px 5px #0002;z-index:2}
+.body{padding:10px 10px 8px}
+.name{font-size:13px;line-height:1.15;font-weight:800;min-height:34px}
+.rating{font-size:10.5px;color:#f1a000;margin-top:7px;white-space:nowrap;overflow:hidden}
+.price{font-size:18px;color:#d20c2a;font-weight:900;margin:7px 0}
+.add{width:100%;border:0;background:var(--red);color:#fff;border-radius:10px;padding:11px 6px;font-size:11.5px;font-weight:800;white-space:nowrap}
 
 .features{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:3px 8px 14px}
 .features>div{background:#f4f8fc;border-radius:10px;text-align:center;padding:9px 3px;font-size:19px}
@@ -64,34 +65,19 @@ button{cursor:pointer}
 .features b{font-size:9.4px;margin-top:2px}
 .features small{font-size:8px;line-height:1.1;color:#657084;margin-top:2px}
 
-.bottom{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:540px;height:64px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);z-index:30}
-.bottom button{border:0;background:#fff;color:#475467;font-size:21px;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.bottom span{font-size:10px;margin-top:2px}
+.bottom{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:540px;height:68px;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);z-index:30}
+.bottom button{border:0;background:#fff;color:#475467;font-size:23px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bottom span{font-size:10.5px;margin-top:2px}
 .bottom .active{color:var(--red);font-weight:800}
 
 .modal{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-end;justify-content:center;z-index:50}
 .modal.hidden{display:none}
-.sheet{max-width:540px;width:100%;background:#fff;border-radius:22px 22px 0 0;padding:22px;max-height:70vh;overflow:auto;position:relative}
+.sheet{max-width:540px;width:100%;background:#fff;border-radius:22px 22px 0 0;padding:22px;max-height:78vh;overflow:auto;position:relative}
 .sheet>button{position:absolute;right:14px;top:12px;border:0;background:#f2f4f7;border-radius:50%;width:36px;height:36px;font-size:24px}
 .sheet h2{margin-top:0}
-.row{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
 .total{font-size:20px;font-weight:900;margin-top:14px}
-.empty{text-align:center;color:#667085;padding:25px}
+.empty{text-align:center;color:var(--muted);padding:25px}
 
-@media(max-width:390px){
-  .brand-name{font-size:23px}
-  .tagline{font-size:8px}
-  .trust-row{font-size:10px}
-  .hero{height:222px}
-  .hero h1{font-size:27px}
-  .hero-photo img{width:195px;height:182px}
-  .cat-label{font-size:7.7px}
-  .card-img{height:92px}
-  .name{font-size:8.7px}
-  .price{font-size:12px}
-  .add{font-size:7.5px}
-}\n
-.product-open{display:block;width:100%;padding:0;border:0;background:#fff;text-align:left;color:inherit}
 .detail-img{width:100%;max-height:280px;object-fit:cover;border-radius:16px}
 .detail-rating{color:#f1a000;margin-top:10px;font-size:14px}
 .detail-price{font-size:26px;color:#d20c2a;font-weight:900;margin:5px 0 8px}
@@ -111,7 +97,7 @@ button{cursor:pointer}
 .cart-row{display:grid;grid-template-columns:58px 1fr auto;gap:9px;padding:10px 0;border-bottom:1px solid var(--line)}
 .cart-row img{width:58px;height:58px;object-fit:cover;border-radius:10px}
 .cart-info{display:flex;flex-direction:column;gap:3px;font-size:12px}
-.cart-info small{color:#667085}
+.cart-info small{color:var(--muted)}
 .cart-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:12px}
 .cart-side button{border:0;background:none;color:var(--red);font-size:11px}
 .checkout{width:100%;margin-top:14px}
@@ -119,314 +105,24 @@ button{cursor:pointer}
 .checkout-form input,.checkout-form textarea{width:100%;margin-top:5px;border:1px solid #d9dde4;border-radius:11px;padding:11px;font-weight:400}
 .checkout-form textarea{min-height:76px;resize:vertical}
 .order-ok{text-align:center;padding:10px 0 18px;font-size:14px}
-.order-ok:first-letter{font-size:34px;color:#1a9b51}
 .order-ok h3{font-size:20px;margin:7px 0}
-
-/* Flory Flowers v1.6 — design locked to the approved final mockup */
-.hero{height:278px;grid-template-columns:46% 54%;border-radius:16px;margin:7px 8px 0;background:linear-gradient(90deg,#fff0dc 0%,#ffd5b7 100%)}
-.hero-copy{padding:18px 2px 12px 17px}
-.eyebrow{font-size:8.8px;letter-spacing:1.7px;line-height:1.4}
-.hero h1{font:500 34px/.96 Georgia,serif;margin:9px 0 0}
-.heart{font-size:30px;height:33px}
-.hero h2{font:700 12.5px/1.18 Arial,Helvetica,sans-serif;margin:5px 0 0}
-.hero p{font-size:10px;line-height:1.22;margin:3px 0;width:155px}
-.discover{padding:10px 13px;font-size:11px;margin-top:7px;border-radius:23px}
-.hero-photo img{right:-14px;bottom:-3px;width:235px;height:236px;border-radius:48% 0 0 0;object-position:center}
-.hero-photo:after{left:-42px;bottom:-72px;width:215px;height:150px}
-.soft-heart{left:24px;top:28px;font-size:26px}
-.pill{right:5px;padding:5px 7px;font-size:7.4px}
-.p1{top:15px}.p2{top:45px}.p3{top:75px}.p4{top:105px}
-.section-head h2{font-family:Georgia,serif;font-size:25px}
-.categories{padding-top:9px}
-.cat{border-radius:12px}
-.card{border-radius:12px}
-.add{border-radius:9px}
-@media(max-width:390px){
-  .hero{height:268px}
-  .hero h1{font-size:32px}
-  .hero-photo img{width:218px;height:222px}
-}
-
-/* Flory Flowers v1.7 — exact approved hero artwork */
-.hero-final{position:relative;margin:7px 8px 0;background:#fff0df;border-radius:16px;overflow:hidden}
-.hero-final img{display:block;width:100%;height:auto}
-.hero-final-hotspot{position:absolute;left:3%;bottom:4%;width:43%;height:16%;border:0;background:transparent}
-@media(max-width:390px){.hero-final{margin-left:7px;margin-right:7px}}
-
-/* Flory Flowers v1.8 — robust approved hero, built from live UI elements */
-.hero{height:248px;grid-template-columns:47% 53%;border-radius:16px;margin:7px 8px 0;background:linear-gradient(90deg,#fff0dc 0%,#ffd8bb 100%)}
-.hero-copy{padding:16px 2px 10px 16px}
-.eyebrow{font-size:8.2px;letter-spacing:1.55px;line-height:1.35}
-.hero h1{font:500 31px/.96 Georgia,serif;margin:8px 0 0}
-.heart{font-size:27px;height:29px}
-.hero h2{font:700 11px/1.18 Arial,Helvetica,sans-serif;margin:4px 0 0}
-.hero p{font-size:9px;line-height:1.2;margin:3px 0;width:150px}
-.discover{padding:9px 11px;font-size:10px;margin-top:6px;border-radius:22px}
-.hero-photo{position:relative;height:100%;overflow:hidden}
-.hero-photo img{position:absolute;right:-8px;bottom:-3px;width:220px;height:213px;object-fit:cover;object-position:center;border-radius:48% 0 0 0;filter:saturate(1.08) contrast(1.03)}
-.hero-photo:after{content:"";position:absolute;left:-40px;bottom:-68px;width:205px;height:142px;background:#151515;transform:rotate(34deg);border-radius:18px;opacity:.93}
-.soft-heart{left:21px;top:24px;font-size:24px}
-.pill{right:5px;padding:5px 7px;font-size:7.1px}
-.p1{top:15px}.p2{top:44px}.p3{top:73px}.p4{top:102px}
-@media(max-width:390px){
-  .hero{height:240px}
-  .hero h1{font-size:29px}
-  .hero-photo img{width:207px;height:202px}
-}
-
-/* Flory Flowers v1.9 — exact approved mockup direction */
-.top{padding:14px 14px 11px}
-.brand-row{gap:10px}
-.logo{width:54px;height:54px;border-radius:15px;font-size:24px}
-.brand-name{font-size:28px}
-.tagline{font-size:9.5px;letter-spacing:1.8px}
-.search-row{grid-template-columns:minmax(0,1fr) 70px 78px;gap:8px;margin-top:13px}
-.search-box{border-radius:25px;padding:5px 10px}
-.search-box input{font-size:15px;padding:9px 6px}
-.search-row select{border-radius:14px;padding:9px 6px}
-.trust-row{font-size:11.5px;margin-top:11px}
-
-.hero-approved{position:relative;margin:8px 8px 0;border-radius:17px;overflow:hidden;background:#fff0df}
-.hero-approved img{display:block;width:100%;height:auto}
-.hero-approved-hotspot{position:absolute;left:2.5%;bottom:4%;width:44%;height:16%;border:0;background:transparent}
-
-.categories{gap:7px;padding:9px 8px 10px}
-.cat{border-radius:13px;padding:4px 4px 7px;box-shadow:0 3px 10px #0000000a}
-.cat-img{height:55px;border-radius:10px}
-.cat-label{font-size:8.8px;min-height:20px}
-.cat.active{box-shadow:inset 0 -4px 0 var(--red),0 3px 10px #0000000a}
-
-.popular{padding:16px 9px 12px}
-.section-head h2{font:700 27px Georgia,serif}
-.section-head button{font-size:12.5px}
-.products{gap:8px;margin-top:12px}
-.card{border:1px solid #e3e6eb;border-radius:13px;box-shadow:0 3px 12px #0000000b}
-.card-img{height:112px}
-.body{padding:7px 6px 5px}
-.name{font-size:9.8px;min-height:33px}
-.rating{font-size:8.2px}
-.price{font-size:14px}
-.add{font-size:8.2px;padding:8px 2px;border-radius:9px}
-
-.bottom{height:68px}
-.bottom button{font-size:23px}
-.bottom span{font-size:10.5px}
-
-@media(max-width:390px){
-  .logo{width:50px;height:50px}
-  .brand-name{font-size:25px}
-  .tagline{font-size:8.5px}
-  .search-row{grid-template-columns:minmax(0,1fr) 66px 72px}
-  .trust-row{font-size:10px}
-  .cat-img{height:51px}
-  .cat-label{font-size:8px}
-  .section-head h2{font-size:25px}
-  .card-img{height:98px}
-  .name{font-size:9px}
-}
-
-
-/* Flory Flowers v1.11 — launch layout */
-.hero-launch{
-  position:relative;
-  display:grid;
-  grid-template-columns:45% 55%;
-  height:250px;
-  margin:8px 8px 0;
-  border-radius:17px;
-  overflow:hidden;
-  background:linear-gradient(90deg,#fff2e1 0%,#ffd7b9 100%);
-}
-.hero-launch-copy{position:relative;z-index:3;padding:17px 2px 12px 16px}
-.hero-kicker{font-size:8px;line-height:1.35;letter-spacing:1.7px;font-weight:900;color:#0a1827}
-.hero-launch h1{margin:8px 0 0;font:500 31px/.95 Georgia,serif;color:#07192a}
-.hero-heart{height:29px;font:400 27px/1 Georgia,serif;color:var(--red)}
-.hero-launch h2{margin:4px 0 0;font-size:10.5px;line-height:1.18;font-weight:800;color:#1e2530}
-.hero-launch p{margin:3px 0 0;font-size:8.8px;line-height:1.25;color:#626b79}
-.hero-cta{border:0;background:var(--red);color:#fff;border-radius:24px;padding:10px 12px;margin-top:7px;font-size:10.5px;font-weight:900;white-space:nowrap}
-.hero-launch-photo{position:relative;overflow:hidden}
-.hero-launch-photo img{
-  position:absolute;
-  right:-8px;
-  bottom:-2px;
-  width:225px;
-  height:215px;
-  object-fit:cover;
-  object-position:center;
-  border-radius:48% 0 0 0;
-  filter:saturate(1.08) contrast(1.03);
-}
-.hero-launch-photo:after{
-  content:"";position:absolute;left:-38px;bottom:-70px;width:210px;height:145px;
-  background:#161616;transform:rotate(34deg);border-radius:20px;opacity:.93
-}
-.hero-soft-heart{position:absolute;left:22px;top:24px;color:#c40028;font-size:25px;opacity:.72;z-index:2}
-.hero-badge{position:absolute;right:5px;z-index:5;background:#fff;border-radius:999px;padding:5px 8px;font-size:7.2px;font-weight:900;box-shadow:0 2px 8px #0002;white-space:nowrap}
-.hb1{top:15px}.hb2{top:44px}.hb3{top:73px}.hb4{top:102px}
-
-/* Two products per row for better visibility */
-.products{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
-.card{border-radius:15px;box-shadow:0 4px 14px #00000012}
-.card-img{height:165px}
-.fav{width:34px;height:34px;font-size:22px;right:7px;top:7px}
-.body{padding:9px 9px 7px}
-.name{font-size:13px;line-height:1.15;min-height:32px}
-.rating{font-size:10.5px;margin-top:7px}
-.price{font-size:18px;margin:7px 0}
-.add{font-size:11.5px;padding:10px 5px;border-radius:10px}
-.popular{padding:16px 10px 16px}
-.section-head h2{font-size:27px}
-.features{margin-top:4px}
-.share-order{width:100%;border:0;border-radius:12px;padding:13px;font-weight:900;background:#19a74a;color:#fff;margin-top:10px}
-.copy-order{width:100%;border:1px solid #d7dbe2;border-radius:12px;padding:12px;font-weight:800;background:#fff;color:#172033;margin-top:8px}
 .order-preview{white-space:pre-wrap;background:#f7f8fa;border-radius:12px;padding:12px;font-size:12px;line-height:1.4;text-align:left;margin-top:12px}
 
 @media(max-width:390px){
-  .hero-launch{height:240px}
-  .hero-launch h1{font-size:29px}
-  .hero-launch-photo img{width:208px;height:201px}
-  .card-img{height:150px}
-  .name{font-size:12.5px}
-  .rating{font-size:10px}
-  .price{font-size:17px}
-  .add{font-size:11px}
-}
-
-/* Flory Flowers v1.12 — FINAL LOCKED MOCKUP: exact 4-card layout chosen by user */
-.hero-approved{position:relative;margin:8px 8px 0;border-radius:17px;overflow:hidden;background:#fff0df}
-.hero-approved img{display:block;width:100%;height:auto}
-.hero-approved-hotspot{position:absolute;left:2.5%;bottom:4%;width:44%;height:16%;border:0;background:transparent}
-
-/* Final chosen product grid: 4 products per row */
-.products{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
-.card{border:1px solid #e3e6eb;border-radius:13px;box-shadow:0 3px 12px #0000000b;overflow:hidden;background:#fff;position:relative;min-width:0}
-.card-img{height:112px}
-.fav{width:27px;height:27px;font-size:17px;right:4px;top:4px}
-.body{padding:7px 6px 5px}
-.name{font-size:9.8px;line-height:1.08;min-height:33px}
-.rating{font-size:8.2px;margin-top:4px}
-.price{font-size:14px;margin:4px 0}
-.add{font-size:8.2px;padding:8px 2px;border-radius:9px}
-
-.top{padding:14px 14px 11px}
-.brand-row{gap:10px}
-.logo{width:54px;height:54px;border-radius:15px;font-size:24px}
-.brand-name{font-size:28px}
-.tagline{font-size:9.5px;letter-spacing:1.8px}
-.search-row{grid-template-columns:minmax(0,1fr) 70px 78px;gap:8px;margin-top:13px}
-.search-box{border-radius:25px;padding:5px 10px}
-.search-box input{font-size:15px;padding:9px 6px}
-.search-row select{border-radius:14px;padding:9px 6px}
-.trust-row{font-size:11.5px;margin-top:11px}
-.categories{gap:7px;padding:9px 8px 10px}
-.cat{border-radius:13px;padding:4px 4px 7px;box-shadow:0 3px 10px #0000000a}
-.cat-img{height:55px;border-radius:10px}
-.cat-label{font-size:8.8px;min-height:20px}
-.popular{padding:16px 9px 12px}
-.section-head h2{font:700 27px Georgia,serif}
-.section-head button{font-size:12.5px}
-.bottom{height:68px}
-.bottom button{font-size:23px}
-.bottom span{font-size:10.5px}
-
-@media(max-width:390px){
   .logo{width:50px;height:50px}
   .brand-name{font-size:25px}
   .tagline{font-size:8.5px}
   .search-row{grid-template-columns:minmax(0,1fr) 66px 72px}
   .trust-row{font-size:10px}
-  .cat-img{height:51px}
-  .cat-label{font-size:8px}
-  .section-head h2{font-size:25px}
-  .card-img{height:98px}
-  .name{font-size:9px}
-  .rating{font-size:8px}
-  .price{font-size:12px}
-  .add{font-size:7.5px}
-}
-
-/* Flory Flowers v1.14 — crisp scalable hero (text rendered natively, no blurry text image) */
-.hero8k{
-  position:relative;display:grid;grid-template-columns:45% 55%;
-  height:270px;margin:8px 8px 0;border-radius:17px;overflow:hidden;
-  background:
-    radial-gradient(circle at 62% 12%,#fff8ea 0 4%,transparent 5%),
-    linear-gradient(90deg,#fff1df 0%,#ffd6b6 100%);
-}
-.hero8k-copy{position:relative;z-index:3;padding:18px 2px 12px 17px}
-.hero8k-kicker{font-size:8.6px;line-height:1.4;letter-spacing:1.75px;font-weight:900;color:#07192a}
-.hero8k h1{margin:9px 0 0;font:500 34px/.95 Georgia,serif;color:#07192a;letter-spacing:-.4px}
-.hero8k-heart{height:31px;font:400 30px/1 Georgia,serif;color:var(--red)}
-.hero8k h2{margin:5px 0 0;font-size:11.4px;line-height:1.2;font-weight:900;color:#1d2430}
-.hero8k p{margin:4px 0 0;font-size:9.4px;line-height:1.25;color:#626b79}
-.hero8k-cta{border:0;background:var(--red);color:#fff;border-radius:25px;padding:11px 13px;margin-top:8px;font-size:11px;font-weight:900;white-space:nowrap}
-.hero8k-photo{position:relative;overflow:hidden}
-.hero8k-photo img{
-  position:absolute;right:-10px;bottom:-3px;width:245px;height:235px;
-  object-fit:cover;object-position:center;border-radius:48% 0 0 0;
-  filter:saturate(1.12) contrast(1.05) brightness(1.02);
-  image-rendering:auto;
-}
-.hero8k-photo:after{
-  content:"";position:absolute;left:-45px;bottom:-74px;width:225px;height:155px;
-  background:#171717;transform:rotate(33deg);border-radius:22px;opacity:.94
-}
-.hero8k-mainheart{position:absolute;left:25px;top:28px;color:#c3002c;font-size:27px;opacity:.75;z-index:2}
-.hero8k-badge{
-  position:absolute;right:5px;z-index:5;background:#fff;border-radius:999px;
-  padding:5px 8px;font-size:7.6px;font-weight:900;box-shadow:0 2px 8px #0002;white-space:nowrap
-}
-.hero8k-badge.b1{top:16px}.hero8k-badge.b2{top:47px}.hero8k-badge.b3{top:78px}.hero8k-badge.b4{top:109px}
-
-/* keep definitive four-products-per-row layout */
-.products{grid-template-columns:repeat(4,minmax(0,1fr))}
-
-@media(max-width:390px){
-  .hero8k{height:258px}
-  .hero8k h1{font-size:31px}
-  .hero8k-photo img{width:225px;height:216px}
-  .hero8k-badge{font-size:7px}
-}
-
-/* Flory Flowers v1.15 — definitive clarity + 2 products per row */
-.hero8k{
-  height:272px;
-  grid-template-columns:46% 54%;
-  background:
-    radial-gradient(circle at 62% 13%,rgba(255,255,255,.8) 0 4%,transparent 5%),
-    linear-gradient(90deg,#fff1df 0%,#ffd8bc 100%);
-}
-.hero8k-copy{padding:18px 3px 12px 17px}
-.hero8k-kicker{font-size:8.8px;letter-spacing:1.8px}
-.hero8k h1{font-size:34px;line-height:.94;margin-top:9px}
-.hero8k h2{font-size:11.5px}
-.hero8k p{font-size:9.5px}
-.hero8k-photo img{
-  width:232px;height:222px;right:-6px;bottom:-2px;
-  object-fit:cover;object-position:center;
-  filter:saturate(1.10) contrast(1.06) brightness(1.02);
-}
-.hero8k-badge{font-size:7.4px;padding:5px 8px}
-.hero8k-cta{font-size:11px;padding:11px 13px}
-
-/* Requested final product visibility: exactly 2 per row */
-.products{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
-.card{border-radius:15px!important;box-shadow:0 4px 14px #00000012!important}
-.card-img{height:178px!important}
-.fav{width:35px!important;height:35px!important;font-size:22px!important;right:7px!important;top:7px!important}
-.body{padding:10px 10px 8px!important}
-.name{font-size:13px!important;line-height:1.15!important;min-height:34px!important}
-.rating{font-size:10.5px!important;margin-top:7px!important}
-.price{font-size:18px!important;margin:7px 0!important}
-.add{font-size:11.5px!important;padding:11px 6px!important;border-radius:10px!important}
-.popular{padding:16px 10px 18px!important}
-
-@media(max-width:390px){
   .hero8k{height:260px}
   .hero8k h1{font-size:31px}
   .hero8k-photo img{width:218px;height:208px}
-  .card-img{height:158px!important}
-  .name{font-size:12.5px!important}
-  .price{font-size:17px!important}
-  .add{font-size:11px!important}
+  .hero8k-badge{font-size:7px}
+  .cat-img{height:51px}
+  .cat-label{font-size:8px}
+  .section-head h2{font-size:25px}
+  .card-img{height:158px}
+  .name{font-size:12.5px}
+  .price{font-size:17px}
+  .add{font-size:11px}
 }
