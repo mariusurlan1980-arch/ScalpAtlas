@@ -142,20 +142,22 @@ function buildOrderText(order){
 }
 
 function showCheckout(){
- openModal("Date pentru livrare",'<div class="checkout-form"><label>Numele clientului<input id="buyerName" placeholder="Nume și prenume"></label><label>Telefon<input id="buyerPhone" inputmode="tel" placeholder="+40..."></label><label>Numele destinatarului<input id="receiverName" placeholder="Nume destinatar"></label><label>Oraș / localitate<input id="city" placeholder="Oraș"></label><label>Adresa de livrare<textarea id="address" placeholder="Stradă, număr, detalii"></textarea></label><label>Data dorită<input id="deliveryDate" type="date"></label><button id="prepareOrder" class="checkout">Trimite comanda</button><small class="detail-note">Comanda poate fi trimisă acum prin WhatsApp. Pentru trimitere directă automată către magazin vom seta numărul oficial Flory Flowers.</small></div>');
+ openModal("Date pentru livrare",'<div class="checkout-form"><label>Numele clientului<input id="buyerName" placeholder="Nume și prenume"></label><label>Telefon<input id="buyerPhone" inputmode="tel" placeholder="+40..."></label><label>Numele destinatarului<input id="receiverName" placeholder="Nume destinatar"></label><label>Oraș / localitate<input id="city" placeholder="Oraș"></label><label>Adresa de livrare<textarea id="address" placeholder="Stradă, număr, detalii"></textarea></label><label>Data dorită<input id="deliveryDate" type="date"></label><button id="prepareOrder" class="checkout">Trimite comanda</button><small class="detail-note">Comanda se înregistrează direct în aplicație. Nu folosim WhatsApp.</small></div>');
  $("#prepareOrder").onclick=()=>{
    const name=$("#buyerName").value.trim(), phone=$("#buyerPhone").value.trim(), receiver=$("#receiverName").value.trim(), city=$("#city").value.trim(), address=$("#address").value.trim();
    if(!name||!phone||!receiver||!city||!address){alert("Completează câmpurile obligatorii.");return;}
    const order={name,phone,receiver,city,address,date:$("#deliveryDate").value,items:state.cart,createdAt:new Date().toISOString()};
    localStorage.setItem("ffLastOrder",JSON.stringify(order));
    const txt=buildOrderText(order);
-   openModal("Comandă pregătită",'<div class="order-ok">✓<h3>Comanda este pregătită.</h3><p>Verifică detaliile și trimite comanda.</p><div class="order-preview" id="orderPreview"></div><button id="shareWhatsApp" class="share-order">Trimite pe WhatsApp</button><button id="copyOrder" class="copy-order">Copiază comanda</button><small class="detail-note">Pentru lansarea publică vom introduce numărul WhatsApp oficial al magazinului, astfel încât comenzile să ajungă direct la Flory Flowers.</small></div>');
+   const orderNo="FF-"+Date.now().toString().slice(-6);
+   localStorage.setItem("ffLastOrderNo",orderNo);
+   openModal("Comandă înregistrată",'<div class="order-ok">✓<h3>Comanda a fost înregistrată.</h3><p>Număr comandă: <b>'+orderNo+'</b></p><div class="order-preview" id="orderPreview"></div><button id="finishOrder" class="checkout">Închide</button><small class="detail-note">Comanda este salvată în aplicație. Următorul pas este conectarea la sistemul online Flory Flowers, astfel încât comenzile clienților să ajungă automat în panoul magazinului.</small></div>');
    $("#orderPreview").textContent=txt;
-   $("#shareWhatsApp").onclick=()=>{window.location.href="https://wa.me/?text="+encodeURIComponent(txt)};
-   $("#copyOrder").onclick=()=>{
-     const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();
-     try{document.execCommand("copy");alert("Comanda a fost copiată.");}catch(e){alert("Selectează textul și copiază-l manual.");}
-     ta.remove();
+   $("#finishOrder").onclick=()=>{
+     state.cart=[];
+     save();
+     updateCount();
+     closeModal();
    };
  };
 }
