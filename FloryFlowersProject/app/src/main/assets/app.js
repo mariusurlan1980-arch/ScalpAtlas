@@ -1,25 +1,25 @@
 const categories=[
-{name:"Toate",img:"prod1.jpg"},
-{name:"Trandafiri",img:"prod1.jpg"},
-{name:"Buchete romantice",img:"prod2.jpg"},
-{name:"Aniversări",img:"prod4.jpg"},
-{name:"Premium",img:"prod3.jpg"},
-{name:"Cadouri",icon:"🎁"}
+{name:"Toate",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666"},
+{name:"Trandafiri",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728"},
+{name:"Buchete romantice",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679"},
+{name:"Aniversări",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688"},
+{name:"Premium",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734"},
+{name:"Cadouri",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise.png?v=1790368131"}
 ];
 
 const products=[
-{id:1,name:"Buchet 25 trandafiri roșii",cat:"Trandafiri",ron:249,eur:49.8,rating:"★★★★★ (124)",img:"prod1_hd.jpg",desc:"Un buchet elegant cu 25 de trandafiri roșii, verdeață decorativă și ambalaj premium. Potrivit pentru declarații de dragoste și aniversări."},
-{id:2,name:"Buchet mixt elegant",cat:"Buchete romantice",ron:199,eur:39.8,rating:"★★★★★ (86)",img:"prod2.jpg",desc:"Buchet romantic în nuanțe de roz, roșu și crem, creat pentru momente speciale și surprize elegante."},
-{id:3,name:"Cutie 36 trandafiri roșii",cat:"Premium",ron:399,eur:79.8,rating:"★★★★☆ (73)",img:"prod3.jpg",desc:"36 de trandafiri roșii aranjați într-o cutie premium neagră. Un cadou impresionant pentru ocazii importante."},
-{id:4,name:"Buchet crini albi",cat:"Aniversări",ron:399,eur:79.8,rating:"★★★★★ (52)",img:"prod4.jpg",desc:"Crini albi proaspeți într-un aranjament luminos și rafinat, potrivit pentru aniversări și evenimente elegante."},
-{id:5,name:"Buchet 50 trandafiri roșii",cat:"Trandafiri",ron:429,eur:85.8,rating:"★★★★★ (61)",img:"prod1.jpg",desc:"Un buchet spectaculos cu 50 de trandafiri roșii, pentru o declarație memorabilă."},
-{id:6,name:"Trandafiri roz delicat",cat:"Trandafiri",ron:229,eur:45.8,rating:"★★★★★ (47)",img:"prod2.jpg",desc:"Trandafiri în tonuri delicate de roz, ambalați modern. Potriviți pentru aniversări, mulțumiri și gesturi romantice."},
-{id:7,name:"Romantic Deluxe",cat:"Buchete romantice",ron:299,eur:59.8,rating:"★★★★★ (39)",img:"prod2.jpg",desc:"Combinație bogată de flori romantice, într-un buchet premium cu aspect elegant și volum generos."},
-{id:8,name:"Aniversare Pastel",cat:"Aniversări",ron:239,eur:47.8,rating:"★★★★☆ (31)",img:"prod4.jpg",desc:"Un buchet luminos în tonuri pastel, creat special pentru zile de naștere și aniversări."},
-{id:9,name:"Cutie Premium 55 trandafiri",cat:"Premium",ron:549,eur:109.8,rating:"★★★★★ (28)",img:"prod3.jpg",desc:"Aranjament premium cu 55 de trandafiri într-o cutie elegantă, pentru un efect spectaculos."},
-{id:10,name:"Buchet Premium Royal",cat:"Premium",ron:459,eur:91.8,rating:"★★★★★ (22)",img:"prod1.jpg",desc:"Buchet premium cu trandafiri roșii și finisaje elegante, potrivit pentru ocazii deosebite."},
-{id:11,name:"Flori + cadou surpriză",cat:"Cadouri",ron:279,eur:55.8,rating:"★★★★★ (44)",img:"prod2.jpg",desc:"Buchet romantic însoțit de un mic cadou surpriză. Mesajul personal este inclus."},
-{id:12,name:"Cutie trandafiri + cadou",cat:"Cadouri",ron:349,eur:69.8,rating:"★★★★★ (35)",img:"prod3.jpg",desc:"Cutie elegantă cu trandafiri și cadou, pregătită pentru livrare la persoana dragă."}
+{id:1,name:"Buchet 25 trandafiri roșii",cat:"Trandafiri",ron:249,eur:49.8,rating:"★★★★★ (124)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728",desc:"Un buchet elegant cu 25 de trandafiri roșii, verdeață decorativă și ambalaj premium. Potrivit pentru declarații de dragoste și aniversări."},
+{id:2,name:"Buchet mixt elegant",cat:"Buchete romantice",ron:199,eur:39.8,rating:"★★★★★ (86)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666",desc:"Buchet romantic în nuanțe de roz, roșu și crem, creat pentru momente speciale și surprize elegante."},
+{id:3,name:"Cutie 36 trandafiri roșii",cat:"Premium",ron:399,eur:79.8,rating:"★★★★☆ (73)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734",desc:"36 de trandafiri roșii aranjați într-o cutie premium neagră. Un cadou impresionant pentru ocazii importante."},
+{id:4,name:"Buchet crini albi",cat:"Aniversări",ron:399,eur:79.8,rating:"★★★★★ (52)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695",desc:"Crini albi proaspeți într-un aranjament luminos și rafinat, potrivit pentru aniversări și evenimente elegante."},
+{id:5,name:"Buchet 50 trandafiri roșii",cat:"Trandafiri",ron:429,eur:85.8,rating:"★★★★★ (61)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/50-luxury-red-roses.png?v=1790368147",desc:"Un buchet spectaculos cu 50 de trandafiri roșii, pentru o declarație memorabilă."},
+{id:6,name:"Trandafiri roz delicat",cat:"Trandafiri",ron:229,eur:45.8,rating:"★★★★★ (47)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679",desc:"Trandafiri în tonuri delicate de roz, ambalați modern. Potriviți pentru aniversări, mulțumiri și gesturi romantice."},
+{id:7,name:"Romantic Deluxe",cat:"Buchete romantice",ron:299,eur:59.8,rating:"★★★★★ (39)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701",desc:"Combinație bogată de flori romantice, într-un buchet premium cu aspect elegant și volum generos."},
+{id:8,name:"Aniversare Pastel",cat:"Aniversări",ron:239,eur:47.8,rating:"★★★★☆ (31)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688",desc:"Un buchet luminos în tonuri pastel, creat special pentru zile de naștere și aniversări."},
+{id:9,name:"Cutie Premium 55 trandafiri",cat:"Premium",ron:549,eur:109.8,rating:"★★★★★ (28)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734",desc:"Aranjament premium cu 55 de trandafiri într-o cutie elegantă, pentru un efect spectaculos."},
+{id:10,name:"Buchet Premium Royal",cat:"Premium",ron:459,eur:91.8,rating:"★★★★★ (22)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740",desc:"Buchet premium cu trandafiri roșii și finisaje elegante, potrivit pentru ocazii deosebite."},
+{id:11,name:"Flori + cadou surpriză",cat:"Cadouri",ron:279,eur:55.8,rating:"★★★★★ (44)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise.png?v=1790368131",desc:"Buchet romantic însoțit de un mic cadou surpriză. Mesajul personal este inclus."},
+{id:12,name:"Cutie trandafiri + cadou",cat:"Cadouri",ron:349,eur:69.8,rating:"★★★★★ (35)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pastel-luxury.jpg?v=1790337715",desc:"Cutie elegantă cu trandafiri și cadou, pregătită pentru livrare la persoana dragă."}
 ];
 
 const state={

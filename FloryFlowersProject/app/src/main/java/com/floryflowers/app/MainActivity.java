@@ -20,6 +20,6 @@ public class MainActivity extends Activity {
         webView.clearHistory();
         webView.setWebViewClient(new WebViewClient());
         setContentView(webView);
-        webView.loadUrl("file:///android_asset/index.html?v=117");
+        webView.loadUrl("file:///android_asset/index.html?v=118");
     }
 }
