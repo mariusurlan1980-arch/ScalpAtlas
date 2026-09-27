@@ -173,3 +173,54 @@ button{cursor:pointer}
   .hero h1{font-size:29px}
   .hero-photo img{width:207px;height:202px}
 }
+
+/* Flory Flowers v1.9 — exact approved mockup direction */
+.top{padding:14px 14px 11px}
+.brand-row{gap:10px}
+.logo{width:54px;height:54px;border-radius:15px;font-size:24px}
+.brand-name{font-size:28px}
+.tagline{font-size:9.5px;letter-spacing:1.8px}
+.search-row{grid-template-columns:minmax(0,1fr) 70px 78px;gap:8px;margin-top:13px}
+.search-box{border-radius:25px;padding:5px 10px}
+.search-box input{font-size:15px;padding:9px 6px}
+.search-row select{border-radius:14px;padding:9px 6px}
+.trust-row{font-size:11.5px;margin-top:11px}
+
+.hero-approved{position:relative;margin:8px 8px 0;border-radius:17px;overflow:hidden;background:#fff0df}
+.hero-approved img{display:block;width:100%;height:auto}
+.hero-approved-hotspot{position:absolute;left:2.5%;bottom:4%;width:44%;height:16%;border:0;background:transparent}
+
+.categories{gap:7px;padding:9px 8px 10px}
+.cat{border-radius:13px;padding:4px 4px 7px;box-shadow:0 3px 10px #0000000a}
+.cat-img{height:55px;border-radius:10px}
+.cat-label{font-size:8.8px;min-height:20px}
+.cat.active{box-shadow:inset 0 -4px 0 var(--red),0 3px 10px #0000000a}
+
+.popular{padding:16px 9px 12px}
+.section-head h2{font:700 27px Georgia,serif}
+.section-head button{font-size:12.5px}
+.products{gap:8px;margin-top:12px}
+.card{border:1px solid #e3e6eb;border-radius:13px;box-shadow:0 3px 12px #0000000b}
+.card-img{height:112px}
+.body{padding:7px 6px 5px}
+.name{font-size:9.8px;min-height:33px}
+.rating{font-size:8.2px}
+.price{font-size:14px}
+.add{font-size:8.2px;padding:8px 2px;border-radius:9px}
+
+.bottom{height:68px}
+.bottom button{font-size:23px}
+.bottom span{font-size:10.5px}
+
+@media(max-width:390px){
+  .logo{width:50px;height:50px}
+  .brand-name{font-size:25px}
+  .tagline{font-size:8.5px}
+  .search-row{grid-template-columns:minmax(0,1fr) 66px 72px}
+  .trust-row{font-size:10px}
+  .cat-img{height:51px}
+  .cat-label{font-size:8px}
+  .section-head h2{font-size:25px}
+  .card-img{height:98px}
+  .name{font-size:9px}
+}
