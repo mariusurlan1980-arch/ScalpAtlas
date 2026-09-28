@@ -30,6 +30,7 @@ market:localStorage.getItem("ffMarket")||"EU"
 };
 
 const $=s=>document.querySelector(s);
+const payCfg=window.FLORY_PAYMENT_CONFIG||{};
 const save=()=>{localStorage.setItem("ffFav",JSON.stringify([...state.fav]));localStorage.setItem("ffCart",JSON.stringify(state.cart));localStorage.setItem("ffCur",state.cur);localStorage.setItem("ffMarket",state.market)};
 const money=p=>state.cur==="EUR"?p.eur.toFixed(2)+" €":p.ron+" Lei";
 const moneyValue=(p,qty=1)=>state.cur==="EUR"?(p.eur*qty).toFixed(2)+" €":(p.ron*qty)+" Lei";
@@ -124,38 +125,85 @@ function showCart(){
  const cb=$("#checkoutBtn"); if(cb) cb.onclick=showCheckout;
 }
 
-function buildShopifyCartUrl(order){
- const cart=order.items.map(x=>{
-   const p=products.find(y=>y.id===x.id);
-   return p&&p.variantId ? p.variantId+":"+Math.max(1,x.qty||1) : "";
- }).filter(Boolean).join(",");
- const attrs={
-   "Nume destinatar":order.receiver||"",
-   "Data livrării":order.date||"de stabilit",
-   "Oraș livrare":order.city||"",
-   "Țară livrare":order.country||""
- };
- const params=[];
- Object.entries(attrs).forEach(([k,v])=>{if(v)params.push("attributes["+encodeURIComponent(k)+"]="+encodeURIComponent(v))});
- const messages=order.items.map(x=>{
-   const p=products.find(y=>y.id===x.id);
-   return p&&x.message ? p.name+": "+x.message : "";
- }).filter(Boolean);
- if(messages.length) params.push("note="+encodeURIComponent("Mesaje felicitare:\n"+messages.join("\n")));
- return "https://xdecdj-50.myshopify.com/cart/"+cart+(params.length?"?"+params.join("&"):"");
+async function startPayment(order){
+ const base=String(payCfg.apiBase||"").replace(/\/$/,"");
+ if(!base){
+   openModal("Plată PayPal",'<div class="order-ok"><h3>Activarea plății este aproape gata</h3><p>Backend-ul securizat PayPal este pregătit, dar mai trebuie conectat URL-ul lui public.</p><p class="detail-note">Nu se trimite nicio plată și nu se debitează nimic.</p></div>');
+   return;
+ }
+ const btn=$("#prepareOrder");
+ if(btn){btn.disabled=true;btn.textContent="Se pregătește plata…";}
+ try{
+   const payload={
+     country:order.country,
+     receiver:order.receiver,
+     city:order.city,
+     date:order.date,
+     items:order.items.map(x=>({id:x.id,qty:x.qty,message:x.message||""}))
+   };
+   const response=await fetch(base+"/api/paypal/create-order",{
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify(payload)
+   });
+   const data=await response.json();
+   if(!response.ok||!data.approveUrl)throw new Error(data.error||"Nu am putut iniția plata PayPal.");
+   localStorage.setItem("ffPendingPayment",JSON.stringify({
+     paypalOrderId:data.id,
+     reference:data.reference,
+     amount:data.total,
+     currency:data.currency,
+     order
+   }));
+   if(window.Android&&typeof window.Android.openExternal==="function"){
+     window.Android.openExternal(data.approveUrl);
+   }else{
+     window.location.href=data.approveUrl;
+   }
+ }catch(err){
+   alert(err.message||"Plata nu a putut fi pornită.");
+   if(btn){btn.disabled=false;btn.textContent="Plătește securizat cu PayPal";}
+ }
 }
+
+async function verifyPendingPayment(){
+ const raw=localStorage.getItem("ffPendingPayment");
+ if(!raw)return;
+ const pending=JSON.parse(raw);
+ const base=String(payCfg.apiBase||"").replace(/\/$/,"");
+ if(!base||!pending.paypalOrderId)return;
+ try{
+   const r=await fetch(base+"/api/paypal/status?id="+encodeURIComponent(pending.paypalOrderId));
+   const data=await r.json();
+   if(data.status==="COMPLETED"||data.payment_status==="COMPLETED"){
+     state.cart=[];
+     save();updateCount();
+     localStorage.removeItem("ffPendingPayment");
+     openModal("Plată confirmată",'<div class="order-ok"><div style="font-size:48px">✓</div><h3>Comanda a fost plătită</h3><p>Referință: <b>'+((pending.reference||pending.paypalOrderId))+'</b></p><p>Continuăm cu repartizarea către florăria parteneră.</p></div>');
+   }
+ }catch(e){}
+}
+
+window.handlePaymentReturn=async function(status,orderId){
+ if(status==="success"){
+   await verifyPendingPayment();
+ }else if(status==="cancelled"){
+   openModal("Plată anulată",'<div class="order-ok"><h3>Plata a fost anulată</h3><p>Coșul tău a rămas neschimbat.</p></div>');
+ }else{
+   openModal("Verificare plată",'<div class="order-ok"><h3>Plata necesită verificare</h3><p>Nu trimitem comanda până când plata nu apare confirmată.</p></div>');
+ }
+};
 
 function showCheckout(){
  const preferred=state.market==="EU"?"":state.market;
- openModal("Finalizare comandă",'<div class="checkout-form"><p class="checkout-intro">Completează detaliile pentru livrare în Europa.</p><label>Țara de livrare<select id="deliveryCountry"><option value="">Alege țara</option><option value="ES">Spania</option><option value="DE">Germania</option><option value="BG">Bulgaria</option><option value="RO">România</option></select></label><label>Numele destinatarului<input id="receiverName" placeholder="Nume destinatar"></label><label>Oraș / localitate<input id="city" placeholder="Oraș"></label><label>Data dorită<input id="deliveryDate" type="date"></label><button id="prepareOrder" class="checkout">Continuă la plata securizată</button><small class="detail-note">Livrarea este preluată de o florărie parteneră din țara și orașul selectate.</small></div>');
+ openModal("Finalizare comandă",'<div class="checkout-form"><p class="checkout-intro">Completează detaliile pentru livrare în Europa.</p><label>Țara de livrare<select id="deliveryCountry"><option value="">Alege țara</option><option value="ES">Spania</option><option value="DE">Germania</option><option value="BG">Bulgaria</option><option value="RO">România</option></select></label><label>Numele destinatarului<input id="receiverName" placeholder="Nume destinatar"></label><label>Oraș / localitate<input id="city" placeholder="Oraș"></label><label>Data dorită<input id="deliveryDate" type="date"></label><button id="prepareOrder" class="checkout">Plătește securizat cu PayPal</button><small class="detail-note">Plata se finalizează în browserul securizat PayPal. Suma de plată este calculată în EUR pe serverul Flory Flowers.</small></div>');
  if(preferred)$("#deliveryCountry").value=preferred;
- $("#prepareOrder").onclick=()=>{
+ $("#prepareOrder").onclick=async()=>{
    const receiver=$("#receiverName").value.trim(), city=$("#city").value.trim(), country=$("#deliveryCountry").value;
    if(!country||!receiver||!city){alert("Completează țara, numele destinatarului și orașul.");return;}
    const order={country,receiver,city,date:$("#deliveryDate").value,items:state.cart,createdAt:new Date().toISOString()};
    localStorage.setItem("ffLastOrder",JSON.stringify(order));
-   const url=buildShopifyCartUrl(order);
-   window.location.href=url;
+   await startPayment(order);
  };
 }
 
@@ -179,4 +227,4 @@ document.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{
  if(b.dataset.n==="cart")showCart();
 });
 
-renderCats();renderProducts();updateCount();
+renderCats();renderProducts();updateCount();verifyPendingPayment();
