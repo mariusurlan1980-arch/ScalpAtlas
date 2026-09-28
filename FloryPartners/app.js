@@ -87,6 +87,19 @@ function showDashboard(){
  const area=[currentPartner.city,currentPartner.country].filter(Boolean).join(", ")||currentPartner.area||"Zonă de livrare";
  $("#partnerArea").textContent=area+" · "+percent()+"% florist";
  render();
+ await handleDeepLink();
+}
+
+async function handleDeepLink(){
+ const p=new URLSearchParams(location.search);
+ const orderId=p.get("order"),action=p.get("action");
+ if(!orderId||!action||!currentPartner)return;
+ const o=orders.find(x=>String(x.id)===String(orderId));
+ if(!o){history.replaceState({},document.title,location.pathname);return;}
+ history.replaceState({},document.title,location.pathname);
+ if(action==="accept"&&o.status==="NEW")await setStatus(o.id,"ACCEPTED");
+ else if(action==="decline"&&o.status==="NEW")await setStatus(o.id,"DECLINED");
+ else openOrder(o.id);
 }
 
 async function logout(){
