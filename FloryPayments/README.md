@@ -2,6 +2,12 @@
 
 Backend-ul de plăți pentru Flory Flowers. Scopul este să păstrăm cheile PayPal în afara aplicației Android și să deschidem checkout-ul PayPal în browser, nu în WebView.
 
+
+## Deploy rapid
+[Deploy to Cloudflare](https://deploy.workers.cloudflare.com/?url=https://github.com/mariusurlan1980-arch/ScalpAtlas/tree/flory-flowers-apk/FloryPayments)
+
+După deploy, setează secretele `PAYPAL_CLIENT_ID` și `PAYPAL_CLIENT_SECRET`, plus variabila `PAYPAL_ENV=sandbox` pentru primul test.
+
 ## Endpoint-uri
 - `GET /health`
 - `POST /api/paypal/create-order`
