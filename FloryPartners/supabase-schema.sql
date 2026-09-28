@@ -70,3 +70,30 @@ for select using (
     where p.user_id=auth.uid() and p.active=true
   )
 );
+
+
+-- Storage for bouquet photos. Public read is used so customer emails can open the photo link.
+insert into storage.buckets (id, name, public)
+values ('order-photos','order-photos',true)
+on conflict (id) do update set public = excluded.public;
+
+create policy "partners upload own order photos" on storage.objects
+for insert to authenticated
+with check (
+  bucket_id='order-photos'
+  and (storage.foldername(name))[1] in (
+    select p.id::text from partners p where p.user_id=auth.uid() and p.active=true
+  )
+);
+
+create policy "partners update own order photos" on storage.objects
+for update to authenticated
+using (
+  bucket_id='order-photos'
+  and (storage.foldername(name))[1] in (
+    select p.id::text from partners p where p.user_id=auth.uid() and p.active=true
+  )
+);
+
+create policy "public reads bouquet photos" on storage.objects
+for select using (bucket_id='order-photos');
