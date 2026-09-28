@@ -79,7 +79,7 @@ async function loadOrders(){
  orders=data||[];
 }
 
-function showDashboard(){
+async function showDashboard(){
  $("#loginView").classList.add("hidden");
  $("#dashboardView").classList.remove("hidden");
  $("#logout").classList.remove("hidden");
