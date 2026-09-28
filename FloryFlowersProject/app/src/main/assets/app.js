@@ -7,16 +7,16 @@ const categories=[
 ];
 
 const products=[
-{id:1,name:"Little Gesture",cat:"Cadouri",ron:129,eur:25.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/little-gesture-1.jpg?v=1790613112",desc:"Un gest floral mic și elegant, potrivit pentru surprize simple și mesaje de apreciere."},
-{id:2,name:"Sweet Surprise",cat:"Cadouri",ron:169,eur:33.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise-1.jpg?v=1790612425",desc:"Buchet vesel pentru surprize spontane, mulțumiri și momente de zi cu zi."},
-{id:3,name:"Pink Whisper",cat:"Romantice",ron:199,eur:39.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679",desc:"Buchet delicat în tonuri roz și alb, potrivit pentru gesturi romantice și aniversări."},
-{id:4,name:"Pure Elegance",cat:"Elegante",ron:229,eur:45.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695",desc:"Aranjament elegant în tonuri alb și crem pentru ocazii speciale."},
-{id:5,name:"Red Romance",cat:"Trandafiri",ron:249,eur:49.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701",desc:"Buchet romantic cu trandafiri roșii și flori complementare."},
-{id:6,name:"Flory Standard – 12 Premium Red Roses",cat:"Trandafiri",ron:279,eur:55.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708",desc:"12 trandafiri roșii premium, tije aproximativ 50–60 cm, verdeață discretă, ambalaj premium și felicitare inclusă."},
-{id:7,name:"Love Forever",cat:"Romantice",ron:329,eur:65.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721",desc:"Buchet romantic premium pentru declarații de dragoste și momente importante."},
-{id:8,name:"Grand Romantic Bouquet",cat:"Romantice",ron:499,eur:99.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740",desc:"Buchet romantic mare pentru aniversări, cereri speciale și surprize memorabile."},
-{id:9,name:"36 Premium Red Roses",cat:"Trandafiri",ron:699,eur:139.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/36-premium-red-roses-1.png?v=1790610580",desc:"Buchet impresionant de 36 de trandafiri roșii premium."},
-{id:10,name:"50 Luxury Red Roses",cat:"Trandafiri",ron:999,eur:199.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/50-luxury-red-roses-1.jpg?v=1790613551",desc:"Buchet luxury de 50 de trandafiri roșii pentru ocazii importante."}
+{id:1,name:"Little Gesture",variantId:"53815222206730",cat:"Cadouri",ron:129,eur:25.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/little-gesture-1.jpg?v=1790613112",desc:"Un gest floral mic și elegant, potrivit pentru surprize simple și mesaje de apreciere."},
+{id:2,name:"Sweet Surprise",variantId:"53815222239498",cat:"Cadouri",ron:169,eur:33.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise-1.jpg?v=1790612425",desc:"Buchet vesel pentru surprize spontane, mulțumiri și momente de zi cu zi."},
+{id:3,name:"Pink Whisper",variantId:"53812390527242",cat:"Romantice",ron:199,eur:39.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679",desc:"Buchet delicat în tonuri roz și alb, potrivit pentru gesturi romantice și aniversări."},
+{id:4,name:"Pure Elegance",variantId:"53812392558858",cat:"Elegante",ron:229,eur:45.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695",desc:"Aranjament elegant în tonuri alb și crem pentru ocazii speciale."},
+{id:5,name:"Red Romance",variantId:"53812392788234",cat:"Trandafiri",ron:249,eur:49.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701",desc:"Buchet romantic cu trandafiri roșii și flori complementare."},
+{id:6,name:"Flory Standard – 12 Premium Red Roses",variantId:"53812395409674",cat:"Trandafiri",ron:279,eur:55.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708",desc:"12 trandafiri roșii premium, tije aproximativ 50–60 cm, verdeață discretă, ambalaj premium și felicitare inclusă."},
+{id:7,name:"Love Forever",variantId:"53812395868426",cat:"Romantice",ron:329,eur:65.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721",desc:"Buchet romantic premium pentru declarații de dragoste și momente importante."},
+{id:8,name:"Grand Romantic Bouquet",variantId:"53812402979082",cat:"Romantice",ron:499,eur:99.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740",desc:"Buchet romantic mare pentru aniversări, cereri speciale și surprize memorabile."},
+{id:9,name:"36 Premium Red Roses",variantId:"53815222501642",cat:"Trandafiri",ron:699,eur:139.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/36-premium-red-roses-1.png?v=1790610580",desc:"Buchet impresionant de 36 de trandafiri roșii premium."},
+{id:10,name:"50 Luxury Red Roses",variantId:"53815222534410",cat:"Trandafiri",ron:999,eur:199.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/50-luxury-red-roses-1.jpg?v=1790613551",desc:"Buchet luxury de 50 de trandafiri roșii pentru ocazii importante."}
 ];
 
 const state={
@@ -120,39 +120,35 @@ function showCart(){
  const cb=$("#checkoutBtn"); if(cb) cb.onclick=showCheckout;
 }
 
-function buildOrderText(order){
- let totalRon=0,totalEur=0;
- const lines=order.items.map(x=>{
+function buildShopifyCartUrl(order){
+ const cart=order.items.map(x=>{
    const p=products.find(y=>y.id===x.id);
-   if(!p)return "";
-   totalRon+=p.ron*x.qty; totalEur+=p.eur*x.qty;
-   return "• "+p.name+" x"+x.qty+" — "+moneyValue(p,x.qty)+(x.message?"\n  Mesaj: "+x.message:"");
- }).filter(Boolean).join("\n");
- const total=state.cur==="EUR"?totalEur.toFixed(2)+" €":totalRon+" Lei";
- return "FLORY FLOWERS — COMANDĂ\n\n"+lines+"\n\nTotal: "+total+"\n\nClient: "+order.name+"\nTelefon: "+order.phone+"\nDestinatar: "+order.receiver+"\nOraș: "+order.city+"\nAdresă: "+order.address+"\nData livrării: "+(order.date||"de stabilit");
+   return p&&p.variantId ? p.variantId+":"+Math.max(1,x.qty||1) : "";
+ }).filter(Boolean).join(",");
+ const attrs={
+   "Nume destinatar":order.receiver||"",
+   "Data livrării":order.date||"de stabilit",
+   "Oraș livrare":order.city||""
+ };
+ const params=[];
+ Object.entries(attrs).forEach(([k,v])=>{if(v)params.push("attributes["+encodeURIComponent(k)+"]="+encodeURIComponent(v))});
+ const messages=order.items.map(x=>{
+   const p=products.find(y=>y.id===x.id);
+   return p&&x.message ? p.name+": "+x.message : "";
+ }).filter(Boolean);
+ if(messages.length) params.push("note="+encodeURIComponent("Mesaje felicitare:\n"+messages.join("\n")));
+ return "https://xdecdj-50.myshopify.com/cart/"+cart+(params.length?"?"+params.join("&"):"");
 }
 
 function showCheckout(){
- openModal("Date pentru livrare",'<div class="checkout-form"><label>Numele clientului<input id="buyerName" placeholder="Nume și prenume"></label><label>Telefon<input id="buyerPhone" inputmode="tel" placeholder="+40..."></label><label>Numele destinatarului<input id="receiverName" placeholder="Nume destinatar"></label><label>Oraș / localitate<input id="city" placeholder="Oraș"></label><label>Adresa de livrare<textarea id="address" placeholder="Stradă, număr, detalii"></textarea></label><label>Data dorită<input id="deliveryDate" type="date"></label><button id="prepareOrder" class="checkout">Trimite comanda</button><small class="detail-note">Comanda se înregistrează direct în aplicație. Nu folosim WhatsApp.</small></div>');
+ openModal("Finalizare comandă",'<div class="checkout-form"><p class="checkout-intro">Completează detaliile pentru livrare. Plata și adresa completă se introduc în checkout-ul securizat Shopify.</p><label>Numele destinatarului<input id="receiverName" placeholder="Nume destinatar"></label><label>Oraș / localitate<input id="city" placeholder="Oraș"></label><label>Data dorită<input id="deliveryDate" type="date"></label><button id="prepareOrder" class="checkout">Continuă la plata securizată</button><small class="detail-note">După plată, comanda va apărea în sistemul central Shopify al magazinului Flory Flowers.</small></div>');
  $("#prepareOrder").onclick=()=>{
-   const name=$("#buyerName").value.trim(), phone=$("#buyerPhone").value.trim(), receiver=$("#receiverName").value.trim(), city=$("#city").value.trim(), address=$("#address").value.trim();
-   if(!name||!phone||!receiver||!city||!address){alert("Completează câmpurile obligatorii.");return;}
-   const order={name,phone,receiver,city,address,date:$("#deliveryDate").value,items:state.cart,createdAt:new Date().toISOString()};
+   const receiver=$("#receiverName").value.trim(), city=$("#city").value.trim();
+   if(!receiver||!city){alert("Completează numele destinatarului și orașul.");return;}
+   const order={receiver,city,date:$("#deliveryDate").value,items:state.cart,createdAt:new Date().toISOString()};
    localStorage.setItem("ffLastOrder",JSON.stringify(order));
-   const orders=JSON.parse(localStorage.getItem("ffOrders")||"[]");
-   orders.unshift(order);
-   localStorage.setItem("ffOrders",JSON.stringify(orders.slice(0,50)));
-   const txt=buildOrderText(order);
-   const orderNo="FF-"+Date.now().toString().slice(-6);
-   localStorage.setItem("ffLastOrderNo",orderNo);
-   openModal("Comandă înregistrată",'<div class="order-ok">✓<h3>Comanda a fost înregistrată.</h3><p>Număr comandă: <b>'+orderNo+'</b></p><div class="order-preview" id="orderPreview"></div><button id="finishOrder" class="checkout">Închide</button><small class="detail-note">Comanda este salvată în aplicație pe acest dispozitiv.</small></div>');
-   $("#orderPreview").textContent=txt;
-   $("#finishOrder").onclick=()=>{
-     state.cart=[];
-     save();
-     updateCount();
-     closeModal();
-   };
+   const url=buildShopifyCartUrl(order);
+   window.location.href=url;
  };
 }
 
