@@ -101,7 +101,7 @@ button{cursor:pointer}
 .cart-side button{border:0;background:none;color:var(--red);font-size:11px}
 .checkout{width:100%;margin-top:14px}
 .checkout-form label{display:block;font-size:12px;font-weight:800;margin-bottom:10px}
-.checkout-form input,.checkout-form textarea{width:100%;margin-top:5px;border:1px solid #d9dde4;border-radius:11px;padding:11px;font-weight:400}
+.checkout-form input,.checkout-form textarea,.checkout-form select{width:100%;margin-top:5px;border:1px solid #d9dde4;border-radius:11px;padding:11px;font-weight:400;background:#fff;color:#172033}
 .checkout-form textarea{min-height:76px;resize:vertical}
 .order-ok{text-align:center;padding:10px 0 18px;font-size:14px}
 .order-ok h3{font-size:20px;margin:7px 0}
