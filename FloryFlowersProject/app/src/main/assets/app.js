@@ -4,22 +4,28 @@ const categories=[
 {name:"Buchete romantice",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679"},
 {name:"Aniversări",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688"},
 {name:"Premium",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734"},
-{name:"Cadouri",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise.png?v=1790368131"}
+{name:"Cadouri",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise-flory.png?v=1790584151"}
 ];
 
 const products=[
-{id:1,name:"Buchet 25 trandafiri roșii",cat:"Trandafiri",ron:249,eur:49.8,rating:"★★★★★ (124)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728",desc:"Un buchet elegant cu 25 de trandafiri roșii, verdeață decorativă și ambalaj premium. Potrivit pentru declarații de dragoste și aniversări."},
-{id:2,name:"Buchet mixt elegant",cat:"Buchete romantice",ron:199,eur:39.8,rating:"★★★★★ (86)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666",desc:"Buchet romantic în nuanțe de roz, roșu și crem, creat pentru momente speciale și surprize elegante."},
-{id:3,name:"Cutie 36 trandafiri roșii",cat:"Premium",ron:399,eur:79.8,rating:"★★★★☆ (73)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734",desc:"36 de trandafiri roșii aranjați într-o cutie premium neagră. Un cadou impresionant pentru ocazii importante."},
-{id:4,name:"Buchet crini albi",cat:"Aniversări",ron:399,eur:79.8,rating:"★★★★★ (52)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695",desc:"Crini albi proaspeți într-un aranjament luminos și rafinat, potrivit pentru aniversări și evenimente elegante."},
-{id:5,name:"Buchet 50 trandafiri roșii",cat:"Trandafiri",ron:429,eur:85.8,rating:"★★★★★ (61)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/50-luxury-red-roses.png?v=1790368147",desc:"Un buchet spectaculos cu 50 de trandafiri roșii, pentru o declarație memorabilă."},
-{id:6,name:"Trandafiri roz delicat",cat:"Trandafiri",ron:229,eur:45.8,rating:"★★★★★ (47)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679",desc:"Trandafiri în tonuri delicate de roz, ambalați modern. Potriviți pentru aniversări, mulțumiri și gesturi romantice."},
-{id:7,name:"Romantic Deluxe",cat:"Buchete romantice",ron:299,eur:59.8,rating:"★★★★★ (39)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701",desc:"Combinație bogată de flori romantice, într-un buchet premium cu aspect elegant și volum generos."},
-{id:8,name:"Aniversare Pastel",cat:"Aniversări",ron:239,eur:47.8,rating:"★★★★☆ (31)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688",desc:"Un buchet luminos în tonuri pastel, creat special pentru zile de naștere și aniversări."},
-{id:9,name:"Cutie Premium 55 trandafiri",cat:"Premium",ron:549,eur:109.8,rating:"★★★★★ (28)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734",desc:"Aranjament premium cu 55 de trandafiri într-o cutie elegantă, pentru un efect spectaculos."},
-{id:10,name:"Buchet Premium Royal",cat:"Premium",ron:459,eur:91.8,rating:"★★★★★ (22)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740",desc:"Buchet premium cu trandafiri roșii și finisaje elegante, potrivit pentru ocazii deosebite."},
-{id:11,name:"Flori + cadou surpriză",cat:"Cadouri",ron:279,eur:55.8,rating:"★★★★★ (44)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise.png?v=1790368131",desc:"Buchet romantic însoțit de un mic cadou surpriză. Mesajul personal este inclus."},
-{id:12,name:"Cutie trandafiri + cadou",cat:"Cadouri",ron:349,eur:69.8,rating:"★★★★★ (35)",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pastel-luxury.jpg?v=1790337715",desc:"Cutie elegantă cu trandafiri și cadou, pregătită pentru livrare la persoana dragă."}
+{id:1,name:"Little Gesture",cat:"Cadouri",ron:129,eur:25.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/little-gesture-flory.png?v=1790584160",desc:"Un gest floral mic și elegant, potrivit pentru surprize simple și mesaje de apreciere."},
+{id:2,name:"Sweet Surprise",cat:"Cadouri",ron:169,eur:33.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise-flory.png?v=1790584151",desc:"Buchet vesel pentru surprize spontane, mulțumiri și momente de zi cu zi."},
+{id:3,name:"Florist’s Choice",cat:"Buchete romantice",ron:179,eur:35.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666",desc:"Buchet de sezon realizat de florăria parteneră cu flori proaspete disponibile în ziua livrării."},
+{id:4,name:"Pink Whisper",cat:"Buchete romantice",ron:199,eur:39.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679",desc:"Buchet delicat în tonuri roz și alb, potrivit pentru gesturi romantice și aniversări."},
+{id:5,name:"Birthday Joy",cat:"Aniversări",ron:229,eur:45.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688",desc:"Buchet colorat și vesel pentru zile de naștere și aniversări."},
+{id:6,name:"Pure Elegance",cat:"Aniversări",ron:229,eur:45.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695",desc:"Aranjament elegant în tonuri alb și crem pentru ocazii speciale."},
+{id:7,name:"Red Romance",cat:"Trandafiri",ron:249,eur:49.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701",desc:"Buchet romantic cu trandafiri roșii și flori complementare."},
+{id:8,name:"Flory Standard – 12 Premium Red Roses",cat:"Trandafiri",ron:279,eur:55.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708",desc:"12 trandafiri roșii premium, tije aproximativ 50–60 cm, verdeață discretă, ambalaj premium și felicitare inclusă."},
+{id:9,name:"Pastel Luxury",cat:"Premium",ron:299,eur:59.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pastel-luxury.jpg?v=1790337715",desc:"Buchet premium în nuanțe pastel, cu aspect elegant și volum generos."},
+{id:10,name:"Love Forever",cat:"Buchete romantice",ron:329,eur:65.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721",desc:"Buchet romantic premium pentru declarații de dragoste și momente importante."},
+{id:11,name:"24 Red Roses",cat:"Trandafiri",ron:399,eur:79.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728",desc:"24 de trandafiri roșii premium pentru un cadou romantic cu impact vizual."},
+{id:12,name:"Luxury Rose Box",cat:"Premium",ron:449,eur:89.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734",desc:"Cutie elegantă cu trandafiri, creată pentru cadouri premium și momente speciale."},
+{id:13,name:"Grand Romantic Bouquet",cat:"Buchete romantice",ron:499,eur:99.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740",desc:"Buchet romantic mare pentru aniversări, cereri speciale și surprize memorabile."},
+{id:14,name:"Designer’s Signature",cat:"Premium",ron:599,eur:119.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/designers-signature.jpg?v=1790337747",desc:"Aranjament floral generos realizat în stilul florăriei partenere cu flori sezoniere premium."},
+{id:15,name:"36 Premium Red Roses",cat:"Trandafiri",ron:699,eur:139.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/36-premium-red-roses-flory.png?v=1790584168",desc:"Buchet impresionant de 36 de trandafiri roșii premium."},
+{id:16,name:"50 Luxury Red Roses",cat:"Trandafiri",ron:999,eur:199.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/50-luxury-red-roses-flory.png?v=1790584176",desc:"Buchet luxury de 50 de trandafiri roșii pentru ocazii importante."},
+{id:17,name:"100 Red Roses Grand",cat:"Trandafiri",ron:1799,eur:359.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/100-red-roses-grand-flory.png?v=1790584184",desc:"Buchet grandios de 100 de trandafiri roșii premium."},
+{id:18,name:"Royal Signature XXL",cat:"Premium",ron:2499,eur:499.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/royal-signature-xxl-flory.png?v=1790584193",desc:"Aranjament Flory Flowers ultra-premium pentru cadouri VIP și ocazii excepționale."}
 ];
 
 const state={
@@ -55,19 +61,13 @@ function filtered(){
 
 function renderProducts(){
  const list=filtered();
- $("#products").innerHTML=list.length?list.map(p=>'<article class="card"><button class="fav" data-f="'+p.id+'">'+(state.fav.has(p.id)?"♥":"♡")+'</button><button class="product-open" data-p="'+p.id+'"><div class="card-img"><img src="'+p.img+'" alt="'+p.name+'"></div><div class="body"><div class="name">'+p.name+'</div><div class="rating">'+p.rating+'</div><div class="price">'+money(p)+'</div></div></button><button class="add" data-a="'+p.id+'">🛒 Adaugă în coș</button></article>').join(""):'<div class="empty" style="grid-column:1/-1">Nu am găsit produse.</div>';
+ $("#products").innerHTML=list.length?list.map(p=>'<article class="card"><button class="fav" data-f="'+p.id+'">'+(state.fav.has(p.id)?"♥":"♡")+'</button><button class="product-open" data-p="'+p.id+'"><div class="card-img"><img src="'+p.img+'" alt="'+p.name+'"></div><div class="body"><div class="name">'+p.name+'</div><div class="rating">'+p.rating+'</div><div class="price">'+money(p)+'</div></div></button></article>').join(""):'<div class="empty" style="grid-column:1/-1">Nu am găsit produse.</div>';
 
  document.querySelectorAll("[data-f]").forEach(b=>b.onclick=e=>{
    e.stopPropagation();
    const id=+b.dataset.f;
    state.fav.has(id)?state.fav.delete(id):state.fav.add(id);
    save();renderProducts();
- });
- document.querySelectorAll("[data-a]").forEach(b=>b.onclick=e=>{
-   e.stopPropagation();
-   addToCart(+b.dataset.a,1,"");
-   b.textContent="Adăugat ✓";
-   setTimeout(()=>b.textContent="🛒 Adaugă în coș",700);
  });
  document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>showProduct(+b.dataset.p));
 }
