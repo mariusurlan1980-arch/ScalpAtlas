@@ -30,9 +30,10 @@ const $=s=>document.querySelector(s);
 const save=()=>{localStorage.setItem("ffFav",JSON.stringify([...state.fav]));localStorage.setItem("ffCart",JSON.stringify(state.cart));localStorage.setItem("ffCur",state.cur)};
 const money=p=>state.cur==="EUR"?p.eur.toFixed(2)+" €":p.ron+" Lei";
 const moneyValue=(p,qty=1)=>state.cur==="EUR"?(p.eur*qty).toFixed(2)+" €":(p.ron*qty)+" Lei";
+const cdnWidth=(url,w)=>url+(url.includes("?")?"&":"?")+"width="+w;
 
 function renderCats(){
- $("#cats").innerHTML=categories.map(c=>'<button class="cat '+(state.cat===c.name?"active":"")+'" data-c="'+c.name+'"><div class="cat-img">'+(c.img?'<img src="'+c.img+'" alt="">':c.icon)+'</div><div class="cat-label">'+c.name+'</div></button>').join("");
+ $("#cats").innerHTML=categories.map(c=>'<button class="cat '+(state.cat===c.name?"active":"")+'" data-c="'+c.name+'"><div class="cat-img">'+(c.img?'<img src="'+cdnWidth(c.img,180)+'" alt="" loading="lazy" decoding="async">':c.icon)+'</div><div class="cat-label">'+c.name+'</div></button>').join("");
  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{
    state.cat=b.dataset.c;
    renderCats();
@@ -112,7 +113,7 @@ function showCart(){
    const p=products.find(y=>y.id===x.id);
    if(!p)return;
    e+=p.eur*x.qty;r+=p.ron*x.qty;
-   h+='<div class="cart-row"><img src="'+p.img+'"><div class="cart-info"><b>'+p.name+'</b><small>Cantitate: '+x.qty+'</small>'+(x.message?'<small>Mesaj: '+x.message+'</small>':'')+'</div><div class="cart-side"><b>'+moneyValue(p,x.qty)+'</b><button data-remove="'+index+'">Șterge</button></div></div>';
+   h+='<div class="cart-row"><img src="'+cdnWidth(p.img,180)+'" loading="lazy" decoding="async"><div class="cart-info"><b>'+p.name+'</b><small>Cantitate: '+x.qty+'</small>'+(x.message?'<small>Mesaj: '+x.message+'</small>':'')+'</div><div class="cart-side"><b>'+moneyValue(p,x.qty)+'</b><button data-remove="'+index+'">Șterge</button></div></div>';
  });
  const total=state.cur==="EUR"?e.toFixed(2)+" €":r+" Lei";
  openModal("Comanda mea",h?h+'<div class="total">Total: '+total+'</div><button id="checkoutBtn" class="checkout">Continuă comanda</button>':'<div class="empty">Coșul este gol.</div>');
