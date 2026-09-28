@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1b2a">
+<title>Flory Flowers</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+:root{--navy:#0d1b2a;--gold:#c8a55a;--cream:#fffaf2;--red:#bd1230;--ink:#17202a;--muted:#6b7280}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f5f2ed;color:var(--ink)}
+.top{position:sticky;top:0;z-index:20;background:var(--navy);color:white;padding:14px 16px;box-shadow:0 2px 14px #0002}
+.brand{display:flex;align-items:center;gap:10px}.mark{width:38px;height:38px;border:1.5px solid var(--gold);border-radius:50%;display:grid;place-items:center;color:var(--gold);font-family:Georgia,serif;font-weight:700}
+.brand h1{font-size:20px;margin:0;letter-spacing:.2px}.brand small{display:block;color:#e9d9ad;margin-top:2px}
+.hero{background:linear-gradient(135deg,#10233b,#0d1b2a);color:white;padding:22px 16px 24px}
+.hero h2{margin:0 0 8px;font-family:Georgia,serif;font-size:28px}.hero p{margin:0;color:#e8e8e8;max-width:650px}
+.wrap{max-width:980px;margin:auto;padding:16px}
+.bar{display:flex;justify-content:space-between;align-items:center;margin:4px 0 14px}.bar strong{font-size:18px}.count{font-size:13px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px #00000012;display:flex;flex-direction:column}
+.pic{aspect-ratio:1/1;background:#eee}.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.body{padding:11px;display:flex;flex-direction:column;flex:1}.type{font-size:11px;color:var(--gold);font-weight:800;text-transform:uppercase;min-height:14px}
+h3{font-size:15px;line-height:1.2;margin:5px 0 8px}.price{font-size:18px;font-weight:900;color:var(--red);margin-top:auto}
+.details{margin-top:9px;border:0;border-radius:10px;background:var(--navy);color:white;padding:10px 8px;font-weight:700}
+footer{text-align:center;color:#7b7b7b;font-size:12px;padding:26px 12px 40px}
+.modal{position:fixed;inset:0;background:#0008;z-index:50;display:none;align-items:flex-end}.modal.open{display:flex}
+.sheet{width:100%;max-height:88vh;overflow:auto;background:white;border-radius:24px 24px 0 0;padding:18px}
+.sheet img{width:100%;border-radius:16px;max-height:42vh;object-fit:cover}.sheet h2{margin:14px 0 5px}.sheet .mprice{font-size:26px;font-weight:900;color:var(--red)}
+.sheet p{line-height:1.5;color:#4b5563}.close{float:right;border:0;background:#f1f1f1;border-radius:50%;width:42px;height:42px;font-size:24px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr)}.modal{align-items:center;justify-content:center}.sheet{max-width:620px;border-radius:24px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand"><div class="mark">FF</div><div><h1>Flory Flowers</h1><small>Flori pentru orice ocazie</small></div></div></header>
+<section class="hero"><h2>Spune totul prin flori</h2><p>Catalogul Flory actualizat, cu produsele și imaginile curente.</p></section>
+<main class="wrap">
+  <div class="bar"><strong>Catalog</strong><span class="count">18 produse</span></div>
+  <section class="grid">
+<article class="card" data-i="0">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/100-red-roses-grand-flory.png?v=1790584184" alt="100 Red Roses Grand"></div>
+  <div class="body">
+    <div class="type">Buchet luxury XXL</div>
+    <h3>100 Red Roses Grand</h3>
+    <div class="price">1799.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="1">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728" alt="24 Red Roses"></div>
+  <div class="body">
+    <div class="type">Trandafiri</div>
+    <h3>24 Red Roses</h3>
+    <div class="price">399.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="2">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/36-premium-red-roses-flory.png?v=1790584168" alt="36 Premium Red Roses"></div>
+  <div class="body">
+    <div class="type">Trandafiri premium</div>
+    <h3>36 Premium Red Roses</h3>
+    <div class="price">699.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="3">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/50-luxury-red-roses-flory.png?v=1790584176" alt="50 Luxury Red Roses"></div>
+  <div class="body">
+    <div class="type">Buchet luxury</div>
+    <h3>50 Luxury Red Roses</h3>
+    <div class="price">999.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="4">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688" alt="Birthday Joy"></div>
+  <div class="body">
+    <div class="type">Buchet aniversar</div>
+    <h3>Birthday Joy</h3>
+    <div class="price">229.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="5">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/designers-signature.jpg?v=1790337747" alt="Designer’s Signature"></div>
+  <div class="body">
+    <div class="type">Aranjament floral</div>
+    <h3>Designer’s Signature</h3>
+    <div class="price">599.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="6">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666" alt="Florist’s Choice"></div>
+  <div class="body">
+    <div class="type">Buchet de sezon</div>
+    <h3>Florist’s Choice</h3>
+    <div class="price">179.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="7">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708" alt="Flory Standard – 12 Premium Red Roses"></div>
+  <div class="body">
+    <div class="type">Trandafiri</div>
+    <h3>Flory Standard – 12 Premium Red Roses</h3>
+    <div class="price">279.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="8">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740" alt="Grand Romantic Bouquet"></div>
+  <div class="body">
+    <div class="type">Buchet premium</div>
+    <h3>Grand Romantic Bouquet</h3>
+    <div class="price">499.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="9">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/little-gesture-flory.png?v=1790584160" alt="Little Gesture"></div>
+  <div class="body">
+    <div class="type">Buchet accesibil</div>
+    <h3>Little Gesture</h3>
+    <div class="price">129.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="10">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721" alt="Love Forever"></div>
+  <div class="body">
+    <div class="type">Buchet romantic</div>
+    <h3>Love Forever</h3>
+    <div class="price">329.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="11">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734" alt="Luxury Rose Box"></div>
+  <div class="body">
+    <div class="type">Cutie cu flori</div>
+    <h3>Luxury Rose Box</h3>
+    <div class="price">449.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="12">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pastel-luxury.jpg?v=1790337715" alt="Pastel Luxury"></div>
+  <div class="body">
+    <div class="type">Buchet premium</div>
+    <h3>Pastel Luxury</h3>
+    <div class="price">299.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="13">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679" alt="Pink Whisper"></div>
+  <div class="body">
+    <div class="type">Buchet romantic</div>
+    <h3>Pink Whisper</h3>
+    <div class="price">199.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="14">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695" alt="Pure Elegance"></div>
+  <div class="body">
+    <div class="type">Buchet elegant</div>
+    <h3>Pure Elegance</h3>
+    <div class="price">229.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="15">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701" alt="Red Romance"></div>
+  <div class="body">
+    <div class="type">Buchet romantic</div>
+    <h3>Red Romance</h3>
+    <div class="price">249.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="16">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/royal-signature-xxl-flory.png?v=1790584193" alt="Royal Signature XXL"></div>
+  <div class="body">
+    <div class="type">Aranjament floral luxury</div>
+    <h3>Royal Signature XXL</h3>
+    <div class="price">2499.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article>
+<article class="card" data-i="17">
+  <div class="pic"><img loading="lazy" src="https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise-flory.png?v=1790584151" alt="Sweet Surprise"></div>
+  <div class="body">
+    <div class="type">Buchet accesibil</div>
+    <h3>Sweet Surprise</h3>
+    <div class="price">169.00 RON</div>
+    <button class="details" type="button">Detalii</button>
+  </div>
+</article></section>
+</main>
+<footer>© 2026 Flory Flowers</footer>
+<div class="modal" id="modal"><div class="sheet"><button class="close" aria-label="Închide">×</button><img id="mimg" alt=""><h2 id="mtitle"></h2><div class="mprice" id="mprice"></div><p id="mdesc"></p></div></div>
+<script>
+const products=[{"title":"100 Red Roses Grand","type":"Buchet luxury XXL","description":"A grand statement bouquet of 100 premium red roses for customers who want an unforgettable presentation. Partner standard: exactly 100 red roses, strong visual density, premium long-stem presentation where locally available, luxury wrapping and ribbon. Supplier must confirm exact availability before accepting.","price":"1799.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/100-red-roses-grand-flory.png?v=1790584184"},{"title":"24 Red Roses","type":"Trandafiri","description":"Twenty-four premium red roses for a romantic gift with strong visual impact.","price":"399.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/24-red-roses.jpg?v=1790337728"},{"title":"36 Premium Red Roses","type":"Trandafiri premium","description":"A striking bouquet of 36 premium red roses designed for romantic occasions and strong visual impact. Partner standard: 36 red roses of consistent size and colour, dense round arrangement, premium wrapping and ribbon. No colour substitution without approval.","price":"699.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/36-premium-red-roses-flory.png?v=1790584168"},{"title":"50 Luxury Red Roses","type":"Buchet luxury","description":"A luxury bouquet of 50 red roses created for important celebrations and high-impact romantic gifts. Partner standard: 50 premium red roses, consistent stem quality, full rounded presentation, luxury wrapping and ribbon. No major substitutions.","price":"999.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/50-luxury-red-roses-flory.png?v=1790584176"},{"title":"Birthday Joy","type":"Buchet aniversar","description":"A cheerful, colourful bouquet for birthdays and joyful celebrations.","price":"229.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/birthday-joy.jpg?v=1790337688"},{"title":"Designer’s Signature","type":"Aranjament floral","description":"A large floral arrangement created in the local florist's signature style using premium seasonal flowers.","price":"599.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/designers-signature.jpg?v=1790337747"},{"title":"Florist’s Choice","type":"Buchet de sezon","description":"A seasonal bouquet created by a local partner florist using the freshest and most beautiful flowers available on the delivery day.","price":"179.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/florists-choice_eb37001d-dcfa-4aaf-9027-5fa6cffcf460.jpg?v=1790337666"},{"title":"Flory Standard – 12 Premium Red Roses","type":"Trandafiri","description":"Produs-etalon Flory pentru oferte B2B. 12 trandafiri roșii premium Tije aproximativ 50–60 cm Aranjament rotund, echilibrat Verdeață discretă Ambalaj premium și fundă Felicitare inclusă Fără înlocuirea culorii roșii fără acord Acesta este produsul de bază folosit pentru compararea ofertelor florăriilor partenere.","price":"279.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708"},{"title":"Grand Romantic Bouquet","type":"Buchet premium","description":"A large romantic bouquet created for anniversaries, special requests and memorable surprises.","price":"499.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/grand-romantic-bouquet.jpg?v=1790337740"},{"title":"Little Gesture","type":"Buchet accesibil","description":"A small, elegant floral gesture designed for customers who want to send something meaningful without choosing a large bouquet. Partner standard: compact round bouquet, coordinated seasonal flowers, clean wrapping, greeting card. Exact flower varieties may follow an approved substitution list.","price":"129.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/little-gesture-flory.png?v=1790584160"},{"title":"Love Forever","type":"Buchet romantic","description":"A premium romantic bouquet created for declarations of love and important occasions.","price":"329.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/love-forever.jpg?v=1790337721"},{"title":"Luxury Rose Box","type":"Cutie cu flori","description":"An elegant rose box designed for premium gifts and special moments.","price":"449.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/luxury-rose-box.jpg?v=1790337734"},{"title":"Pastel Luxury","type":"Buchet premium","description":"A premium bouquet in soft pastel shades, with an elegant look and generous volume.","price":"299.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pastel-luxury.jpg?v=1790337715"},{"title":"Pink Whisper","type":"Buchet romantic","description":"A delicate bouquet in pink and white tones, ideal for romantic gestures, anniversaries and elegant surprises.","price":"199.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pink-whisper.jpg?v=1790337679"},{"title":"Pure Elegance","type":"Buchet elegant","description":"An elegant arrangement in white and cream tones, created for special occasions and refined messages.","price":"229.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/pure-elegance.jpg?v=1790337695"},{"title":"Red Romance","type":"Buchet romantic","description":"A romantic bouquet featuring red roses and complementary flowers, prepared locally by a partner florist.","price":"249.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/red-romance.jpg?v=1790337701"},{"title":"Royal Signature XXL","type":"Aranjament floral luxury","description":"An ultra-premium FLORY FLOWERS signature arrangement designed for VIP gifts, proposals, anniversaries and exceptional occasions. Partner standard: oversized designer arrangement using premium flowers, structured luxury presentation, coordinated colour palette and premium packaging. Final flower recipe must be approved per supplier before activation.","price":"2499.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/royal-signature-xxl-flory.png?v=1790584193"},{"title":"Sweet Surprise","type":"Buchet accesibil","description":"A cheerful medium-small bouquet for spontaneous surprises, thank-you gifts and everyday moments. Partner standard: balanced colour palette, fresh seasonal flowers, medium-small presentation, premium wrapping and greeting card.","price":"169.00","currency":"RON","image":"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise-flory.png?v=1790584151"}];
+const modal=document.getElementById('modal');
+document.querySelectorAll('.details').forEach(btn=>btn.addEventListener('click',e=>{
+ const c=e.target.closest('.card'),p=products[Number(c.dataset.i)];
+ document.getElementById('mimg').src=p.image; document.getElementById('mimg').alt=p.title;
+ document.getElementById('mtitle').textContent=p.title;
+ document.getElementById('mprice').textContent=p.price+' '+p.currency;
+ document.getElementById('mdesc').textContent=p.description||p.type;
+ modal.classList.add('open');
+}));
+document.querySelector('.close').onclick=()=>modal.classList.remove('open');
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open')});
+if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
+</script>
+</body></html>
