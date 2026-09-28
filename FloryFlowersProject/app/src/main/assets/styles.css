@@ -120,9 +120,9 @@ button{cursor:pointer}
   .cat-img{height:51px}
   .cat-label{font-size:8px}
   .section-head h2{font-size:25px}
-  .card-img{height:96px}
-  .name{font-size:9.6px}
-  .price{font-size:13.5px}
+  .card-img{height:175px}
+  .name{font-size:12px}
+  .price{font-size:17px}
 }
 
 .gallery-main-wrap{position:relative}
