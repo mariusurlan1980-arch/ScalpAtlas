@@ -6,6 +6,8 @@ const categories=[
 {name:"Trandafiri",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/12-premium-red-roses.jpg?v=1790337708"}
 ];
 
+const markets={EU:"Europa",ES:"Spania",DE:"Germania",BG:"Bulgaria",RO:"România"};
+
 const products=[
 {id:1,name:"Little Gesture",variantId:"53815222206730",cat:"Cadouri",ron:129,eur:25.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/little-gesture-1.jpg?v=1790613112",desc:"Un gest floral mic și elegant, potrivit pentru surprize simple și mesaje de apreciere."},
 {id:2,name:"Sweet Surprise",variantId:"53815222239498",cat:"Cadouri",ron:169,eur:33.8,rating:"★★★★★",img:"https://cdn.shopify.com/s/files/1/0966/2890/0106/files/sweet-surprise-1.jpg?v=1790612425",desc:"Buchet vesel pentru surprize spontane, mulțumiri și momente de zi cu zi."},
@@ -23,11 +25,12 @@ const state={
 cat:"Toate",q:"",
 fav:new Set(JSON.parse(localStorage.getItem("ffFav")||"[]")),
 cart:JSON.parse(localStorage.getItem("ffCart")||"[]"),
-cur:localStorage.getItem("ffCur")||"RON"
+cur:localStorage.getItem("ffCur")||"EUR",
+market:localStorage.getItem("ffMarket")||"EU"
 };
 
 const $=s=>document.querySelector(s);
-const save=()=>{localStorage.setItem("ffFav",JSON.stringify([...state.fav]));localStorage.setItem("ffCart",JSON.stringify(state.cart));localStorage.setItem("ffCur",state.cur)};
+const save=()=>{localStorage.setItem("ffFav",JSON.stringify([...state.fav]));localStorage.setItem("ffCart",JSON.stringify(state.cart));localStorage.setItem("ffCur",state.cur);localStorage.setItem("ffMarket",state.market)};
 const money=p=>state.cur==="EUR"?p.eur.toFixed(2)+" €":p.ron+" Lei";
 const moneyValue=(p,qty=1)=>state.cur==="EUR"?(p.eur*qty).toFixed(2)+" €":(p.ron*qty)+" Lei";
 const cdnWidth=(url,w)=>url+(url.includes("?")?"&":"?")+"width="+w;
@@ -129,7 +132,8 @@ function buildShopifyCartUrl(order){
  const attrs={
    "Nume destinatar":order.receiver||"",
    "Data livrării":order.date||"de stabilit",
-   "Oraș livrare":order.city||""
+   "Oraș livrare":order.city||"",
+   "Țară livrare":order.country||""
  };
  const params=[];
  Object.entries(attrs).forEach(([k,v])=>{if(v)params.push("attributes["+encodeURIComponent(k)+"]="+encodeURIComponent(v))});
@@ -142,11 +146,13 @@ function buildShopifyCartUrl(order){
 }
 
 function showCheckout(){
- openModal("Finalizare comandă",'<div class="checkout-form"><p class="checkout-intro">Completează detaliile pentru livrare. Plata și adresa completă se introduc în checkout-ul securizat Shopify.</p><label>Numele destinatarului<input id="receiverName" placeholder="Nume destinatar"></label><label>Oraș / localitate<input id="city" placeholder="Oraș"></label><label>Data dorită<input id="deliveryDate" type="date"></label><button id="prepareOrder" class="checkout">Continuă la plata securizată</button><small class="detail-note">După plată, comanda va apărea în sistemul central Shopify al magazinului Flory Flowers.</small></div>');
+ const preferred=state.market==="EU"?"":state.market;
+ openModal("Finalizare comandă",'<div class="checkout-form"><p class="checkout-intro">Completează detaliile pentru livrare în Europa.</p><label>Țara de livrare<select id="deliveryCountry"><option value="">Alege țara</option><option value="ES">Spania</option><option value="DE">Germania</option><option value="BG">Bulgaria</option><option value="RO">România</option></select></label><label>Numele destinatarului<input id="receiverName" placeholder="Nume destinatar"></label><label>Oraș / localitate<input id="city" placeholder="Oraș"></label><label>Data dorită<input id="deliveryDate" type="date"></label><button id="prepareOrder" class="checkout">Continuă la plata securizată</button><small class="detail-note">Livrarea este preluată de o florărie parteneră din țara și orașul selectate.</small></div>');
+ if(preferred)$("#deliveryCountry").value=preferred;
  $("#prepareOrder").onclick=()=>{
-   const receiver=$("#receiverName").value.trim(), city=$("#city").value.trim();
-   if(!receiver||!city){alert("Completează numele destinatarului și orașul.");return;}
-   const order={receiver,city,date:$("#deliveryDate").value,items:state.cart,createdAt:new Date().toISOString()};
+   const receiver=$("#receiverName").value.trim(), city=$("#city").value.trim(), country=$("#deliveryCountry").value;
+   if(!country||!receiver||!city){alert("Completează țara, numele destinatarului și orașul.");return;}
+   const order={country,receiver,city,date:$("#deliveryDate").value,items:state.cart,createdAt:new Date().toISOString()};
    localStorage.setItem("ffLastOrder",JSON.stringify(order));
    const url=buildShopifyCartUrl(order);
    window.location.href=url;
@@ -156,6 +162,8 @@ function showCheckout(){
 $("#q").oninput=e=>{state.q=e.target.value;renderProducts()};
 $("#cur").value=state.cur;
 $("#cur").onchange=e=>{state.cur=e.target.value;save();renderProducts()};
+$("#market").value=state.market;
+$("#market").onchange=e=>{state.market=e.target.value;save()};
 $("#lang").onchange=e=>{if(e.target.value==="EN")openModal("Language","<p>Versiunea multilingvă va fi adăugată ulterior. Aspectul Flory Flowers rămâne neschimbat.</p>")};
 $("#discover").onclick=()=>$("#popular").scrollIntoView({behavior:"smooth"});
 $("#all").onclick=()=>{state.cat="Toate";renderCats();renderProducts()};
