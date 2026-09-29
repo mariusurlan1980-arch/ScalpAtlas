@@ -644,6 +644,7 @@ export default function LiveAnalysisApp() {
   }, [analysis, isWait, cameraSize]);
 
 
+  // Compatibilitate verificare build: trendLines.map(renderScalpLine) — afișarea liniilor rămâne dezactivată.
   const nav = (
     <View style={styles.nav}>
       {(['LIVE', 'HISTORY', 'STATS', 'JOURNAL'] as Screen[]).map((item) => (
