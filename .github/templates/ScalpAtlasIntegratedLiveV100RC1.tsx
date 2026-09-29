@@ -129,7 +129,6 @@ export default function LiveAnalysisApp() {
   const lockedRef = useRef(false);
   const timeframeRef = useRef<string | null>(null);
   const signalCandidateRef = useRef<{ dir: 'BUY' | 'SELL' | null; count: number }>({ dir: null, count: 0 });
-  const lastAnchorYRef = useRef<number | null>(null);
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
   const buyAlertPlayer = useAudioPlayer(require('./assets/buy-alert.wav'));
   const sellAlertPlayer = useAudioPlayer(require('./assets/sell-alert.wav'));
@@ -144,7 +143,6 @@ export default function LiveAnalysisApp() {
   const [detectedTimeframe, setDetectedTimeframe] = useState<string | null>(null);
   const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 });
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [lastCandleDirection, setLastCandleDirection] = useState<'UP' | 'DOWN'>('UP');
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [directionRemainingSeconds, setDirectionRemainingSeconds] = useState(0);
@@ -625,30 +623,7 @@ export default function LiveAnalysisApp() {
   }, [directionRemainingSeconds]);
 
 
-  useEffect(() => {
-    const y = analysis?.anchorY;
-    if (typeof y !== 'number' || !Number.isFinite(y)) return;
-    const previous = lastAnchorYRef.current;
-    if (previous !== null && Math.abs(y - previous) > 0.001) {
-      // Coordonata Y scade când prețul urcă și crește când prețul coboară.
-      setLastCandleDirection(y < previous ? 'UP' : 'DOWN');
-    } else if (previous === null) {
-      const directionalBias = analysis?.signal === 'BUY' || analysis?.bias === 'BUY';
-      setLastCandleDirection(directionalBias ? 'UP' : 'DOWN');
-    }
-    lastAnchorYRef.current = y;
-  }, [analysis?.anchorY, analysis?.signal, analysis?.bias]);
 
-  const liveCandleMarkerStyle = useMemo(() => {
-    const x = analysis?.anchorX;
-    const y = analysis?.anchorY;
-    if (!cameraSize.width || !cameraSize.height || typeof x !== 'number' || typeof y !== 'number') return null;
-    const diameter = 18;
-    return {
-      left: Math.max(4, Math.min(cameraSize.width - diameter - 4, x * cameraSize.width - diameter / 2)),
-      top: Math.max(42, Math.min(cameraSize.height - diameter - 4, y * cameraSize.height - diameter / 2)),
-    };
-  }, [analysis?.anchorX, analysis?.anchorY, cameraSize]);
 
   const confirmationBadgeStyle = useMemo(() => {
     if (!isWait || !cameraSize.width || !cameraSize.height) return null;
@@ -668,48 +643,6 @@ export default function LiveAnalysisApp() {
     };
   }, [analysis, isWait, cameraSize]);
 
-  const renderScalpLine = (line: NonNullable<AnalysisResult['trendLines']>[number], index: number) => {
-    if (!cameraSize.width || !cameraSize.height) return null;
-    const x1 = line.x1 * cameraSize.width;
-    const y1 = line.y1 * cameraSize.height;
-    const x2 = line.x2 * cameraSize.width;
-    const y2 = line.y2 * cameraSize.height;
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const length = Math.sqrt(dx * dx + dy * dy);
-    if (!Number.isFinite(length) || length < 2) return null;
-    const angle = Math.atan2(dy, dx) + 'rad';
-    const middleX = (x1 + x2) / 2;
-    const middleY = (y1 + y2) / 2;
-
-    const tone =
-      line.kind === 'support'
-        ? styles.scalpSupport
-        : line.kind === 'resistance'
-          ? styles.scalpResistance
-          : line.kind === 'confirmation'
-            ? styles.scalpConfirmation
-            : line.kind === 'channelMid'
-              ? styles.scalpChannelMid
-              : styles.scalpChannel;
-
-    return (
-      <View
-        key={`scalp-line-${line.kind}-${index}`}
-        pointerEvents="none"
-        style={[
-          styles.scalpLine,
-          tone,
-          {
-            width: length,
-            left: middleX - length / 2,
-            top: middleY - 1,
-            transform: [{ rotate: angle }],
-          },
-        ]}
-      />
-    );
-  };
 
   const nav = (
     <View style={styles.nav}>
@@ -786,7 +719,7 @@ export default function LiveAnalysisApp() {
             <Text style={styles.titleViolet}>ALP </Text>
             <Text style={styles.titleMagenta}>ATLAS</Text>
           </Text>
-          <Text style={styles.subtitle}>LIVE • {SCALP_ATLAS_COUNT} {t('models')} • v1.0.1 CANDLE DOT • {languageCode.toUpperCase()}{regionCode ? `-${regionCode}` : ''}</Text>
+          <Text style={styles.subtitle}>LIVE • {SCALP_ATLAS_COUNT} {t('models')} • v1.0.2 CLEAN VIEW • {languageCode.toUpperCase()}{regionCode ? `-${regionCode}` : ''}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable style={styles.languageButton} onPress={() => setShowLanguagePicker(true)}>
@@ -842,7 +775,7 @@ export default function LiveAnalysisApp() {
                       <Text style={styles.guideTitle}>{t('quickStart')}</Text>
                       <Text style={styles.guideSub}>{t('quickSub')}{guideAppearance > 0 ? ` • ${guideAppearance}/3` : ''}</Text>
                     </View>
-                    <Text style={styles.guideVersion}>v1.0.1 CANDLE DOT</Text>
+                    <Text style={styles.guideVersion}>v1.0.2 CLEAN VIEW</Text>
                   </View>
                   <View style={styles.guideStep}><Text style={styles.guideStepNo}>1</Text><Text style={styles.guideStepText}>{t('step1')}</Text></View>
                   <View style={styles.guideStep}><Text style={styles.guideStepNo}>2</Text><Text style={styles.guideStepText}>{t('step2')}</Text></View>
@@ -873,25 +806,6 @@ export default function LiveAnalysisApp() {
                 <View pointerEvents="none" style={[styles.scanFrame, locked && styles.scanFrameLocked]}>
                   <Text style={styles.frameLabel}>{locked ? t('frameFixed') : t('frameHere')}</Text>
                 </View>
-
-                {!!analysis?.trendLines?.length && (
-                  <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-                    {analysis.trendLines.map(renderScalpLine)}
-                  </View>
-                )}
-
-                {liveCandleMarkerStyle && (
-                  <View
-                    pointerEvents="none"
-                    style={[
-                      styles.liveCandleMarker,
-                      liveCandleMarkerStyle,
-                      lastCandleDirection === 'UP' ? styles.liveCandleMarkerUp : styles.liveCandleMarkerDown,
-                    ]}
-                  >
-                    <View style={styles.liveCandleMarkerCore} />
-                  </View>
-                )}
 
                 {confirmationBadgeStyle && (
                   <View
@@ -1053,7 +967,7 @@ export default function LiveAnalysisApp() {
                 )) : <Text style={styles.recentEmpty}>{t('recentEmpty')}</Text>}
               </View>
 
-              <Text style={styles.clientFooter}>SCALP ATLAS • v1.0.1 CANDLE DOT • {t('disclaimer')}</Text>
+              <Text style={styles.clientFooter}>SCALP ATLAS • v1.0.2 CLEAN VIEW • {t('disclaimer')}</Text>
             </>
           )}
         </ScrollView>
@@ -1210,16 +1124,6 @@ const styles = StyleSheet.create({
   tfAutoBadge: { position: 'absolute', top: 8, right: 8, minWidth: 86, alignItems: 'center', borderWidth: 1, borderColor: '#31d8ee', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6, backgroundColor: 'rgba(4,12,20,0.76)' },
   tfAutoLabel: { color: '#7f9bb1', fontSize: 7, fontWeight: '900', letterSpacing: 0.5 },
   tfAutoValue: { color: '#f7fbff', fontSize: 16, fontWeight: '900', marginTop: 1 },
-  scalpLine: { position: 'absolute', height: 2, borderRadius: 2, zIndex: 20 },
-  scalpSupport: { backgroundColor: '#38d996', opacity: 0.96, height: 2 },
-  scalpResistance: { backgroundColor: '#ff6464', opacity: 0.96, height: 2 },
-  scalpConfirmation: { backgroundColor: '#ffd34d', opacity: 0.92, height: 2 },
-  scalpChannel: { backgroundColor: '#63a8ff', opacity: 0.88, height: 2 },
-  scalpChannelMid: { backgroundColor: '#63a8ff', opacity: 0.48, height: 1 },
-  liveCandleMarker: { position: 'absolute', zIndex: 45, width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: '#ffffff', alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.95, shadowRadius: 8, elevation: 10 },
-  liveCandleMarkerUp: { backgroundColor: '#38d996', shadowColor: '#38d996' },
-  liveCandleMarkerDown: { backgroundColor: '#ff3b43', shadowColor: '#ff3b43' },
-  liveCandleMarkerCore: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#ffffff' },
   confirmationBadge: { position: 'absolute', zIndex: 35, minHeight: 28, borderWidth: 1.5, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, backgroundColor: 'rgba(7,12,18,0.93)' },
   confirmationBuy: { borderColor: '#38d996' },
   confirmationSell: { borderColor: '#ff6464' },
