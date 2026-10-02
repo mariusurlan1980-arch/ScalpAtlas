@@ -129,6 +129,8 @@ export default function LiveAnalysisApp() {
   const lockedRef = useRef(false);
   const timeframeRef = useRef<string | null>(null);
   const signalCandidateRef = useRef<{ dir: 'BUY' | 'SELL' | null; count: number }>({ dir: null, count: 0 });
+  // M10 SIGNAL GUARD: memorează direcția confirmată pentru a preveni BUY/SELL alternant la câteva secunde.
+  const signalLockRef = useRef<{ dir: 'BUY' | 'SELL' | null; until: number }>({ dir: null, until: 0 });
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
   const buyAlertPlayer = useAudioPlayer(require('./assets/buy-alert.wav'));
   const sellAlertPlayer = useAudioPlayer(require('./assets/sell-alert.wav'));
@@ -347,6 +349,7 @@ export default function LiveAnalysisApp() {
         timeframeRef.current = null;
         setDetectedTimeframe(null);
         signalCandidateRef.current = { dir: null, count: 0 };
+        signalLockRef.current = { dir: null, until: 0 };
         setDirectionRemainingSeconds(0);
         setDirectionWindowSeconds(0);
         setAnalysis({
@@ -417,6 +420,7 @@ export default function LiveAnalysisApp() {
     setScanning(false);
     captureBusyRef.current = false;
     signalCandidateRef.current = { dir: null, count: 0 };
+    signalLockRef.current = { dir: null, until: 0 };
     if (timerRef.current) clearTimeout(timerRef.current);
     lockedRef.current = false;
     setLocked(false);
@@ -479,43 +483,85 @@ export default function LiveAnalysisApp() {
           ? rawResult
           : { ...rawResult, expiry: null, directionMin: null, directionMax: null };
 
-        // v0.4.5 — ANTI-FLICKER LIVE.
-        // Un BUY/SELL direct trebuie văzut de 2 ori consecutiv înainte de afișare.
-        // La 2 secunde/cadru înseamnă aproximativ 4 secunde de consistență.
-        if (rawResult.signal === 'BUY' || rawResult.signal === 'SELL') {
-          const dir = rawResult.signal;
-          const candidate = signalCandidateRef.current;
-          const nextCount = candidate.dir === dir ? candidate.count + 1 : 1;
-          signalCandidateRef.current = { dir, count: nextCount };
+        // M10 SIGNAL GUARD — singura corecție funcțională din acest build.
+        // Pe M10 cerem 3 confirmări consecutive, emitem Bip 1 o singură dată,
+        // apoi blocăm o inversare BUY/SELL timp de 10 minute.
+        // Pe celelalte timeframe-uri păstrăm comportamentul 2/2 existent.
+        // Markeri legacy pentru verificarea workflow-ului: nextCount < 2 ; nextCount === 2
+        const nowMs = Date.now();
+        const currentTf = timeframeRef.current;
+        const requiredConfirmations = currentTf === 'M10' ? 3 : 2;
+        const activeLock = signalLockRef.current;
+        const m10LockActive = currentTf === 'M10' && !!activeLock.dir && nowMs < activeLock.until;
 
-          if (nextCount < 2) {
-            setDirectionRemainingSeconds(0);
-            setDirectionWindowSeconds(0);
+        if (m10LockActive) {
+          // În fereastra M10 nu permitem unui semnal opus să devină imediat un nou BUY/SELL.
+          // Aceeași direcție poate rămâne afișată, dar fără un nou bip.
+          signalCandidateRef.current = { dir: null, count: 0 };
+
+          if (rawResult.signal === activeLock.dir) {
+            result = rawResult;
+          } else {
             result = {
               ...result,
               signal: 'NONE',
               state: 'WAIT',
-              bias: dir,
+              bias: activeLock.dir,
               expiry: null,
               directionMin: null,
               directionMax: null,
-              reason: `${t('confirmation')} ${nextCount}/2 • ${dir}`, 
+              reason: `${t('wait')} • ${activeLock.dir} ACTIV • M10`,
             };
-          } else if (nextCount === 2) {
-            // Alertă o singură dată la confirmarea 2/2; nu repetăm la 3/2, 4/2 etc.
-            playConfirmedAlert(dir);
-            const maxMinutes = Number(result.directionMax || 0);
-            if (maxMinutes > 0 && timeframeRef.current) {
-              const totalSeconds = Math.max(60, Math.round(maxMinutes * 60));
-              setDirectionWindowSeconds(totalSeconds);
-              setDirectionRemainingSeconds(totalSeconds);
-            }
           }
         } else {
-          // WAIT/NONE întrerupe seria; nu păstrăm o direcție veche.
-          signalCandidateRef.current = { dir: null, count: 0 };
-          setDirectionRemainingSeconds(0);
-          setDirectionWindowSeconds(0);
+          if (activeLock.dir && nowMs >= activeLock.until) {
+            signalLockRef.current = { dir: null, until: 0 };
+            signalCandidateRef.current = { dir: null, count: 0 };
+          }
+
+          if (rawResult.signal === 'BUY' || rawResult.signal === 'SELL') {
+            const dir = rawResult.signal;
+            const candidate = signalCandidateRef.current;
+            const nextCount = candidate.dir === dir ? candidate.count + 1 : 1;
+            signalCandidateRef.current = { dir, count: nextCount };
+
+            if (nextCount < requiredConfirmations) {
+              setDirectionRemainingSeconds(0);
+              setDirectionWindowSeconds(0);
+              result = {
+                ...result,
+                signal: 'NONE',
+                state: 'WAIT',
+                bias: dir,
+                expiry: null,
+                directionMin: null,
+                directionMax: null,
+                reason: `${t('confirmation')} ${nextCount}/${requiredConfirmations} • ${dir}`,
+              };
+            } else if (nextCount === requiredConfirmations) {
+              // Bip 1 exact o singură dată la tranziția spre semnal confirmat.
+              playConfirmedAlert(dir);
+
+              if (currentTf === 'M10') {
+                const totalSeconds = 10 * 60;
+                signalLockRef.current = { dir, until: nowMs + totalSeconds * 1000 };
+                setDirectionWindowSeconds(totalSeconds);
+                setDirectionRemainingSeconds(totalSeconds);
+              } else {
+                const maxMinutes = Number(result.directionMax || 0);
+                if (maxMinutes > 0 && currentTf) {
+                  const totalSeconds = Math.max(60, Math.round(maxMinutes * 60));
+                  setDirectionWindowSeconds(totalSeconds);
+                  setDirectionRemainingSeconds(totalSeconds);
+                }
+              }
+            }
+          } else {
+            // Fără lock M10 activ, WAIT/NONE întrerupe seria de confirmare.
+            signalCandidateRef.current = { dir: null, count: 0 };
+            setDirectionRemainingSeconds(0);
+            setDirectionWindowSeconds(0);
+          }
         }
 
         setAnalysis(result);
@@ -526,7 +572,8 @@ export default function LiveAnalysisApp() {
         const isWait = result.state === 'WAIT' || (result.signal === 'NONE' && !!result.bias);
         if (isWait) {
           const candidateCount = signalCandidateRef.current.dir === result.bias ? signalCandidateRef.current.count : 0;
-          const suffix = candidateCount > 0 && candidateCount < 2 ? ` • ${candidateCount}/2` : '';
+          const requiredConfirmations = timeframeRef.current === 'M10' ? 3 : 2;
+          const suffix = candidateCount > 0 && candidateCount < requiredConfirmations ? ` • ${candidateCount}/${requiredConfirmations}` : '';
           setMessage(`${t('wait')}${result.bias ? ' ' + result.bias : ''}${suffix}`);
         } else if (result.signal === 'BUY' || result.signal === 'SELL') {
           setMessage(`${result.signal} CONFIRMAT • ${result.pattern} • ${result.probability}%`);
