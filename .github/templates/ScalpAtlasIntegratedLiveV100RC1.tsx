@@ -128,7 +128,7 @@ export default function LiveAnalysisApp() {
   const cameraReadyRef = useRef(false);
   const lockedRef = useRef(false);
   const timeframeRef = useRef<string | null>(null);
-  const signalCandidateRef = useRef<{ dir: 'BUY' | 'SELL' | null; count: number }>({ dir: null, count: 0 });
+  const signalCandidateRef = useRef<{ dir: 'BUY' | 'SELL' | null; count: number; lastStepAt: number }>({ dir: null, count: 0, lastStepAt: 0 });
   // M10 SIGNAL GUARD: memorează direcția confirmată pentru a preveni BUY/SELL alternant la câteva secunde.
   const signalLockRef = useRef<{ dir: 'BUY' | 'SELL' | null; until: number }>({ dir: null, until: 0 });
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
@@ -348,7 +348,7 @@ export default function LiveAnalysisApp() {
       if (!currentFrameIsChart) {
         timeframeRef.current = null;
         setDetectedTimeframe(null);
-        signalCandidateRef.current = { dir: null, count: 0 };
+        signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
         signalLockRef.current = { dir: null, until: 0 };
         setDirectionRemainingSeconds(0);
         setDirectionWindowSeconds(0);
@@ -419,7 +419,7 @@ export default function LiveAnalysisApp() {
     setLive(false);
     setScanning(false);
     captureBusyRef.current = false;
-    signalCandidateRef.current = { dir: null, count: 0 };
+    signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
     signalLockRef.current = { dir: null, until: 0 };
     if (timerRef.current) clearTimeout(timerRef.current);
     lockedRef.current = false;
@@ -484,7 +484,8 @@ export default function LiveAnalysisApp() {
           : { ...rawResult, expiry: null, directionMin: null, directionMax: null };
 
         // M10 SIGNAL GUARD — singura corecție funcțională din acest build.
-        // Pe M10 cerem 3 confirmări consecutive, emitem Bip 1 o singură dată,
+        // Pe M10 cerem 3 confirmări consecutive separate la minimum 60 secunde,
+        // deci Bip 1 nu poate apărea mai devreme de aproximativ 2 minute,
         // apoi blocăm o inversare BUY/SELL timp de 10 minute.
         // Pe celelalte timeframe-uri păstrăm comportamentul 2/2 existent.
         // Markeri legacy pentru verificarea workflow-ului: nextCount < 2 ; nextCount === 2
@@ -497,7 +498,7 @@ export default function LiveAnalysisApp() {
         if (m10LockActive) {
           // În fereastra M10 nu permitem unui semnal opus să devină imediat un nou BUY/SELL.
           // Aceeași direcție poate rămâne afișată, dar fără un nou bip.
-          signalCandidateRef.current = { dir: null, count: 0 };
+          signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
 
           if (rawResult.signal === activeLock.dir) {
             result = rawResult;
@@ -516,14 +517,37 @@ export default function LiveAnalysisApp() {
         } else {
           if (activeLock.dir && nowMs >= activeLock.until) {
             signalLockRef.current = { dir: null, until: 0 };
-            signalCandidateRef.current = { dir: null, count: 0 };
+            signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
           }
 
           if (rawResult.signal === 'BUY' || rawResult.signal === 'SELL') {
             const dir = rawResult.signal;
             const candidate = signalCandidateRef.current;
-            const nextCount = candidate.dir === dir ? candidate.count + 1 : 1;
-            signalCandidateRef.current = { dir, count: nextCount };
+            let nextCount = 1;
+            let nextStepAt = nowMs;
+
+            if (candidate.dir === dir) {
+              if (currentTf === 'M10') {
+                // M10: cele 3 confirmări nu pot fi obținute din scanări rapide.
+                // Confirmarea 2/3 este permisă abia după 60 secunde,
+                // iar 3/3 abia după încă 60 secunde (minimum ~2 minute total).
+                const M10_CONFIRMATION_STEP_MS = 60_000;
+                nextCount = candidate.count;
+                nextStepAt = candidate.lastStepAt || nowMs;
+                if (
+                  candidate.count < requiredConfirmations &&
+                  nowMs - nextStepAt >= M10_CONFIRMATION_STEP_MS
+                ) {
+                  nextCount = candidate.count + 1;
+                  nextStepAt = nowMs;
+                }
+              } else {
+                nextCount = candidate.count + 1;
+                nextStepAt = nowMs;
+              }
+            }
+
+            signalCandidateRef.current = { dir, count: nextCount, lastStepAt: nextStepAt };
 
             if (nextCount < requiredConfirmations) {
               setDirectionRemainingSeconds(0);
@@ -558,7 +582,7 @@ export default function LiveAnalysisApp() {
             }
           } else {
             // Fără lock M10 activ, WAIT/NONE întrerupe seria de confirmare.
-            signalCandidateRef.current = { dir: null, count: 0 };
+            signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
             setDirectionRemainingSeconds(0);
             setDirectionWindowSeconds(0);
           }
