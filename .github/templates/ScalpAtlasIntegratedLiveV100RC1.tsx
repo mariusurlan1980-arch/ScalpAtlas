@@ -71,6 +71,7 @@ type HistoryItem = {
 };
 
 const VALID_TIMEFRAMES = ['M1', 'M2', 'M3', 'M5', 'M10', 'M15', 'M30', 'H1'];
+const FIXED_ANALYSIS_TIMEFRAME = 'M10';
 const SCAN_INTERVAL_MS = 2000;
 
 const SIGNAL_LOCK_MINUTES: Record<string, number> = {
@@ -146,7 +147,7 @@ export default function LiveAnalysisApp() {
   const engineReadyRef = useRef(false);
   const cameraReadyRef = useRef(false);
   const lockedRef = useRef(false);
-  const timeframeRef = useRef<string | null>(null);
+  const timeframeRef = useRef<string | null>(FIXED_ANALYSIS_TIMEFRAME);
   const signalCandidateRef = useRef<{ dir: 'BUY' | 'SELL' | null; count: number; firstAt: number; lastAt: number }>({ dir: null, count: 0, firstAt: 0, lastAt: 0 });
   // M10 SIGNAL GUARD: memorează direcția confirmată pentru a preveni BUY/SELL alternant la câteva secunde.
   const signalLockRef = useRef<{ dir: 'BUY' | 'SELL' | null; until: number }>({ dir: null, until: 0 });
@@ -161,7 +162,7 @@ export default function LiveAnalysisApp() {
   const [locked, setLocked] = useState(false);
   const [live, setLive] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [detectedTimeframe, setDetectedTimeframe] = useState<string | null>(null);
+  const [detectedTimeframe, setDetectedTimeframe] = useState<string | null>(FIXED_ANALYSIS_TIMEFRAME);
   const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 });
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [message, setMessage] = useState('');
@@ -359,12 +360,13 @@ export default function LiveAnalysisApp() {
         const ocr = await recognizeText(picture.uri);
         const ocrText = ocr?.text || '';
         currentFrameIsChart = detectChartEvidence(ocrText);
-        const brokerTf = detectBrokerTimeframe(ocrText);
-        if (brokerTf) {
-          activeTf = brokerTf;
-          timeframeRef.current = brokerTf;
-          setDetectedTimeframe(brokerTf);
-        }
+        // MOTOR M10 FIX v1.0.13:
+        // OCR-ul este folosit doar ca dovadă că avem un grafic în cadru.
+        // Timeframe-ul de analiză rămâne M10 permanent pentru reducerea zgomotului.
+        detectBrokerTimeframe(ocrText);
+        activeTf = FIXED_ANALYSIS_TIMEFRAME;
+        timeframeRef.current = FIXED_ANALYSIS_TIMEFRAME;
+        setDetectedTimeframe(FIXED_ANALYSIS_TIMEFRAME);
       } catch {
         currentFrameIsChart = false;
       }
@@ -407,7 +409,7 @@ export default function LiveAnalysisApp() {
 
       // Dacă graficul este valid dar timeframe-ul nu a fost citit încă, motorul poate analiza structura,
       // însă expirarea și durata rămân ascunse până la detectarea timeframe-ului real.
-      const engineTf = activeTf || 'M15';
+      const engineTf = FIXED_ANALYSIS_TIMEFRAME;
       if (!activeTf) {
         setMessage(t('chartDetected'));
       }
@@ -430,6 +432,8 @@ export default function LiveAnalysisApp() {
       setMessage(`${t('camera')} / ${t('engine')}: ${t('initializing')}`);
       return;
     }
+    timeframeRef.current = FIXED_ANALYSIS_TIMEFRAME;
+    setDetectedTimeframe(FIXED_ANALYSIS_TIMEFRAME);
     lockedRef.current = true;
     setLocked(true);
     liveRef.current = true;
