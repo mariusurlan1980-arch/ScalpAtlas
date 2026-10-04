@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.2.7-reversal-guard';
+  const ENGINE_VERSION='0.2.8-fresh-breakout';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -322,6 +322,46 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         score:Math.min(score,.69),
         trendStrength,recentStrength,microStrength,consensus,volatility,
         reason:'Preț întins aproape de minimul recent. SELL necesită breakout și confirmare'
+      };
+    }
+
+    // FRESH BREAKOUT GUARD v0.2.8
+    // Un breakout vechi nu mai este suficient pentru intrare. Dacă prețul a pornit deja
+    // corecția după maxim/minim, motorul blochează semnalul până la recucerirea impulsului.
+    const tail=pts.slice(-Math.min(7,pts.length));
+    let trailingAgainst=0;
+    let adverseDistance=0;
+    for(let i=tail.length-1;i>0;i--){
+      const dy=(tail[i].y-tail[i-1].y)/h;
+      const adverse=dir==='BUY'?dy>.0025:dy<-.0025;
+      if(!adverse)break;
+      trailingAgainst++;
+      adverseDistance+=Math.abs(dy);
+    }
+
+    const breakoutPattern=idx===21||idx===22||idx===44||String(atlas||'').includes('Breakout');
+    const staleBuyBreakout=dir==='BUY'&&breakoutPattern&&sharpRise&&endFromTop>.28;
+    const staleSellBreakout=dir==='SELL'&&breakoutPattern&&sharpFall&&endFromBottom>.28;
+    const activePullback=trailingAgainst>=2&&adverseDistance>.010;
+
+    if(dir==='BUY'&&(staleBuyBreakout||activePullback)){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:staleBuyBreakout
+          ? 'Breakout BUY vechi: prețul a retras prea mult de la maxim. Așteaptă recucerirea impulsului'
+          : 'Corecție activă după impuls. BUY este blocat până când prețul reia urcarea'
+      };
+    }
+    if(dir==='SELL'&&(staleSellBreakout||activePullback)){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:staleSellBreakout
+          ? 'Breakout SELL vechi: prețul a revenit prea mult de la minim. Așteaptă reluarea impulsului'
+          : 'Revenire activă după impuls. SELL este blocat până când prețul reia scăderea'
       };
     }
 
