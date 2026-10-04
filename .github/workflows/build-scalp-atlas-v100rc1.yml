@@ -78,7 +78,9 @@ jobs:
           grep -q "scalpAtlas.live.guide.v0418.count" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "signalLockRef" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "requiredConfirmations = currentTf === 'M10' || !currentTf ? 3 : 2" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "totalSeconds = 10 \* 60" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "signalLockSecondsFor" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "const lockActive = !!activeLock.dir" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "O singură citire OCR slabă nu trebuie să anuleze" scalp-atlas-new/LiveAnalysisApp.tsx
           ! grep -q "liveCandleMarkerStyle" scalp-atlas-new/LiveAnalysisApp.tsx
           ! grep -q "trendLines.map(renderScalpLine)" <(grep -v "Compatibilitate verificare build" scalp-atlas-new/LiveAnalysisApp.tsx)
 
