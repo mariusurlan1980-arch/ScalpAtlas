@@ -528,7 +528,7 @@ export default function LiveAnalysisApp() {
         // Un semnal opus în această fereastră NU devine SELL/BUY și NU produce bip.
         const nowMs = Date.now();
         const currentTf = timeframeRef.current;
-        const requiredConfirmations = currentTf === 'M10' || !currentTf ? 3 : 2;
+        const requiredConfirmations = currentTf === 'M1' || currentTf === 'M10' || !currentTf ? 3 : 2;
         const activeLock = signalLockRef.current;
         const lockActive = !!activeLock.dir && nowMs < activeLock.until;
 
@@ -567,9 +567,11 @@ export default function LiveAnalysisApp() {
             const candidate = signalCandidateRef.current;
             const minSpacingMs = currentTf === 'M10' || !currentTf
               ? 20000
-              : currentTf === 'M5'
-                ? 12000
-                : 10000;
+              : currentTf === 'M1'
+                ? 15000
+                : currentTf === 'M5'
+                  ? 12000
+                  : 10000;
 
             let nextCount = 1;
             let firstAt = nowMs;
@@ -646,7 +648,7 @@ export default function LiveAnalysisApp() {
         const isWait = result.state === 'WAIT' || (result.signal === 'NONE' && !!result.bias);
         if (isWait) {
           const candidateCount = signalCandidateRef.current.dir === result.bias ? signalCandidateRef.current.count : 0;
-          const requiredConfirmations = timeframeRef.current === 'M10' || !timeframeRef.current ? 3 : 2;
+          const requiredConfirmations = timeframeRef.current === 'M1' || timeframeRef.current === 'M10' || !timeframeRef.current ? 3 : 2;
           const suffix = candidateCount > 0 && candidateCount < requiredConfirmations ? ` • ${candidateCount}/${requiredConfirmations}` : '';
           setMessage(`${t('wait')}${result.bias ? ' ' + result.bias : ''}${suffix}`);
         } else if (result.signal === 'BUY' || result.signal === 'SELL') {
