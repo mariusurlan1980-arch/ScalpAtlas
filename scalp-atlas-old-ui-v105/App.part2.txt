@@ -1,0 +1,100 @@
+      setResult(next);
+      setStatus(!next.chartDetected ? 'GRAFIC NEDETECTAT · REÎNCADREAZĂ CAMERA' : (next.statusText || 'ANALIZĂ FINALIZATĂ'));
+      lastSignal.current = next.fingerprint;
+    } catch (_) {
+      setStatus('CAMERA NU A PUTUT SCANA');
+    } finally {
+      busy.current = false;
+    }
+  }
+
+  useEffect(() => {
+    if (running && !paused) timer.current = setInterval(scanNow, INTERVAL_MS);
+    return () => clearInterval(timer.current);
+  }, [running, paused, timeframe]);
+
+  function stopLive() {
+    setRunning(false);
+    setPaused(false);
+    setStatus('LIVE OPRIT');
+    signalStabilizer.current.reset();
+    lastSignal.current = '';
+  }
+
+  if (!onboardingReady) return <View style={styles.root} />;
+
+  if (!onboardingDone) {
+    const page = ONBOARDING[onboardingStep];
+    const isLast = onboardingStep === ONBOARDING.length - 1;
+    return <SafeAreaView style={styles.root}>
+      <View style={styles.onboardingWrap}>
+        <View style={styles.onboardingMark}><Text style={styles.onboardingMarkText}>{page.step}</Text></View>
+        <Text style={styles.onboardingBrand}>SCALP ATLAS</Text>
+        <Text style={styles.onboardingTitle}>{page.title}</Text>
+        <Text style={styles.onboardingText}>{page.text}</Text>
+        <View style={styles.progressDots}>{ONBOARDING.map((_, i) => <View key={i} style={[styles.progressDot, i === onboardingStep && styles.progressDotActive]} />)}</View>
+        <View style={styles.actions}>
+          {onboardingStep > 0 && <Action label="ÎNAPOI" onPress={() => setOnboardingStep(v => Math.max(0, v - 1))} />}
+          <Action label={isLast ? 'ÎNCEPE' : 'ÎNAINTE'} onPress={() => isLast ? completeOnboarding() : setOnboardingStep(v => Math.min(ONBOARDING.length - 1, v + 1))} />
+        </View>
+      </View>
+      <Text style={styles.note}>Ghid rapid · versiunea {APP_VERSION}</Text>
+    </SafeAreaView>;
+  }
+
+  if (!permission) return <View style={styles.root} />;
+  if (!permission.granted) {
+    return <SafeAreaView style={styles.root}>
+      <Text style={styles.title}>SCALP ATLAS</Text>
+      <Text style={styles.permissionText}>Camera este necesară pentru analiza graficului afișat pe al doilea dispozitiv.</Text>
+      <Action label="PERMITE CAMERA" onPress={requestPermission} />
+      <Text style={styles.note}>Permisiunea poate fi modificată ulterior din setările telefonului.</Text>
+    </SafeAreaView>;
+  }
+
+  if (screen === 'HISTORY') {
+    return <SafeAreaView style={styles.root}>
+      <Text style={styles.title}>ISTORIC SEMNALE</Text>
+      <View style={styles.actions}><Action label="ÎNAPOI LA LIVE" onPress={() => setScreen('LIVE')} /><Action label="ȘTERGE ISTORIC" danger disabled={!history.length} onPress={async()=>{setHistory([]);await AsyncStorage.removeItem(HISTORY_KEY)}} /></View>
+      <ScrollView contentContainerStyle={styles.historyList}>
+        {!history.length && <Text style={styles.empty}>Nu există încă semnale BUY sau SELL validate.</Text>}
+        {history.map(item => <View key={item.id} style={styles.historyItem}>
+          <Text style={[styles.historySignal,{color:item.signal===SIGNAL.BUY?'#21d07a':'#ff4d67'}]}>{item.signal} · {item.probability}%</Text>
+          <Text style={styles.detail}>{item.pattern} · {item.timeframe} · expirare {item.expiry}</Text>
+          {!!item.directionDuration && item.directionDuration !== '—' && <Text style={styles.historyMeta}>Durată estimată direcție: {item.directionDuration}</Text>}
+          <Text style={styles.historyDate}>{new Date(item.createdAt).toLocaleString('ro-RO')}</Text>
+        </View>)}
+      </ScrollView>
+    </SafeAreaView>;
+  }
+
+  if (screen === 'STATS') {
+    const stats = calculateStatistics(history);
+    const journalStats = calculateJournalStatistics(journal);
+    return <SafeAreaView style={styles.root}>
+      <Text style={styles.title}>STATISTICI</Text>
+      <View style={styles.actions}><Action label="ÎNAPOI LA LIVE" onPress={() => setScreen('LIVE')} /></View>
+      <ScrollView contentContainerStyle={styles.historyList}>
+        <View style={styles.statsGrid}>
+          <Stat label="TOTAL SEMNALE" value={stats.total} />
+          <Stat label="BUY" value={stats.buy} color="#21d07a" />
+          <Stat label="SELL" value={stats.sell} color="#ff4d67" />
+          <Stat label="PROBABILITATE MEDIE" value={`${stats.averageProbability}%`} color="#65dcff" />
+        </View>
+        <Breakdown title="MODELE ÎNTÂLNITE" rows={stats.patterns} />
+        <Breakdown title="TIMEFRAME-URI" rows={stats.timeframes} />
+        <View style={styles.statsGrid}><Stat label="TRANZACȚII ÎN JURNAL" value={journalStats.total} /><Stat label="WIN / LOSS" value={`${journalStats.wins} / ${journalStats.losses}`} /><Stat label="RATĂ DE CÂȘTIG" value={`${journalStats.winRate}%`} color="#f5c451" /></View>
+        {!journal.length && <Text style={styles.note}>Rata de câștig apare numai din rezultatele WIN/LOSS introduse manual în Jurnal.</Text>}
+      </ScrollView>
+    </SafeAreaView>;
+  }
+
+  if (screen === 'JOURNAL') {
+    return <SafeAreaView style={styles.root}>
+      <Text style={styles.title}>JURNAL TRANZACȚII</Text>
+      <View style={styles.actions}><Action label="ÎNAPOI LA LIVE" onPress={() => setScreen('LIVE')} /></View>
+      <ScrollView contentContainerStyle={styles.historyList} keyboardShouldPersistTaps="handled">
+        <View style={styles.breakdown}>
+          <Text style={styles.breakdownTitle}>TRANZACȚIE NOUĂ</Text>
+          <View style={styles.actions}><Choice label="BUY" active={tradeDirection==='BUY'} onPress={()=>setTradeDirection('BUY')} /><Choice label="SELL" active={tradeDirection==='SELL'} onPress={()=>setTradeDirection('SELL')} /><Choice label="WIN" active={tradeOutcome==='WIN'} onPress={()=>setTradeOutcome('WIN')} /><Choice label="LOSS" active={tradeOutcome==='LOSS'} onPress={()=>setTradeOutcome('LOSS')} /></View>
+          <TextInput value={tradeAmount} onChangeText={setTradeAmount} keyboardType="decimal-pad" placeholder="Sumă tranzacționată (lei)" placeholderTextColor="#71859f" style={styles.input} />
