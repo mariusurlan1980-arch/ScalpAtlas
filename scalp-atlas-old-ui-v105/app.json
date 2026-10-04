@@ -1,20 +1,25 @@
 {
   "expo": {
-    "name": "SCALP ATLAS PRO",
-    "slug": "scalp-atlas-pro",
+    "name": "SCALP ATLAS",
+    "slug": "scalp-atlas",
     "version": "1.0.5",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "android": {
-      "package": "com.scalpatlas.pro",
+      "package": "com.scalpatlas.app",
       "versionCode": 12,
       "permissions": [
         "android.permission.CAMERA"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#07111f"
+      }
     },
     "ios": {
-      "bundleIdentifier": "com.scalpatlas.pro",
+      "bundleIdentifier": "com.scalpatlas.app",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "SCALP ATLAS folosește camera pentru analiza graficului afișat pe al doilea dispozitiv."
@@ -24,7 +29,7 @@
       "expo-camera"
     ],
     "web": {
-      "name": "SCALP ATLAS PRO"
+      "name": "SCALP ATLAS"
     }
   }
 }
