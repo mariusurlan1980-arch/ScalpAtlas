@@ -1,0 +1,100 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { evaluateLiveFrame, SIGNAL } from './src/liveEngine';
+import { createSignalStabilizer } from './src/signalStabilizer';
+import { analyzeJpeg } from './src/pixelEngine';
+import { calculateJournalStatistics, calculateStatistics } from './src/statistics';
+
+const INTERVAL_MS = 10000;
+const HISTORY_KEY = 'scalp_atlas_signal_history_v1';
+const JOURNAL_KEY = 'scalp_atlas_trade_journal_v1';
+const ONBOARDING_KEY = 'scalp_atlas_onboarding_v1';
+const APP_VERSION = '1.0.4';
+const TIMEFRAMES = ['M1', 'M2', 'M3', 'M5', 'M10', 'M15', 'M30', 'H1'];
+const ONBOARDING = [
+  {
+    step: '01',
+    title: 'CAMERA LIVE',
+    text: 'Așază telefonul cu SCALP ATLAS în fața celui de-al doilea dispozitiv pe care este deschis graficul.',
+  },
+  {
+    step: '02',
+    title: 'ÎNCADREAZĂ GRAFICUL',
+    text: 'Păstrează lumânările și zona principală a graficului în interiorul chenarului. Evită reflexiile și mișcarea telefonului.',
+  },
+  {
+    step: '03',
+    title: 'CONFIRMĂ SEMNALUL',
+    text: 'Aplicația afișează BUY, SELL sau AȘTEAPTĂ CONFIRMARE numai după analiză. Probabilitatea și durata sunt estimări, nu garanții.',
+  },
+];
+
+export default function App() {
+  const camera = useRef(null);
+  const timer = useRef(null);
+  const busy = useRef(false);
+  const lastSignal = useRef('');
+  const signalStabilizer = useRef(createSignalStabilizer({ confirmations: 3, minimumConfirmationMs: 20000 }));
+  const [permission, requestPermission] = useCameraPermissions();
+  const [timeframe, setTimeframe] = useState('M5');
+  const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [status, setStatus] = useState('LIVE OPRIT');
+  const [result, setResult] = useState(evaluateLiveFrame(null, 'M5'));
+  const [screen, setScreen] = useState('LIVE');
+  const [history, setHistory] = useState([]);
+  const [journal, setJournal] = useState([]);
+  const [tradeDirection, setTradeDirection] = useState('BUY');
+  const [tradeOutcome, setTradeOutcome] = useState('WIN');
+  const [tradeAmount, setTradeAmount] = useState('');
+  const [tradeNotes, setTradeNotes] = useState('');
+  const [onboardingReady, setOnboardingReady] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+
+  useEffect(() => {
+    AsyncStorage.getItem(HISTORY_KEY).then(v => v && setHistory(JSON.parse(v))).catch(() => {});
+    AsyncStorage.getItem(JOURNAL_KEY).then(v => v && setJournal(JSON.parse(v))).catch(() => {});
+    AsyncStorage.getItem(ONBOARDING_KEY)
+      .then(v => setOnboardingDone(v === 'done'))
+      .catch(() => setOnboardingDone(false))
+      .finally(() => setOnboardingReady(true));
+  }, []);
+
+  async function completeOnboarding() {
+    setOnboardingDone(true);
+    setOnboardingStep(0);
+    await AsyncStorage.setItem(ONBOARDING_KEY, 'done').catch(() => {});
+  }
+
+  async function addJournalEntry() {
+    const amount = Number(String(tradeAmount).replace(',', '.'));
+    if (!Number.isFinite(amount) || amount <= 0) { setStatus('INTRODU O SUMĂ VALIDĂ'); return; }
+    const entry = { id: `${Date.now()}`, createdAt: new Date().toISOString(), direction: tradeDirection, outcome: tradeOutcome, amount, notes: tradeNotes.trim(), timeframe };
+    const updated = [entry, ...journal].slice(0, 500);
+    setJournal(updated); await AsyncStorage.setItem(JOURNAL_KEY, JSON.stringify(updated));
+    setTradeAmount(''); setTradeNotes(''); setStatus('TRANZACȚIE SALVATĂ');
+  }
+
+  async function saveSignal(next) {
+    if (next.signal === SIGNAL.WAIT || next.fingerprint === lastSignal.current) return;
+    const item = { id: `${Date.now()}`, createdAt: new Date().toISOString(), ...next };
+    let stored = [];
+    try { stored = JSON.parse(await AsyncStorage.getItem(HISTORY_KEY)) || []; } catch (_) {}
+    const updated = [item, ...stored].slice(0, 100);
+    setHistory(updated);
+    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+  }
+
+  async function scanNow() {
+    if (!camera.current || busy.current || paused) return;
+    busy.current = true;
+    setStatus('ANALIZEZ GRAFICUL…');
+    try {
+      const picture = await camera.current.takePictureAsync({ quality: 0.35, base64: true, skipProcessing: false });
+      const metrics = picture.base64 ? analyzeJpeg(picture.base64, timeframe) : null;
+      const raw = evaluateLiveFrame({ uri: picture.uri, metrics }, timeframe);
+      const next = signalStabilizer.current.process(raw);
+      await saveSignal(next);
