@@ -147,7 +147,7 @@ export default function LiveAnalysisApp() {
   const cameraReadyRef = useRef(false);
   const lockedRef = useRef(false);
   const timeframeRef = useRef<string | null>(null);
-  const signalCandidateRef = useRef<{ dir: 'BUY' | 'SELL' | null; count: number }>({ dir: null, count: 0 });
+  const signalCandidateRef = useRef<{ dir: 'BUY' | 'SELL' | null; count: number; firstAt: number; lastAt: number }>({ dir: null, count: 0, firstAt: 0, lastAt: 0 });
   // M10 SIGNAL GUARD: memorează direcția confirmată pentru a preveni BUY/SELL alternant la câteva secunde.
   const signalLockRef = useRef<{ dir: 'BUY' | 'SELL' | null; until: number }>({ dir: null, until: 0 });
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
@@ -374,7 +374,7 @@ export default function LiveAnalysisApp() {
       if (!currentFrameIsChart) {
         // O singură citire OCR slabă nu trebuie să anuleze un semnal deja confirmat.
         // Păstrăm timeframe-ul și lock-ul de direcție până la expirare sau până când utilizatorul oprește LIVE.
-        signalCandidateRef.current = { dir: null, count: 0 };
+        signalCandidateRef.current = { dir: null, count: 0, firstAt: 0, lastAt: 0 };
         const activeLock = signalLockRef.current;
         const lockStillActive = !!activeLock.dir && Date.now() < activeLock.until;
 
@@ -452,7 +452,7 @@ export default function LiveAnalysisApp() {
     setLive(false);
     setScanning(false);
     captureBusyRef.current = false;
-    signalCandidateRef.current = { dir: null, count: 0 };
+    signalCandidateRef.current = { dir: null, count: 0, firstAt: 0, lastAt: 0 };
     signalLockRef.current = { dir: null, until: 0 };
     if (timerRef.current) clearTimeout(timerRef.current);
     lockedRef.current = false;
@@ -533,7 +533,7 @@ export default function LiveAnalysisApp() {
         const lockActive = !!activeLock.dir && nowMs < activeLock.until;
 
         if (lockActive) {
-          signalCandidateRef.current = { dir: null, count: 0 };
+          signalCandidateRef.current = { dir: null, count: 0, firstAt: 0, lastAt: 0 };
 
           if (rawResult.signal === activeLock.dir) {
             // Menținem direcția deja confirmată, fără bip suplimentar.
@@ -559,14 +559,37 @@ export default function LiveAnalysisApp() {
         } else {
           if (activeLock.dir && nowMs >= activeLock.until) {
             signalLockRef.current = { dir: null, until: 0 };
-            signalCandidateRef.current = { dir: null, count: 0 };
+            signalCandidateRef.current = { dir: null, count: 0, firstAt: 0, lastAt: 0 };
           }
 
           if (rawResult.signal === 'BUY' || rawResult.signal === 'SELL') {
             const dir = rawResult.signal;
             const candidate = signalCandidateRef.current;
-            const nextCount = candidate.dir === dir ? candidate.count + 1 : 1;
-            signalCandidateRef.current = { dir, count: nextCount };
+            const minSpacingMs = currentTf === 'M10' || !currentTf
+              ? 20000
+              : currentTf === 'M5'
+                ? 12000
+                : 10000;
+
+            let nextCount = 1;
+            let firstAt = nowMs;
+            let lastAt = nowMs;
+
+            if (candidate.dir === dir) {
+              firstAt = candidate.firstAt || nowMs;
+              lastAt = candidate.lastAt || 0;
+
+              // Confirmările trebuie să fie separate în timp; 3 scanări ale aceleiași
+              // lumânări în câteva secunde NU mai sunt considerate 3 confirmări reale.
+              if (nowMs - lastAt >= minSpacingMs) {
+                nextCount = candidate.count + 1;
+                lastAt = nowMs;
+              } else {
+                nextCount = candidate.count;
+              }
+            }
+
+            signalCandidateRef.current = { dir, count: nextCount, firstAt, lastAt };
 
             if (nextCount < requiredConfirmations) {
               setDirectionRemainingSeconds(0);
@@ -586,7 +609,7 @@ export default function LiveAnalysisApp() {
               const alertStarted = await playConfirmedAlert(dir);
 
               if (!alertStarted) {
-                signalCandidateRef.current = { dir, count: Math.max(0, requiredConfirmations - 1) };
+                signalCandidateRef.current = { dir, count: Math.max(0, requiredConfirmations - 1), firstAt: signalCandidateRef.current.firstAt || nowMs, lastAt: nowMs };
                 setDirectionRemainingSeconds(0);
                 setDirectionWindowSeconds(0);
                 result = {
@@ -607,7 +630,7 @@ export default function LiveAnalysisApp() {
               }
             }
           } else {
-            signalCandidateRef.current = { dir: null, count: 0 };
+            signalCandidateRef.current = { dir: null, count: 0, firstAt: 0, lastAt: 0 };
             setDirectionRemainingSeconds(0);
             setDirectionWindowSeconds(0);
           }
@@ -621,7 +644,7 @@ export default function LiveAnalysisApp() {
         const isWait = result.state === 'WAIT' || (result.signal === 'NONE' && !!result.bias);
         if (isWait) {
           const candidateCount = signalCandidateRef.current.dir === result.bias ? signalCandidateRef.current.count : 0;
-          const requiredConfirmations = timeframeRef.current === 'M10' ? 3 : 2;
+          const requiredConfirmations = timeframeRef.current === 'M10' || !timeframeRef.current ? 3 : 2;
           const suffix = candidateCount > 0 && candidateCount < requiredConfirmations ? ` • ${candidateCount}/${requiredConfirmations}` : '';
           setMessage(`${t('wait')}${result.bias ? ' ' + result.bias : ''}${suffix}`);
         } else if (result.signal === 'BUY' || result.signal === 'SELL') {
