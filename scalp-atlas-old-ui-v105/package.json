@@ -1,0 +1,26 @@
+{
+  "name": "scalp-atlas-pro",
+  "version": "1.0.5",
+  "private": true,
+  "type": "module",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "test": "node tests/signalStabilizer.test.mjs && node tests/liveEngine.test.mjs && node tests/statistics.test.mjs"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "base64-js": "^1.5.1",
+    "expo": "^57.0.0",
+    "expo-camera": "~17.0.0",
+    "jpeg-js": "^0.4.4",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "devDependencies": {
+    "hermes-compiler": "^250829098.0.19"
+  }
+}
