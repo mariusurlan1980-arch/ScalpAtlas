@@ -6,17 +6,12 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "icon": "./assets/icon.png",
     "android": {
       "package": "com.scalpatlas.app",
       "versionCode": 12,
       "permissions": [
         "android.permission.CAMERA"
-      ],
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#07111f"
-      }
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.scalpatlas.app",
