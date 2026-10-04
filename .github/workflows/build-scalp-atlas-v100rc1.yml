@@ -1,8 +1,8 @@
-name: Restore SCALP ATLAS Clean View v1.0.6
+name: SCALP ATLAS Clean View v1.0.7 Direction Lock
 
 on:
   push:
-    branches: [restore-clean-view-v106]
+    branches: [signal-lock-v107]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -53,10 +53,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.6'
+          expo['version']='1.0.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=106
+          expo['android']['versionCode']=107
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -77,7 +77,7 @@ jobs:
           grep -q "t('cameraLive')" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "scalpAtlas.live.guide.v0418.count" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "signalLockRef" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "requiredConfirmations = currentTf === 'M10' ? 3 : 2" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "requiredConfirmations = currentTf === 'M10' || !currentTf ? 3 : 2" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "totalSeconds = 10 \* 60" scalp-atlas-new/LiveAnalysisApp.tsx
           ! grep -q "liveCandleMarkerStyle" scalp-atlas-new/LiveAnalysisApp.tsx
           ! grep -q "trendLines.map(renderScalpLine)" <(grep -v "Compatibilitate verificare build" scalp-atlas-new/LiveAnalysisApp.tsx)
@@ -157,11 +157,11 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
           grep -Fi "5e8f16062ea3cd2c4a0d547876baa6f38cabf625" signing.txt
-          cp "$APK" ScalpAtlas-v1.0.6-CLEAN-VIEW-SIGNAL-FIX.apk
+          cp "$APK" ScalpAtlas-v1.0.7-CLEAN-VIEW-DIRECTION-LOCK.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.6-CLEAN-VIEW-SIGNAL-FIX
-          path: ScalpAtlas-v1.0.6-CLEAN-VIEW-SIGNAL-FIX.apk
+          name: ScalpAtlas-v1.0.7-CLEAN-VIEW-DIRECTION-LOCK
+          path: ScalpAtlas-v1.0.7-CLEAN-VIEW-DIRECTION-LOCK.apk
           if-no-files-found: error
           retention-days: 30
