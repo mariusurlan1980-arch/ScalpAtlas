@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.13 M10 Short Expiry
+name: SCALP ATLAS v1.0.14 M10 5-7min Expiry
 
 on:
   push:
-    branches: [m10-short-expiry-v113]
+    branches: [m10-expiry-v114]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -53,10 +53,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.13'
+          expo['version']='1.0.14'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=113
+          expo['android']['versionCode']=114
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -101,7 +101,10 @@ jobs:
           grep -q "FIXED_ANALYSIS_TIMEFRAME = 'M10'" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "timeframeRef = useRef<string | null>(FIXED_ANALYSIS_TIMEFRAME)" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "const engineTf = FIXED_ANALYSIS_TIMEFRAME" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "if(tf==='M10')return score>=.82?2:3" scalp-atlas-new/analysisEngine.ts
+          grep -q "if(score>=.84)return 5" scalp-atlas-new/analysisEngine.ts
+          grep -q "if(score>=.78)return 6" scalp-atlas-new/analysisEngine.ts
+          grep -q "return 7" scalp-atlas-new/analysisEngine.ts
+          grep -q "0.3.0-m10-medium-expiry" scalp-atlas-new/analysisEngine.ts
           grep -q "0.2.9-m10-short-expiry" scalp-atlas-new/analysisEngine.ts
           grep -q "currentTf === 'M1' || currentTf === 'M10'" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "currentTf === 'M1'" scalp-atlas-new/LiveAnalysisApp.tsx
@@ -187,11 +190,11 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
           grep -Fi "5e8f16062ea3cd2c4a0d547876baa6f38cabf625" signing.txt
-          cp "$APK" ScalpAtlas-v1.0.13-CLEAN-VIEW-M10-SHORT-EXPIRY.apk
+          cp "$APK" ScalpAtlas-v1.0.14-CLEAN-VIEW-M10-5-7MIN-EXPIRY.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.13-CLEAN-VIEW-M10-SHORT-EXPIRY
-          path: ScalpAtlas-v1.0.13-CLEAN-VIEW-M10-SHORT-EXPIRY.apk
+          name: ScalpAtlas-v1.0.14-CLEAN-VIEW-M10-5-7MIN-EXPIRY
+          path: ScalpAtlas-v1.0.14-CLEAN-VIEW-M10-5-7MIN-EXPIRY.apk
           if-no-files-found: error
           retention-days: 30
