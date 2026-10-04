@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.2.5-cross-platform';
+  const ENGINE_VERSION='0.2.6-quality-gate';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -269,7 +269,45 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       return {clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,score:Math.min(score,.69),reason:'Prețul este deasupra suportului. SELL necesită o închidere clară sub linia galbenă'};
     }
 
-    const clear=score>=.63&&consensus>=.28;
+    // QUALITY GATE v0.2.6 — motor mai selectiv, fără modificări de interfață.
+    // Semnalul este valid numai când direcția, structura și impulsul sunt aliniate.
+    const directionSign=dir==='BUY'?1:-1;
+    const recentAligned=directionSign*recentNorm>.045;
+    const microAligned=directionSign*microNorm>.035;
+    const lastMoveAligned=directionSign*lastMove>.018;
+    const trendAligned=directionSign*norm>.025;
+    const breakoutAligned=dir==='BUY'?breakoutUp:breakoutDown;
+    const structuralPattern=[1,2,3,4,21,22,44,51,52].includes(idx);
+    const alignmentCount=[recentAligned,microAligned,lastMoveAligned,trendAligned].filter(Boolean).length;
+    const hardConflict=(directionSign*recentNorm<-.025)||(directionSign*microNorm<-.020);
+    const chaotic=volatility>.88&&consensus<.55;
+    const qualityGate=quality>=.42;
+    const confluenceGate=alignmentCount>=3&&(trendAligned||breakoutAligned||structuralPattern);
+    const scoreThreshold=breakoutAligned?.72:(structuralPattern?.74:.77);
+
+    // Scorul afișat rămâne un scor intern al modelului, nu o probabilitate statistică garantată.
+    // Îl plafonăm conservator până când există calibrare pe un eșantion mare de tranzacții reale/demo.
+    score=Math.min(score,.88);
+
+    const clear=
+      score>=scoreThreshold&&
+      consensus>=.40&&
+      qualityGate&&
+      confluenceGate&&
+      !hardConflict&&
+      !chaotic;
+
+    let gateReason='';
+    if(!clear){
+      if(!qualityGate)gateReason='Imaginea graficului nu are suficientă calitate pentru un semnal serios';
+      else if(hardConflict)gateReason='Impulsul recent contrazice direcția. Așteaptă confirmarea';
+      else if(chaotic)gateReason='Volatilitate haotică. Motorul blochează intrarea';
+      else if(consensus<.40)gateReason='Confluența BUY/SELL este insuficientă';
+      else if(!confluenceGate)gateReason='Structura și momentum-ul nu sunt încă aliniate';
+      else if(score<scoreThreshold)gateReason='Scorul modelului este sub pragul selectiv';
+      else gateReason='Semnal insuficient confirmat';
+    }
+
     return {
       clear,
       dir:clear?dir:'NONE',
@@ -281,7 +319,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       microStrength,
       consensus,
       volatility,
-      reason:clear?'':'Potrivirea cu atlasul este prea slabă sau semnalele se contrazic'
+      reason:clear?'':gateReason
     };
   }
 
