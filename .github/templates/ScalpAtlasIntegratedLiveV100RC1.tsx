@@ -151,8 +151,8 @@ export default function LiveAnalysisApp() {
   // M10 SIGNAL GUARD: memorează direcția confirmată pentru a preveni BUY/SELL alternant la câteva secunde.
   const signalLockRef = useRef<{ dir: 'BUY' | 'SELL' | null; until: number }>({ dir: null, until: 0 });
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
-  const buyAlertPlayer = useAudioPlayer(require('./assets/buy-alert.wav'));
-  const sellAlertPlayer = useAudioPlayer(require('./assets/sell-alert.wav'));
+  const buyAlertPlayer = useAudioPlayer(require('./assets/buy-alert.wav'), { downloadFirst: true });
+  const sellAlertPlayer = useAudioPlayer(require('./assets/sell-alert.wav'), { downloadFirst: true });
 
   const [permission, requestPermission] = useCameraPermissions();
   const [screen, setScreen] = useState<Screen>('LIVE');
@@ -172,11 +172,18 @@ export default function LiveAnalysisApp() {
   const [guideAppearance, setGuideAppearance] = useState(0);
 
   useEffect(() => {
+    buyAlertPlayer.volume = 1;
+    buyAlertPlayer.muted = false;
+    buyAlertPlayer.loop = false;
+    sellAlertPlayer.volume = 1;
+    sellAlertPlayer.muted = false;
+    sellAlertPlayer.loop = false;
+
     void setAudioModeAsync({
       playsInSilentMode: true,
       interruptionMode: 'mixWithOthers',
     }).catch(() => {});
-  }, []);
+  }, [buyAlertPlayer, sellAlertPlayer]);
 
   useEffect(() => {
     if (!live) {
@@ -469,30 +476,36 @@ export default function LiveAnalysisApp() {
     setMessage(next ? t('frameFixed') : t('positionCamera'));
   };
 
-  const playConfirmedAlert = (direction: 'BUY' | 'SELL') => {
+  const playConfirmedAlert = async (direction: 'BUY' | 'SELL'): Promise<boolean> => {
     const player = direction === 'BUY' ? buyAlertPlayer : sellAlertPlayer;
 
-    void (async () => {
-      try {
-        await player.seekTo(0);
-        player.play();
-      } catch {
-        // Semnalul rămâne valid chiar dacă sunetul nu poate fi redat.
-      }
+    // Nu afișăm BUY/SELL CONFIRMAT până când sunetul local este încărcat.
+    if (!player.isLoaded) return false;
 
-      try {
-        await Haptics.notificationAsync(
-          direction === 'BUY'
-            ? Haptics.NotificationFeedbackType.Success
-            : Haptics.NotificationFeedbackType.Warning
-        );
-      } catch {
-        // Vibrația este opțională și nu blochează analiza LIVE.
-      }
-    })();
+    try {
+      player.volume = 1;
+      player.muted = false;
+      player.loop = false;
+      await player.seekTo(0);
+      player.play();
+    } catch {
+      return false;
+    }
+
+    try {
+      await Haptics.notificationAsync(
+        direction === 'BUY'
+          ? Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Warning
+      );
+    } catch {
+      // Vibrația este suplimentară; bipul rămâne condiția de confirmare.
+    }
+
+    return true;
   };
 
-  const onAnalyzerMessage = (event: AnalyzerMessageEvent) => {
+  const onAnalyzerMessage = async (event: AnalyzerMessageEvent) => {
     try {
       const payload = JSON.parse(event.nativeEvent.data || '{}');
       if (payload.type === 'READY') {
@@ -569,12 +582,29 @@ export default function LiveAnalysisApp() {
                 reason: `${t('confirmation')} ${nextCount}/${requiredConfirmations} • ${dir}`,
               };
             } else if (nextCount === requiredConfirmations) {
-              playConfirmedAlert(dir);
+              // AUDIO GATE v1.0.8: prima confirmare BUY/SELL nu devine activă fără pornirea Bip 1.
+              const alertStarted = await playConfirmedAlert(dir);
 
-              const totalSeconds = signalLockSecondsFor(currentTf, result);
-              signalLockRef.current = { dir, until: nowMs + totalSeconds * 1000 };
-              setDirectionWindowSeconds(totalSeconds);
-              setDirectionRemainingSeconds(totalSeconds);
+              if (!alertStarted) {
+                signalCandidateRef.current = { dir, count: Math.max(0, requiredConfirmations - 1) };
+                setDirectionRemainingSeconds(0);
+                setDirectionWindowSeconds(0);
+                result = {
+                  ...result,
+                  signal: 'NONE',
+                  state: 'WAIT',
+                  bias: dir,
+                  expiry: null,
+                  directionMin: null,
+                  directionMax: null,
+                  reason: `BIP SE ÎNCARCĂ • ${dir} NEÎNCĂ CONFIRMAT`,
+                };
+              } else {
+                const totalSeconds = signalLockSecondsFor(currentTf, result);
+                signalLockRef.current = { dir, until: nowMs + totalSeconds * 1000 };
+                setDirectionWindowSeconds(totalSeconds);
+                setDirectionRemainingSeconds(totalSeconds);
+              }
             }
           } else {
             signalCandidateRef.current = { dir: null, count: 0 };
