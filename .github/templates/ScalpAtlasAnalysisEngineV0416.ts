@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.2.6-quality-gate';
+  const ENGINE_VERSION='0.2.7-reversal-guard';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -267,6 +267,62 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     }
     if(dir==='SELL'&&nearSupport&&!breakoutDown){
       return {clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,score:Math.min(score,.69),reason:'Prețul este deasupra suportului. SELL necesită o închidere clară sub linia galbenă'};
+    }
+
+    // REVERSAL / EXHAUSTION GUARD v0.2.7
+    // Evită intrarea în continuarea unui impuls deja întins și evită reversările
+    // premature după o cădere/urcare violentă. Motorul preferă WAIT până la
+    // recuperare/retragere structurală reală.
+    const guardPts=pts.slice(-Math.max(10,Math.floor(pts.length*.30)));
+    let recentHighIdx=0,recentLowIdx=0;
+    for(let i=1;i<guardPts.length;i++){
+      if(guardPts[i].y<guardPts[recentHighIdx].y)recentHighIdx=i;
+      if(guardPts[i].y>guardPts[recentLowIdx].y)recentLowIdx=i;
+    }
+    const recentHighY=guardPts[recentHighIdx].y;
+    const recentLowY=guardPts[recentLowIdx].y;
+    const recentRange=Math.max(.0001,(recentLowY-recentHighY)/h);
+    const endFromTop=(end.y-recentHighY)/Math.max(1,recentLowY-recentHighY);
+    const endFromBottom=(recentLowY-end.y)/Math.max(1,recentLowY-recentHighY);
+
+    const sharpRise=recentLowIdx<recentHighIdx&&recentRange>.050;
+    const sharpFall=recentHighIdx<recentLowIdx&&recentRange>.050;
+    const nearRecentTop=endFromTop<.20;
+    const nearRecentBottom=endFromBottom<.20;
+    const buyRecovery=sharpFall?Math.max(0,Math.min(1,(recentLowY-end.y)/Math.max(1,recentLowY-recentHighY))):1;
+    const sellRetrace=sharpRise?Math.max(0,Math.min(1,(end.y-recentHighY)/Math.max(1,recentLowY-recentHighY))):1;
+
+    if(dir==='BUY'&&sharpFall&&buyRecovery<.45){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'Cădere recentă puternică. BUY este blocat până la recuperare structurală'
+      };
+    }
+    if(dir==='SELL'&&sharpRise&&sellRetrace<.45){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'Urcare recentă puternică. SELL este blocat până la retragere structurală'
+      };
+    }
+    if(dir==='BUY'&&recentRange>.055&&nearRecentTop&&!breakoutUp){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'Preț întins aproape de maximul recent. BUY necesită breakout și confirmare'
+      };
+    }
+    if(dir==='SELL'&&recentRange>.055&&nearRecentBottom&&!breakoutDown){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'Preț întins aproape de minimul recent. SELL necesită breakout și confirmare'
+      };
     }
 
     // QUALITY GATE v0.2.6 — motor mai selectiv, fără modificări de interfață.
