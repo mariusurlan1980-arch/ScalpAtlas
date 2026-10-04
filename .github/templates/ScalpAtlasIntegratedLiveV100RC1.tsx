@@ -600,8 +600,10 @@ export default function LiveAnalysisApp() {
                 state: 'WAIT',
                 bias: dir,
                 expiry: null,
-                directionMin: null,
-                directionMax: null,
+                // Păstrăm fereastra estimată de direcție din motor chiar în etapa AȘTEAPTĂ.
+                // Nu este încă o recomandare de intrare; expirarea rămâne blocată până la confirmarea finală.
+                directionMin: result.directionMin,
+                directionMax: result.directionMax,
                 reason: `${t('confirmation')} ${nextCount}/${requiredConfirmations} • ${dir}`,
               };
             } else if (nextCount === requiredConfirmations) {
@@ -618,8 +620,8 @@ export default function LiveAnalysisApp() {
                   state: 'WAIT',
                   bias: dir,
                   expiry: null,
-                  directionMin: null,
-                  directionMax: null,
+                  directionMin: result.directionMin,
+                  directionMax: result.directionMax,
                   reason: `BIP SE ÎNCARCĂ • ${dir} NEÎNCĂ CONFIRMAT`,
                 };
               } else {
@@ -1006,7 +1008,7 @@ export default function LiveAnalysisApp() {
                     </View>
                     <Text style={styles.resultLine}>{t('expiry')}: {analysis.expiry ? `${analysis.expiry} min` : detectedTimeframe ? '—' : '—'}</Text>
                     <Text style={styles.resultLine}>
-                      {t('direction')}: {analysis.signal !== 'NONE' && analysis.directionMin && analysis.directionMax
+                      {t('direction')}: {analysis.directionMin && analysis.directionMax
                         ? `${analysis.directionMin}–${analysis.directionMax} min`
                         : isWait
                           ? t('afterConfirmation')
