@@ -105,7 +105,6 @@ jobs:
           grep -q "if(score>=.78)return 6" scalp-atlas-new/analysisEngine.ts
           grep -q "return 7" scalp-atlas-new/analysisEngine.ts
           grep -q "0.3.0-m10-medium-expiry" scalp-atlas-new/analysisEngine.ts
-          grep -q "0.2.9-m10-short-expiry" scalp-atlas-new/analysisEngine.ts
           grep -q "currentTf === 'M1' || currentTf === 'M10'" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "currentTf === 'M1'" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "{analysis.directionMin && analysis.directionMax" scalp-atlas-new/LiveAnalysisApp.tsx
