@@ -1,0 +1,73 @@
+name: Build Scalp Atlas v1.0.5 Old UI Signal Fix
+
+on:
+  push:
+    branches:
+      - scalp-old-ui-signal-fix-v105
+    paths:
+      - 'scalp-atlas-old-ui-v105/**'
+      - '.github/workflows/build-scalp-atlas-v105-old-ui-signal-fix.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Reassemble exact old UI
+        working-directory: scalp-atlas-old-ui-v105
+        run: |
+          cat App.part1.txt App.part2.txt App.part3.txt App.part4.txt > App.js
+          test -s App.js
+          grep -F "SCALP ATLAS" App.js
+          grep -F "createSignalStabilizer({ confirmations: 3, minimumConfirmationMs: 20000 })" App.js
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-old-ui-v105
+        run: npm install
+
+      - name: Align Expo dependencies
+        working-directory: scalp-atlas-old-ui-v105
+        run: npx expo install --fix --non-interactive
+
+      - name: Run signal engine tests
+        working-directory: scalp-atlas-old-ui-v105
+        run: npm test
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-old-ui-v105
+        run: npx expo prebuild --platform android --clean --non-interactive
+
+      - name: Build APK
+        working-directory: scalp-atlas-old-ui-v105/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Verify APK and matching debug certificate
+        run: |
+          APK="scalp-atlas-old-ui-v105/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          keytool -printcert -jarfile "$APK" | tee signing.txt
+          grep -F "5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25" signing.txt
+          cp "$APK" ScalpAtlas-v1.0.5-OLD-UI-SIGNAL-FIX.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-v1.0.5-OLD-UI-SIGNAL-FIX
+          path: ScalpAtlas-v1.0.5-OLD-UI-SIGNAL-FIX.apk
+          if-no-files-found: error
+          retention-days: 30
