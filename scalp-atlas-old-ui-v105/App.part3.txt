@@ -1,0 +1,100 @@
+          <TextInput value={tradeNotes} onChangeText={setTradeNotes} placeholder="Observații" placeholderTextColor="#71859f" style={[styles.input,styles.notes]} multiline />
+          <Action label="SALVEAZĂ ÎN JURNAL" onPress={addJournalEntry} />
+        </View>
+        {!journal.length && <Text style={styles.empty}>Jurnalul este gol.</Text>}
+        {journal.map(item=><View key={item.id} style={styles.historyItem}><Text style={[styles.historySignal,{color:item.outcome==='WIN'?'#21d07a':'#ff4d67'}]}>{item.outcome} · {item.direction}</Text><Text style={styles.detail}>{item.amount.toFixed(2)} lei · {item.timeframe}</Text>{!!item.notes&&<Text style={styles.detail}>{item.notes}</Text>}<Text style={styles.historyDate}>{new Date(item.createdAt).toLocaleString('ro-RO')}</Text></View>)}
+      </ScrollView>
+    </SafeAreaView>;
+  }
+
+  if (screen === 'INFO') {
+    return <SafeAreaView style={styles.root}>
+      <Text style={styles.title}>DESPRE SCALP ATLAS</Text>
+      <View style={styles.actions}><Action label="ÎNAPOI LA LIVE" onPress={() => setScreen('LIVE')} /></View>
+      <ScrollView contentContainerStyle={styles.historyList}>
+        <InfoCard title="CUM FUNCȚIONEAZĂ" text="Camera urmărește graficul afișat pe un al doilea dispozitiv. Analiza verifică dacă există un grafic valid și apoi caută o structură suficient de clară pentru BUY, SELL sau AȘTEAPTĂ CONFIRMARE." />
+        <InfoCard title="DATE ȘI ISTORIC" text="Istoricul aplicației păstrează local rezultatele semnalelor și intrările din jurnal. Fotografiile capturate pentru scanare nu sunt adăugate de aplicație în istoricul semnalelor." />
+        <InfoCard title="IMPORTANT" text="Probabilitatea, expirarea și durata direcției sunt estimări. Aplicația nu execută tranzacții automat și nu garantează rezultate." />
+        <InfoCard title="VERSIUNE" text={`SCALP ATLAS Professional UI · ${APP_VERSION}`} />
+        <Action label="VEZI DIN NOU GHIDUL" onPress={() => { setOnboardingStep(0); setOnboardingDone(false); }} />
+      </ScrollView>
+    </SafeAreaView>;
+  }
+
+  const color = result.signal === SIGNAL.BUY ? '#21d07a' : result.signal === SIGNAL.SELL ? '#ff4d67' : '#f5c451';
+  const chartColor = result.chartDetected ? '#21d07a' : '#ff4d67';
+  const confidence = Math.max(0, Math.min(100, Number(result.probability) || 0));
+  const recentSignals = history.slice(0, 3);
+
+  return (
+    <SafeAreaView style={styles.root}>
+      <View style={styles.brandRow}>
+        <View>
+          <Text style={styles.title}>SCALP ATLAS</Text>
+          <Text style={styles.subtitle}>ANALIZĂ LIVE · DOUĂ DISPOZITIVE</Text>
+        </View>
+        <View style={[styles.liveBadge, { borderColor: running && !paused ? '#ff4d67' : '#35516e' }]}>
+          <View style={[styles.liveDot, { backgroundColor: running && !paused ? '#ff4d67' : '#35516e' }]} />
+          <Text style={styles.liveText}>{running && !paused ? 'LIVE' : 'STANDBY'}</Text>
+        </View>
+      </View>
+
+      <View style={styles.tfRow}>{TIMEFRAMES.map(tf => <TouchableOpacity key={tf} onPress={() => setTimeframe(tf)} style={[styles.tf, tf === timeframe && styles.tfActive]}><Text style={styles.tfText}>{tf}</Text></TouchableOpacity>)}</View>
+
+      <View style={styles.cameraBox}>
+        <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" />
+        <View style={styles.guide}><Text style={styles.guideText}>Încadrează numai graficul</Text></View>
+      </View>
+
+      <View style={[styles.result, { borderColor: color }]}>
+        <View style={styles.resultTop}>
+          <View style={[styles.chartBadge, { borderColor: chartColor }]}>
+            <View style={[styles.chartDot, { backgroundColor: chartColor }]} />
+            <Text style={[styles.chartBadgeText, { color: chartColor }]}>{result.chartStatus || 'ÎN AȘTEPTARE'}</Text>
+          </View>
+          <Text style={styles.tfBadge}>{timeframe}</Text>
+        </View>
+        <Text style={[styles.signal, { color }]}>{result.signal}</Text>
+        <Text style={styles.pattern}>{result.pattern}</Text>
+        <View style={styles.metricRow}>
+          <View style={styles.metricBlock}><Text style={styles.metricLabel}>PROBABILITATE</Text><Text style={styles.metricValue}>{confidence}%</Text></View>
+          <View style={styles.metricBlock}><Text style={styles.metricLabel}>EXPIRARE</Text><Text style={styles.metricValue}>{result.expiry}</Text></View>
+        </View>
+        <View style={styles.directionMetric}><Text style={styles.metricLabel}>DURATĂ ESTIMATĂ A DIRECȚIEI</Text><Text style={styles.directionMetricValue}>{result.directionDuration || '—'}</Text></View>
+        <View style={styles.confidenceTrack}><View style={[styles.confidenceFill, { width: `${confidence}%`, backgroundColor: color }]} /></View>
+        <Text style={styles.status}>{status}</Text>
+      </View>
+
+      {!!recentSignals.length && <View style={styles.recentBox}>
+        <View style={styles.recentHeader}><Text style={styles.recentTitle}>ULTIMELE SEMNALE</Text><TouchableOpacity onPress={() => setScreen('HISTORY')}><Text style={styles.recentLink}>VEZI TOATE</Text></TouchableOpacity></View>
+        {recentSignals.map(item => <View key={item.id} style={styles.recentRow}>
+          <Text style={[styles.recentSignal,{color:item.signal===SIGNAL.BUY?'#21d07a':'#ff4d67'}]}>{item.signal}</Text>
+          <Text numberOfLines={1} style={styles.recentPattern}>{item.pattern}</Text>
+          <Text style={styles.recentScore}>{item.probability}%</Text>
+        </View>)}
+      </View>}
+
+      <View style={styles.actions}>
+        <Action label={running ? 'LIVE PORNIT' : 'PORNEȘTE LIVE'} onPress={() => { setRunning(true); setPaused(false); setStatus('LIVE ACTIV'); scanNow(); }} disabled={running && !paused} />
+        <Action label={paused ? 'REIA' : 'PAUZĂ'} onPress={() => { setPaused(v => !v); setStatus(paused ? 'LIVE ACTIV' : 'LIVE ÎN PAUZĂ'); }} disabled={!running} />
+        <Action label="SCANEAZĂ ACUM" onPress={scanNow} />
+        <Action label="OPREȘTE" onPress={stopLive} disabled={!running} danger />
+        <Action label={`ISTORIC (${history.length})`} onPress={() => setScreen('HISTORY')} />
+        <Action label="STATISTICI" onPress={() => setScreen('STATS')} />
+        <Action label={`JURNAL (${journal.length})`} onPress={() => setScreen('JOURNAL')} />
+        <Action label="INFO" onPress={() => setScreen('INFO')} />
+      </View>
+      <Text style={styles.note}>Semnal orientativ · nu execută tranzacții automat · v{APP_VERSION}</Text>
+    </SafeAreaView>
+  );
+}
+
+function Action({ label, onPress, disabled, danger }) {
+  return <TouchableOpacity disabled={disabled} onPress={onPress} style={[styles.button, danger && styles.danger, disabled && styles.disabled]}><Text style={styles.buttonText}>{label}</Text></TouchableOpacity>;
+}
+
+function Stat({ label, value, color = '#ffffff' }) {
+  return <View style={styles.statCard}><Text style={styles.statLabel}>{label}</Text><Text style={[styles.statValue,{color}]}>{value}</Text></View>;
+}
+
+function Choice({label,active,onPress}) { return <TouchableOpacity onPress={onPress} style={[styles.choice,active&&styles.choiceActive]}><Text style={styles.buttonText}>{label}</Text></TouchableOpacity>; }
