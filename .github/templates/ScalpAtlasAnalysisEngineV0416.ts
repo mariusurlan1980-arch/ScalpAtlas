@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.2.9-m10-short-expiry';
+  const ENGINE_VERSION='0.3.0-m10-medium-expiry';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -420,9 +420,14 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
   }
 
   function expiryFor(tf,score){
-    // M10 este timeframe-ul de analiză, dar expirarea trade-ului rămâne scurtă.
-    // Scop: folosim M10 pentru filtrarea zgomotului și 2–3 minute pentru execuție.
-    if(tf==='M10')return score>=.82?2:3;
+    // M10 este timeframe-ul fix de analiză. Expirarea trebuie să aibă suficient timp
+    // pentru ca direcția confirmată să se dezvolte, fără a coborî la zgomot de 1–3 minute.
+    // Scalare conservatoare: semnal foarte puternic = 5 min, mediu = 6 min, minim acceptat = 7 min.
+    if(tf==='M10'){
+      if(score>=.84)return 5;
+      if(score>=.78)return 6;
+      return 7;
+    }
 
     const base=TF_MIN[tf]||15;
     let mult=score>=.82?1:score>=.72?1.25:1.5;
