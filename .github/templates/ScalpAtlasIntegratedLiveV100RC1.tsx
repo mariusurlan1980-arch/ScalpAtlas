@@ -73,6 +73,25 @@ type HistoryItem = {
 const VALID_TIMEFRAMES = ['M1', 'M2', 'M3', 'M5', 'M10', 'M15', 'M30', 'H1'];
 const SCAN_INTERVAL_MS = 2000;
 
+const SIGNAL_LOCK_MINUTES: Record<string, number> = {
+  M1: 1,
+  M2: 2,
+  M3: 3,
+  M5: 5,
+  M10: 10,
+  M15: 15,
+  M30: 30,
+  H1: 60,
+};
+
+const signalLockSecondsFor = (timeframe: string | null, result: AnalysisResult): number => {
+  const fallbackMinutes = timeframe ? (SIGNAL_LOCK_MINUTES[timeframe] || 10) : 10;
+  const estimatedMax = Number(result.directionMax || 0);
+  const minutes = Math.max(fallbackMinutes, Number.isFinite(estimatedMax) ? estimatedMax : 0);
+  return Math.max(60, Math.round(minutes * 60));
+};
+
+
 const detectBrokerTimeframe = (ocrText: string): string | null => {
   const text = String(ocrText || '').toUpperCase();
   const patterns: Array<[string, RegExp]> = [
@@ -346,28 +365,35 @@ export default function LiveAnalysisApp() {
       // v0.4.12 — GARDĂ GRAFIC.
       // Nu permitem motorului să transforme o scenă obișnuită din cameră într-un semnal de tranzacționare.
       if (!currentFrameIsChart) {
-        timeframeRef.current = null;
-        setDetectedTimeframe(null);
+        // O singură citire OCR slabă nu trebuie să anuleze un semnal deja confirmat.
+        // Păstrăm timeframe-ul și lock-ul de direcție până la expirare sau până când utilizatorul oprește LIVE.
         signalCandidateRef.current = { dir: null, count: 0 };
-        signalLockRef.current = { dir: null, until: 0 };
-        setDirectionRemainingSeconds(0);
-        setDirectionWindowSeconds(0);
-        setAnalysis({
-          signal: 'NONE',
-          state: 'INVALID',
-          bias: null,
-          pattern: '—',
-          probability: 0,
-          expiry: null,
-          reason: t('chartMissing'),
-          atlasCount: SCALP_ATLAS_COUNT,
-          quality: 0,
-          directionMin: null,
-          directionMax: null,
-        });
+        const activeLock = signalLockRef.current;
+        const lockStillActive = !!activeLock.dir && Date.now() < activeLock.until;
+
+        if (!lockStillActive) {
+          setDirectionRemainingSeconds(0);
+          setDirectionWindowSeconds(0);
+          setAnalysis({
+            signal: 'NONE',
+            state: 'INVALID',
+            bias: null,
+            pattern: '—',
+            probability: 0,
+            expiry: null,
+            reason: t('chartMissing'),
+            atlasCount: SCALP_ATLAS_COUNT,
+            quality: 0,
+            directionMin: null,
+            directionMax: null,
+          });
+          setMessage(t('chartMissing'));
+        } else {
+          setMessage(`${t('wait')} • ${activeLock.dir} ACTIV`);
+        }
+
         captureBusyRef.current = false;
         setScanning(false);
-        setMessage(t('chartMissing'));
         if (!manual) scheduleNext();
         return;
       }
@@ -483,25 +509,29 @@ export default function LiveAnalysisApp() {
           ? rawResult
           : { ...rawResult, expiry: null, directionMin: null, directionMax: null };
 
-        // M10 SIGNAL GUARD — singura corecție funcțională din acest build.
-        // Pe M10 cerem 3 confirmări consecutive, emitem Bip 1 o singură dată,
-        // apoi blocăm o inversare BUY/SELL timp de 10 minute.
-        // Pe celelalte timeframe-uri păstrăm comportamentul 2/2 existent.
-        // Markeri legacy pentru verificarea workflow-ului: nextCount < 2 ; nextCount === 2
+        // SIGNAL DIRECTION LOCK v1.0.7
+        // După un BUY/SELL confirmat, direcția rămâne blocată pe durata estimată.
+        // Dacă timeframe-ul nu poate fi citit și rămâne AUTO, folosim 10 minute ca fallback.
+        // Un semnal opus în această fereastră NU devine SELL/BUY și NU produce bip.
         const nowMs = Date.now();
         const currentTf = timeframeRef.current;
-        const requiredConfirmations = currentTf === 'M10' ? 3 : 2;
+        const requiredConfirmations = currentTf === 'M10' || !currentTf ? 3 : 2;
         const activeLock = signalLockRef.current;
-        const m10LockActive = currentTf === 'M10' && !!activeLock.dir && nowMs < activeLock.until;
+        const lockActive = !!activeLock.dir && nowMs < activeLock.until;
 
-        if (m10LockActive) {
-          // În fereastra M10 nu permitem unui semnal opus să devină imediat un nou BUY/SELL.
-          // Aceeași direcție poate rămâne afișată, dar fără un nou bip.
+        if (lockActive) {
           signalCandidateRef.current = { dir: null, count: 0 };
 
           if (rawResult.signal === activeLock.dir) {
-            result = rawResult;
+            // Menținem direcția deja confirmată, fără bip suplimentar.
+            result = {
+              ...result,
+              signal: activeLock.dir,
+              state: 'SIGNAL',
+              bias: activeLock.dir,
+            };
           } else {
+            // Orice semnal opus sau lipsă temporară de semnal devine doar WAIT.
             result = {
               ...result,
               signal: 'NONE',
@@ -510,7 +540,7 @@ export default function LiveAnalysisApp() {
               expiry: null,
               directionMin: null,
               directionMax: null,
-              reason: `${t('wait')} • ${activeLock.dir} ACTIV • M10`,
+              reason: `${t('wait')} • ${activeLock.dir} ACTIV`,
             };
           }
         } else {
@@ -539,25 +569,14 @@ export default function LiveAnalysisApp() {
                 reason: `${t('confirmation')} ${nextCount}/${requiredConfirmations} • ${dir}`,
               };
             } else if (nextCount === requiredConfirmations) {
-              // Bip 1 exact o singură dată la tranziția spre semnal confirmat.
               playConfirmedAlert(dir);
 
-              if (currentTf === 'M10') {
-                const totalSeconds = 10 * 60;
-                signalLockRef.current = { dir, until: nowMs + totalSeconds * 1000 };
-                setDirectionWindowSeconds(totalSeconds);
-                setDirectionRemainingSeconds(totalSeconds);
-              } else {
-                const maxMinutes = Number(result.directionMax || 0);
-                if (maxMinutes > 0 && currentTf) {
-                  const totalSeconds = Math.max(60, Math.round(maxMinutes * 60));
-                  setDirectionWindowSeconds(totalSeconds);
-                  setDirectionRemainingSeconds(totalSeconds);
-                }
-              }
+              const totalSeconds = signalLockSecondsFor(currentTf, result);
+              signalLockRef.current = { dir, until: nowMs + totalSeconds * 1000 };
+              setDirectionWindowSeconds(totalSeconds);
+              setDirectionRemainingSeconds(totalSeconds);
             }
           } else {
-            // Fără lock M10 activ, WAIT/NONE întrerupe seria de confirmare.
             signalCandidateRef.current = { dir: null, count: 0 };
             setDirectionRemainingSeconds(0);
             setDirectionWindowSeconds(0);
