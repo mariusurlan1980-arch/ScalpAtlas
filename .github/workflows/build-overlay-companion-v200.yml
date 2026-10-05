@@ -1,4 +1,4 @@
-name: SCALP ATLAS Overlay Companion v2.0.3
+name: SCALP ATLAS Overlay Companion v2.0.4
 
 on:
   push:
@@ -62,10 +62,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS OVERLAY'
           expo['slug']='scalp-atlas-overlay'
-          expo['version']='2.0.3'
+          expo['version']='2.0.4'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.overlay'
-          expo['android']['versionCode']=203
+          expo['android']['versionCode']=204
           expo['ios']['bundleIdentifier']='com.scalpatlas.overlay'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -316,27 +316,29 @@ jobs:
           from pathlib import Path
           data=Path('/tmp/index.android.bundle').read_bytes()
           required=[
-              b'CAMERA LIVE',
-              b'SCALP ATLAS OVERLAY',
-              b'PESTE POCKET OPTION',
-              b'UN SINGUR TELEFON',
+              'CAMERA LIVE',
+              'SCALP ATLAS OVERLAY',
+              'SUPRAPUNERE LIVE · PESTE POCKET OPTION',
+              'UN SINGUR TELEFON • PESTE POCKET OPTION',
+              'Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.',
           ]
           missing=[]
-          for needle in required:
-              pos=data.find(needle)
-              print(needle.decode('ascii'), pos)
-              if pos < 0:
-                  missing.append(needle.decode('ascii'))
+          for text in required:
+              p8=data.find(text.encode('utf-8'))
+              p16=data.find(text.encode('utf-16le'))
+              print(text, 'utf8=', p8, 'utf16le=', p16)
+              if p8 < 0 and p16 < 0:
+                  missing.append(text)
           if missing:
-              raise SystemExit('Missing overlay UI in final bundle: ' + ', '.join(missing))
+              raise SystemExit('Missing overlay UI in final bundle: ' + ' | '.join(missing))
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-Overlay-Companion-v2.0.3.apk
+          cp "$APK" ScalpAtlas-Overlay-Companion-v2.0.4.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-Overlay-Companion-v2.0.3
-          path: ScalpAtlas-Overlay-Companion-v2.0.3.apk
+          name: ScalpAtlas-Overlay-Companion-v2.0.4
+          path: ScalpAtlas-Overlay-Companion-v2.0.4.apk
           if-no-files-found: error
           retention-days: 30
