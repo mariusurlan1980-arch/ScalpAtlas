@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.14 M10 5-7min Expiry
+name: SCALP ATLAS v1.0.15 Overlay Live
 
 on:
   push:
-    branches: [m10-expiry-v114]
+    branches: [overlay-live-v115]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -15,6 +15,7 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
+      - '.github/native-overlay/**'
   workflow_dispatch:
 
 jobs:
@@ -53,10 +54,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.14'
+          expo['version']='1.0.15'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=114
+          expo['android']['versionCode']=115
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -111,6 +112,9 @@ jobs:
           grep -q "consensus>=.40" scalp-atlas-new/analysisEngine.ts
           grep -q "alignmentCount>=3" scalp-atlas-new/analysisEngine.ts
           grep -q "score=Math.min(score,.88)" scalp-atlas-new/analysisEngine.ts
+          grep -q "SUPRAPUNERE LIVE" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "NativeModules.ScalpOverlay.startOverlayMode" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "window.AndroidBridge&&window.AndroidBridge.postMessage" scalp-atlas-new/analysisEngine.ts
           ! grep -q "liveCandleMarkerStyle" scalp-atlas-new/LiveAnalysisApp.tsx
           ! grep -q "trendLines.map(renderScalpLine)" <(grep -v "Compatibilitate verificare build" scalp-atlas-new/LiveAnalysisApp.tsx)
 
@@ -168,6 +172,73 @@ jobs:
           CI: '1'
         run: npx expo prebuild --platform android --clean
 
+
+      - name: Inject Android live overlay and screen stream
+        run: |
+          set -e
+          JAVA_DIR="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/app"
+          mkdir -p "$JAVA_DIR"
+          cp .github/native-overlay/ScalpOverlayPackage.kt "$JAVA_DIR/ScalpOverlayPackage.kt"
+          cp .github/native-overlay/ScalpOverlayModule.kt "$JAVA_DIR/ScalpOverlayModule.kt"
+          cp .github/native-overlay/ScalpOverlayService.kt "$JAVA_DIR/ScalpOverlayService.kt"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          roots=list(Path('scalp-atlas-new/android/app/src/main/java').rglob('MainApplication.kt'))
+          if not roots:
+              raise SystemExit('MainApplication.kt not found')
+          p=roots[0]
+          s=p.read_text(encoding='utf-8')
+          if 'ScalpOverlayPackage()' not in s:
+              needle='PackageList(this).packages.apply {'
+              if needle not in s:
+                  raise SystemExit('PackageList apply block not found')
+              s=s.replace(needle, needle+'\n        add(ScalpOverlayPackage())', 1)
+          p.write_text(s,encoding='utf-8')
+
+          m=Path('scalp-atlas-new/android/app/src/main/AndroidManifest.xml')
+          s=m.read_text(encoding='utf-8')
+          perms=[
+              '<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
+              '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+              '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />',
+          ]
+          marker='<application'
+          for perm in perms:
+              if perm not in s:
+                  s=s.replace(marker, perm+'\n  '+marker, 1)
+          service='<service android:name=".ScalpOverlayService" android:exported="false" android:foregroundServiceType="mediaProjection" />'
+          if service not in s:
+              s=s.replace('</application>', '    '+service+'\n  </application>', 1)
+          m.write_text(s,encoding='utf-8')
+          PY
+
+          mkdir -p scalp-atlas-new/android/app/src/main/res/raw
+          cp scalp-atlas-new/assets/buy-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_bip.wav
+
+          rm -rf /tmp/scalp-engine
+          mkdir -p /tmp/scalp-engine
+          (
+            cd scalp-atlas-new
+            npx tsc analysisEngine.ts atlas.ts --target ES2020 --module commonjs --skipLibCheck --esModuleInterop --outDir /tmp/scalp-engine --noEmitOnError false || true
+          )
+          test -s /tmp/scalp-engine/analysisEngine.js
+          mkdir -p scalp-atlas-new/android/app/src/main/assets
+          node - <<'NODE'
+          const fs=require('fs');
+          const engine=require('/tmp/scalp-engine/analysisEngine.js');
+          if(!engine.ANALYSIS_ENGINE_HTML) throw new Error('ANALYSIS_ENGINE_HTML missing');
+          fs.writeFileSync('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html',engine.ANALYSIS_ENGINE_HTML);
+          NODE
+
+          grep -q "ScalpOverlayPackage()" "$(find scalp-atlas-new/android/app/src/main/java -name MainApplication.kt | head -1)"
+          grep -q "SYSTEM_ALERT_WINDOW" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          grep -q "ScalpOverlayService" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          test -s scalp-atlas-new/android/app/src/main/assets/analysis_engine.html
+          test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_bip.wav
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -182,6 +253,8 @@ jobs:
           APK="scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           unzip -l "$APK" | grep -E "assets/(index\.android\.bundle|.*\.bundle)"
+          unzip -l "$APK" | grep -F "assets/analysis_engine.html"
+          unzip -l "$APK" | grep -F "res/raw/scalp_bip.wav"
           unzip -p "$APK" assets/index.android.bundle > /tmp/index.android.bundle
           grep -a -q "CLEAN VIEW" /tmp/index.android.bundle
           grep -a -q "CAMERA LIVE" /tmp/index.android.bundle
@@ -189,11 +262,11 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
           grep -Fi "5e8f16062ea3cd2c4a0d547876baa6f38cabf625" signing.txt
-          cp "$APK" ScalpAtlas-v1.0.14-CLEAN-VIEW-M10-5-7MIN-EXPIRY.apk
+          cp "$APK" ScalpAtlas-v1.0.15-CLEAN-VIEW-OVERLAY-LIVE.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.14-CLEAN-VIEW-M10-5-7MIN-EXPIRY
-          path: ScalpAtlas-v1.0.14-CLEAN-VIEW-M10-5-7MIN-EXPIRY.apk
+          name: ScalpAtlas-v1.0.15-CLEAN-VIEW-OVERLAY-LIVE
+          path: ScalpAtlas-v1.0.15-CLEAN-VIEW-OVERLAY-LIVE.apk
           if-no-files-found: error
           retention-days: 30
