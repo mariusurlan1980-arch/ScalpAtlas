@@ -220,18 +220,18 @@ class ScalpOverlayService : Service() {
     root.addView(modelText)
 
     val params = WindowManager.LayoutParams(
-      dp(255),
+      dp(215),
       WindowManager.LayoutParams.WRAP_CONTENT,
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
       else WindowManager.LayoutParams.TYPE_PHONE,
       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-        WindowManager.LayoutParams.FLAG_SECURE,
+        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
       PixelFormat.TRANSLUCENT
     ).apply {
-      gravity = Gravity.TOP or Gravity.START
-      x = dp(18)
-      y = dp(150)
+      // Ținem overlay-ul sus, în afara zonei de grafic analizate.
+      gravity = Gravity.TOP or Gravity.END
+      x = dp(10)
+      y = dp(28)
     }
 
     var startX = 0
@@ -272,7 +272,7 @@ class ScalpOverlayService : Service() {
         webViewClient = object : WebViewClient() {
           override fun onPageFinished(view: WebView?, url: String?) {
             analyzerReady = true
-            updateOverlay("AȘTEAPTĂ", "M10 • motor pregătit", "Flux continuu • ~1–2 cadre/sec")
+            updateOverlay("AȘTEAPTĂ", "M10 • motor pregătit", "Grafic decupat automat • ~1–2 cadre/sec")
           }
         }
         loadUrl("file:///android_asset/analysis_engine.html")
@@ -363,13 +363,32 @@ class ScalpOverlayService : Service() {
 
       val raw = Bitmap.createBitmap(bitmapWidth, height, Bitmap.Config.ARGB_8888)
       raw.copyPixelsFromBuffer(buffer)
-      val cropped = Bitmap.createBitmap(raw, 0, 0, width, height)
-      if (cropped !== raw) raw.recycle()
+
+      val fullFrame = Bitmap.createBitmap(raw, 0, 0, width, height)
+      if (fullFrame !== raw) raw.recycle()
+
+      // POCKET OPTION CHART CROP v1.0.16:
+      // Motorul primește doar zona centrală a graficului, nu antetul, butoanele,
+      // soldul sau fereastra Scalp Atlas. În portret păstrăm aproximativ 16–72%
+      // din înălțimea ecranului; în landscape folosim o zonă mai largă.
+      val cropTop = if (height >= width) {
+        (height * 0.16f).roundToInt().coerceIn(0, height - 2)
+      } else {
+        (height * 0.08f).roundToInt().coerceIn(0, height - 2)
+      }
+      val cropBottom = if (height >= width) {
+        (height * 0.72f).roundToInt().coerceIn(cropTop + 1, height)
+      } else {
+        (height * 0.88f).roundToInt().coerceIn(cropTop + 1, height)
+      }
+      val chartHeight = max(1, cropBottom - cropTop)
+      val chartFrame = Bitmap.createBitmap(fullFrame, 0, cropTop, width, chartHeight)
+      if (chartFrame !== fullFrame) fullFrame.recycle()
 
       val targetWidth = minOf(720, width)
-      val targetHeight = max(1, (height * (targetWidth.toFloat() / width)).roundToInt())
-      val scaled = if (targetWidth != width) Bitmap.createScaledBitmap(cropped, targetWidth, targetHeight, true) else cropped
-      if (scaled !== cropped) cropped.recycle()
+      val targetHeight = max(1, (chartHeight * (targetWidth.toFloat() / width)).roundToInt())
+      val scaled = if (targetWidth != width) Bitmap.createScaledBitmap(chartFrame, targetWidth, targetHeight, true) else chartFrame
+      if (scaled !== chartFrame) chartFrame.recycle()
 
       val stream = ByteArrayOutputStream()
       scaled.compress(Bitmap.CompressFormat.JPEG, 68, stream)
