@@ -1,0 +1,428 @@
+From cdfd8bb12391c043ee046593710d7b90b35916f5 Mon Sep 17 00:00:00 2001
+From: OpenAI Codex <codex@openai.com>
+Date: Mon, 5 Oct 2026 19:59:56 +0100
+Subject: [PATCH] Build separate Scalp Atlas overlay companion with auto market
+ OCR
+
+
+diff --git a/.github/native-overlay/ScalpOverlayModule.kt b/.github/native-overlay/ScalpOverlayModule.kt
+index 8262469..ef3cc79 100644
+--- a/.github/native-overlay/ScalpOverlayModule.kt
++++ b/.github/native-overlay/ScalpOverlayModule.kt
+@@ -1,4 +1,4 @@
+-package com.scalpatlas.app
++package com.scalpatlas.overlay
+ 
+ import android.app.Activity
+ import android.content.Context
+diff --git a/.github/native-overlay/ScalpOverlayPackage.kt b/.github/native-overlay/ScalpOverlayPackage.kt
+index dcd615a..771fd23 100644
+--- a/.github/native-overlay/ScalpOverlayPackage.kt
++++ b/.github/native-overlay/ScalpOverlayPackage.kt
+@@ -1,4 +1,4 @@
+-package com.scalpatlas.app
++package com.scalpatlas.overlay
+ 
+ import com.facebook.react.ReactPackage
+ import com.facebook.react.bridge.NativeModule
+diff --git a/.github/native-overlay/ScalpOverlayService.kt b/.github/native-overlay/ScalpOverlayService.kt
+index 3504aab..d7557e5 100644
+--- a/.github/native-overlay/ScalpOverlayService.kt
++++ b/.github/native-overlay/ScalpOverlayService.kt
+@@ -1,4 +1,4 @@
+-package com.scalpatlas.app
++package com.scalpatlas.overlay
+ 
+ import android.app.Notification
+ import android.app.NotificationChannel
+@@ -35,6 +35,9 @@ import android.webkit.WebViewClient
+ import android.widget.LinearLayout
+ import android.widget.TextView
+ import androidx.core.app.NotificationCompat
++import com.google.mlkit.vision.common.InputImage
++import com.google.mlkit.vision.text.TextRecognition
++import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+ import org.json.JSONObject
+ import java.io.ByteArrayOutputStream
+ import kotlin.math.max
+@@ -44,8 +47,8 @@ import kotlin.math.roundToInt
+ class ScalpOverlayService : Service() {
+ 
+   companion object {
+-    const val ACTION_START = "com.scalpatlas.app.START_OVERLAY"
+-    const val ACTION_STOP = "com.scalpatlas.app.STOP_OVERLAY"
++    const val ACTION_START = "com.scalpatlas.overlay.START_OVERLAY"
++    const val ACTION_STOP = "com.scalpatlas.overlay.STOP_OVERLAY"
+     const val EXTRA_RESULT_CODE = "resultCode"
+     const val EXTRA_RESULT_DATA = "resultData"
+ 
+@@ -55,6 +58,7 @@ class ScalpOverlayService : Service() {
+     private const val ANALYSIS_TIMEOUT_MS = 5000L
+     private const val CONFIRMATION_SPACING_MS = 20000L
+     private const val REQUIRED_CONFIRMATIONS = 3
++    private const val MARKET_OCR_INTERVAL_MS = 2200L
+   }
+ 
+   private lateinit var windowManager: WindowManager
+@@ -62,6 +66,7 @@ class ScalpOverlayService : Service() {
+   private var signalText: TextView? = null
+   private var detailText: TextView? = null
+   private var modelText: TextView? = null
++  private var titleText: TextView? = null
+ 
+   private var mediaProjection: MediaProjection? = null
+   private var virtualDisplay: VirtualDisplay? = null
+@@ -77,6 +82,10 @@ class ScalpOverlayService : Service() {
+   @Volatile private var frameCount = 0L
+   @Volatile private var resultCount = 0L
+   @Volatile private var errorCount = 0L
++  @Volatile private var marketOcrBusy = false
++  @Volatile private var lastMarketOcrAt = 0L
++  @Volatile private var currentTimeframe = "M10"
++  @Volatile private var currentPair = "—"
+ 
+   private var candidateDir: String? = null
+   private var candidateCount = 0
+@@ -113,7 +122,7 @@ class ScalpOverlayService : Service() {
+         if (resultCode != 0 && data != null) {
+           startProjection(resultCode, data)
+         } else {
+-          updateOverlay("AȘTEAPTĂ", "M10 • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
++          updateOverlay("AȘTEAPTĂ", "$currentTimeframe • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
+         }
+       }
+     }
+@@ -141,7 +150,7 @@ class ScalpOverlayService : Service() {
+         "Scalp Atlas suprapunere",
+         NotificationManager.IMPORTANCE_LOW
+       )
+-      channel.description = "Analiză live M10 peste Pocket Option"
++      channel.description = "Analiză live automată peste Pocket Option"
+       getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+     }
+   }
+@@ -150,7 +159,7 @@ class ScalpOverlayService : Service() {
+     NotificationCompat.Builder(this, CHANNEL_ID)
+       .setSmallIcon(android.R.drawable.ic_menu_view)
+       .setContentTitle("SCALP ATLAS • SUPRAPUNERE LIVE")
+-      .setContentText("Analiză M10 în timp real")
++      .setContentText("Pereche și timeframe detectate automat")
+       .setOngoing(true)
+       .setPriority(NotificationCompat.PRIORITY_LOW)
+       .build()
+@@ -179,11 +188,12 @@ class ScalpOverlayService : Service() {
+     }
+ 
+     val title = TextView(this).apply {
+-      text = "SCALP ATLAS • M10"
++      text = "SCALP ATLAS • AUTO"
+       setTextColor(Color.rgb(70, 220, 235))
+       textSize = 13f
+       setTypeface(typeface, android.graphics.Typeface.BOLD)
+     }
++    titleText = title
+ 
+     val close = TextView(this).apply {
+       text = "  ×  "
+@@ -212,7 +222,7 @@ class ScalpOverlayService : Service() {
+     }
+ 
+     modelText = TextView(this).apply {
+-      text = "Motor M10 • 3 confirmări"
++      text = "Motor AUTO • 3 confirmări"
+       setTextColor(Color.rgb(135, 153, 176))
+       textSize = 10f
+       setPadding(0, dp(2), 0, 0)
+@@ -283,11 +293,11 @@ class ScalpOverlayService : Service() {
+             if (analyzerReady) {
+               updateOverlay(
+                 "AȘTEAPTĂ",
+-                "M10 • motor ACTIV",
++                "$currentTimeframe • motor ACTIV",
+                 "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
+               )
+             } else {
+-              updateOverlay("AȘTEAPTĂ", "M10 • HTML încărcat", "Verific motorul...")
++              updateOverlay("AȘTEAPTĂ", "$currentTimeframe • HTML încărcat", "Verific motorul...")
+               view?.evaluateJavascript(
+                 "window.ScalpAtlasPing && window.ScalpAtlasPing();",
+                 null
+@@ -317,7 +327,7 @@ class ScalpOverlayService : Service() {
+           "READY" -> {
+             analyzerReady = true
+             analysisBusy = false
+-            updateOverlay("AȘTEAPTĂ", "M10 • motor ACTIV", "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount)
++            updateOverlay("AȘTEAPTĂ", "$currentTimeframe • motor ACTIV", "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount)
+           }
+           "RESULT" -> {
+             analysisBusy = false
+@@ -330,7 +340,7 @@ class ScalpOverlayService : Service() {
+             errorCount += 1
+             updateOverlay(
+               "AȘTEAPTĂ",
+-              "M10 • cadru respins",
++              "$currentTimeframe • cadru respins",
+               payload.optString("message", "Analiză indisponibilă") +
+                 " • Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
+             )
+@@ -400,6 +410,75 @@ class ScalpOverlayService : Service() {
+       rightRedRatio >= 0.018f
+   }
+ 
++  private fun resetSignalStateForMarketChange() {
++    candidateDir = null
++    candidateCount = 0
++    candidateLastAt = 0L
++    lockedDir = null
++    lockedUntil = 0L
++  }
++
++  private fun normalizeTimeframe(text: String): String? {
++    val compact = text.uppercase().replace(" ", "")
++    val patterns = listOf(
++      "M30" to Regex("(?:^|[^A-Z0-9])M3[0O](?:[^A-Z0-9]|$)"),
++      "M15" to Regex("(?:^|[^A-Z0-9])M[1I][5S](?:[^A-Z0-9]|$)"),
++      "M10" to Regex("(?:^|[^A-Z0-9])M[1I][0O](?:[^A-Z0-9]|$)"),
++      "M5" to Regex("(?:^|[^A-Z0-9])M[5S](?:[^A-Z0-9]|$)"),
++      "M3" to Regex("(?:^|[^A-Z0-9])M3(?:[^A-Z0-9]|$)"),
++      "M2" to Regex("(?:^|[^A-Z0-9])M2(?:[^A-Z0-9]|$)"),
++      "M1" to Regex("(?:^|[^A-Z0-9])M[1I](?:[^A-Z0-9]|$)"),
++      "H1" to Regex("(?:^|[^A-Z0-9])H[1I](?:[^A-Z0-9]|$)")
++    )
++    return patterns.firstOrNull { it.second.containsMatchIn(compact) }?.first
++  }
++
++  private fun normalizePair(text: String): String? {
++    val upper = text.uppercase()
++    val match = Regex("\\b([A-Z]{3})\\s*/\\s*([A-Z]{3})(?:\\s+OTC)?\\b").find(upper) ?: return null
++    return match.groupValues[1] + "/" + match.groupValues[2] + if (match.value.contains("OTC")) " OTC" else ""
++  }
++
++  private fun scheduleMarketOcr(bitmap: Bitmap) {
++    val now = System.currentTimeMillis()
++    if (marketOcrBusy || now - lastMarketOcrAt < MARKET_OCR_INTERVAL_MS) return
++
++    marketOcrBusy = true
++    lastMarketOcrAt = now
++    val copy = bitmap.copy(Bitmap.Config.ARGB_8888, false)
++    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
++    recognizer.process(InputImage.fromBitmap(copy, 0))
++      .addOnSuccessListener { result ->
++        val text = result.text
++        val detectedTimeframe = normalizeTimeframe(text)
++        val detectedPair = normalizePair(text)
++        var changed = false
++
++        if (detectedTimeframe != null && detectedTimeframe != currentTimeframe) {
++          currentTimeframe = detectedTimeframe
++          changed = true
++        }
++        if (detectedPair != null && detectedPair != currentPair) {
++          currentPair = detectedPair
++          changed = true
++        }
++
++        if (changed) {
++          resetSignalStateForMarketChange()
++          updateOverlay(
++            "AȘTEAPTĂ",
++            "$currentPair • $currentTimeframe detectat",
++            "Piață schimbată • analiza a fost resetată"
++          )
++        }
++      }
++      .addOnCompleteListener {
++        try { copy.recycle() } catch (_: Throwable) {}
++        try { recognizer.close() } catch (_: Throwable) {}
++        marketOcrBusy = false
++      }
++  }
++
+   private fun startProjection(resultCode: Int, resultData: Intent) {
+     if (mediaProjection != null) return
+ 
+@@ -433,7 +512,7 @@ class ScalpOverlayService : Service() {
+     )
+ 
+     startFramePolling(width, height)
+-    updateOverlay("AȘTEAPTĂ", "M10 • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
++    updateOverlay("AȘTEAPTĂ", "$currentTimeframe • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
+   }
+ 
+   private fun startFramePolling(width: Int, height: Int) {
+@@ -448,7 +527,7 @@ class ScalpOverlayService : Service() {
+         if (lastFrameAt > 0L && now - lastFrameAt > 2500L) {
+           updateOverlay(
+             "AȘTEAPTĂ",
+-            "M10 • FLUX ÎNGHEȚAT",
++            "$currentTimeframe • FLUX ÎNGHEȚAT",
+             "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount + " • repornește SUPRAPUNERE"
+           )
+         }
+@@ -500,11 +579,13 @@ class ScalpOverlayService : Service() {
+         pocketDetected = true
+         updateOverlay(
+           "AȘTEAPTĂ",
+-          "POCKET OPTION DETECTAT • M10",
++          "POCKET OPTION DETECTAT • AUTO",
+           "Analiză activă"
+         )
+       }
+ 
++      scheduleMarketOcr(fullFrame)
++
+       // POCKET OPTION CHART CROP v1.0.16:
+       // Motorul primește doar zona centrală a graficului, nu antetul, butoanele,
+       // soldul sau fereastra Scalp Atlas. În portret păstrăm aproximativ 16–72%
+@@ -543,7 +624,7 @@ class ScalpOverlayService : Service() {
+         val dataUrl = "data:image/jpeg;base64," + base64
+         val quotedUrl = JSONObject.quote(dataUrl)
+         analyzerWebView?.evaluateJavascript(
+-          "window.ScalpAtlasAnalyze && window.ScalpAtlasAnalyze(" + quotedUrl + ",'M10');",
++          "window.ScalpAtlasAnalyze && window.ScalpAtlasAnalyze(" + quotedUrl + ",'" + currentTimeframe + "');",
+           null
+         )
+       }
+@@ -600,7 +681,7 @@ class ScalpOverlayService : Service() {
+         updateOverlay(
+           "AȘTEAPTĂ " + candidateDir,
+           "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • semnalul este reverificat",
+-          "M10 • candidat păstrat"
++          "$currentPair • $currentTimeframe • candidat păstrat"
+         )
+         return
+       }
+@@ -610,7 +691,7 @@ class ScalpOverlayService : Service() {
+       candidateLastAt = 0L
+       updateOverlay(
+         "AȘTEAPTĂ",
+-        "M10 • fără semnal clar • Scor " + score + "%",
++        "$currentPair • $currentTimeframe • fără semnal clar • Scor " + score + "%",
+         pattern
+       )
+       return
+@@ -629,18 +710,19 @@ class ScalpOverlayService : Service() {
+       updateOverlay(
+         "AȘTEAPTĂ " + rawSignal,
+         "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • Scor " + score + "%",
+-        pattern + " • M10"
++        pattern + " • " + currentPair + " • " + currentTimeframe
+       )
+       return
+     }
+ 
+     // SIGNAL LOCK v1.0.23
+     // Blocarea direcției trebuie să urmeze expirarea recomandată a trade-ului,
+-    // nu fereastra mai lungă de direcție. Pe M10 expirarea motorului este 5–7 min.
++    // nu fereastra mai lungă de direcție. Expirarea urmează timeframe-ul detectat.
+     val lockMinutes = when {
+-      expiry in 5..7 -> expiry
+-      expiry > 0 -> expiry.coerceIn(5, 7)
+-      else -> 6
++      expiry > 0 -> expiry.coerceIn(1, 60)
++      currentTimeframe.startsWith("M") -> currentTimeframe.drop(1).toIntOrNull()?.coerceIn(1, 60) ?: 10
++      currentTimeframe == "H1" -> 60
++      else -> 10
+     }
+     lockedDir = rawSignal
+     lockedUntil = now + lockMinutes * 60_000L
+@@ -652,7 +734,7 @@ class ScalpOverlayService : Service() {
+     updateOverlay(
+       rawSignal,
+       "Scor " + score + "% • Expirare " + if (expiry > 0) expiry.toString() + " min" else "—",
+-      pattern + " • direcție estimată " + if (directionMax > 0) directionMax.toString() + " min" else "M10"
++      pattern + " • $currentPair • $currentTimeframe • direcție estimată " + if (directionMax > 0) directionMax.toString() + " min" else currentTimeframe
+     )
+   }
+ 
+@@ -683,6 +765,7 @@ class ScalpOverlayService : Service() {
+ 
+   private fun updateOverlay(signal: String, details: String, model: String) {
+     mainHandler.post {
++      titleText?.text = "SCALP ATLAS • " + currentTimeframe
+       signalText?.text = signal
+       signalText?.setTextColor(
+         when {
+diff --git a/.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx b/.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
+index e51ca0c..faf0bda 100644
+--- a/.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
++++ b/.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
+@@ -329,7 +329,7 @@ export default function LiveAnalysisApp() {
+       if (state === 'OVERLAY_PERMISSION_REQUIRED') {
+         setMessage('Activează „Afișare peste alte aplicații”, apoi revino și pornește din nou SUPRAPUNERE.');
+       } else if (state === 'STARTED') {
+-        setMessage('SUPRAPUNERE pornită. Deschide Pocket Option; analiza rămâne M10.');
++        setMessage('SUPRAPUNERE pornită. Deschide Pocket Option; perechea și timeframe-ul sunt detectate automat.');
+       } else {
+         setMessage(String(state || 'SUPRAPUNERE pregătită.'));
+       }
+diff --git a/.github/workflows/build-scalp-atlas-v100rc1.yml b/.github/workflows/build-scalp-atlas-v100rc1.yml
+index 49ad88a..6ccb72a 100644
+--- a/.github/workflows/build-scalp-atlas-v100rc1.yml
++++ b/.github/workflows/build-scalp-atlas-v100rc1.yml
+@@ -1,8 +1,8 @@
+-name: SCALP ATLAS v1.0.23 Expiry Lock
++name: SCALP ATLAS Overlay Companion v2.0.0
+ 
+ on:
+   push:
+-    branches: [overlay-expiry-lock-v123]
++    branches: [overlay-companion-v200]
+     paths:
+       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
+       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
+@@ -52,13 +52,13 @@ jobs:
+           p=Path('scalp-atlas-new/app.json')
+           cfg=json.loads(p.read_text(encoding='utf-8'))
+           expo=cfg['expo']
+-          expo['name']='SCALP ATLAS'
+-          expo['slug']='scalp-atlas'
+-          expo['version']='1.0.23'
++          expo['name']='SCALP ATLAS OVERLAY'
++          expo['slug']='scalp-atlas-overlay'
++          expo['version']='2.0.0'
+           expo['orientation']='default'
+-          expo['android']['package']='com.scalpatlas.app'
+-          expo['android']['versionCode']=123
+-          expo['ios']['bundleIdentifier']='com.scalpatlas.app'
++          expo['android']['package']='com.scalpatlas.overlay'
++          expo['android']['versionCode']=200
++          expo['ios']['bundleIdentifier']='com.scalpatlas.overlay'
+           permissions=expo['android'].setdefault('permissions',[])
+           if 'CAMERA' not in permissions:
+               permissions.append('CAMERA')
+@@ -121,7 +121,8 @@ jobs:
+           grep -q "Cadre " .github/native-overlay/ScalpOverlayService.kt
+           grep -q "Android WebView executes canvas/image work reliably" .github/native-overlay/ScalpOverlayService.kt
+           grep -q "Erori " .github/native-overlay/ScalpOverlayService.kt
+-          grep -q "M10 • motor ACTIV" .github/native-overlay/ScalpOverlayService.kt
++          grep -q "TextRecognition.getClient" .github/native-overlay/ScalpOverlayService.kt
++          grep -q "normalizePair" .github/native-overlay/ScalpOverlayService.kt
+           grep -q "startFramePolling" .github/native-overlay/ScalpOverlayService.kt
+           grep -q "ScalpAtlasPing" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+           grep -q "Do not overwrite it" .github/native-overlay/ScalpOverlayService.kt
+@@ -129,7 +130,7 @@ jobs:
+           grep -q "POCKET OPTION NEDETECTAT" .github/native-overlay/ScalpOverlayService.kt
+           grep -q "candidateStillFresh" .github/native-overlay/ScalpOverlayService.kt
+           grep -q "SIGNAL LOCK v1.0.23" .github/native-overlay/ScalpOverlayService.kt
+-          grep -q "expiry in 5..7" .github/native-overlay/ScalpOverlayService.kt
++          grep -q "expiry.coerceIn(1, 60)" .github/native-overlay/ScalpOverlayService.kt
+           ! grep -q "ANALIZEZ..." .github/native-overlay/ScalpOverlayService.kt
+           grep -q "FLUX ÎNGHEȚAT" .github/native-overlay/ScalpOverlayService.kt
+           ! grep -q "<\\/script></body></html>" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+@@ -290,12 +291,11 @@ jobs:
+           ! grep -a -q "ANALIZĂ LIVE · DOUĂ DISPOZITIVE" /tmp/index.android.bundle
+           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
+-          grep -Fi "5e8f16062ea3cd2c4a0d547876baa6f38cabf625" signing.txt
+-          cp "$APK" ScalpAtlas-v1.0.23-CLEAN-VIEW-EXPIRY-LOCK.apk
++          cp "$APK" ScalpAtlas-Overlay-Companion-v2.0.0.apk
+ 
+       - uses: actions/upload-artifact@v4
+         with:
+-          name: ScalpAtlas-v1.0.23-CLEAN-VIEW-EXPIRY-LOCK
+-          path: ScalpAtlas-v1.0.23-CLEAN-VIEW-EXPIRY-LOCK.apk
++          name: ScalpAtlas-Overlay-Companion-v2.0.0
++          path: ScalpAtlas-Overlay-Companion-v2.0.0.apk
+           if-no-files-found: error
+           retention-days: 30
