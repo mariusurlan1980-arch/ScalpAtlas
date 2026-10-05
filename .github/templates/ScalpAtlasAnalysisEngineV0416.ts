@@ -12,7 +12,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
   const TF_MIN={M1:1,M2:2,M3:3,M5:5,M10:10,M15:15,M30:30,H1:60};
 
-  function send(payload){try{const data=JSON.stringify(payload);if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage){window.ReactNativeWebView.postMessage(data);}else if(window.parent&&window.parent!==window){window.parent.postMessage(data,'*');}}catch(e){}}
+  function send(payload){try{const data=JSON.stringify(payload);if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage){window.ReactNativeWebView.postMessage(data);}else if(window.AndroidBridge&&window.AndroidBridge.postMessage){window.AndroidBridge.postMessage(data);}else if(window.parent&&window.parent!==window){window.parent.postMessage(data,'*');}}catch(e){}}
 
   function linReg(arr){
     const n=arr.length;if(n<2)return {slope:0,intercept:0,resid:999};
