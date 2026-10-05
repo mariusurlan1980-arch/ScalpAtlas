@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.22 Pocket Gate
+name: SCALP ATLAS v1.0.23 Expiry Lock
 
 on:
   push:
-    branches: [overlay-pocket-gate-v122]
+    branches: [overlay-expiry-lock-v123]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -54,10 +54,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.22'
+          expo['version']='1.0.23'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=122
+          expo['android']['versionCode']=123
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -128,6 +128,8 @@ jobs:
           grep -q "POCKET OPTION GATE v1.0.22" .github/native-overlay/ScalpOverlayService.kt
           grep -q "POCKET OPTION NEDETECTAT" .github/native-overlay/ScalpOverlayService.kt
           grep -q "candidateStillFresh" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "SIGNAL LOCK v1.0.23" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "expiry in 5..7" .github/native-overlay/ScalpOverlayService.kt
           ! grep -q "ANALIZEZ..." .github/native-overlay/ScalpOverlayService.kt
           grep -q "FLUX ÎNGHEȚAT" .github/native-overlay/ScalpOverlayService.kt
           ! grep -q "<\\/script></body></html>" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
@@ -289,11 +291,11 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
           grep -Fi "5e8f16062ea3cd2c4a0d547876baa6f38cabf625" signing.txt
-          cp "$APK" ScalpAtlas-v1.0.22-CLEAN-VIEW-POCKET-GATE.apk
+          cp "$APK" ScalpAtlas-v1.0.23-CLEAN-VIEW-EXPIRY-LOCK.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.22-CLEAN-VIEW-POCKET-GATE
-          path: ScalpAtlas-v1.0.22-CLEAN-VIEW-POCKET-GATE.apk
+          name: ScalpAtlas-v1.0.23-CLEAN-VIEW-EXPIRY-LOCK
+          path: ScalpAtlas-v1.0.23-CLEAN-VIEW-EXPIRY-LOCK.apk
           if-no-files-found: error
           retention-days: 30
