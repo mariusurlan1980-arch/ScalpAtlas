@@ -83,6 +83,7 @@ class ScalpOverlayService : Service() {
   private var candidateLastAt = 0L
   private var lockedDir: String? = null
   private var lockedUntil = 0L
+  private var pocketDetected = false
 
   private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -341,6 +342,64 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  private fun isPocketOptionFrame(bitmap: Bitmap): Boolean {
+    // POCKET OPTION GATE v1.0.22
+    // Pocket Option Classic mode has two large saturated action buttons near the
+    // lower part of the screen: green BUY and red SELL. We use those UI anchors
+    // to stop Scalp Atlas from analyzing the launcher, wallpaper or another app.
+    val w = bitmap.width
+    val h = bitmap.height
+    if (w < 100 || h < 200) return false
+
+    val y0 = (h * 0.70f).roundToInt().coerceIn(0, h - 2)
+    val y1 = (h * 0.91f).roundToInt().coerceIn(y0 + 1, h)
+    val x0 = (w * 0.03f).roundToInt()
+    val x1 = (w * 0.97f).roundToInt()
+
+    var samples = 0
+    var green = 0
+    var red = 0
+    var leftGreen = 0
+    var rightRed = 0
+
+    var y = y0
+    while (y < y1) {
+      var x = x0
+      while (x < x1) {
+        val p = bitmap.getPixel(x, y)
+        val r = Color.red(p)
+        val g = Color.green(p)
+        val b = Color.blue(p)
+        samples += 1
+
+        val isGreen = g > 105 && g > r * 1.18 && g > b * 1.08
+        val isRed = r > 145 && r > g * 1.22 && r > b * 1.10
+
+        if (isGreen) {
+          green += 1
+          if (x < w / 2) leftGreen += 1
+        }
+        if (isRed) {
+          red += 1
+          if (x > w / 2) rightRed += 1
+        }
+        x += 6
+      }
+      y += 6
+    }
+
+    if (samples <= 0) return false
+    val greenRatio = green.toFloat() / samples
+    val redRatio = red.toFloat() / samples
+    val leftGreenRatio = leftGreen.toFloat() / samples
+    val rightRedRatio = rightRed.toFloat() / samples
+
+    return greenRatio >= 0.028f &&
+      redRatio >= 0.028f &&
+      leftGreenRatio >= 0.018f &&
+      rightRedRatio >= 0.018f
+  }
+
   private fun startProjection(resultCode: Int, resultData: Intent) {
     if (mediaProjection != null) return
 
@@ -422,6 +481,30 @@ class ScalpOverlayService : Service() {
       val fullFrame = Bitmap.createBitmap(raw, 0, 0, width, height)
       if (fullFrame !== raw) raw.recycle()
 
+      val onPocketOption = isPocketOptionFrame(fullFrame)
+      if (!onPocketOption) {
+        if (pocketDetected) {
+          pocketDetected = false
+          candidateDir = null
+          candidateCount = 0
+          candidateLastAt = 0L
+        }
+        fullFrame.recycle()
+        updateOverlay(
+          "AȘTEAPTĂ",
+          "POCKET OPTION NEDETECTAT",
+          "Analiza este oprită în afara platformei"
+        )
+        return
+      } else if (!pocketDetected) {
+        pocketDetected = true
+        updateOverlay(
+          "AȘTEAPTĂ",
+          "POCKET OPTION DETECTAT • M10",
+          "Analiză activă"
+        )
+      }
+
       // POCKET OPTION CHART CROP v1.0.16:
       // Motorul primește doar zona centrală a graficului, nu antetul, butoanele,
       // soldul sau fereastra Scalp Atlas. În portret păstrăm aproximativ 16–72%
@@ -457,7 +540,6 @@ class ScalpOverlayService : Service() {
       analysisStartedAt = now
 
       mainHandler.post {
-        modelText?.text = "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount + " • ANALIZEZ..."
         val dataUrl = "data:image/jpeg;base64," + base64
         val quotedUrl = JSONObject.quote(dataUrl)
         analyzerWebView?.evaluateJavascript(
@@ -508,6 +590,21 @@ class ScalpOverlayService : Service() {
     }
 
     if (rawSignal != "BUY" && rawSignal != "SELL") {
+      val candidateStillFresh =
+        candidateDir != null &&
+        candidateCount > 0 &&
+        candidateLastAt > 0L &&
+        now - candidateLastAt <= 65000L
+
+      if (candidateStillFresh) {
+        updateOverlay(
+          "AȘTEAPTĂ " + candidateDir,
+          "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • semnalul este reverificat",
+          "M10 • candidat păstrat"
+        )
+        return
+      }
+
       candidateDir = null
       candidateCount = 0
       candidateLastAt = 0L
