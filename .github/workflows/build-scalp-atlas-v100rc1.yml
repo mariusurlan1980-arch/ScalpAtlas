@@ -221,7 +221,7 @@ jobs:
           mkdir -p /tmp/scalp-engine
           (
             cd scalp-atlas-new
-            npx tsc analysisEngine.ts atlas.ts --target ES2020 --module commonjs --skipLibCheck --esModuleInterop --outDir /tmp/scalp-engine --noEmitOnError false || true
+            npx tsc analysisEngine.ts atlas.ts --ignoreConfig --target ES2020 --module commonjs --skipLibCheck --esModuleInterop --outDir /tmp/scalp-engine --noEmitOnError false || true
           )
           test -s /tmp/scalp-engine/analysisEngine.js
           mkdir -p scalp-atlas-new/android/app/src/main/assets
