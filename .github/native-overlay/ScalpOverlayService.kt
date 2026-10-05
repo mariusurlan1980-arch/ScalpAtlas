@@ -348,11 +348,7 @@ class ScalpOverlayService : Service() {
     captureThread = HandlerThread("ScalpAtlasCapture").also { it.start() }
     captureHandler = Handler(captureThread!!.looper)
 
-    imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2).apply {
-      setOnImageAvailableListener({ reader ->
-        processLatestImage(reader, width, height)
-      }, captureHandler)
-    }
+    imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
 
     virtualDisplay = mediaProjection?.createVirtualDisplay(
       "ScalpAtlasLiveCapture",
