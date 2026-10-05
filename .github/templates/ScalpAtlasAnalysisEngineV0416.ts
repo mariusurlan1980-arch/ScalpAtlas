@@ -546,4 +546,4 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
   window.addEventListener('message',onMessage);
   send({type:'READY',atlasCount:ATLAS.length,engineVersion:ENGINE_VERSION});
 })();
-<\\/script></body></html>`;
+</script></body></html>`;
