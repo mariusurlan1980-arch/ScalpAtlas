@@ -59,7 +59,7 @@ class ScalpOverlayModule(
 
   @ReactMethod
   fun startOverlayMode(promise: Promise) {
-    val activity = currentActivity
+    val activity = reactContext.currentActivity
     if (activity == null) {
       promise.reject("NO_ACTIVITY", "Aplicația nu este activă.")
       return
