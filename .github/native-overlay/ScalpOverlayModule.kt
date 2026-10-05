@@ -1,4 +1,4 @@
-package com.scalpatlas.overlay
+package com.scalpatlas.app
 
 import android.app.Activity
 import android.content.Context
