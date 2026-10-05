@@ -1,4 +1,4 @@
-name: SCALP ATLAS Overlay Companion v2.0.1
+name: SCALP ATLAS Overlay Companion v2.0.2
 
 on:
   push:
@@ -17,7 +17,6 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
-      - '.github/scripts/make_overlay_button_permanent.py'
   workflow_dispatch:
 
 jobs:
@@ -59,10 +58,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS OVERLAY'
           expo['slug']='scalp-atlas-overlay'
-          expo['version']='2.0.1'
+          expo['version']='2.0.2'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.overlay'
-          expo['android']['versionCode']=201
+          expo['android']['versionCode']=202
           expo['ios']['bundleIdentifier']='com.scalpatlas.overlay'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -75,9 +74,6 @@ jobs:
           plugins.append(['expo-localization',{'supportedLocales':{'ios':supported,'android':supported},'supportsRTL':True,'forcesRTL':False}])
           p.write_text(json.dumps(cfg,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
-
-      - name: Make overlay control permanently visible
-        run: python3 .github/scripts/make_overlay_button_permanent.py
 
       - name: Verify exact old interface plus signal-only change
         run: |
@@ -120,7 +116,9 @@ jobs:
           grep -q "consensus>=.40" scalp-atlas-new/analysisEngine.ts
           grep -q "alignmentCount>=3" scalp-atlas-new/analysisEngine.ts
           grep -q "score=Math.min(score,.88)" scalp-atlas-new/analysisEngine.ts
-          grep -q "SUPRAPUNERE LIVE" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "SUPRAPUNERE LIVE · PESTE POCKET OPTION" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "SCALP ATLAS OVERLAY" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "UN SINGUR TELEFON • PESTE POCKET OPTION" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "NativeModules.ScalpOverlay.startOverlayMode" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "window.AndroidBridge&&window.AndroidBridge.postMessage" scalp-atlas-new/analysisEngine.ts
           grep -q "POCKET OPTION CHART CROP v1.0.16" .github/native-overlay/ScalpOverlayService.kt
@@ -312,14 +310,17 @@ jobs:
           unzip -p "$APK" assets/index.android.bundle > /tmp/index.android.bundle
           grep -a -q "CLEAN VIEW" /tmp/index.android.bundle
           grep -a -q "CAMERA LIVE" /tmp/index.android.bundle
+          grep -a -q "SUPRAPUNERE LIVE · PESTE POCKET OPTION" /tmp/index.android.bundle
+          grep -a -q "SCALP ATLAS OVERLAY" /tmp/index.android.bundle
+          grep -a -q "UN SINGUR TELEFON • PESTE POCKET OPTION" /tmp/index.android.bundle
           ! grep -a -q "ANALIZĂ LIVE · DOUĂ DISPOZITIVE" /tmp/index.android.bundle
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-Overlay-Companion-v2.0.1.apk
+          cp "$APK" ScalpAtlas-Overlay-Companion-v2.0.2.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-Overlay-Companion-v2.0.1
-          path: ScalpAtlas-Overlay-Companion-v2.0.1.apk
+          name: ScalpAtlas-Overlay-Companion-v2.0.2
+          path: ScalpAtlas-Overlay-Companion-v2.0.2.apk
           if-no-files-found: error
           retention-days: 30
