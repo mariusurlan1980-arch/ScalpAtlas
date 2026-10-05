@@ -19,6 +19,10 @@ on:
       - '.github/native-overlay/**'
   workflow_dispatch:
 
+concurrency:
+  group: scalp-atlas-overlay-companion
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
