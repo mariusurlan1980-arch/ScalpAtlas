@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.19 Overlay Engine HTML Fix
+name: SCALP ATLAS v1.0.20 Overlay Frame Poll
 
 on:
   push:
-    branches: [overlay-engine-html-v119]
+    branches: [overlay-frame-poll-v120]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -54,10 +54,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.19'
+          expo['version']='1.0.20'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=119
+          expo['android']['versionCode']=120
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -122,6 +122,8 @@ jobs:
           grep -q "Android WebView executes canvas/image work reliably" .github/native-overlay/ScalpOverlayService.kt
           grep -q "Erori " .github/native-overlay/ScalpOverlayService.kt
           grep -q "M10 • motor ACTIV" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "startFramePolling" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "FLUX ÎNGHEȚAT" .github/native-overlay/ScalpOverlayService.kt
           ! grep -q "<\\/script></body></html>" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q "</script></body></html>" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           ! grep -q "FLAG_SECURE" .github/native-overlay/ScalpOverlayService.kt
@@ -281,11 +283,11 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
           grep -Fi "5e8f16062ea3cd2c4a0d547876baa6f38cabf625" signing.txt
-          cp "$APK" ScalpAtlas-v1.0.19-CLEAN-VIEW-OVERLAY-ENGINE-HTML-FIX.apk
+          cp "$APK" ScalpAtlas-v1.0.20-CLEAN-VIEW-OVERLAY-FRAME-POLL.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.19-CLEAN-VIEW-OVERLAY-ENGINE-HTML-FIX
-          path: ScalpAtlas-v1.0.19-CLEAN-VIEW-OVERLAY-ENGINE-HTML-FIX.apk
+          name: ScalpAtlas-v1.0.20-CLEAN-VIEW-OVERLAY-FRAME-POLL
+          path: ScalpAtlas-v1.0.20-CLEAN-VIEW-OVERLAY-FRAME-POLL.apk
           if-no-files-found: error
           retention-days: 30
