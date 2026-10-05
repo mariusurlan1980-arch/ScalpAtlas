@@ -542,8 +542,9 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
   // Native overlay can call the analyzer directly. This avoids large MessageEvent
   // payloads and reduces latency / dropped frames on Android WebView.
   window.ScalpAtlasAnalyze=function(dataUrl,timeframe){run(dataUrl,timeframe||'M10');};
+  window.ScalpAtlasPing=function(){send({type:'READY',atlasCount:ATLAS.length,engineVersion:ENGINE_VERSION});};
   document.addEventListener('message',onMessage);
   window.addEventListener('message',onMessage);
-  send({type:'READY',atlasCount:ATLAS.length,engineVersion:ENGINE_VERSION});
+  window.ScalpAtlasPing();
 })();
 </script></body></html>`;
