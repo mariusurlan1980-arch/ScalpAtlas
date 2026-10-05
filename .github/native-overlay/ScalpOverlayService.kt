@@ -76,6 +76,7 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastFrameAt = 0L
   @Volatile private var frameCount = 0L
   @Volatile private var resultCount = 0L
+  @Volatile private var errorCount = 0L
 
   private var candidateDir: String? = null
   private var candidateCount = 0
@@ -266,19 +267,31 @@ class ScalpOverlayService : Service() {
 
   private fun createAnalyzer() {
     mainHandler.post {
-      analyzerWebView = WebView(this).apply {
+      val web = WebView(this).apply {
         settings.javaScriptEnabled = true
+        settings.loadsImagesAutomatically = true
         settings.allowFileAccess = true
+        settings.allowContentAccess = true
         settings.domStorageEnabled = false
+        setBackgroundColor(Color.TRANSPARENT)
+        alpha = 0.01f
         addJavascriptInterface(AnalyzerBridge(), "AndroidBridge")
         webViewClient = object : WebViewClient() {
           override fun onPageFinished(view: WebView?, url: String?) {
             analyzerReady = true
-            updateOverlay("AȘTEAPTĂ", "M10 • motor pregătit", "Cadre 0 • Rezultate 0")
+            updateOverlay("AȘTEAPTĂ", "M10 • motor pregătit", "Cadre 0 • Rez 0 • Erori 0")
           }
         }
-        loadUrl("file:///android_asset/analysis_engine.html")
       }
+
+      // Android WebView executes canvas/image work reliably when it is attached to
+      // a window. We keep a 1x1 almost-transparent analyzer inside the overlay.
+      (overlayView as? LinearLayout)?.addView(
+        web,
+        LinearLayout.LayoutParams(1, 1)
+      )
+      analyzerWebView = web
+      web.loadUrl("file:///android_asset/analysis_engine.html")
     }
   }
 
@@ -300,7 +313,13 @@ class ScalpOverlayService : Service() {
           }
           "ERROR" -> {
             analysisBusy = false
-            updateOverlay("AȘTEAPTĂ", "M10 • cadru respins", payload.optString("message", "Analiză indisponibilă"))
+            errorCount += 1
+            updateOverlay(
+              "AȘTEAPTĂ",
+              "M10 • cadru respins",
+              payload.optString("message", "Analiză indisponibilă") +
+                " • Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
+            )
           }
         }
       } catch (_: Throwable) {
@@ -405,7 +424,7 @@ class ScalpOverlayService : Service() {
       analysisStartedAt = now
 
       mainHandler.post {
-        modelText?.text = "Cadre " + frameCount + " • Rezultate " + resultCount + " • ANALIZEZ..."
+        modelText?.text = "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount + " • ANALIZEZ..."
         val dataUrl = "data:image/jpeg;base64," + base64
         val quotedUrl = JSONObject.quote(dataUrl)
         analyzerWebView?.evaluateJavascript(
@@ -536,7 +555,7 @@ class ScalpOverlayService : Service() {
         }
       )
       detailText?.text = details
-      modelText?.text = model + " • Cadre " + frameCount + " • Rez " + resultCount
+      modelText?.text = model + " • Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
     }
   }
 
