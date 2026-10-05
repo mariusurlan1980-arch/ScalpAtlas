@@ -149,7 +149,6 @@ export default function LiveAnalysisApp() {
   const [engineReady, setEngineReady] = useState(false);
   const [locked, setLocked] = useState(false);
   const [live, setLive] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const [detectedTimeframe, setDetectedTimeframe] = useState<string | null>(null);
   const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 });
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -316,8 +315,6 @@ export default function LiveAnalysisApp() {
     if (captureBusyRef.current) return;
 
     captureBusyRef.current = true;
-    setScanning(true);
-    setMessage(t('analyzing'));
 
     try {
       const picture = await cameraRef.current.takePictureAsync({
@@ -329,7 +326,6 @@ export default function LiveAnalysisApp() {
 
       if (!picture?.base64) {
         captureBusyRef.current = false;
-        setScanning(false);
         setMessage(t('imageUnclear'));
         if (!manual) scheduleNext();
         return;
@@ -391,7 +387,6 @@ export default function LiveAnalysisApp() {
           directionMax: null,
         });
         captureBusyRef.current = false;
-        setScanning(false);
         setMessage(t('chartMissing'));
         if (!manual) scheduleNext();
         return;
@@ -411,7 +406,6 @@ export default function LiveAnalysisApp() {
       }));
     } catch (error) {
       captureBusyRef.current = false;
-      setScanning(false);
       setMessage(t('captureFailed', { error: error instanceof Error ? error.message : 'error' }));
       if (!manual) scheduleNext();
     }
@@ -433,7 +427,6 @@ export default function LiveAnalysisApp() {
   const pauseLive = () => {
     liveRef.current = false;
     setLive(false);
-    setScanning(false);
     captureBusyRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
     setMessage(t('readyLive'));
@@ -442,7 +435,6 @@ export default function LiveAnalysisApp() {
   const stopLive = () => {
     liveRef.current = false;
     setLive(false);
-    setScanning(false);
     captureBusyRef.current = false;
     signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
     signalLockRef.current = { dir: null, until: 0 };
@@ -617,7 +609,6 @@ export default function LiveAnalysisApp() {
 
         setAnalysis(result);
         captureBusyRef.current = false;
-        setScanning(false);
         recordResult(result);
 
         const isWait = result.state === 'WAIT' || (result.signal === 'NONE' && !!result.bias);
@@ -638,13 +629,11 @@ export default function LiveAnalysisApp() {
 
       if (payload.type === 'ERROR') {
         captureBusyRef.current = false;
-        setScanning(false);
         setMessage(t('analysisFailed', { error: payload.message || 'error' }));
         if (liveRef.current) scheduleNext();
       }
     } catch {
       captureBusyRef.current = false;
-      setScanning(false);
       setMessage(t('invalidEngineResponse'));
       if (liveRef.current) scheduleNext();
     }
