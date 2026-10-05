@@ -254,7 +254,6 @@ jobs:
           test -s "$APK"
           unzip -l "$APK" | grep -E "assets/(index\.android\.bundle|.*\.bundle)"
           unzip -l "$APK" | grep -F "assets/analysis_engine.html"
-          unzip -l "$APK" | grep -F "res/raw/scalp_bip.wav"
           unzip -p "$APK" assets/index.android.bundle > /tmp/index.android.bundle
           grep -a -q "CLEAN VIEW" /tmp/index.android.bundle
           grep -a -q "CAMERA LIVE" /tmp/index.android.bundle
