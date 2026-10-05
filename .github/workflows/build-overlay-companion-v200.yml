@@ -1,4 +1,4 @@
-name: SCALP ATLAS Overlay Companion v2.0.0
+name: SCALP ATLAS Overlay Companion v2.0.1
 
 on:
   push:
@@ -58,10 +58,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS OVERLAY'
           expo['slug']='scalp-atlas-overlay'
-          expo['version']='2.0.0'
+          expo['version']='2.0.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.overlay'
-          expo['android']['versionCode']=200
+          expo['android']['versionCode']=201
           expo['ios']['bundleIdentifier']='com.scalpatlas.overlay'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -74,6 +74,66 @@ jobs:
           plugins.append(['expo-localization',{'supportedLocales':{'ios':supported,'android':supported},'supportsRTL':True,'forcesRTL':False}])
           p.write_text(json.dumps(cfg,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
+
+      - name: Make overlay control permanently visible
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/LiveAnalysisApp.tsx')
+          s=p.read_text(encoding='utf-8')
+          old="""                  {Platform.OS === 'android' && (
+                    <View style={styles.overlayModeRow}>
+                      <Pressable style={styles.overlayModeButton} onPress={() => void startOverlayMode()}>
+                        <Text style={styles.overlayModeButtonText}>SUPRAPUNERE LIVE</Text>
+                      </Pressable>
+                      <Pressable style={styles.overlayStopButton} onPress={() => void stopOverlayMode()}>
+                        <Text style={styles.overlayStopButtonText}>OPREȘTE</Text>
+                      </Pressable>
+                    </View>
+                  )}
+"""
+          if old in s:
+              s=s.replace(old,'',1)
+
+          anchor="""              )}
+
+              <View
+                style={styles.cameraWrap}
+"""
+          permanent="""              )}
+
+              {Platform.OS === 'android' && (
+                <View style={styles.overlayModeRow}>
+                  <Pressable style={styles.overlayModeButton} onPress={() => void startOverlayMode()}>
+                    <Text style={styles.overlayModeButtonText}>SUPRAPUNERE LIVE · PESTE POCKET OPTION</Text>
+                  </Pressable>
+                  <Pressable style={styles.overlayStopButton} onPress={() => void stopOverlayMode()}>
+                    <Text style={styles.overlayStopButtonText}>OPREȘTE</Text>
+                  </Pressable>
+                </View>
+              )}
+              {Platform.OS === 'android' && (
+                <Text style={styles.overlayHint}>După pornire, deschide Pocket Option. Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.</Text>
+              )}
+
+              <View
+                style={styles.cameraWrap}
+"""
+          if anchor not in s:
+              raise SystemExit('cameraWrap anchor not found')
+          s=s.replace(anchor,permanent,1)
+
+          style_anchor="  overlayModeRow: { flexDirection: 'row', gap: 10, marginTop: 10 },\n"
+          if "overlayHint:" not in s:
+              if style_anchor not in s:
+                  raise SystemExit('overlayModeRow style anchor not found')
+              s=s.replace(style_anchor, style_anchor+"  overlayHint: { color: '#95a6bc', fontSize: 10, lineHeight: 14, marginTop: 6, marginBottom: 6, textAlign: 'center' },\n",1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+
+          grep -q "SUPRAPUNERE LIVE · PESTE POCKET OPTION" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare" scalp-atlas-new/LiveAnalysisApp.tsx
 
       - name: Verify exact old interface plus signal-only change
         run: |
@@ -311,11 +371,11 @@ jobs:
           ! grep -a -q "ANALIZĂ LIVE · DOUĂ DISPOZITIVE" /tmp/index.android.bundle
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-Overlay-Companion-v2.0.0.apk
+          cp "$APK" ScalpAtlas-Overlay-Companion-v2.0.1.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-Overlay-Companion-v2.0.0
-          path: ScalpAtlas-Overlay-Companion-v2.0.0.apk
+          name: ScalpAtlas-Overlay-Companion-v2.0.1
+          path: ScalpAtlas-Overlay-Companion-v2.0.1.apk
           if-no-files-found: error
           retention-days: 30
