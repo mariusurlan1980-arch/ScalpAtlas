@@ -879,7 +879,7 @@ export default function LiveAnalysisApp() {
             <Text style={styles.titleViolet}>ALP </Text>
             <Text style={styles.titleMagenta}>ATLAS</Text>
           </Text>
-          <Text style={styles.subtitle}>LIVE • {SCALP_ATLAS_COUNT} {t('models')} • v1.0.2 CLEAN VIEW • {languageCode.toUpperCase()}{regionCode ? `-${regionCode}` : ''}</Text>
+          <Text style={styles.subtitle}>OVERLAY • POCKET OPTION • {SCALP_ATLAS_COUNT} {t('models')} • v2.0.2 • {languageCode.toUpperCase()}{regionCode ? `-${regionCode}` : ''}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable style={styles.languageButton} onPress={() => setShowLanguagePicker(true)}>
@@ -914,6 +914,21 @@ export default function LiveAnalysisApp() {
               <Text style={styles.guideQuickButtonText}>{t('guideQuick')}</Text>
             </Pressable>
           )}
+          {Platform.OS === 'android' && (
+            <View style={styles.overlayPrimaryCard}>
+              <Text style={styles.overlayPrimaryTitle}>SCALP ATLAS OVERLAY</Text>
+              <Text style={styles.overlayPrimarySub}>UN SINGUR TELEFON • PESTE POCKET OPTION</Text>
+              <View style={styles.overlayModeRow}>
+                <Pressable style={styles.overlayModeButton} onPress={() => void startOverlayMode()}>
+                  <Text style={styles.overlayModeButtonText}>SUPRAPUNERE LIVE · PESTE POCKET OPTION</Text>
+                </Pressable>
+                <Pressable style={styles.overlayStopButton} onPress={() => void stopOverlayMode()}>
+                  <Text style={styles.overlayStopButtonText}>OPREȘTE</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.overlayHint}>După pornire, deschide Pocket Option. Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.</Text>
+            </View>
+          )}
           {!permission ? (
             <View style={styles.permissionCard}>
               <ActivityIndicator />
@@ -943,16 +958,6 @@ export default function LiveAnalysisApp() {
                   <Pressable style={styles.guideButton} onPress={dismissGuide}>
                     <Text style={styles.guideButtonText}>{t('understood')}</Text>
                   </Pressable>
-                  {Platform.OS === 'android' && (
-                    <View style={styles.overlayModeRow}>
-                      <Pressable style={styles.overlayModeButton} onPress={() => void startOverlayMode()}>
-                        <Text style={styles.overlayModeButtonText}>SUPRAPUNERE LIVE</Text>
-                      </Pressable>
-                      <Pressable style={styles.overlayStopButton} onPress={() => void stopOverlayMode()}>
-                        <Text style={styles.overlayStopButtonText}>OPREȘTE</Text>
-                      </Pressable>
-                    </View>
-                  )}
                 </View>
               )}
 
@@ -1351,6 +1356,10 @@ const styles = StyleSheet.create({
   guideStepText: { flex: 1, color: '#c6d1df', fontSize: 10, lineHeight: 15 },
   guideButton: { marginTop: 2, borderRadius: 9, paddingVertical: 9, alignItems: 'center', backgroundColor: '#eaf1f8' },
   guideButtonText: { color: '#091018', fontSize: 10, fontWeight: '900' },
+  overlayPrimaryCard: { borderRadius: 18, borderWidth: 1, borderColor: '#27d79a', backgroundColor: '#081a16', padding: 14, marginBottom: 10 },
+  overlayPrimaryTitle: { color: '#53f0b3', fontWeight: '900', fontSize: 16, textAlign: 'center' },
+  overlayPrimarySub: { color: '#b8c9da', fontWeight: '800', fontSize: 10, textAlign: 'center', marginTop: 4 },
+  overlayHint: { color: '#95a6bc', fontSize: 10, lineHeight: 14, marginTop: 8, textAlign: 'center' },
   overlayModeRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   overlayModeButton: { flex: 1, borderRadius: 10, borderWidth: 1, borderColor: '#24d28a', paddingVertical: 10, alignItems: 'center', backgroundColor: '#0b241c' },
   overlayModeButtonText: { color: '#44eba5', fontWeight: '900', fontSize: 10 },
