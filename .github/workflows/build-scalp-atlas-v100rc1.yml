@@ -59,9 +59,9 @@ jobs:
           expo = cfg['expo']
           expo['name'] = 'SCALP ATLAS'
           expo['slug'] = 'scalp-atlas'
-          expo['version'] = '1.0.0'
+          expo['version'] = '1.0.24'
           expo['android']['package'] = 'com.scalpatlas.app'
-          expo['android']['versionCode'] = 100
+          expo['android']['versionCode'] = 124
           expo['ios']['bundleIdentifier'] = 'com.scalpatlas.app'
           expo['ios']['supportsTablet'] = True
           expo['orientation'] = 'default'
@@ -231,7 +231,7 @@ jobs:
       - name: Package Web build
         run: |
           cd scalp-atlas-new/dist
-          zip -r ../../ScalpAtlas-1.0.0-RC1-WEB.zip .
+          zip -r ../../ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET-WEB.zip .
           cd ../..
 
       - name: Generate Android project
@@ -249,25 +249,25 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-1.0.0-RC1.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-1.0.0-RC1
+          name: ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET
           path: |
-            ScalpAtlas-1.0.0-RC1.apk
-            ScalpAtlas-1.0.0-RC1-WEB.zip
+            ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET.apk
+            ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET-WEB.zip
           if-no-files-found: error
 
       - name: Publish APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-1.0.0-rc1 --cleanup-tag --yes || true
+          gh release delete scalp-atlas-v1.0.24 --cleanup-tag --yes || true
           gh release create scalp-atlas-1.0.0-rc1 \
-            ScalpAtlas-1.0.0-RC1.apk \
-            ScalpAtlas-1.0.0-RC1-WEB.zip \
+            ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET.apk \
+            ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET-WEB.zip \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v0.4.18 MULTILANG" \
+            --title "SCALP ATLAS v1.0.24 AUTO TF + PAIR RESET" \
             --notes "Scalp Atlas 1.0.0 RC1 este versiunea candidat final cu funcțiile înghețate: Camera Live, 70 de modele, Chart Guard, confirmare 2/2, Bip 1, durata estimată a direcției, istoric, statistici, jurnal și 26 de limbi cu AUTO + selector manual. Android și Web sunt construite în acest workflow; iOS se validează separat pe simulator înainte de promovarea la versiunea finală."
