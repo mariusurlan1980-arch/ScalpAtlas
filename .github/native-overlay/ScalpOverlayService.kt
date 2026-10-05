@@ -1,4 +1,4 @@
-package com.scalpatlas.overlay
+package com.scalpatlas.app
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -44,8 +44,8 @@ import kotlin.math.roundToInt
 class ScalpOverlayService : Service() {
 
   companion object {
-    const val ACTION_START = "com.scalpatlas.overlay.START_OVERLAY"
-    const val ACTION_STOP = "com.scalpatlas.overlay.STOP_OVERLAY"
+    const val ACTION_START = "com.scalpatlas.app.START_OVERLAY"
+    const val ACTION_STOP = "com.scalpatlas.app.STOP_OVERLAY"
     const val EXTRA_RESULT_CODE = "resultCode"
     const val EXTRA_RESULT_DATA = "resultData"
 
