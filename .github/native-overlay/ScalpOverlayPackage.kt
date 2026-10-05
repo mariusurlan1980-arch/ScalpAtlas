@@ -1,4 +1,4 @@
-package com.scalpatlas.app
+package com.scalpatlas.overlay
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
