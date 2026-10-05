@@ -199,6 +199,22 @@ jobs:
         run: npx expo prebuild --platform android --clean
 
 
+      - name: Add ML Kit OCR Android dependency
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/android/app/build.gradle')
+          s=p.read_text(encoding='utf-8')
+          dependency="    implementation 'com.google.mlkit:text-recognition:16.0.1'\n"
+          if 'com.google.mlkit:text-recognition:' not in s:
+              marker='dependencies {'
+              if marker not in s:
+                  raise SystemExit('dependencies block not found in app/build.gradle')
+              s=s.replace(marker, marker+'\n'+dependency, 1)
+              p.write_text(s,encoding='utf-8')
+          PY
+          grep -q "com.google.mlkit:text-recognition:16.0.1" scalp-atlas-new/android/app/build.gradle
+
       - name: Inject Android live overlay and screen stream
         run: |
           set -e
