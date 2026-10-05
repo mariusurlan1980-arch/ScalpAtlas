@@ -634,7 +634,14 @@ class ScalpOverlayService : Service() {
       return
     }
 
-    val lockMinutes = max(10, directionMax)
+    // SIGNAL LOCK v1.0.23
+    // Blocarea direcției trebuie să urmeze expirarea recomandată a trade-ului,
+    // nu fereastra mai lungă de direcție. Pe M10 expirarea motorului este 5–7 min.
+    val lockMinutes = when {
+      expiry in 5..7 -> expiry
+      expiry > 0 -> expiry.coerceIn(5, 7)
+      else -> 6
+    }
     lockedDir = rawSignal
     lockedUntil = now + lockMinutes * 60_000L
     candidateDir = null
