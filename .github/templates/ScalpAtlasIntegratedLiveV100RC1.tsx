@@ -91,6 +91,13 @@ const detectBrokerTimeframe = (ocrText: string): string | null => {
   return null;
 };
 
+const detectBrokerPair = (ocrText: string): string | null => {
+  const text = String(ocrText || '').toUpperCase().replace(/\s+/g, ' ');
+  const match = text.match(/\b(EUR|USD|GBP|JPY|AUD|CAD|CHF|NZD)\s*[/\-]?\s*(EUR|USD|GBP|JPY|AUD|CAD|CHF|NZD)(?:\s+OTC)?\b/);
+  if (!match || match[1] === match[2]) return null;
+  return `${match[1]}/${match[2]}${/\bOTC\b/.test(match[0]) ? ' OTC' : ''}`;
+};
+
 const detectChartEvidence = (ocrText: string): boolean => {
   const text = String(ocrText || '').toUpperCase().replace(/\s+/g, ' ');
   const hasTimeframe = !!detectBrokerTimeframe(text);
@@ -128,6 +135,7 @@ export default function LiveAnalysisApp() {
   const cameraReadyRef = useRef(false);
   const lockedRef = useRef(false);
   const timeframeRef = useRef<string | null>(null);
+  const marketRef = useRef<string | null>(null);
   const signalCandidateRef = useRef<{ dir: 'BUY' | 'SELL' | null; count: number; lastStepAt: number }>({ dir: null, count: 0, lastStepAt: 0 });
   // M10 SIGNAL GUARD: memorează direcția confirmată pentru a preveni BUY/SELL alternant la câteva secunde.
   const signalLockRef = useRef<{ dir: 'BUY' | 'SELL' | null; until: number }>({ dir: null, until: 0 });
@@ -334,6 +342,22 @@ export default function LiveAnalysisApp() {
         const ocrText = ocr?.text || '';
         currentFrameIsChart = detectChartEvidence(ocrText);
         const brokerTf = detectBrokerTimeframe(ocrText);
+        const brokerMarket = detectBrokerPair(ocrText);
+
+        // Orice schimbare de pereche sau timeframe pornește o analiză complet nouă.
+        // Astfel, un SELL/BUY confirmat pe instrumentul anterior nu poate fi
+        // transportat pe noul grafic.
+        const marketChanged = !!brokerMarket && !!marketRef.current && brokerMarket !== marketRef.current;
+        const timeframeChanged = !!brokerTf && !!timeframeRef.current && brokerTf !== timeframeRef.current;
+        if (marketChanged || timeframeChanged) {
+          signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
+          signalLockRef.current = { dir: null, until: 0 };
+          setDirectionRemainingSeconds(0);
+          setDirectionWindowSeconds(0);
+          setAnalysis(null);
+        }
+
+        if (brokerMarket) marketRef.current = brokerMarket;
         if (brokerTf) {
           activeTf = brokerTf;
           timeframeRef.current = brokerTf;
@@ -347,6 +371,7 @@ export default function LiveAnalysisApp() {
       // Nu permitem motorului să transforme o scenă obișnuită din cameră într-un semnal de tranzacționare.
       if (!currentFrameIsChart) {
         timeframeRef.current = null;
+        marketRef.current = null;
         setDetectedTimeframe(null);
         signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
         signalLockRef.current = { dir: null, until: 0 };
@@ -421,6 +446,8 @@ export default function LiveAnalysisApp() {
     captureBusyRef.current = false;
     signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
     signalLockRef.current = { dir: null, until: 0 };
+    timeframeRef.current = null;
+    marketRef.current = null;
     if (timerRef.current) clearTimeout(timerRef.current);
     lockedRef.current = false;
     setLocked(false);
