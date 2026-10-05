@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.17 Overlay Stream Fix
+name: SCALP ATLAS v1.0.18 Overlay Analyzer Fix
 
 on:
   push:
-    branches: [overlay-stream-fix-v117]
+    branches: [overlay-analyzer-visible-v118]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -54,10 +54,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.17'
+          expo['version']='1.0.18'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=117
+          expo['android']['versionCode']=118
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -119,6 +119,8 @@ jobs:
           grep -q "STREAM FIX v1.0.17" .github/native-overlay/ScalpOverlayService.kt
           grep -q "window.ScalpAtlasAnalyze" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q "Cadre " .github/native-overlay/ScalpOverlayService.kt
+          grep -q "Android WebView executes canvas/image work reliably" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "Erori " .github/native-overlay/ScalpOverlayService.kt
           ! grep -q "FLAG_SECURE" .github/native-overlay/ScalpOverlayService.kt
           grep -q "gravity = Gravity.TOP or Gravity.END" .github/native-overlay/ScalpOverlayService.kt
           ! grep -q "liveCandleMarkerStyle" scalp-atlas-new/LiveAnalysisApp.tsx
@@ -267,11 +269,11 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
           grep -Fi "5e8f16062ea3cd2c4a0d547876baa6f38cabf625" signing.txt
-          cp "$APK" ScalpAtlas-v1.0.17-CLEAN-VIEW-OVERLAY-STREAM-FIX.apk
+          cp "$APK" ScalpAtlas-v1.0.18-CLEAN-VIEW-OVERLAY-ANALYZER-FIX.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.17-CLEAN-VIEW-OVERLAY-STREAM-FIX
-          path: ScalpAtlas-v1.0.17-CLEAN-VIEW-OVERLAY-STREAM-FIX.apk
+          name: ScalpAtlas-v1.0.18-CLEAN-VIEW-OVERLAY-ANALYZER-FIX
+          path: ScalpAtlas-v1.0.18-CLEAN-VIEW-OVERLAY-ANALYZER-FIX.apk
           if-no-files-found: error
           retention-days: 30
