@@ -5,6 +5,8 @@ import {
   Pressable,
   ScrollView,
   Modal,
+  NativeModules,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -316,6 +318,36 @@ export default function LiveAnalysisApp() {
   const dismissGuide = () => {
     setShowGuide(false);
   };
+
+  const startOverlayMode = async () => {
+    if (Platform.OS !== 'android' || !NativeModules.ScalpOverlay) {
+      setMessage('Modul SUPRAPUNERE este disponibil pe Android.');
+      return;
+    }
+    try {
+      const state = await NativeModules.ScalpOverlay.startOverlayMode();
+      if (state === 'OVERLAY_PERMISSION_REQUIRED') {
+        setMessage('Activează „Afișare peste alte aplicații”, apoi revino și pornește din nou SUPRAPUNERE.');
+      } else if (state === 'STARTED') {
+        setMessage('SUPRAPUNERE pornită. Deschide Pocket Option; analiza rămâne M10.');
+      } else {
+        setMessage(String(state || 'SUPRAPUNERE pregătită.'));
+      }
+    } catch (error) {
+      setMessage(`SUPRAPUNERE: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const stopOverlayMode = async () => {
+    if (Platform.OS !== 'android' || !NativeModules.ScalpOverlay) return;
+    try {
+      await NativeModules.ScalpOverlay.stopOverlayMode();
+      setMessage('SUPRAPUNERE oprită.');
+    } catch {
+      setMessage('Nu am putut opri modul SUPRAPUNERE.');
+    }
+  };
+
 
   const scheduleNext = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -911,6 +943,16 @@ export default function LiveAnalysisApp() {
                   <Pressable style={styles.guideButton} onPress={dismissGuide}>
                     <Text style={styles.guideButtonText}>{t('understood')}</Text>
                   </Pressable>
+                  {Platform.OS === 'android' && (
+                    <View style={styles.overlayModeRow}>
+                      <Pressable style={styles.overlayModeButton} onPress={() => void startOverlayMode()}>
+                        <Text style={styles.overlayModeButtonText}>SUPRAPUNERE LIVE</Text>
+                      </Pressable>
+                      <Pressable style={styles.overlayStopButton} onPress={() => void stopOverlayMode()}>
+                        <Text style={styles.overlayStopButtonText}>OPREȘTE</Text>
+                      </Pressable>
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -1309,6 +1351,11 @@ const styles = StyleSheet.create({
   guideStepText: { flex: 1, color: '#c6d1df', fontSize: 10, lineHeight: 15 },
   guideButton: { marginTop: 2, borderRadius: 9, paddingVertical: 9, alignItems: 'center', backgroundColor: '#eaf1f8' },
   guideButtonText: { color: '#091018', fontSize: 10, fontWeight: '900' },
+  overlayModeRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  overlayModeButton: { flex: 1, borderRadius: 10, borderWidth: 1, borderColor: '#24d28a', paddingVertical: 10, alignItems: 'center', backgroundColor: '#0b241c' },
+  overlayModeButtonText: { color: '#44eba5', fontWeight: '900', fontSize: 10 },
+  overlayStopButton: { borderRadius: 10, borderWidth: 1, borderColor: '#ff4967', paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center', backgroundColor: '#2b1118' },
+  overlayStopButtonText: { color: '#ff7289', fontWeight: '900', fontSize: 10 },
   chartStatus: { marginTop: 7, minHeight: 34, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
   chartStatusGood: { borderColor: '#265f49', backgroundColor: 'rgba(19,58,43,0.44)' },
   chartStatusBad: { borderColor: '#743444', backgroundColor: 'rgba(67,25,34,0.45)' },
