@@ -361,7 +361,31 @@ class ScalpOverlayService : Service() {
       captureHandler
     )
 
-    updateOverlay("AȘTEAPTĂ", "M10 • flux ecran activ", "Deschide Pocket Option")
+    startFramePolling(width, height)
+    updateOverlay("AȘTEAPTĂ", "M10 • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
+  }
+
+  private fun startFramePolling(width: Int, height: Int) {
+    val handler = captureHandler ?: return
+    val task = object : Runnable {
+      override fun run() {
+        if (mediaProjection == null || imageReader == null) return
+
+        processLatestImage(imageReader!!, width, height)
+
+        val now = System.currentTimeMillis()
+        if (lastFrameAt > 0L && now - lastFrameAt > 2500L) {
+          updateOverlay(
+            "AȘTEAPTĂ",
+            "M10 • FLUX ÎNGHEȚAT",
+            "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount + " • repornește SUPRAPUNERE"
+          )
+        }
+
+        handler.postDelayed(this, 550L)
+      }
+    }
+    handler.post(task)
   }
 
   private fun processLatestImage(reader: ImageReader, width: Int, height: Int) {
