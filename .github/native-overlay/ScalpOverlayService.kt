@@ -278,8 +278,8 @@ class ScalpOverlayService : Service() {
         addJavascriptInterface(AnalyzerBridge(), "AndroidBridge")
         webViewClient = object : WebViewClient() {
           override fun onPageFinished(view: WebView?, url: String?) {
-            analyzerReady = true
-            updateOverlay("AȘTEAPTĂ", "M10 • motor pregătit", "Cadre 0 • Rez 0 • Erori 0")
+            analyzerReady = false
+            updateOverlay("AȘTEAPTĂ", "M10 • HTML încărcat", "Aștept confirmarea motorului...")
           }
         }
       }
@@ -304,6 +304,7 @@ class ScalpOverlayService : Service() {
           "READY" -> {
             analyzerReady = true
             analysisBusy = false
+            updateOverlay("AȘTEAPTĂ", "M10 • motor ACTIV", "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount)
           }
           "RESULT" -> {
             analysisBusy = false
