@@ -74,6 +74,8 @@ class ScalpOverlayService : Service() {
   @Volatile private var analysisBusy = false
   @Volatile private var analysisStartedAt = 0L
   @Volatile private var lastFrameAt = 0L
+  @Volatile private var frameCount = 0L
+  @Volatile private var resultCount = 0L
 
   private var candidateDir: String? = null
   private var candidateCount = 0
@@ -272,7 +274,7 @@ class ScalpOverlayService : Service() {
         webViewClient = object : WebViewClient() {
           override fun onPageFinished(view: WebView?, url: String?) {
             analyzerReady = true
-            updateOverlay("AȘTEAPTĂ", "M10 • motor pregătit", "Grafic decupat automat • ~1–2 cadre/sec")
+            updateOverlay("AȘTEAPTĂ", "M10 • motor pregătit", "Cadre 0 • Rezultate 0")
           }
         }
         loadUrl("file:///android_asset/analysis_engine.html")
@@ -292,6 +294,7 @@ class ScalpOverlayService : Service() {
           }
           "RESULT" -> {
             analysisBusy = false
+            resultCount += 1
             val result = payload.optJSONObject("result") ?: return
             handleResult(result)
           }
@@ -385,29 +388,28 @@ class ScalpOverlayService : Service() {
       val chartFrame = Bitmap.createBitmap(fullFrame, 0, cropTop, width, chartHeight)
       if (chartFrame !== fullFrame) fullFrame.recycle()
 
-      val targetWidth = minOf(720, width)
+      // STREAM FIX v1.0.17: smaller payload + direct JS entrypoint.
+      val targetWidth = minOf(420, width)
       val targetHeight = max(1, (chartHeight * (targetWidth.toFloat() / width)).roundToInt())
       val scaled = if (targetWidth != width) Bitmap.createScaledBitmap(chartFrame, targetWidth, targetHeight, true) else chartFrame
       if (scaled !== chartFrame) chartFrame.recycle()
 
       val stream = ByteArrayOutputStream()
-      scaled.compress(Bitmap.CompressFormat.JPEG, 68, stream)
+      scaled.compress(Bitmap.CompressFormat.JPEG, 52, stream)
       scaled.recycle()
 
       val base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
       lastFrameAt = now
+      frameCount += 1
       analysisBusy = true
       analysisStartedAt = now
 
       mainHandler.post {
-        val message = JSONObject().apply {
-          put("type", "ANALYZE")
-          put("dataUrl", "data:image/jpeg;base64," + base64)
-          put("timeframe", "M10")
-        }.toString()
-        val quoted = JSONObject.quote(message)
+        modelText?.text = "Cadre " + frameCount + " • Rezultate " + resultCount + " • ANALIZEZ..."
+        val dataUrl = "data:image/jpeg;base64," + base64
+        val quotedUrl = JSONObject.quote(dataUrl)
         analyzerWebView?.evaluateJavascript(
-          "window.dispatchEvent(new MessageEvent('message',{data:" + quoted + "}));",
+          "window.ScalpAtlasAnalyze && window.ScalpAtlasAnalyze(" + quotedUrl + ",'M10');",
           null
         )
       }
@@ -534,7 +536,7 @@ class ScalpOverlayService : Service() {
         }
       )
       detailText?.text = details
-      modelText?.text = model
+      modelText?.text = model + " • Cadre " + frameCount + " • Rez " + resultCount
     }
   }
 
