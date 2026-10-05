@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.18 Overlay Analyzer Fix
+name: SCALP ATLAS v1.0.19 Overlay Engine HTML Fix
 
 on:
   push:
-    branches: [overlay-analyzer-visible-v118]
+    branches: [overlay-engine-html-v119]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -54,10 +54,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.18'
+          expo['version']='1.0.19'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=118
+          expo['android']['versionCode']=119
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -121,6 +121,9 @@ jobs:
           grep -q "Cadre " .github/native-overlay/ScalpOverlayService.kt
           grep -q "Android WebView executes canvas/image work reliably" .github/native-overlay/ScalpOverlayService.kt
           grep -q "Erori " .github/native-overlay/ScalpOverlayService.kt
+          grep -q "M10 • motor ACTIV" .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q "<\\/script></body></html>" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+          grep -q "</script></body></html>" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           ! grep -q "FLAG_SECURE" .github/native-overlay/ScalpOverlayService.kt
           grep -q "gravity = Gravity.TOP or Gravity.END" .github/native-overlay/ScalpOverlayService.kt
           ! grep -q "liveCandleMarkerStyle" scalp-atlas-new/LiveAnalysisApp.tsx
@@ -245,6 +248,15 @@ jobs:
           grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
           grep -q "ScalpOverlayService" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
           test -s scalp-atlas-new/android/app/src/main/assets/analysis_engine.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html')
+          s=p.read_text(encoding='utf-8')
+          if '<\\/script>' in s:
+              raise SystemExit('escaped closing script still present')
+          if '</script></body></html>' not in s:
+              raise SystemExit('valid closing script missing')
+          PY
           test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_bip.wav
 
       - name: Build standalone release APK
@@ -269,11 +281,11 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
           grep -Fi "5e8f16062ea3cd2c4a0d547876baa6f38cabf625" signing.txt
-          cp "$APK" ScalpAtlas-v1.0.18-CLEAN-VIEW-OVERLAY-ANALYZER-FIX.apk
+          cp "$APK" ScalpAtlas-v1.0.19-CLEAN-VIEW-OVERLAY-ENGINE-HTML-FIX.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.18-CLEAN-VIEW-OVERLAY-ANALYZER-FIX
-          path: ScalpAtlas-v1.0.18-CLEAN-VIEW-OVERLAY-ANALYZER-FIX.apk
+          name: ScalpAtlas-v1.0.19-CLEAN-VIEW-OVERLAY-ENGINE-HTML-FIX
+          path: ScalpAtlas-v1.0.19-CLEAN-VIEW-OVERLAY-ENGINE-HTML-FIX.apk
           if-no-files-found: error
           retention-days: 30
