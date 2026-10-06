@@ -91,6 +91,7 @@ class ScalpOverlayPackage : ReactPackage {
 module_code = r'''package com.scalpatlas.app.overlay
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
@@ -146,7 +147,7 @@ class ScalpOverlayModule(
       return
     }
 
-    val activity = currentActivity
+    val activity = ctx.currentActivity
     if (activity == null) {
       promise.reject("NO_ACTIVITY", "SCALP ATLAS trebuie să fie deschis pentru pornirea capturii.")
       return
@@ -158,7 +159,7 @@ class ScalpOverlayModule(
     }
 
     try {
-      val manager = activity.getSystemService(Activity.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+      val manager = ctx.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
       capturePromise = promise
       activity.startActivityForResult(manager.createScreenCaptureIntent(), REQUEST_CAPTURE)
     } catch (e: Exception) {
@@ -336,7 +337,10 @@ class ScalpOverlayService : Service() {
 
   private fun startProjection(resultCode: Int, resultData: Intent) {
     val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-    val mediaProjection = manager.getMediaProjection(resultCode, resultData)
+    val mediaProjection = manager.getMediaProjection(resultCode, resultData) ?: run {
+      stopSelf()
+      return
+    }
     projection = mediaProjection
 
     val metrics = resources.displayMetrics
