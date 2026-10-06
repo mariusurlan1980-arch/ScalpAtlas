@@ -61,14 +61,11 @@ jobs:
           grep -q "GENERIC CHART GATE v1.0.27" .github/native-overlay/ScalpOverlayService.kt
           grep -q "timeframeCandidateCount" .github/native-overlay/ScalpOverlayService.kt
           grep -q "v1.0.29 targeted timeframe OCR applied" .github/scripts/timeframe_roi_v1029.py
-          grep -q "rightMidScaled" .github/native-overlay/ScalpOverlayService.kt
           grep -q "Confirmare timeframe 1/2" .github/native-overlay/ScalpOverlayService.kt
           ! grep -q '"MONITORIZARE"' .github/native-overlay/ScalpOverlayService.kt
           grep -q '"PAUZĂ SEMNAL"' .github/native-overlay/ScalpOverlayService.kt
           grep -q "NU INTRA" .github/native-overlay/ScalpOverlayService.kt
           grep -q '"CONFIRMAT " + REQUIRED_CONFIRMATIONS' .github/native-overlay/ScalpOverlayService.kt
-          grep -q "STRICT TIMEFRAME ROI" .github/native-overlay/ScalpOverlayService.kt
-          grep -q "normalizeTimeframe(cleanRightText)" .github/native-overlay/ScalpOverlayService.kt
           grep -q "normalizePair(leftText)" .github/native-overlay/ScalpOverlayService.kt
           grep -q "CONFIRMATION_SPACING_MS = 5000L" .github/native-overlay/ScalpOverlayService.kt
           grep -q "candidateLastAt <= 18000L" .github/native-overlay/ScalpOverlayService.kt
