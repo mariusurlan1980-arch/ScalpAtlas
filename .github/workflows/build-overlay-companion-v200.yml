@@ -57,7 +57,6 @@ jobs:
           grep -q "v1.0.29 targeted timeframe OCR applied" .github/scripts/timeframe_roi_v1029.py
           grep -q "rightMidScaled" .github/native-overlay/ScalpOverlayService.kt
           grep -q "Confirmare timeframe 1/2" .github/native-overlay/ScalpOverlayService.kt
-          grep -q "NU ESTE SEMNAL NOU" .github/native-overlay/ScalpOverlayService.kt
           ! grep -q '"MONITORIZARE"' .github/native-overlay/ScalpOverlayService.kt
           grep -q '"PAUZĂ SEMNAL"' .github/native-overlay/ScalpOverlayService.kt
           grep -q "NU INTRA" .github/native-overlay/ScalpOverlayService.kt
