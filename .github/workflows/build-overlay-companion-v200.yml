@@ -1,11 +1,12 @@
-name: SCALP ATLAS v1.0.26 FAST OVERLAY
+name: SCALP ATLAS v1.0.27 GENERIC OVERLAY
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.26-fast-overlay']
+    branches: ['feature/scalp-atlas-v1.0.27-generic-overlay']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
+      - '.github/scripts/genericize_overlay_v1027.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -18,6 +19,9 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: scalp-atlas-overlay-companion
@@ -32,6 +36,15 @@ jobs:
 
       - name: Apply isolated overlay companion patch
         run: git apply .github/overlay-companion-v200.patch
+
+      - name: Make overlay generic and true AUTO
+        run: |
+          set -e
+          python3 .github/scripts/genericize_overlay_v1027.py
+          ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
+          ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
+          grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
+          grep -q "GENERIC CHART GATE v1.0.27" .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply stable Scalp Atlas patches
         run: |
@@ -62,10 +75,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.26'
+          expo['version']='1.0.27'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=126
+          expo['android']['versionCode']=127
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -120,12 +133,12 @@ jobs:
           grep -q "consensus>=.40" scalp-atlas-new/analysisEngine.ts
           grep -q "alignmentCount>=3" scalp-atlas-new/analysisEngine.ts
           grep -q "score=Math.min(score,.88)" scalp-atlas-new/analysisEngine.ts
-          grep -q "SUPRAPUNERE LIVE · PESTE POCKET OPTION" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "SUPRAPUNERE LIVE · ORICE BROKER" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "SCALP ATLAS OVERLAY" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "UN SINGUR TELEFON • PESTE POCKET OPTION" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "UN SINGUR TELEFON • ORICE GRAFIC" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "NativeModules.ScalpOverlay.startOverlayMode" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "window.AndroidBridge&&window.AndroidBridge.postMessage" scalp-atlas-new/analysisEngine.ts
-          grep -q "POCKET OPTION CHART CROP v1.0.16" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "GENERIC CHART CROP v1.0.27" .github/native-overlay/ScalpOverlayService.kt
           grep -q "STREAM FIX v1.0.17" .github/native-overlay/ScalpOverlayService.kt
           grep -q "window.ScalpAtlasAnalyze" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q "Cadre " .github/native-overlay/ScalpOverlayService.kt
@@ -136,8 +149,8 @@ jobs:
           grep -q "startFramePolling" .github/native-overlay/ScalpOverlayService.kt
           grep -q "ScalpAtlasPing" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q "Do not overwrite it" .github/native-overlay/ScalpOverlayService.kt
-          grep -q "POCKET OPTION GATE v1.0.22" .github/native-overlay/ScalpOverlayService.kt
-          grep -q "POCKET OPTION NEDETECTAT" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "GENERIC CHART GATE v1.0.27" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "GRAFIC NEDETECTAT" .github/native-overlay/ScalpOverlayService.kt
           grep -q "candidateStillFresh" .github/native-overlay/ScalpOverlayService.kt
           grep -q "SIGNAL LOCK v1.0.23" .github/native-overlay/ScalpOverlayService.kt
           grep -q "expiry.coerceIn(1, 60)" .github/native-overlay/ScalpOverlayService.kt
@@ -318,8 +331,8 @@ jobs:
           required=[
               'CAMERA LIVE',
               'SCALP ATLAS OVERLAY',
-              'SUPRAPUNERE LIVE · PESTE POCKET OPTION',
-              'UN SINGUR TELEFON • PESTE POCKET OPTION',
+              'SUPRAPUNERE LIVE · ORICE BROKER',
+              'UN SINGUR TELEFON • ORICE GRAFIC',
               'Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.',
           ]
           missing=[]
@@ -334,11 +347,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.26-FAST-OVERLAY.apk
+          cp "$APK" ScalpAtlas-v1.0.27-GENERIC-OVERLAY.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.26-FAST-OVERLAY
-          path: ScalpAtlas-v1.0.26-FAST-OVERLAY.apk
+          name: ScalpAtlas-v1.0.27-GENERIC-OVERLAY
+          path: ScalpAtlas-v1.0.27-GENERIC-OVERLAY.apk
           if-no-files-found: error
           retention-days: 30
+
+
+      - name: Publish v1.0.27 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete scalp-atlas-v1.0.27-generic-overlay --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.27-generic-overlay \
+            ScalpAtlas-v1.0.27-GENERIC-OVERLAY.apk \
+            --target "$GITHUB_SHA" \
+            --title "SCALP ATLAS v1.0.27 GENERIC OVERLAY" \
+            --notes "O singură aplicație SCALP ATLAS. Overlay broker-neutral pentru orice grafic compatibil. Timeframe AUTO real: nu confirmă BUY/SELL până când timeframe-ul nu este detectat. Fără referințe la Pocket Option."
