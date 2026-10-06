@@ -49,10 +49,10 @@ jobs:
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
           grep -q "GENERIC CHART GATE v1.0.27" .github/native-overlay/ScalpOverlayService.kt
-          grep -q "TIMEFRAME LOCK v1.0.28" .github/native-overlay/ScalpOverlayService.kt
           grep -q "timeframeCandidateCount" .github/native-overlay/ScalpOverlayService.kt
-          grep -q "targeted timeframe OCR" .github/scripts/timeframe_roi_v1029.py
+          grep -q "v1.0.29 targeted timeframe OCR applied" .github/scripts/timeframe_roi_v1029.py
           grep -q "rightMidScaled" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "Confirmare timeframe 1/2" .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply stable Scalp Atlas patches
         run: |
