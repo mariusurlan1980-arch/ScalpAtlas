@@ -1,0 +1,221 @@
+name: Build SCALP ATLAS v1.0.25 POCKET OVERLAY ARM64 ARM64
+# compile-fix-2
+
+on:
+  push:
+    branches:
+      - 'feature/scalp-atlas-v1.0.25-overlay-arm64-arm64'
+    paths:
+      - '.github/workflows/build-scalp-atlas-v1025-overlay.yml'
+      - '.github/scripts/patch_scalp_atlas_v1025_overlay.py'
+      - '.github/scripts/install_android_overlay_v1025.py'
+      - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
+      - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
+      - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
+      - '.github/templates/ScalpAtlasLocalizationV0418.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.native.ts'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply stable Scalp Atlas patches through v0.3.57
+        run: |
+          set -e
+          for f in $(ls .github/scripts/patch_scalp_atlas_v03*.py | sort -V); do
+            echo "Applying $f"
+            python3 "$f"
+          done
+
+      - name: Integrate current Scalp Atlas LIVE
+        run: |
+          set -e
+          cp .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx scalp-atlas-new/LiveAnalysisApp.tsx
+          cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
+          cp .github/templates/ScalpAtlasIntegratedAppV042.tsx scalp-atlas-new/App.tsx
+          cp .github/templates/ScalpAtlasLocalizationV0418.ts scalp-atlas-new/localization.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.ts scalp-atlas-new/ocrAdapter.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.native.ts scalp-atlas-new/ocrAdapter.native.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.web.ts scalp-atlas-new/ocrAdapter.web.ts
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx scalp-atlas-new/AnalyzerBridge.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx scalp-atlas-new/AnalyzerBridge.web.tsx
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          cfg_path = Path('scalp-atlas-new/app.json')
+          cfg = json.loads(cfg_path.read_text(encoding='utf-8'))
+          expo = cfg['expo']
+          expo['name'] = 'SCALP ATLAS'
+          expo['slug'] = 'scalp-atlas'
+          expo['version'] = '1.0.25'
+          expo['android']['package'] = 'com.scalpatlas.app'
+          expo['android']['versionCode'] = 126
+          expo['orientation'] = 'default'
+
+          permissions = expo['android'].setdefault('permissions', [])
+          if 'CAMERA' not in permissions:
+              permissions.append('CAMERA')
+
+          supported_locales = ['ro','en','de','es','fr','it','pt','nl','pl','uk','ru','tr','el','hu','cs','sk','bg','sr','hr','sl','ar','he','zh','ja','ko','hi']
+          plugins = expo.setdefault('plugins', [])
+
+          has_camera = any(
+              p == 'expo-camera' or (isinstance(p, list) and p and p[0] == 'expo-camera')
+              for p in plugins
+          )
+          if not has_camera:
+              plugins.append([
+                  'expo-camera',
+                  {'cameraPermission': 'SCALP ATLAS folosește camera pentru analiza CAMERA LIVE.'}
+              ])
+
+          plugins[:] = [
+              p for p in plugins
+              if not (p == 'expo-localization' or (isinstance(p, list) and p and p[0] == 'expo-localization'))
+          ]
+          plugins.append([
+              'expo-localization',
+              {
+                  'supportedLocales': {'android': supported_locales},
+                  'supportsRTL': True,
+                  'forcesRTL': False,
+              }
+          ])
+
+          cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Add Pocket Overlay JS bridge
+        run: |
+          set -e
+          python3 .github/scripts/patch_scalp_atlas_v1025_overlay.py
+          grep -q "POCKET OVERLAY" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "addPocketOverlayFrameListener" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "NativeModules.ScalpOverlay" scalp-atlas-new/screenOverlay.ts
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: |
+          npm install
+          npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage
+          npm install tesseract.js
+
+      - name: Generate Bip 1 assets
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import math, struct, wave
+
+          assets = Path('scalp-atlas-new/assets')
+          assets.mkdir(parents=True, exist_ok=True)
+          rate = 44100
+          duration = 1.4
+          freq = 880.0
+          amp = 0.28
+          frames = bytearray()
+          total = int(rate * duration)
+          for i in range(total):
+              t = i / rate
+              fade = min(1.0, t / 0.01, (duration - t) / 0.03)
+              sample = int(32767 * amp * max(0.0, fade) * math.sin(2 * math.pi * freq * t))
+              frames += struct.pack('<h', sample)
+          for name in ['buy-alert.wav', 'sell-alert.wav']:
+              with wave.open(str(assets/name), 'wb') as w:
+                  w.setnchannels(1)
+                  w.setsampwidth(2)
+                  w.setframerate(rate)
+                  w.writeframes(frames)
+          PY
+
+      - name: Generate launcher icon
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+
+      - name: TypeScript check
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+
+      - name: Install native Pocket Overlay
+        run: |
+          set -e
+          python3 .github/scripts/install_android_overlay_v1025.py
+          grep -q "SYSTEM_ALERT_WINDOW" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          grep -R -q "ScalpOverlayPackage" scalp-atlas-new/android/app/src/main/java
+          grep -R -q "ScalpOverlayService" scalp-atlas-new/android/app/src/main/java
+
+      - name: Keep only ARM64 native libraries
+        run: |
+          set -e
+          echo "" >> scalp-atlas-new/android/gradle.properties
+          echo "reactNativeArchitectures=arm64-v8a" >> scalp-atlas-new/android/gradle.properties
+          grep -q "reactNativeArchitectures=arm64-v8a" scalp-atlas-new/android/gradle.properties
+
+      - name: Build standalone release APK
+        working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v1.0.25-POCKET-OVERLAY-ARM64.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-v1.0.25-POCKET-OVERLAY-ARM64
+          path: ScalpAtlas-v1.0.25-POCKET-OVERLAY-ARM64.apk
+          if-no-files-found: error
+
+      - name: Publish test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete scalp-atlas-v1.0.25-overlay-arm64 --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.25-overlay-arm64 \
+            ScalpAtlas-v1.0.25-POCKET-OVERLAY-ARM64.apk \
+            --target "$GITHUB_SHA" \
+            --title "SCALP ATLAS v1.0.25 POCKET OVERLAY ARM64" \
+            --notes "Versiune ARM64 mai mică pentru telefoane Android moderne: suprapunere mutabilă peste Pocket Option, captură MediaProjection și analiza Atlas păstrate."
