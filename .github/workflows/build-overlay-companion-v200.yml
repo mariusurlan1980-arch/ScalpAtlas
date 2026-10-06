@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.35 SIGNAL HOLD 10S
+name: SCALP ATLAS v1.0.36 RESPONSIVE CONFIRM
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.35-signal-hold-10s']
+    branches: ['feature/scalp-atlas-v1.0.36-responsive-confirm']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
@@ -13,6 +13,7 @@ on:
       - '.github/scripts/safe_signal_ui_v1031.py'
       - '.github/scripts/strict_timeframe_roi_v1032.py'
       - '.github/scripts/signal_hold_v1035.py'
+      - '.github/scripts/responsive_confirm_v1036.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -53,6 +54,7 @@ jobs:
           python3 .github/scripts/safe_signal_ui_v1031.py
           python3 .github/scripts/strict_timeframe_roi_v1032.py
           python3 .github/scripts/signal_hold_v1035.py
+          python3 .github/scripts/responsive_confirm_v1036.py
           ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
@@ -71,6 +73,9 @@ jobs:
           grep -q "SIGNAL_HOLD_MS = 10_000L" .github/native-overlay/ScalpOverlayService.kt
           grep -q "signalVisibleUntil" .github/native-overlay/ScalpOverlayService.kt
           grep -q "SEMNAL FIX • rămâne afișat 10 secunde" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "REQUIRED_CONFIRMATIONS = 2" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "CONFIRMATION_SPACING_MS = 8000L" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "val reason = result.optString" .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply stable Scalp Atlas patches
         run: |
@@ -101,10 +106,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.35'
+          expo['version']='1.0.36'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=135
+          expo['android']['versionCode']=136
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -373,23 +378,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.35-SIGNAL-HOLD-10S.apk
+          cp "$APK" ScalpAtlas-v1.0.36-RESPONSIVE-CONFIRM.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.35-SIGNAL-HOLD-10S
-          path: ScalpAtlas-v1.0.35-SIGNAL-HOLD-10S.apk
+          name: ScalpAtlas-v1.0.36-RESPONSIVE-CONFIRM
+          path: ScalpAtlas-v1.0.36-RESPONSIVE-CONFIRM.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.35 release
+      - name: Publish v1.0.36 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.35-signal-hold-10s --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.35-signal-hold-10s \
-            ScalpAtlas-v1.0.35-SIGNAL-HOLD-10S.apk \
+          gh release delete scalp-atlas-v1.0.36-responsive-confirm --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.36-responsive-confirm \
+            ScalpAtlas-v1.0.36-RESPONSIVE-CONFIRM.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.35 SIGNAL HOLD 10S" \
-            --notes "Păstrează baza v1.0.32 neschimbată și modifică doar afișarea semnalului confirmat: BUY/SELL rămâne fix și vizibil 10 secunde după CONFIRMAT 3/3 + BIP, fără dispariție sau inversare în acest interval; apoi revine la PAUZĂ SEMNAL."
+            --title "SCALP ATLAS v1.0.36 RESPONSIVE CONFIRM" \
+            --notes "Păstrează motorul Atlas și lock-ul direcției. Confirmarea overlay devine 2/2 la minimum 8 secunde între confirmări, iar BUY/SELL rămâne vizibil 10 secunde. Când motorul blochează semnalul, overlay-ul afișează motivul real în loc să pară blocat."
