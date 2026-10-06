@@ -66,13 +66,13 @@ jobs:
           grep -q '"PAUZĂ SEMNAL"' .github/native-overlay/ScalpOverlayService.kt
           grep -q "NU INTRA" .github/native-overlay/ScalpOverlayService.kt
           grep -q '"CONFIRMAT " + REQUIRED_CONFIRMATIONS' .github/native-overlay/ScalpOverlayService.kt
-          grep -q "normalizePair(leftText)" .github/native-overlay/ScalpOverlayService.kt
           grep -q "CONFIRMATION_SPACING_MS = 5000L" .github/native-overlay/ScalpOverlayService.kt
           grep -q "candidateLastAt <= 18000L" .github/native-overlay/ScalpOverlayService.kt
           grep -q "OCR zoom + contrast" .github/scripts/ocr_zoom_v1034.py
           grep -q "enlargeAndEnhance" .github/native-overlay/ScalpOverlayService.kt
           grep -q "tfImageA" .github/native-overlay/ScalpOverlayService.kt
           grep -q "tfImageB" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "normalizePair(pairText)" .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply stable Scalp Atlas patches
         run: |
