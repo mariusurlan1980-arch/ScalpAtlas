@@ -4,34 +4,8 @@ import re
 SERVICE = Path(".github/native-overlay/ScalpOverlayService.kt")
 s = SERVICE.read_text(encoding="utf-8")
 
-# More broker-neutral timeframe spellings, still requiring a clear timeframe token.
-norm_pattern = re.compile(
-    r'  private fun normalizeTimeframe\(text: String\): String\? \{.*?\n  \}\n\n  private fun normalizePair',
-    re.S,
-)
-norm_repl = r'''  private fun normalizeTimeframe(text: String): String? {
-    val compact = text.uppercase()
-      .replace("\n", " ")
-      .replace(Regex("\\s+"), " ")
-      .trim()
-
-    val patterns = listOf(
-      "M30" to Regex("(?:^|[^A-Z0-9])(?:M\\s*3[0O]|3[0O]\\s*M|3[0O]\\s*MIN)(?:[^A-Z0-9]|$)"),
-      "M15" to Regex("(?:^|[^A-Z0-9])(?:M\\s*[1I][5S]|[1I][5S]\\s*M|[1I][5S]\\s*MIN)(?:[^A-Z0-9]|$)"),
-      "M10" to Regex("(?:^|[^A-Z0-9])(?:M\\s*[1I][0O]|[1I][0O]\\s*M|[1I][0O]\\s*MIN)(?:[^A-Z0-9]|$)"),
-      "M5"  to Regex("(?:^|[^A-Z0-9])(?:M\\s*[5S]|[5S]\\s*M|[5S]\\s*MIN)(?:[^A-Z0-9]|$)"),
-      "M3"  to Regex("(?:^|[^A-Z0-9])(?:M\\s*3|3\\s*M|3\\s*MIN)(?:[^A-Z0-9]|$)"),
-      "M2"  to Regex("(?:^|[^A-Z0-9])(?:M\\s*2|2\\s*M|2\\s*MIN)(?:[^A-Z0-9]|$)"),
-      "M1"  to Regex("(?:^|[^A-Z0-9])(?:M\\s*[1I]|[1I]\\s*M|[1I]\\s*MIN|60\\s*S)(?:[^A-Z0-9]|$)"),
-      "H1"  to Regex("(?:^|[^A-Z0-9])(?:H\\s*[1I]|[1I]\\s*H|60\\s*MIN)(?:[^A-Z0-9]|$)")
-    )
-    return patterns.firstOrNull { it.second.containsMatchIn(compact) }?.first
-  }
-
-  private fun normalizePair'''
-s, n = norm_pattern.subn(norm_repl, s, count=1)
-if n != 1:
-    raise SystemExit("normalizeTimeframe block not found")
+# Keep the already-tested v1.0.28 timeframe parser (M1/M2/M3/M5/M10/M15/M30/H1).
+# Only improve where and how OCR looks for that label.
 
 # Replace the OCR scan with two enlarged broker-neutral ROIs:
 # upper-left for instrument/timeframe controls and middle-right for chart timeframe labels.
