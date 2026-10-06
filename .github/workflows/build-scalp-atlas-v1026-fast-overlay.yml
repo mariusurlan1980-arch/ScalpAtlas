@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/scalp-atlas-v1.0.26-fast-overlay]
     paths:
-      - '.github/workflows/build-overlay-companion-v200.yml'
+      - '.github/workflows/build-scalp-atlas-v1026-fast-overlay.yml'
       - '.github/overlay-companion-v200.patch'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-overlay-companion
+  group: scalp-atlas-v1026-fast-overlay
   cancel-in-progress: true
 
 jobs:
@@ -660,3 +660,15 @@ jobs:
           path: ScalpAtlas-v1.0.26-FAST-OVERLAY-ARM64.apk
           if-no-files-found: error
           retention-days: 30
+
+
+      - name: Publish FAST OVERLAY release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete scalp-atlas-v1.0.26-fast-overlay --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.26-fast-overlay \
+            ScalpAtlas-v1.0.26-FAST-OVERLAY-ARM64.apk \
+            --target "$GITHUB_SHA" \
+            --title "SCALP ATLAS v1.0.26 FAST OVERLAY" \
+            --notes "FAST OVERLAY Android ARM64: analiza rulează direct în serviciul Android peste Pocket Option, cu captură aproximativ la 0,7 sec, crop pe grafic, pereche și timeframe AUTO prin OCR periodic și protecție BUY/SELL păstrată."
