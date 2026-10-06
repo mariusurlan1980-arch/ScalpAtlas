@@ -1,12 +1,12 @@
-name: Build SCALP ATLAS v1.0.25 POCKET OVERLAY ARM64 ARM64
+name: Build SCALP ATLAS v1.0.25 POCKET OVERLAY ARM64
 # compile-fix-2
 
 on:
   push:
     branches:
-      - 'feature/scalp-atlas-v1.0.25-overlay-arm64-arm64'
+      - 'feature/scalp-atlas-v1.0.25-overlay-arm64'
     paths:
-      - '.github/workflows/build-scalp-atlas-v1025-overlay.yml'
+      - '.github/workflows/build-scalp-atlas-v1025-overlay-arm64.yml'
       - '.github/scripts/patch_scalp_atlas_v1025_overlay.py'
       - '.github/scripts/install_android_overlay_v1025.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
