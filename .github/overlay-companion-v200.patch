@@ -11,7 +11,7 @@ index 8262469..ef3cc79 100644
 +++ b/.github/native-overlay/ScalpOverlayModule.kt
 @@ -1,4 +1,4 @@
 -package com.scalpatlas.app
-+package com.scalpatlas.overlay
++package com.scalpatlas.app
  
  import android.app.Activity
  import android.content.Context
@@ -21,7 +21,7 @@ index dcd615a..771fd23 100644
 +++ b/.github/native-overlay/ScalpOverlayPackage.kt
 @@ -1,4 +1,4 @@
 -package com.scalpatlas.app
-+package com.scalpatlas.overlay
++package com.scalpatlas.app
  
  import com.facebook.react.ReactPackage
  import com.facebook.react.bridge.NativeModule
@@ -31,7 +31,7 @@ index 3504aab..d7557e5 100644
 +++ b/.github/native-overlay/ScalpOverlayService.kt
 @@ -1,4 +1,4 @@
 -package com.scalpatlas.app
-+package com.scalpatlas.overlay
++package com.scalpatlas.app
  
  import android.app.Notification
  import android.app.NotificationChannel
@@ -51,8 +51,8 @@ index 3504aab..d7557e5 100644
    companion object {
 -    const val ACTION_START = "com.scalpatlas.app.START_OVERLAY"
 -    const val ACTION_STOP = "com.scalpatlas.app.STOP_OVERLAY"
-+    const val ACTION_START = "com.scalpatlas.overlay.START_OVERLAY"
-+    const val ACTION_STOP = "com.scalpatlas.overlay.STOP_OVERLAY"
++    const val ACTION_START = "com.scalpatlas.app.START_OVERLAY"
++    const val ACTION_STOP = "com.scalpatlas.app.STOP_OVERLAY"
      const val EXTRA_RESULT_CODE = "resultCode"
      const val EXTRA_RESULT_DATA = "resultData"
  
