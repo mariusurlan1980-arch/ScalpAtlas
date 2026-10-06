@@ -1,12 +1,13 @@
-name: SCALP ATLAS v1.0.27 GENERIC OVERLAY
+name: SCALP ATLAS v1.0.28 TIMEFRAME LOCK
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.27-generic-overlay']
+    branches: ['feature/scalp-atlas-v1.0.28-timeframe-lock']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
       - '.github/scripts/genericize_overlay_v1027.py'
+      - '.github/scripts/harden_timeframe_v1028.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -41,10 +42,13 @@ jobs:
         run: |
           set -e
           python3 .github/scripts/genericize_overlay_v1027.py
+          python3 .github/scripts/harden_timeframe_v1028.py
           ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
           grep -q "GENERIC CHART GATE v1.0.27" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "TIMEFRAME LOCK v1.0.28" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "timeframeCandidateCount" .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply stable Scalp Atlas patches
         run: |
@@ -75,10 +79,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.27'
+          expo['version']='1.0.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=127
+          expo['android']['versionCode']=128
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -347,23 +351,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.27-GENERIC-OVERLAY.apk
+          cp "$APK" ScalpAtlas-v1.0.28-TIMEFRAME-LOCK.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.27-GENERIC-OVERLAY
-          path: ScalpAtlas-v1.0.27-GENERIC-OVERLAY.apk
+          name: ScalpAtlas-v1.0.28-TIMEFRAME-LOCK
+          path: ScalpAtlas-v1.0.28-TIMEFRAME-LOCK.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.27 release
+      - name: Publish v1.0.28 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.27-generic-overlay --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.27-generic-overlay \
-            ScalpAtlas-v1.0.27-GENERIC-OVERLAY.apk \
+          gh release delete scalp-atlas-v1.0.28-timeframe-lock --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.28-timeframe-lock \
+            ScalpAtlas-v1.0.28-TIMEFRAME-LOCK.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.27 GENERIC OVERLAY" \
-            --notes "O singură aplicație SCALP ATLAS. Overlay broker-neutral pentru orice grafic compatibil. Timeframe AUTO real: nu confirmă BUY/SELL până când timeframe-ul nu este detectat. Fără referințe la Pocket Option."
+            --title "SCALP ATLAS v1.0.28 TIMEFRAME LOCK" \
+            --notes "O singură aplicație SCALP ATLAS. Overlay broker-neutral. Timeframe AUTO este acceptat doar după două citiri OCR consecutive identice din zona superioară a graficului; fără BUY/SELL până la confirmare."
