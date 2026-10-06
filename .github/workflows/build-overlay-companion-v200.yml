@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.30 MONITORING LABEL
+name: SCALP ATLAS v1.0.31 SAFE SIGNAL UI
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.30-monitoring-label']
+    branches: ['feature/scalp-atlas-v1.0.31-safe-signal-ui']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
@@ -10,6 +10,7 @@ on:
       - '.github/scripts/harden_timeframe_v1028.py'
       - '.github/scripts/timeframe_roi_v1029.py'
       - '.github/scripts/monitoring_labels_v1030.py'
+      - '.github/scripts/safe_signal_ui_v1031.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -47,6 +48,7 @@ jobs:
           python3 .github/scripts/harden_timeframe_v1028.py
           python3 .github/scripts/timeframe_roi_v1029.py
           python3 .github/scripts/monitoring_labels_v1030.py
+          python3 .github/scripts/safe_signal_ui_v1031.py
           ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
@@ -56,7 +58,9 @@ jobs:
           grep -q "rightMidScaled" .github/native-overlay/ScalpOverlayService.kt
           grep -q "Confirmare timeframe 1/2" .github/native-overlay/ScalpOverlayService.kt
           grep -q "NU ESTE SEMNAL NOU" .github/native-overlay/ScalpOverlayService.kt
-          grep -q '"MONITORIZARE"' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q '"MONITORIZARE"' .github/native-overlay/ScalpOverlayService.kt
+          grep -q '"PAUZĂ SEMNAL"' .github/native-overlay/ScalpOverlayService.kt
+          grep -q "NU INTRA" .github/native-overlay/ScalpOverlayService.kt
           grep -q '"CONFIRMAT " + REQUIRED_CONFIRMATIONS' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply stable Scalp Atlas patches
@@ -88,10 +92,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.30'
+          expo['version']='1.0.31'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=130
+          expo['android']['versionCode']=131
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -360,23 +364,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.30-MONITORING-LABEL.apk
+          cp "$APK" ScalpAtlas-v1.0.31-SAFE-SIGNAL-UI.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.30-MONITORING-LABEL
-          path: ScalpAtlas-v1.0.30-MONITORING-LABEL.apk
+          name: ScalpAtlas-v1.0.31-SAFE-SIGNAL-UI
+          path: ScalpAtlas-v1.0.31-SAFE-SIGNAL-UI.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.30 release
+      - name: Publish v1.0.31 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.30-monitoring-label --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.30-monitoring-label \
-            ScalpAtlas-v1.0.30-MONITORING-LABEL.apk \
+          gh release delete scalp-atlas-v1.0.31-safe-signal-ui --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.31-safe-signal-ui \
+            ScalpAtlas-v1.0.31-SAFE-SIGNAL-UI.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.30 MONITORING LABEL" \
-            --notes "Overlay broker-neutral. BUY/SELL mare apare numai la semnal nou confirmat 3/3 + bip. În perioada de protecție apare MONITORIZARE și NU ESTE SEMNAL NOU. Detecția AUTO timeframe rămâne neschimbată."
+            --title "SCALP ATLAS v1.0.31 SAFE SIGNAL UI" \
+            --notes "Overlay broker-neutral. În perioada de protecție nu mai apare deloc direcția BUY/SELL: doar PAUZĂ SEMNAL, NU INTRA și countdown. BUY/SELL apare numai la semnal nou CONFIRMAT 3/3 + BIP. Schimbarea perechii/timeframe-ului șterge imediat lock-ul vechi."
