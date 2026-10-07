@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.0-m10-medium-expiry';
+  const ENGINE_VERSION='0.3.1-two-candle-color';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -46,11 +46,68 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return out.slice(-9);
   }
 
-  function isCandleColor(r,g,b){
+  function candleTone(r,g,b){
     const mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx-mn;
     const greenish=(g>80&&g>r*1.10&&g>b*.84&&sat>30)||(g>115&&b>80&&r<125&&sat>28);
     const reddish=(r>105&&r>g*1.08&&r>b*1.03&&sat>30)||(r>155&&g>45&&g<155&&b<135);
-    return greenish||reddish;
+    if(greenish&&!reddish)return 'GREEN';
+    if(reddish&&!greenish)return 'RED';
+    return null;
+  }
+
+  function isCandleColor(r,g,b){
+    return candleTone(r,g,b)!==null;
+  }
+
+  function detectRecentCandleColors(data,w,h,x0,x1,y0,y1){
+    // Detectăm corpurile lumânărilor, nu doar fitilele:
+    // un corp trebuie să ocupe cel puțin 2 coloane consecutive.
+    const startX=Math.floor(x0+(x1-x0)*.42);
+    const minPixels=Math.max(3,Math.floor((y1-y0)*.006));
+    const labels=[];
+
+    for(let x=startX;x<x1;x++){
+      let green=0,red=0;
+      for(let y=y0;y<y1;y+=2){
+        const i=(y*w+x)*4;
+        const tone=candleTone(data[i],data[i+1],data[i+2]);
+        if(tone==='GREEN')green++;
+        else if(tone==='RED')red++;
+      }
+      const best=Math.max(green,red);
+      if(best<minPixels){
+        labels.push({x,tone:null,count:best});
+      }else{
+        const tone=green>red*1.18?'GREEN':red>green*1.18?'RED':null;
+        labels.push({x,tone,count:best});
+      }
+    }
+
+    const runs=[];
+    let run=null;
+    for(const item of labels){
+      if(item.tone){
+        if(run&&run.tone===item.tone&&item.x===run.x2+1){
+          run.x2=item.x;
+          run.columns+=1;
+          run.pixels+=item.count;
+        }else{
+          if(run)runs.push(run);
+          run={tone:item.tone,x1:item.x,x2:item.x,columns:1,pixels:item.count};
+        }
+      }else if(run){
+        runs.push(run);
+        run=null;
+      }
+    }
+    if(run)runs.push(run);
+
+    const bodies=runs
+      .filter(r=>r.columns>=2&&r.pixels>=minPixels*2)
+      .sort((a,b)=>a.x2-b.x2);
+
+    // Păstrăm doar ultimele două corpuri distincte vizibile.
+    return bodies.slice(-2).map(r=>r.tone);
   }
 
   function buildPriceCurve(img){
@@ -64,6 +121,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const data=ctx.getImageData(0,0,w,h).data;
     // Exclude bottom trading buttons and the far-right action/price panel.
     const x0=Math.floor(w*.02),x1=Math.floor(w*.84),y0=Math.floor(h*.12),y1=Math.floor(h*.73);
+    const recentCandleColors=detectRecentCandleColors(data,w,h,x0,x1,y0,y1);
     const bins=64,binW=(x1-x0)/bins,pts=[];
     const minSpan=Math.max(3,h*.008),clusterGap=Math.max(4,h*.014);
 
@@ -105,7 +163,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       });
     }
 
-    if(pts.length<10)return {pts,w,h,quality:0,anchor:null};
+    if(pts.length<10)return {pts,w,h,quality:0,anchor:null,recentCandleColors};
 
     // Remove isolated labels, icons and horizontal UI fragments.
     const cleaned=[];
@@ -126,7 +184,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     if(validRuns.length){
       main=[...validRuns].sort((a,b)=>(b[b.length-1].x+b.length*binW*.2)-(a[a.length-1].x+a.length*binW*.2))[0];
     }
-    if(main.length<8)return {pts:main,w,h,quality:0,anchor:null};
+    if(main.length<8)return {pts:main,w,h,quality:0,anchor:null,recentCandleColors};
 
     const sm=main.map((p,i)=>{
       const local=main.slice(Math.max(0,i-1),Math.min(main.length,i+2)).map(q=>q.y);
@@ -138,7 +196,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const quality=Math.min(1,coverage*1.15+Math.min(1,density/14)*.2);
     const anchor=sm[sm.length-1]||null;
     const spanCoverage=sm.length>1?(sm[sm.length-1].x-sm[0].x)/w:0;
-    return {pts:sm,w,h,quality,anchor,spanCoverage};
+    return {pts:sm,w,h,quality,anchor,spanCoverage,recentCandleColors};
   }
 
   function classify(curve){
@@ -212,6 +270,46 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       return {clear:false,dir:'NONE',atlas,idx,score:Math.min(.68,score),reason:'Direcția nu este suficient de clară'};
     }
     dir=voteDiff>0?'BUY':'SELL';
+
+    // TWO-CANDLE COLOR CONFIRM v0.3.1
+    // CUMPĂRARE: ultimele două corpuri de lumânare trebuie să fie verzi.
+    // VÂNZARE: ultimele două corpuri de lumânare trebuie să fie roșii.
+    // Dacă sunt culori diferite sau nu putem distinge două corpuri, nu confirmăm semnalul.
+    const recentColors=Array.isArray(curve.recentCandleColors)?curve.recentCandleColors:[];
+    if(recentColors.length<2){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'Așteaptă două lumânări recente clar detectabile de aceeași culoare'
+      };
+    }
+    const previousColor=recentColors[recentColors.length-2];
+    const lastColor=recentColors[recentColors.length-1];
+    if(previousColor!==lastColor){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'Ultimele două lumânări au culori diferite • fără semnal'
+      };
+    }
+    if(dir==='BUY'&&lastColor!=='GREEN'){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'CUMPĂRARE blocată • ultimele două lumânări trebuie să fie verzi'
+      };
+    }
+    if(dir==='SELL'&&lastColor!=='RED'){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'VÂNZARE blocată • ultimele două lumânări trebuie să fie roșii'
+      };
+    }
 
     if(pv.length>=5){
       const q=pv.slice(-5),types=q.map(p=>p.type).join('');
