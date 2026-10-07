@@ -89,8 +89,9 @@ jobs:
           grep -q "rightFocusScaled" .github/native-overlay/ScalpOverlayService.kt
           grep -q "crop.width \* 4" .github/native-overlay/ScalpOverlayService.kt
           grep -q "v1.0.39" .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'M\\\\s\*\[5S\]' .github/native-overlay/ScalpOverlayService.kt
-          ! grep -q 'val compact = text.uppercase().replace(" ", "")' .github/native-overlay/ScalpOverlayService.kt
+          grep -q "val normalized = text" .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"M5"  to Regex' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -Fq 'val compact = text.uppercase().replace(" ", "")' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply stable Scalp Atlas patches
         run: |
