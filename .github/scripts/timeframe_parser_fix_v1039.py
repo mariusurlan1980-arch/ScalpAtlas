@@ -32,9 +32,10 @@ replacement = r'''  private fun normalizeTimeframe(text: String): String? {
   }
 '''
 
-s, n = pattern.subn(replacement, s, count=1)
-if n != 1:
+m = pattern.search(s)
+if not m:
     raise SystemExit("normalizeTimeframe function not found")
+s = s[:m.start()] + replacement + s[m.end():]
 
 SERVICE.write_text(s, encoding="utf-8")
 print("v1.0.39 timeframe parser fix applied")
