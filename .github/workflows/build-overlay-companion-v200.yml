@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.38 TIMEFRAME OCR FIX
+name: SCALP ATLAS v1.0.39 TIMEFRAME PARSER FIX
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.38-timeframe-ocr-fix']
+    branches: ['feature/scalp-atlas-v1.0.39-timeframe-parser-fix']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
@@ -16,6 +16,7 @@ on:
       - '.github/scripts/responsive_confirm_v1036.py'
       - '.github/scripts/ro_signal_labels_v1037.py'
       - '.github/scripts/timeframe_ocr_fix_v1038.py'
+      - '.github/scripts/timeframe_parser_fix_v1039.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -59,6 +60,7 @@ jobs:
           python3 .github/scripts/responsive_confirm_v1036.py
           python3 .github/scripts/ro_signal_labels_v1037.py
           python3 .github/scripts/timeframe_ocr_fix_v1038.py
+          python3 .github/scripts/timeframe_parser_fix_v1039.py
           ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
@@ -86,6 +88,9 @@ jobs:
           grep -q "timeframeMissCount" .github/native-overlay/ScalpOverlayService.kt
           grep -q "rightFocusScaled" .github/native-overlay/ScalpOverlayService.kt
           grep -q "crop.width \* 4" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "v1.0.39" .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'M\\\\s\*\[5S\]' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q 'val compact = text.uppercase().replace(" ", "")' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply stable Scalp Atlas patches
         run: |
@@ -116,10 +121,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.38'
+          expo['version']='1.0.39'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=138
+          expo['android']['versionCode']=139
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -388,23 +393,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.38-TIMEFRAME-OCR-FIX.apk
+          cp "$APK" ScalpAtlas-v1.0.39-TIMEFRAME-PARSER-FIX.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.38-TIMEFRAME-OCR-FIX
-          path: ScalpAtlas-v1.0.38-TIMEFRAME-OCR-FIX.apk
+          name: ScalpAtlas-v1.0.39-TIMEFRAME-PARSER-FIX
+          path: ScalpAtlas-v1.0.39-TIMEFRAME-PARSER-FIX.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.38 release
+      - name: Publish v1.0.39 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.38-timeframe-ocr-fix --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.38-timeframe-ocr-fix \
-            ScalpAtlas-v1.0.38-TIMEFRAME-OCR-FIX.apk \
+          gh release delete scalp-atlas-v1.0.39-timeframe-parser-fix --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.39-timeframe-parser-fix \
+            ScalpAtlas-v1.0.39-TIMEFRAME-PARSER-FIX.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.38 TIMEFRAME OCR FIX" \
-            --notes "Corectează detecția AUTO a timeframe-ului când eticheta M10/M5/M15 este mică sau gri: OCR 4x, ROI larg + ROI focalizat și toleranță la o citire ratată. Semnalele rămân blocate cât timp timeframe-ul este AUTO. Păstrează CUMPĂRARE/VÂNZARE și logica v1.0.37."
+            --title "SCALP ATLAS v1.0.39 TIMEFRAME PARSER FIX" \
+            --notes "Corectează parserul AUTO: păstrează separatorii OCR, astfel încât texte ca M5 01:08 sau M10 00:41 să fie recunoscute corect. Păstrează OCR 4x + ROI focalizat din v1.0.38 și logica CUMPĂRARE/VÂNZARE."
