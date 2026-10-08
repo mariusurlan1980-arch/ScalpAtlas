@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.40 TWO CANDLE CONFIRM
+name: SCALP ATLAS v1.0.41 CLOSED CANDLE GUARD
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.40-two-candle-confirm']
+    branches: ['feature/scalp-atlas-v1.0.41-closed-candle-guard']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
@@ -122,10 +122,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.40'
+          expo['version']='1.0.41'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=140
+          expo['android']['versionCode']=141
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -173,8 +173,12 @@ jobs:
           grep -q "if(score>=.84)return 5" scalp-atlas-new/analysisEngine.ts
           grep -q "if(score>=.78)return 6" scalp-atlas-new/analysisEngine.ts
           grep -q "return 7" scalp-atlas-new/analysisEngine.ts
-          grep -q "0.3.1-two-candle-color" scalp-atlas-new/analysisEngine.ts
-          grep -q "TWO-CANDLE COLOR CONFIRM v0.3.1" scalp-atlas-new/analysisEngine.ts
+          grep -q "0.3.2-closed-candle-guard" scalp-atlas-new/analysisEngine.ts
+          grep -Fq 'if(bodies.length<3)return [];' scalp-atlas-new/analysisEngine.ts
+          grep -Fq 'return [trio[0].tone,trio[1].tone];' scalp-atlas-new/analysisEngine.ts
+          grep -Fq 'y1=Math.floor(h*.97)' scalp-atlas-new/analysisEngine.ts
+          ! grep -Fq 'y1=Math.floor(h*.73)' scalp-atlas-new/analysisEngine.ts
+          grep -q "CLOSED CANDLE GUARD v0.3.2" scalp-atlas-new/analysisEngine.ts
           grep -q "Ultimele două lumânări au culori diferite" scalp-atlas-new/analysisEngine.ts
           grep -q "CUMPĂRARE blocată" scalp-atlas-new/analysisEngine.ts
           grep -q "VÂNZARE blocată" scalp-atlas-new/analysisEngine.ts
@@ -398,23 +402,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.40-TWO-CANDLE-CONFIRM.apk
+          cp "$APK" ScalpAtlas-v1.0.41-CLOSED-CANDLE-GUARD.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.40-TWO-CANDLE-CONFIRM
-          path: ScalpAtlas-v1.0.40-TWO-CANDLE-CONFIRM.apk
+          name: ScalpAtlas-v1.0.41-CLOSED-CANDLE-GUARD
+          path: ScalpAtlas-v1.0.41-CLOSED-CANDLE-GUARD.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.40 release
+      - name: Publish v1.0.41 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.40-two-candle-confirm --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.40-two-candle-confirm \
-            ScalpAtlas-v1.0.40-TWO-CANDLE-CONFIRM.apk \
+          gh release delete scalp-atlas-v1.0.41-closed-candle-guard --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.41-closed-candle-guard \
+            ScalpAtlas-v1.0.41-CLOSED-CANDLE-GUARD.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.40 TWO CANDLE CONFIRM" \
-            --notes "Adaugă confirmarea ultimelor două lumânări: CUMPĂRARE numai cu două corpuri verzi consecutive, VÂNZARE numai cu două corpuri roșii consecutive. Culori diferite sau două corpuri nedetectabile = AȘTEAPTĂ, fără semnal. Păstrează corecția timeframe din v1.0.39."
+            --title "SCALP ATLAS v1.0.41 CLOSED CANDLE GUARD" \
+            --notes "Corecție de siguranță: citește zona inferioară a graficului și ignoră ultima lumânare încă în formare; cere două corpuri închise distincte cu culoare corespunzătoare direcției. Dacă nu pot fi separate sau culorile diferă, AȘTEAPTĂ fără bip. Se păstrează interfața și suprapunerea. DOAR TEST DEMO: nu există garanția profitului."
