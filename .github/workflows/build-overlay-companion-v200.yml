@@ -178,7 +178,7 @@ jobs:
           grep -Fq 'return [trio[0].tone,trio[1].tone];' scalp-atlas-new/analysisEngine.ts
           grep -Fq 'y1=Math.floor(h*.97)' scalp-atlas-new/analysisEngine.ts
           ! grep -Fq 'y1=Math.floor(h*.73)' scalp-atlas-new/analysisEngine.ts
-          grep -q "ARM64 LITE v0.3.2" scalp-atlas-new/analysisEngine.ts
+          grep -q "CLOSED CANDLE GUARD v0.3.2" scalp-atlas-new/analysisEngine.ts
           grep -q "Ultimele două lumânări au culori diferite" scalp-atlas-new/analysisEngine.ts
           grep -q "CUMPĂRARE blocată" scalp-atlas-new/analysisEngine.ts
           grep -q "VÂNZARE blocată" scalp-atlas-new/analysisEngine.ts
