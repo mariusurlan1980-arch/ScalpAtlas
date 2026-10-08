@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.2-closed-candle-guard';
+  const ENGINE_VERSION='0.3.3-reversal-safety';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -106,24 +106,32 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const bodies=runs
       .filter(r=>r.columns>=2&&r.pixels>=minPixels*2)
       .sort((a,b)=>a.x2-b.x2);
-    if(bodies.length<3)return [];
+    if(bodies.length<3)return null;
 
     // Respinge segmente late/unite (două lumânări apropiate ori text UI),
     // precum și spațieri neregulate sau o bară tăiată de marginea capturii.
     const trio=bodies.slice(-3);
     const maxBodyWidth=Math.max(8,Math.round(w*.024));
-    if(trio.some(r=>r.columns>maxBodyWidth))return [];
-    if(trio[2].x2>=x1-2)return [];
+    if(trio.some(r=>r.columns>maxBodyWidth))return null;
+    if(trio[2].x2>=x1-2)return null;
 
     const center=r=>(r.x1+r.x2)/2;
     const d1=center(trio[1])-center(trio[0]);
     const d2=center(trio[2])-center(trio[1]);
-    if(d1<3||d2<3||Math.max(d1,d2)>Math.min(d1,d2)*1.85)return [];
+    if(d1<3||d2<3||Math.max(d1,d2)>Math.min(d1,d2)*1.85)return null;
 
     // A treia (ultima din dreapta) poate fi încă în formare: o excludem.
     // Dacă imaginea nu permite identificarea certă a corpurilor, returnăm
     // lista goală => AȘTEAPTĂ, niciodată BUY/SELL forțat.
-    return [trio[0].tone,trio[1].tone];
+    return {
+      closedColors:[trio[0].tone,trio[1].tone],
+      activeColor:trio[2].tone,
+      // Corpsul activ este citit separat; NIMIC nu autorizează intrarea
+      // când acesta s-a întors împotriva direcției semnalului.
+      lastClosedBodyPixels:trio[1].pixels/Math.max(1,trio[1].columns),
+      recentBodyReference:median(bodies.slice(-Math.min(10,bodies.length))
+        .map(r=>r.pixels/Math.max(1,r.columns)))
+    };
   }
 
   function buildPriceCurve(img){
@@ -293,7 +301,9 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     // BUY/SELL numai după ultimele două corpuri ÎNCHISE, ignorând lumânarea activă.
     // CUMPĂRARE: două corpuri verzi închise; VÂNZARE: două roșii închise.
     // Dacă sunt culori diferite sau nu putem distinge două corpuri, nu confirmăm semnalul.
-    const recentColors=Array.isArray(curve.recentCandleColors)?curve.recentCandleColors:[];
+    const candleEvidence=curve.recentCandleColors;
+    const recentColors=candleEvidence&&Array.isArray(candleEvidence.closedColors)
+      ?candleEvidence.closedColors:[];
     if(recentColors.length<2){
       return {
         clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
@@ -310,6 +320,34 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         score:Math.min(score,.69),
         trendStrength,recentStrength,microStrength,consensus,volatility,
         reason:'Ultimele două lumânări au culori diferite • fără semnal'
+      };
+    }
+    // REVERSAL SAFETY v0.3.3: un impuls poate continua să fie SELL
+    // în regresie în timp ce lumânarea activă începe un rebound verde.
+    // În acel caz, nu inversăm semnalul în BUY; blocăm orice tranzacție.
+    // Pe BUY aplicăm exact aceeași protecție la lumânarea activă roșie.
+    const expectedLiveColor=dir==='BUY'?'GREEN':'RED';
+    if(!candleEvidence||candleEvidence.activeColor!==expectedLiveColor){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'ATENȚIE REVERSARE: ultima lumânare activă contrazice '+dir+' • NU INTRA'
+      };
+    }
+
+    // Blocăm intrările chiar după o lumânare disproporționat de mare:
+    // poate fi o epuizare sau o retragere; nu este dovadă pentru
+    // a inversa semnalul automat. Comparația folosește numai corpuri
+    // vizibile ale graficului, nu statistică de piață verificată.
+    const refPixels=Number(candleEvidence.recentBodyReference)||0;
+    const lastPixels=Number(candleEvidence.lastClosedBodyPixels)||0;
+    if(refPixels>0&&lastPixels/refPixels>2.6){
+      return {
+        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
+        score:Math.min(score,.69),
+        trendStrength,recentStrength,microStrength,consensus,volatility,
+        reason:'Lumânare recentă excesiv de mare • risc de revenire • NU INTRA'
       };
     }
     if(dir==='BUY'&&lastColor!=='GREEN'){
