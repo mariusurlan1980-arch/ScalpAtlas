@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.1-two-candle-color';
+  const ENGINE_VERSION='0.3.2-closed-candle-guard';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -60,10 +60,13 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
   }
 
   function detectRecentCandleColors(data,w,h,x0,x1,y0,y1){
-    // Detectăm corpurile lumânărilor, nu doar fitilele:
-    // un corp trebuie să ocupe cel puțin 2 coloane consecutive.
+    // CLOSED CANDLE GUARD v0.3.2:
+    // Ultima bară VIZIBILĂ dintr-un grafic live este considerată în formare,
+    // deci NU participă la vot. Două scanări ale unui singur cadru nu sunt
+    // echivalente cu două lumânări închise. Dacă nu putem delimita trei
+    // corpuri distincte (2 închise + 1 activ), nu emitem semnal.
     const startX=Math.floor(x0+(x1-x0)*.42);
-    const minPixels=Math.max(3,Math.floor((y1-y0)*.006));
+    const minPixels=Math.max(5,Math.floor((y1-y0)*.008));
     const labels=[];
 
     for(let x=startX;x<x1;x++){
@@ -75,12 +78,10 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         else if(tone==='RED')red++;
       }
       const best=Math.max(green,red);
-      if(best<minPixels){
-        labels.push({x,tone:null,count:best});
-      }else{
-        const tone=green>red*1.18?'GREEN':red>green*1.18?'RED':null;
-        labels.push({x,tone,count:best});
-      }
+      const tone=best>=minPixels
+        ? (green>red*1.18?'GREEN':red>green*1.18?'RED':null)
+        : null;
+      labels.push({x,tone,count:best});
     }
 
     const runs=[];
@@ -105,9 +106,24 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const bodies=runs
       .filter(r=>r.columns>=2&&r.pixels>=minPixels*2)
       .sort((a,b)=>a.x2-b.x2);
+    if(bodies.length<3)return [];
 
-    // Păstrăm doar ultimele două corpuri distincte vizibile.
-    return bodies.slice(-2).map(r=>r.tone);
+    // Respinge segmente late/unite (două lumânări apropiate ori text UI),
+    // precum și spațieri neregulate sau o bară tăiată de marginea capturii.
+    const trio=bodies.slice(-3);
+    const maxBodyWidth=Math.max(8,Math.round(w*.024));
+    if(trio.some(r=>r.columns>maxBodyWidth))return [];
+    if(trio[2].x2>=x1-2)return [];
+
+    const center=r=>(r.x1+r.x2)/2;
+    const d1=center(trio[1])-center(trio[0]);
+    const d2=center(trio[2])-center(trio[1]);
+    if(d1<3||d2<3||Math.max(d1,d2)>Math.min(d1,d2)*1.85)return [];
+
+    // A treia (ultima din dreapta) poate fi încă în formare: o excludem.
+    // Dacă imaginea nu permite identificarea certă a corpurilor, returnăm
+    // lista goală => AȘTEAPTĂ, niciodată BUY/SELL forțat.
+    return [trio[0].tone,trio[1].tone];
   }
 
   function buildPriceCurve(img){
@@ -120,7 +136,9 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 
     const data=ctx.getImageData(0,0,w,h).data;
     // Exclude bottom trading buttons and the far-right action/price panel.
-    const x0=Math.floor(w*.02),x1=Math.floor(w*.84),y0=Math.floor(h*.12),y1=Math.floor(h*.73);
+    // Cropul Android a eliminat deja butoanele. Menținem ultimele lumânări
+    // chiar când prețul a coborât spre limita de jos a graficului.
+    const x0=Math.floor(w*.02),x1=Math.floor(w*.84),y0=Math.floor(h*.12),y1=Math.floor(h*.97);
     const recentCandleColors=detectRecentCandleColors(data,w,h,x0,x1,y0,y1);
     const bins=64,binW=(x1-x0)/bins,pts=[];
     const minSpan=Math.max(3,h*.008),clusterGap=Math.max(4,h*.014);
@@ -271,9 +289,9 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     }
     dir=voteDiff>0?'BUY':'SELL';
 
-    // TWO-CANDLE COLOR CONFIRM v0.3.1
-    // CUMPĂRARE: ultimele două corpuri de lumânare trebuie să fie verzi.
-    // VÂNZARE: ultimele două corpuri de lumânare trebuie să fie roșii.
+    // CLOSED CANDLE GUARD v0.3.2
+    // BUY/SELL numai după ultimele două corpuri ÎNCHISE, ignorând lumânarea activă.
+    // CUMPĂRARE: două corpuri verzi închise; VÂNZARE: două roșii închise.
     // Dacă sunt culori diferite sau nu putem distinge două corpuri, nu confirmăm semnalul.
     const recentColors=Array.isArray(curve.recentCandleColors)?curve.recentCandleColors:[];
     if(recentColors.length<2){
@@ -281,7 +299,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
         score:Math.min(score,.69),
         trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'Așteaptă două lumânări recente clar detectabile de aceeași culoare'
+        reason:'Nu pot confirma două lumânări închise distincte și lumânarea activă • AȘTEAPTĂ'
       };
     }
     const previousColor=recentColors[recentColors.length-2];
