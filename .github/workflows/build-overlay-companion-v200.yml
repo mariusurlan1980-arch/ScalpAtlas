@@ -185,7 +185,7 @@ jobs:
           grep -Fq 'y1=Math.floor(h*.97)' scalp-atlas-new/analysisEngine.ts
           ! grep -Fq 'y1=Math.floor(h*.73)' scalp-atlas-new/analysisEngine.ts
           grep -q "CLOSED CANDLE GUARD v0.3.2" scalp-atlas-new/analysisEngine.ts
-          grep -Fq 'M10 TIMING GUARD v0.3.3' scalp-atlas-new/analysisEngine.ts
+          grep -Fq 'REVERSAL SAFETY v0.3.3' scalp-atlas-new/analysisEngine.ts
           grep -Fq "candleEvidence.activeColor!==expectedLiveColor" scalp-atlas-new/analysisEngine.ts
           grep -Fq "ATENȚIE REVERSARE: ultima lumânare activă contrazice" scalp-atlas-new/analysisEngine.ts
           grep -Fq "lastPixels/refPixels>2.6" scalp-atlas-new/analysisEngine.ts
