@@ -69,6 +69,7 @@ jobs:
           python3 .github/scripts/one_alert_per_bar_v1045.py
           python3 .github/scripts/chart_timeframe_roi_v1046.py
           python3 .github/scripts/m5_early_signal_guard_v1047.py
+          python3 .github/scripts/preview_candidates_v1048.py
           ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
