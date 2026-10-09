@@ -223,7 +223,7 @@ jobs:
           grep -q "Do not overwrite it" .github/native-overlay/ScalpOverlayService.kt
           grep -q "GENERIC CHART GATE v1.0.27" .github/native-overlay/ScalpOverlayService.kt
           grep -q "GRAFIC NEDETECTAT" .github/native-overlay/ScalpOverlayService.kt
-          grep -q "candidateStillFresh" .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q "candidateStillFresh" .github/native-overlay/ScalpOverlayService.kt
           grep -q "SIGNAL LOCK v1.0.23" .github/native-overlay/ScalpOverlayService.kt
           grep -q "expiry.coerceIn(1, 60)" .github/native-overlay/ScalpOverlayService.kt
           ! grep -q "ANALIZEZ..." .github/native-overlay/ScalpOverlayService.kt
