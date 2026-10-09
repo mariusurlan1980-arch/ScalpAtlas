@@ -100,10 +100,10 @@ jobs:
           grep -q "M10 5-MINUTE ENTRY GUARD v1.0.44" .github/native-overlay/ScalpOverlayService.kt
           grep -q "m10EntryTimingRejection" .github/native-overlay/ScalpOverlayService.kt
           grep -q "chartCountdownEvidenceCount" .github/native-overlay/ScalpOverlayService.kt
-          grep -q "noteM10CountdownFromChart" .github/native-overlay/ScalpOverlayService.kt
+          grep -q "noteChartCountdownFromChart" .github/native-overlay/ScalpOverlayService.kt
           grep -q 'ONE-ALERT-PER-M10-BAR v1.0.45' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'STABLE-CANDIDATE FIX v1.0.45' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'candidateBarKey != currentM10BarKey' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'candidateBarKey != currentChartBarKey' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'getStringSet("barKeys"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SCALP ATLAS • AUTO' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'SCALP ATLAS • M10' .github/native-overlay/ScalpOverlayService.kt
