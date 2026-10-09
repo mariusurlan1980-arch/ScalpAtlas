@@ -23,7 +23,14 @@ one(
 )
 import re
 s, header_changed = re.subn(
-    r'(?m)^(\\s*text\\s*=\\s*)"SCALP ATLAS\\s*[•·-]\\s*(?:M10|AUTO)"\\s*
+    r'(?m)^(\s*text\s*=\s*)"SCALP ATLAS\s*[•·-]\s*(?:M10|AUTO)"\s*$',
+    lambda m: m.group(1) + '"SCALP ATLAS • AUTO"',
+    s,
+    count=1
+)
+if header_changed != 1:
+    context = [repr(line) for line in s.splitlines() if "SCALP ATLAS" in line]
+    raise SystemExit("v1046: headline could not be located; got " + str(context[:8]))
 one(
     '    val close = TextView(this).apply {\n',
     '    timeframeTitleText = title\n\n    val close = TextView(this).apply {\n',
