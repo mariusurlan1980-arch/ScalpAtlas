@@ -100,7 +100,7 @@ one(
     '    if ((currentTimeframe == "M10" || currentTimeframe == "M5") && currentChartBarKey == null) {\n',
     "reject bar without clock"
 )
-if s.count("currentM10BarKey")!=2:
+if s.count("currentM10BarKey")!=3:
     raise SystemExit(f"v1047 remaining candidate bar-key references: {s.count('currentM10BarKey')}")
 s=s.replace("currentM10BarKey","currentChartBarKey")
 one(
