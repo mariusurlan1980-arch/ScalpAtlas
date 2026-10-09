@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.44 M10 TIMING GUARD
+name: SCALP ATLAS v1.0.45 BAR DEDUPE DEMO
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.44-m10-timing-guard']
+    branches: ['feature/scalp-atlas-v1.0.45-one-signal-per-bar-demo']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
@@ -18,6 +18,7 @@ on:
       - '.github/scripts/timeframe_ocr_fix_v1038.py'
       - '.github/scripts/timeframe_parser_fix_v1039.py'
       - '.github/scripts/m10_entry_guard_v1044.py'
+      - '.github/scripts/one_alert_per_bar_v1045.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -63,6 +64,7 @@ jobs:
           python3 .github/scripts/timeframe_ocr_fix_v1038.py
           python3 .github/scripts/timeframe_parser_fix_v1039.py
           python3 .github/scripts/m10_entry_guard_v1044.py
+          python3 .github/scripts/one_alert_per_bar_v1045.py
           ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
@@ -95,6 +97,11 @@ jobs:
           grep -q "m10EntryTimingRejection" .github/native-overlay/ScalpOverlayService.kt
           grep -q "chartCountdownEvidenceCount" .github/native-overlay/ScalpOverlayService.kt
           grep -q "noteM10CountdownFromChart" .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'ONE-ALERT-PER-M10-BAR v1.0.45' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'STABLE-CANDIDATE FIX v1.0.45' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'candidateBarKey != currentM10BarKey' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'getStringSet("barKeys"' .github/native-overlay/ScalpOverlayService.kt
+          grep -q '"REQUIRES_PRICE_VERIFICATION"' .github/native-overlay/ScalpOverlayService.kt
           grep -q "val normalized = text" .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '"M5"  to Regex' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'val compact = text.uppercase().replace(" ", "")' .github/native-overlay/ScalpOverlayService.kt
@@ -128,10 +135,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.44'
+          expo['version']='1.0.45'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=144
+          expo['android']['versionCode']=145
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -442,23 +449,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.44-M10-TIMING-GUARD.apk
+          cp "$APK" ScalpAtlas-v1.0.45-BAR-DEDUPE-DEMO.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.44-M10-TIMING-GUARD
-          path: ScalpAtlas-v1.0.44-M10-TIMING-GUARD.apk
+          name: ScalpAtlas-v1.0.45-BAR-DEDUPE-DEMO
+          path: ScalpAtlas-v1.0.45-BAR-DEDUPE-DEMO.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.44 release
+      - name: Publish v1.0.45 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.44-arm64-lite --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.44-arm64-lite \
-            ScalpAtlas-v1.0.44-M10-TIMING-GUARD.apk \
+          gh release delete scalp-atlas-v1.0.45-bar-dedupe-demo --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.45-bar-dedupe-demo \
+            ScalpAtlas-v1.0.45-BAR-DEDUPE-DEMO.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.44 M10 TIMING GUARD" \
-            --notes "SCALP ATLAS v1.0.44 TEST DEMO: adaugă filtru pentru ora M10 folosind 2 citiri independente ale cronometrului din grafic, verificate cu ora telefonului. Pentru expirare 5 minute, semnalul + BIP sunt blocate în afara intervalului 06:30–08:50 rămas până la închiderea lumânării. Nu schimbă interfața și nu garantează rezultate profitabile; folosire exclusiv DEMO."
+            --title "SCALP ATLAS v1.0.45 BAR DEDUPE DEMO" \
+            --notes "SCALP ATLAS v1.0.45 TEST DEMO: un singur BIP pentru fiecare pereche și bară M10 verificată (deduplicare persistentă inclusiv la repornirea overlay-ului), candidați reset la orice cadru NONE/WAIT, 2/2 înseamnă două scanări consecutive, nu două lumânări. Evenimentele sunt salvate pentru evaluare manuală la 5 minute, fără verdict automat sau prețuri inventate. Interfața rămâne neschimbată. Nu folosiți semnalele pentru tranzacții, rata de succes nu este validată."
