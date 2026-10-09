@@ -2,7 +2,7 @@ name: SCALP ATLAS v1.0.48 CANDIDATE DIAGNOSTIC
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.47-m5-early-guard']
+    branches: ['feature/scalp-atlas-v1.0.48-diagnostic-candidates']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
