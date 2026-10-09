@@ -156,6 +156,11 @@ one(
 ''',
     "bip guard"
 )
+one(
+    '      candidateDir = null\n      candidateCount = 0\n      candidateLastAt = 0L\n      updateOverlay(\n        "AȘTEAPTĂ",\n        "NU INTRA • M10 / 5 min • protecție timp",',
+    '      candidateDir = null\n      candidateBarKey = null\n      candidateCount = 0\n      candidateLastAt = 0L\n      updateOverlay(\n        "AȘTEAPTĂ",\n        "NU INTRA • M10 / 5 min • protecție timp",',
+    "timing rejection resets candidate ownership"
+)
 # Always reset bar-candidate ownership at lock and TTL expiry.
 one(
     "    lockedDir = rawSignal\n",
