@@ -1,4 +1,4 @@
-name: SCALP ATLAS v1.0.47 M5 EARLY BIP GUARD
+name: SCALP ATLAS v1.0.48 CANDIDATE DIAGNOSTIC
 
 on:
   push:
@@ -21,6 +21,7 @@ on:
       - '.github/scripts/one_alert_per_bar_v1045.py'
       - '.github/scripts/chart_timeframe_roi_v1046.py'
       - '.github/scripts/m5_early_signal_guard_v1047.py'
+      - '.github/scripts/preview_candidates_v1048.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -152,10 +153,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.47'
+          expo['version']='1.0.48'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=147
+          expo['android']['versionCode']=148
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -466,23 +467,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.47-M5-EARLY-BIP-GUARD.apk
+          cp "$APK" ScalpAtlas-v1.0.48-CANDIDATE-DIAGNOSTIC.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.47-M5-EARLY-BIP-GUARD
-          path: ScalpAtlas-v1.0.47-M5-EARLY-BIP-GUARD.apk
+          name: ScalpAtlas-v1.0.48-CANDIDATE-DIAGNOSTIC
+          path: ScalpAtlas-v1.0.48-CANDIDATE-DIAGNOSTIC.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.47 release
+      - name: Publish v1.0.48 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.47-m5-early-bip-guard --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.47-m5-early-bip-guard \
-            ScalpAtlas-v1.0.47-M5-EARLY-BIP-GUARD.apk \
+          gh release delete scalp-atlas-v1.0.48-candidate-diagnostic --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.48-candidate-diagnostic \
+            ScalpAtlas-v1.0.48-CANDIDATE-DIAGNOSTIC.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.47 M5 EARLY BIP GUARD" \
-            --notes "v1.0.47 DOAR TEST: elimină bipurile târzii pe M5 cu două citiri OCR ale timpului rămas. Fereastră experimentală M5: 04:40–03:55 până la închiderea lumânării; semnale în restul timpului se blochează. Aplică un singur bip per pereche și lumânare atât M5 cât și M10. Detectarea AUTO și interfața rămân. Nu este o strategie validată și nu se garantează profit; nu tranzacționa la bip."
+            --title "SCALP ATLAS v1.0.48 CANDIDATE DIAGNOSTIC" \
+            --notes "SCALP ATLAS v1.0.48 TEST DEMO: arată candidatul BUY sau SELL numai ca NECONFIRMAT și fără BIP, împreună cu motivul filtrului care îl blochează. BIP-ul rămâne permis exclusiv pe BUY/SELL confirmat de motor, fără praguri slăbite și fără ordine automate. Interfață existentă, corecții M5/M10 și protecțiile anterioare păstrate. Semnalele nu sunt validate ca profitabile; observă fără a tranzacționa."
