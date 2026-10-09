@@ -296,6 +296,9 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       return {clear:false,dir:'NONE',atlas,idx,score:Math.min(.68,score),reason:'Direcția nu este suficient de clară'};
     }
     dir=voteDiff>0?'BUY':'SELL';
+    // DIAGNOSTIC PREVIEW v0.3.4: candidate is NEVER an entry signal.
+    // Only the existing strict clear flag may produce a bip.
+    curve.previewDirection=dir;
 
     // CLOSED CANDLE GUARD v0.3.2
     // BUY/SELL numai după ultimele două corpuri ÎNCHISE, ignorând lumânarea activă.
@@ -660,6 +663,10 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
           type:'RESULT',
           result:{
             signal:r.clear?r.dir:'NONE',
+            // Diagnostic only; candidate can be present while signal=NONE.
+            candidateDirection:(curve.previewDirection==='BUY'||curve.previewDirection==='SELL')
+              ?curve.previewDirection:'NONE',
+            candidateConfirmed:!!r.clear,
             pattern:r.atlas,
             probability:Math.round(r.score*100),
             expiry:r.clear?expiryFor(timeframe,r.score):null,
