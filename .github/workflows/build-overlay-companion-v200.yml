@@ -235,7 +235,6 @@ jobs:
           grep -Fq 'const OFFLINE_AI_WEIGHTS=' scalp-atlas-new/analysisEngine.ts
           ! grep -Fq '__SCALP_ATLAS_OFFLINE_MODEL_V1053__' scalp-atlas-new/analysisEngine.ts
           grep -Fq '0.3.7-free-local-neural-filter' scalp-atlas-new/analysisEngine.ts
-          grep -Fq "0.3.6-free-multi-strategy" scalp-atlas-new/analysisEngine.ts
           grep -Fq "const breakoutBuy=" scalp-atlas-new/analysisEngine.ts
           grep -Fq "const pullbackSell=" scalp-atlas-new/analysisEngine.ts
           grep -Fq "const opposedSetups=" scalp-atlas-new/analysisEngine.ts
