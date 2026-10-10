@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.48 CANDIDATE DIAGNOSTIC
+name: SCALP ATLAS v1.0.49 DIRECTION CONSISTENCY
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.48-diagnostic-candidates']
+    branches: ['feature/scalp-atlas-v1.0.49-direction-consistency']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
@@ -22,6 +22,7 @@ on:
       - '.github/scripts/chart_timeframe_roi_v1046.py'
       - '.github/scripts/m5_early_signal_guard_v1047.py'
       - '.github/scripts/preview_candidates_v1048.py'
+      - '.github/scripts/one_direction_guard_v1049.py'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -71,6 +72,7 @@ jobs:
           python3 .github/scripts/chart_timeframe_roi_v1046.py
           python3 .github/scripts/m5_early_signal_guard_v1047.py
           python3 .github/scripts/preview_candidates_v1048.py
+          python3 .github/scripts/one_direction_guard_v1049.py
           ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
@@ -117,6 +119,10 @@ jobs:
           grep -Fq "val timingRejection = m10EntryTimingRejection(now) ?: m5EntryTimingRejection(now)" .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'chartCountdownTf != "M5"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'currentTimeframe == "M5" || currentTimeframe == "M10"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'ONE-DIRECTION GUARD v1.0.49' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'directionConsistencyBlock(now, previewDir, rawSignal)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'putString(key, "CONFLICT")' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'previewStableReads < 2' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val barMillis = if (currentTimeframe == "M5") 300_000L else 600_000L' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'currentM10BarKey' .github/native-overlay/ScalpOverlayService.kt
           grep -q '"REQUIRES_PRICE_VERIFICATION"' .github/native-overlay/ScalpOverlayService.kt
@@ -153,10 +159,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.48'
+          expo['version']='1.0.49'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=148
+          expo['android']['versionCode']=149
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -467,23 +473,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.48-CANDIDATE-DIAGNOSTIC.apk
+          cp "$APK" ScalpAtlas-v1.0.49-DIRECTION-CONSISTENCY.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.48-CANDIDATE-DIAGNOSTIC
-          path: ScalpAtlas-v1.0.48-CANDIDATE-DIAGNOSTIC.apk
+          name: ScalpAtlas-v1.0.49-DIRECTION-CONSISTENCY
+          path: ScalpAtlas-v1.0.49-DIRECTION-CONSISTENCY.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.48 release
+      - name: Publish v1.0.49 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.48-candidate-diagnostic --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.48-candidate-diagnostic \
-            ScalpAtlas-v1.0.48-CANDIDATE-DIAGNOSTIC.apk \
+          gh release delete scalp-atlas-v1.0.49-direction-consistency --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.49-direction-consistency \
+            ScalpAtlas-v1.0.49-DIRECTION-CONSISTENCY.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.48 CANDIDATE DIAGNOSTIC" \
-            --notes "SCALP ATLAS v1.0.48 TEST DEMO: arată candidatul BUY sau SELL numai ca NECONFIRMAT și fără BIP, împreună cu motivul filtrului care îl blochează. BIP-ul rămâne permis exclusiv pe BUY/SELL confirmat de motor, fără praguri slăbite și fără ordine automate. Interfață existentă, corecții M5/M10 și protecțiile anterioare păstrate. Semnalele nu sunt validate ca profitabile; observă fără a tranzacționa."
+            --title "SCALP ATLAS v1.0.49 DIRECTION CONSISTENCY" \
+            --notes "SCALP ATLAS v1.0.49 – TEST DEMO. Aceeași pereche și lumânare M5/M10: cere două citiri consecutive la minim 4 secunde pentru afișarea candidatului; dacă direcția trece BUY->SELL ori SELL->BUY, arată AȘTEAPTĂ și blochează toate semnalele, inclusiv BIP, până la noua lumânare. Conflictul se păstrează și după repornire. Păstrează interfața, OCR și filtrele existente, fără relaxarea regulilor BUY/SELL. BIP nu garantează profit: numai monitorizare, fără tranzacții până la validare."
