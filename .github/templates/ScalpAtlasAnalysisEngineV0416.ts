@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.3-reversal-safety';
+  const ENGINE_VERSION='0.3.5-multifactor-demo';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -225,354 +225,135 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return {pts:sm,w,h,quality,anchor,spanCoverage,recentCandleColors};
   }
 
+  // v1.0.50 MULTI-FACTOR SCALP: estimated from chart PIXELS, not a broker OHLC feed.
+  // EMA 9/21 and RSI 14 below operate on rasterized chart samples: they are
+  // *proxies*, not certified indicator values calculated from true candle closes.
+  // Signals remain EXPERIMENTAL and must be evaluated without trading.
+  function emaOnSamples(values,period){
+    if(!values.length)return 0;
+    const alpha=2/(period+1);
+    let value=values[0];
+    for(let i=1;i<values.length;i++)value=alpha*values[i]+(1-alpha)*value;
+    return value;
+  }
+
+  function rsiOnSamples(values,period){
+    const n=Math.min(period,values.length-1);
+    if(n<8)return 50;
+    let gains=0,losses=0;
+    for(let i=values.length-n;i<values.length;i++){
+      const delta=values[i]-values[i-1];
+      gains+=Math.max(0,delta);
+      losses+=Math.max(0,-delta);
+    }
+    if(gains+losses<.00001)return 50;
+    return 100*gains/(gains+losses);
+  }
+
   function classify(curve){
     const {pts,w,h,quality}=curve;
-    if(pts.length<10||quality<.25)return {clear:false,dir:'NONE',atlas:'—',idx:0,score:0,reason:'Imagine insuficient de clară'};
-    if((curve.spanCoverage||0)<.26)return {clear:false,dir:'NONE',atlas:'—',idx:0,score:0,reason:'Graficul ocupă o zonă prea mică. Încarcă fotografia originală, nu o captură a aplicației'};
+    const wait=(reason,estimate,score,consensus)=>({
+      clear:false,dir:'NONE',atlas:'Confluență neconfirmată',idx:50,
+      score:Math.max(0,Math.min(.69,score||0)),
+      trendStrength:0,recentStrength:0,microStrength:0,
+      consensus:consensus||0,volatility:0,reason
+    });
 
-    const full=linReg(pts);
-    const recent=linReg(pts.slice(-Math.max(9,Math.floor(pts.length*.42))));
-    const micro=linReg(pts.slice(-Math.max(6,Math.floor(pts.length*.22))));
-    const norm=-full.slope*w/h,recentNorm=-recent.slope*w/h,microNorm=-micro.slope*w/h;
-    const end=pts[pts.length-1],backRef=pts[Math.max(0,pts.length-4)],lastMove=(backRef.y-end.y)/h;
-    const pv=pivots(pts,h),highs=pv.filter(p=>p.type==='H'),lows=pv.filter(p=>p.type==='L');
-
-    const firstThird=pts.slice(0,Math.max(4,Math.floor(pts.length/3)));
-    const lastThird=pts.slice(-Math.max(4,Math.floor(pts.length/3)));
-    const span1=firstThird.reduce((s,p)=>s+p.span,0)/firstThird.length;
-    const span2=lastThird.reduce((s,p)=>s+p.span,0)/lastThird.length;
-    const moves=pts.slice(1).map((p,i)=>Math.abs(p.y-pts[i].y)/h);
-    const volatility=Math.max(0,Math.min(1,median(moves)/.035));
-    const narrowing=span2<span1*.78,expanding=span2>span1*1.22;
-    const pred=full.slope*end.x+full.intercept,deviation=(end.y-pred)/h;
-    const structuralHighs=highs.filter(p=>p.x<end.x-w*.08);
-    const structuralLows=lows.filter(p=>p.x<end.x-w*.08);
-    const refHigh=structuralHighs[structuralHighs.length-1]||null;
-    const refLow=structuralLows[structuralLows.length-1]||null;
-    const candleHigh=curve.anchor?curve.anchor.lo:end.y;
-    const candleLow=curve.anchor?curve.anchor.hi:end.y;
-    // Breakout valid only after price clears the structural level by a real margin
-    // and both recent layers point in the same direction.
-    const breakoutUp=refHigh
-      ? candleHigh<refHigh.y-h*.012&&recentNorm>.035&&microNorm>.02
-      : deviation<-.045&&recentNorm>.06&&microNorm>.04;
-    const breakoutDown=refLow
-      ? candleLow>refLow.y+h*.012&&recentNorm<-.035&&microNorm<-.02
-      : deviation>.045&&recentNorm<-.06&&microNorm<-.04;
-    const trendStrength=Math.min(1,Math.abs(norm)/.28);
-    const recentStrength=Math.min(1,Math.abs(recentNorm)/.35);
-    const microStrength=Math.min(1,Math.abs(microNorm)/.35);
-
-    let buyVotes=0,sellVotes=0;
-    const vote=(value,threshold,weight)=>{
-      if(value>threshold)buyVotes+=weight;
-      else if(value<-threshold)sellVotes+=weight;
-    };
-    vote(norm,.055,1.0);
-    vote(recentNorm,.045,1.55);
-    vote(microNorm,.035,1.85);
-    vote(lastMove,.022,1.45);
-
-    if(pv.length>=2){
-      const lastPivot=pv[pv.length-1];
-      if(lastPivot.type==='L'){
-        const bounce=(lastPivot.y-end.y)/h;
-        if(bounce>.025)buyVotes+=1.15;
-      }else{
-        const drop=(end.y-lastPivot.y)/h;
-        if(drop>.025)sellVotes+=1.15;
-      }
+    if(pts.length<24||quality<.42||(curve.spanCoverage||0)<.28){
+      return wait('Grafic insuficient de clar pentru 4 verificări independente • NU INTRA',null,0,0);
     }
+    const values=pts.map(p=>(h-p.y)/h);
+    const end=values[values.length-1];
+    const fast=emaOnSamples(values,9);
+    const slow=emaOnSamples(values,21);
+    const avgPrevious=emaOnSamples(values.slice(0,-4),9);
+    const slopeRecent=-linReg(pts.slice(-16)).slope*w/h;
+    const slopeFull=-linReg(pts.slice(-Math.min(43,pts.length))).slope*w/h;
+    const rsi=rsiOnSamples(values,14);
+    const left=values.slice(-28,-14);
+    const right=values.slice(-14);
+    const risingStructure=Math.min(...right)>Math.min(...left)+.0025
+      &&Math.max(...right)>Math.max(...left)+.0025;
+    const fallingStructure=Math.min(...right)<Math.min(...left)-.0025
+      &&Math.max(...right)<Math.max(...left)-.0025;
+    const candle=curve.recentCandleColors;
+    const closes=candle&&Array.isArray(candle.closedColors)?candle.closedColors:[];
+    const closedGreen=closes.length===2&&closes[0]==='GREEN'&&closes[1]==='GREEN';
+    const closedRed=closes.length===2&&closes[0]==='RED'&&closes[1]==='RED';
 
-    const voteTotal=Math.max(.001,buyVotes+sellVotes);
-    const voteDiff=buyVotes-sellVotes;
-    const consensus=Math.abs(voteDiff)/voteTotal;
-    let dir='NONE',atlas='Confluență Multi-Structuri',idx=50;
-    let score=.46+quality*.12+consensus*.16;
-
-    if(voteTotal<2.6||consensus<.24||(Math.abs(recentNorm)<.03&&Math.abs(microNorm)<.03)){
-      atlas=narrowing?'Compresie (Squeeze)':'Canal Orizontal';
-      idx=narrowing?20:19;
-      return {clear:false,dir:'NONE',atlas,idx,score:Math.min(.68,score),reason:'Direcția nu este suficient de clară'};
-    }
-    dir=voteDiff>0?'BUY':'SELL';
-    // DIAGNOSTIC PREVIEW v0.3.4: candidate is NEVER an entry signal.
-    // Only the existing strict clear flag may produce a bip.
-    curve.previewDirection=dir;
-
-    // CLOSED CANDLE GUARD v0.3.2
-    // BUY/SELL numai după ultimele două corpuri ÎNCHISE, ignorând lumânarea activă.
-    // CUMPĂRARE: două corpuri verzi închise; VÂNZARE: două roșii închise.
-    // Dacă sunt culori diferite sau nu putem distinge două corpuri, nu confirmăm semnalul.
-    const candleEvidence=curve.recentCandleColors;
-    const recentColors=candleEvidence&&Array.isArray(candleEvidence.closedColors)
-      ?candleEvidence.closedColors:[];
-    if(recentColors.length<2){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'Nu pot confirma două lumânări închise distincte și lumânarea activă • AȘTEAPTĂ'
-      };
-    }
-    const previousColor=recentColors[recentColors.length-2];
-    const lastColor=recentColors[recentColors.length-1];
-    if(previousColor!==lastColor){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'Ultimele două lumânări au culori diferite • fără semnal'
-      };
-    }
-    // REVERSAL SAFETY v0.3.3: un impuls poate continua să fie SELL
-    // în regresie în timp ce lumânarea activă începe un rebound verde.
-    // În acel caz, nu inversăm semnalul în BUY; blocăm orice tranzacție.
-    // Pe BUY aplicăm exact aceeași protecție la lumânarea activă roșie.
-    const expectedLiveColor=dir==='BUY'?'GREEN':'RED';
-    if(!candleEvidence||candleEvidence.activeColor!==expectedLiveColor){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'ATENȚIE REVERSARE: ultima lumânare activă contrazice '+dir+' • NU INTRA'
-      };
+    // Five evidence groups: EMA position, slope, momentum (pixel-RSI),
+    // price-action structure, closed candle colors. The last is optional:
+    // the previous 2-color-only strategy was not independently reliable.
+    const factorsBuy=[
+      fast>slow+.002&&end>slow,
+      slopeRecent>.022&&slopeFull>.012,
+      rsi>=52&&rsi<=81&&fast>avgPrevious+.0005,
+      risingStructure,
+      closedGreen
+    ];
+    const factorsSell=[
+      fast<slow-.002&&end<slow,
+      slopeRecent<-.022&&slopeFull<-.012,
+      rsi<=48&&rsi>=19&&fast<avgPrevious-.0005,
+      fallingStructure,
+      closedRed
+    ];
+    const buy=factorsBuy.filter(Boolean).length;
+    const sell=factorsSell.filter(Boolean).length;
+    const best=Math.max(buy,sell);
+    // Do not provide a candidate from one noisy vote or a tied vote.
+    if(best>=3&&Math.abs(buy-sell)>=2){
+      curve.previewDirection=buy>sell?'BUY':'SELL';
+    }else{
+      curve.previewDirection='NONE';
     }
 
-    // Blocăm intrările chiar după o lumânare disproporționat de mare:
-    // poate fi o epuizare sau o retragere; nu este dovadă pentru
-    // a inversa semnalul automat. Comparația folosește numai corpuri
-    // vizibile ale graficului, nu statistică de piață verificată.
-    const refPixels=Number(candleEvidence.recentBodyReference)||0;
-    const lastPixels=Number(candleEvidence.lastClosedBodyPixels)||0;
-    if(refPixels>0&&lastPixels/refPixels>2.6){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'Lumânare recentă excesiv de mare • risc de revenire • NU INTRA'
-      };
+    const confidence=best/5;
+    const score=Math.min(.84,.46+best*.065+quality*.08+Math.min(.05,Math.abs(slopeRecent)*.14));
+    if(curve.previewDirection==='NONE'){
+      return wait('EMA / impuls / structură nealiniate • AȘTEAPTĂ',null,score,confidence);
     }
-    if(dir==='BUY'&&lastColor!=='GREEN'){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'CUMPĂRARE blocată • ultimele două lumânări trebuie să fie verzi'
-      };
-    }
-    if(dir==='SELL'&&lastColor!=='RED'){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'VÂNZARE blocată • ultimele două lumânări trebuie să fie roșii'
-      };
+    const dir=curve.previewDirection;
+    const buySide=dir==='BUY';
+    const factors=buySide?factorsBuy:factorsSell;
+    const activeExpected=buySide?'GREEN':'RED';
+    const active=candle?candle.activeColor:null;
+    const conflicts=factors.filter(Boolean).length<4 ||
+      (buySide?sell>=2:buy>=2);
+    if(conflicts){
+      return wait('CANDIDAT '+(buySide?'BUY':'SELL')+' • lipsesc confirmări independente',dir,score,confidence);
     }
 
-    if(pv.length>=5){
-      const q=pv.slice(-5),types=q.map(p=>p.type).join('');
-      if(types==='HLHLH'){
-        const [s1,n1,head,n2,s2]=q;
-        const shouldersClose=Math.abs(s1.y-s2.y)<h*.045,necklineClose=Math.abs(n1.y-n2.y)<h*.065,headHigher=head.y<Math.min(s1.y,s2.y)-h*.03;
-        if(shouldersClose&&necklineClose&&headHigher&&dir==='SELL'){atlas='Head & Shoulders';idx=51;score=Math.max(score,.75+quality*.07+consensus*.07);}
-      }else if(types==='LHLHL'){
-        const [s1,n1,head,n2,s2]=q;
-        const shouldersClose=Math.abs(s1.y-s2.y)<h*.045,necklineClose=Math.abs(n1.y-n2.y)<h*.065,headLower=head.y>Math.max(s1.y,s2.y)+h*.03;
-        if(shouldersClose&&necklineClose&&headLower&&dir==='BUY'){atlas='Head & Shoulders inversat';idx=52;score=Math.max(score,.75+quality*.07+consensus*.07);}
-      }
+    // Do not issue sound when the current candle contradicts the vote,
+    // or when the active candle is not discernible from the screenshot.
+    if(active!==activeExpected){
+      return wait('Lumânarea activă nu confirmă direcția • NU INTRA',dir,score,confidence);
+    }
+    const recentSteps=values.slice(1).map((v,i)=>Math.abs(v-values[i]));
+    const baseStep=Math.max(.001,median(recentSteps.slice(-25,-1)));
+    const lastStep=recentSteps[recentSteps.length-1]||0;
+    if(lastStep>baseStep*4.5+.006){
+      return wait('Impuls brusc posibil epuizat • NU INTRA',dir,score,confidence);
+    }
+    const lastBody=Number(candle&&candle.lastClosedBodyPixels)||0;
+    const referenceBody=Number(candle&&candle.recentBodyReference)||0;
+    if(referenceBody>0&&lastBody/referenceBody>2.6){
+      return wait('Lumânare mare față de precedente • așteaptă',dir,score,confidence);
+    }
+    // RSI proxy extremes are a risk veto, not evidence of an automatic reversal.
+    if((buySide&&rsi>79)||( !buySide&&rsi<21 )){
+      return wait('Impuls aproape de epuizare conform oscilatorului estimat',dir,score,confidence);
     }
 
-    if(highs.length>=2){
-      const a=highs[highs.length-2],b=highs[highs.length-1];
-      if(Math.abs(a.y-b.y)<h*.035&&dir==='SELL'){atlas='Dublu Maxim';idx=2;score=Math.max(score,.70+quality*.09+recentStrength*.07+consensus*.06);}
-    }
-    if(lows.length>=2){
-      const a=lows[lows.length-2],b=lows[lows.length-1];
-      if(Math.abs(a.y-b.y)<h*.035&&dir==='BUY'){atlas='Dublu Minim';idx=1;score=Math.max(score,.70+quality*.09+recentStrength*.07+consensus*.06);}
-    }
-    if(highs.length>=3){
-      const q=highs.slice(-3);
-      if(Math.max(...q.map(p=>p.y))-Math.min(...q.map(p=>p.y))<h*.045&&dir==='SELL'){atlas='Triplu Maxim';idx=4;score=Math.max(score,.74+quality*.07+consensus*.06);}
-    }
-    if(lows.length>=3){
-      const q=lows.slice(-3);
-      if(Math.max(...q.map(p=>p.y))-Math.min(...q.map(p=>p.y))<h*.045&&dir==='BUY'){atlas='Triplu Minim';idx=3;score=Math.max(score,.74+quality*.07+consensus*.06);}
-    }
-
-    if(idx===50){
-      if(narrowing&&(breakoutUp||breakoutDown)){atlas='Wedge + Breakout';idx=44;score=Math.max(score,.72+quality*.07+microStrength*.07+consensus*.06);}
-      else if(narrowing){atlas=dir==='BUY'?'Wedge Ascendent':'Wedge Descendent';idx=dir==='BUY'?15:16;score=Math.max(score,.65+quality*.08+trendStrength*.07+consensus*.06);}
-      else if(expanding){atlas='Triunghi Expanding';idx=14;score=Math.max(score,.61+quality*.09+microStrength*.07);}
-      else if(breakoutUp&&dir==='BUY'){atlas='Breakout Rezistență';idx=21;score=Math.max(score,.74+quality*.07+microStrength*.08+consensus*.05);}
-      else if(breakoutDown&&dir==='SELL'){atlas='Breakout Suport';idx=22;score=Math.max(score,.74+quality*.07+microStrength*.08+consensus*.05);}
-      else if(Math.abs(norm)>.055){atlas=dir==='BUY'?'Canal Ascendent':'Canal Descendent';idx=dir==='BUY'?17:18;score=Math.max(score,.64+quality*.09+trendStrength*.09+consensus*.06);}
-      else{atlas=dir==='BUY'?'1-2-3 Bottom':'1-2-3 Top';idx=dir==='BUY'?9:10;score=Math.max(score,.59+quality*.08+recentStrength*.08+consensus*.07);}
-    }
-
-    let disagreement=0;
-    if(Math.sign(recentNorm)!==Math.sign(norm)&&Math.abs(norm)>.035)disagreement+=.07;
-    if(Math.sign(microNorm)!==Math.sign(recentNorm)&&Math.abs(recentNorm)>.03)disagreement+=.08;
-    if(Math.sign(lastMove)!==Math.sign(microNorm)&&Math.abs(lastMove)>.02)disagreement+=.06;
-    score-=disagreement;
-    score=Math.max(.44,Math.min(.93,score));
-
-    const nearResistance=refHigh&&candleHigh>=refHigh.y-h*.012&&candleHigh<=refHigh.y+h*.06;
-    const nearSupport=refLow&&candleLow<=refLow.y+h*.012&&candleLow>=refLow.y-h*.06;
-    if(dir==='BUY'&&nearResistance&&!breakoutUp){
-      return {clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,score:Math.min(score,.69),reason:'Prețul este sub rezistență. BUY necesită o închidere clară deasupra liniei galbene'};
-    }
-    if(dir==='SELL'&&nearSupport&&!breakoutDown){
-      return {clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,score:Math.min(score,.69),reason:'Prețul este deasupra suportului. SELL necesită o închidere clară sub linia galbenă'};
-    }
-
-    // REVERSAL / EXHAUSTION GUARD v0.2.7
-    // Evită intrarea în continuarea unui impuls deja întins și evită reversările
-    // premature după o cădere/urcare violentă. Motorul preferă WAIT până la
-    // recuperare/retragere structurală reală.
-    const guardPts=pts.slice(-Math.max(10,Math.floor(pts.length*.30)));
-    let recentHighIdx=0,recentLowIdx=0;
-    for(let i=1;i<guardPts.length;i++){
-      if(guardPts[i].y<guardPts[recentHighIdx].y)recentHighIdx=i;
-      if(guardPts[i].y>guardPts[recentLowIdx].y)recentLowIdx=i;
-    }
-    const recentHighY=guardPts[recentHighIdx].y;
-    const recentLowY=guardPts[recentLowIdx].y;
-    const recentRange=Math.max(.0001,(recentLowY-recentHighY)/h);
-    const endFromTop=(end.y-recentHighY)/Math.max(1,recentLowY-recentHighY);
-    const endFromBottom=(recentLowY-end.y)/Math.max(1,recentLowY-recentHighY);
-
-    const sharpRise=recentLowIdx<recentHighIdx&&recentRange>.050;
-    const sharpFall=recentHighIdx<recentLowIdx&&recentRange>.050;
-    const nearRecentTop=endFromTop<.20;
-    const nearRecentBottom=endFromBottom<.20;
-    const buyRecovery=sharpFall?Math.max(0,Math.min(1,(recentLowY-end.y)/Math.max(1,recentLowY-recentHighY))):1;
-    const sellRetrace=sharpRise?Math.max(0,Math.min(1,(end.y-recentHighY)/Math.max(1,recentLowY-recentHighY))):1;
-
-    if(dir==='BUY'&&sharpFall&&buyRecovery<.45){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'Cădere recentă puternică. BUY este blocat până la recuperare structurală'
-      };
-    }
-    if(dir==='SELL'&&sharpRise&&sellRetrace<.45){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'Urcare recentă puternică. SELL este blocat până la retragere structurală'
-      };
-    }
-    if(dir==='BUY'&&recentRange>.055&&nearRecentTop&&!breakoutUp){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'Preț întins aproape de maximul recent. BUY necesită breakout și confirmare'
-      };
-    }
-    if(dir==='SELL'&&recentRange>.055&&nearRecentBottom&&!breakoutDown){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:'Preț întins aproape de minimul recent. SELL necesită breakout și confirmare'
-      };
-    }
-
-    // FRESH BREAKOUT GUARD v0.2.8
-    // Un breakout vechi nu mai este suficient pentru intrare. Dacă prețul a pornit deja
-    // corecția după maxim/minim, motorul blochează semnalul până la recucerirea impulsului.
-    const tail=pts.slice(-Math.min(7,pts.length));
-    let trailingAgainst=0;
-    let adverseDistance=0;
-    for(let i=tail.length-1;i>0;i--){
-      const dy=(tail[i].y-tail[i-1].y)/h;
-      const adverse=dir==='BUY'?dy>.0025:dy<-.0025;
-      if(!adverse)break;
-      trailingAgainst++;
-      adverseDistance+=Math.abs(dy);
-    }
-
-    const breakoutPattern=idx===21||idx===22||idx===44||String(atlas||'').includes('Breakout');
-    const staleBuyBreakout=dir==='BUY'&&breakoutPattern&&sharpRise&&endFromTop>.28;
-    const staleSellBreakout=dir==='SELL'&&breakoutPattern&&sharpFall&&endFromBottom>.28;
-    const activePullback=trailingAgainst>=2&&adverseDistance>.010;
-
-    if(dir==='BUY'&&(staleBuyBreakout||activePullback)){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:staleBuyBreakout
-          ? 'Breakout BUY vechi: prețul a retras prea mult de la maxim. Așteaptă recucerirea impulsului'
-          : 'Corecție activă după impuls. BUY este blocat până când prețul reia urcarea'
-      };
-    }
-    if(dir==='SELL'&&(staleSellBreakout||activePullback)){
-      return {
-        clear:false,dir:'NONE',atlas:'Așteaptă confirmarea',idx:0,
-        score:Math.min(score,.69),
-        trendStrength,recentStrength,microStrength,consensus,volatility,
-        reason:staleSellBreakout
-          ? 'Breakout SELL vechi: prețul a revenit prea mult de la minim. Așteaptă reluarea impulsului'
-          : 'Revenire activă după impuls. SELL este blocat până când prețul reia scăderea'
-      };
-    }
-
-    // QUALITY GATE v0.2.6 — motor mai selectiv, fără modificări de interfață.
-    // Semnalul este valid numai când direcția, structura și impulsul sunt aliniate.
-    const directionSign=dir==='BUY'?1:-1;
-    const recentAligned=directionSign*recentNorm>.045;
-    const microAligned=directionSign*microNorm>.035;
-    const lastMoveAligned=directionSign*lastMove>.018;
-    const trendAligned=directionSign*norm>.025;
-    const breakoutAligned=dir==='BUY'?breakoutUp:breakoutDown;
-    const structuralPattern=[1,2,3,4,21,22,44,51,52].includes(idx);
-    const alignmentCount=[recentAligned,microAligned,lastMoveAligned,trendAligned].filter(Boolean).length;
-    const hardConflict=(directionSign*recentNorm<-.025)||(directionSign*microNorm<-.020);
-    const chaotic=volatility>.88&&consensus<.55;
-    const qualityGate=quality>=.42;
-    const confluenceGate=alignmentCount>=3&&(trendAligned||breakoutAligned||structuralPattern);
-    const scoreThreshold=breakoutAligned?.72:(structuralPattern?.74:.77);
-
-    // Scorul afișat rămâne un scor intern al modelului, nu o probabilitate statistică garantată.
-    // Îl plafonăm conservator până când există calibrare pe un eșantion mare de tranzacții reale/demo.
-    score=Math.min(score,.88);
-
-    const clear=
-      score>=scoreThreshold&&
-      consensus>=.40&&
-      qualityGate&&
-      confluenceGate&&
-      !hardConflict&&
-      !chaotic;
-
-    let gateReason='';
-    if(!clear){
-      if(!qualityGate)gateReason='Imaginea graficului nu are suficientă calitate pentru un semnal serios';
-      else if(hardConflict)gateReason='Impulsul recent contrazice direcția. Așteaptă confirmarea';
-      else if(chaotic)gateReason='Volatilitate haotică. Motorul blochează intrarea';
-      else if(consensus<.40)gateReason='Confluența BUY/SELL este insuficientă';
-      else if(!confluenceGate)gateReason='Structura și momentum-ul nu sunt încă aliniate';
-      else if(score<scoreThreshold)gateReason='Scorul modelului este sub pragul selectiv';
-      else gateReason='Semnal insuficient confirmat';
-    }
-
+    const model='Confluență EMA + impuls + structură';
     return {
-      clear,
-      dir:clear?dir:'NONE',
-      atlas,
-      idx,
-      score,
-      trendStrength,
-      recentStrength,
-      microStrength,
-      consensus,
-      volatility,
-      reason:clear?'':gateReason
+      clear:true,dir,atlas:model,idx:50,score,
+      trendStrength:Math.min(1,Math.abs(slopeFull)/.28),
+      recentStrength:Math.min(1,Math.abs(slopeRecent)/.35),
+      microStrength:Math.min(1,Math.abs(fast-slow)/.045),
+      consensus:confidence,
+      volatility:Math.min(1,median(recentSteps)/.035),
+      reason:''
     };
   }
 
