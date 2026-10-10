@@ -1,8 +1,8 @@
-name: SCALP ATLAS v1.0.50 MULTIFACTOR DEMO
+name: SCALP ATLAS v1.0.51 OPTIONAL AI VISION
 
 on:
   push:
-    branches: ['feature/scalp-atlas-v1.0.50-multifactor-demo']
+    branches: ['feature/scalp-atlas-v1.0.51-optional-ai-vision']
     paths:
       - '.github/workflows/build-overlay-companion-v200.yml'
       - '.github/overlay-companion-v200.patch'
@@ -24,6 +24,8 @@ on:
       - '.github/scripts/preview_candidates_v1048.py'
       - '.github/scripts/one_direction_guard_v1049.py'
       - '.github/scripts/test_multifactor_v1050.cjs'
+      - '.github/scripts/ai_vision_confirmation_v1051.py'
+      - 'ai-gateway/**'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -74,6 +76,7 @@ jobs:
           python3 .github/scripts/m5_early_signal_guard_v1047.py
           python3 .github/scripts/preview_candidates_v1048.py
           python3 .github/scripts/one_direction_guard_v1049.py
+          python3 .github/scripts/ai_vision_confirmation_v1051.py
           ! grep -R -q "Pocket Option" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           ! grep -R -q "POCKET OPTION" .github/native-overlay/ScalpOverlayService.kt .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           grep -q 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
@@ -121,6 +124,10 @@ jobs:
           grep -Fq 'chartCountdownTf != "M5"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'currentTimeframe == "M5" || currentTimeframe == "M10"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ONE-DIRECTION GUARD v1.0.49' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'AI SECOND-OPINION GATE v1.0.51' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'aiSecondOpinionBlock(now, rawSignal)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'getSharedPreferences("scalp_atlas_ai_v1051"' .github/native-overlay/ScalpOverlayModule.kt
+          grep -Fq 'fun configureAiVerifier' .github/native-overlay/ScalpOverlayModule.kt
           grep -Fq 'directionConsistencyBlock(now, previewDir, rawSignal)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'putString(key, "CONFLICT")' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'previewStableReads < 2' .github/native-overlay/ScalpOverlayService.kt
@@ -151,6 +158,7 @@ jobs:
           cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx scalp-atlas-new/AnalyzerBridge.tsx
           cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
           cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx scalp-atlas-new/AnalyzerBridge.web.tsx
+          python3 .github/scripts/ai_vision_confirmation_v1051.py --ui
 
           python3 - <<'PY'
           from pathlib import Path
@@ -160,10 +168,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.50'
+          expo['version']='1.0.51'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=150
+          expo['android']['versionCode']=151
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -182,6 +190,9 @@ jobs:
           set -e
           grep -q "v1.0.2 CLEAN VIEW" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "t('cameraLive')" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -Fq 'AI EXTERN:' scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -Fq 'configureAiVerifier(aiEndpoint.trim(), aiAccessToken.trim(), enabled)' scalp-atlas-new/LiveAnalysisApp.tsx
+          node --check ai-gateway/server.mjs
           grep -q "scalpAtlas.live.guide.v0418.count" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "signalLockRef" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "requiredConfirmations = currentTf === 'M1' || currentTf === 'M10' || !currentTf ? 3 : 2" scalp-atlas-new/LiveAnalysisApp.tsx
@@ -379,6 +390,7 @@ jobs:
               '<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
               '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
               '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />',
+              '<uses-permission android:name="android.permission.INTERNET" />',
           ]
           marker='<application'
           for perm in perms:
@@ -469,23 +481,23 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.50-MULTIFACTOR-DEMO.apk
+          cp "$APK" ScalpAtlas-v1.0.51-OPTIONAL-AI-VISION.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.50-MULTIFACTOR-DEMO
-          path: ScalpAtlas-v1.0.50-MULTIFACTOR-DEMO.apk
+          name: ScalpAtlas-v1.0.51-OPTIONAL-AI-VISION
+          path: ScalpAtlas-v1.0.51-OPTIONAL-AI-VISION.apk
           if-no-files-found: error
           retention-days: 30
 
 
-      - name: Publish v1.0.50 release
+      - name: Publish v1.0.51 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.50-multifactor-demo --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.50-multifactor-demo \
-            ScalpAtlas-v1.0.50-MULTIFACTOR-DEMO.apk \
+          gh release delete scalp-atlas-v1.0.51-optional-ai-vision --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.51-optional-ai-vision \
+            ScalpAtlas-v1.0.51-OPTIONAL-AI-VISION.apk \
             --target "$GITHUB_SHA" \
             --title "SCALP ATLAS v1.0.49 DIRECTION CONSISTENCY" \
-            --notes "SCALP ATLAS v1.0.50 MULTIFACTOR DEMO: strategie experimentală bazată pe consens între tendința EMA9/21 estimată din pixeli, oscilator RSI14 aproximat vizual, impuls, structură de preț și lumânări (culorile celor două lumânări nu mai sunt o condiție obligatorie); semnalele apar doar după confirmări, cu protecție contra inversărilor BUY/SELL și un singur bip per bară. Nu sunt cotații reale OHLC și valorile EMA/RSI nu sunt indicatori calculați exact de la broker. Validat prin teste sintetice de logică, NU validat statistic pentru profit; nu tranzacționa pe cont real."
+            --notes "Scalp Atlas v1.0.51 OPT-IN AI CONNECTOR. Păstrează motorul v1.0.50 și suprapunerea. Adaugă configurare colapsabilă pentru backend HTTPS propriu cu token, NU pentru cheia API OpenAI. Când AI este activat, BIP-ul cere acordul aceleiași direcții din motorul local și AI în maximum 9 secunde, altfel FĂRĂ BIP. Când AI este oprit, funcționează motorul clasic. Include în repo sursa serverului privat ai-gateway/server.mjs cu secret OPENAI_API_KEY doar pe server. AI nu este conectat sau finanțat automat și nu este validat pentru câștiguri. Test exclusiv fără tranzacții reale."
