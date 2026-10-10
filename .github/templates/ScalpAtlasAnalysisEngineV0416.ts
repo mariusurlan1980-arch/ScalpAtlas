@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.5-multifactor-demo';
+  const ENGINE_VERSION='0.3.6-free-multi-strategy';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -301,9 +301,53 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const buy=factorsBuy.filter(Boolean).length;
     const sell=factorsSell.filter(Boolean).length;
     const best=Math.max(buy,sell);
+
+    // FREE OFFLINE STRATEGY ENSEMBLE v1.0.52.
+    // Visual EMA/RSI are PIXEL PROXIES; no live OHLC or paid/cloud AI is used.
+    // Strategies are complementary heuristics, not proven predictive systems.
+    const previousBand=values.slice(-30,-8);
+    const recentBand=values.slice(-8);
+    const previousHigh=Math.max(...previousBand);
+    const previousLow=Math.min(...previousBand);
+    const localLow=Math.min(...recentBand);
+    const localHigh=Math.max(...recentBand);
+    const lastSix=values.slice(-7);
+    const recentGain=end-values[values.length-7];
+    const trendBuy=buy>=4&&factorsBuy[0]&&factorsBuy[1]&&factorsBuy[2];
+    const trendSell=sell>=4&&factorsSell[0]&&factorsSell[1]&&factorsSell[2];
+    const breakoutBuy=fast>slow+.002&&slopeRecent>.028&&
+      end>previousHigh+.004&&recentGain>.007&&rsi>54&&rsi<79;
+    const breakoutSell=fast<slow-.002&&slopeRecent<-.028&&
+      end<previousLow-.004&&recentGain<-.007&&rsi<46&&rsi>21;
+    const pullbackBuy=fast>slow+.002&&slopeFull>.018&&
+      localLow<fast+.010&&end>fast+.003&&
+      recentGain>.006&&rsi>=50&&rsi<78;
+    const pullbackSell=fast<slow-.002&&slopeFull<-.018&&
+      localHigh>fast-.010&&end<fast-.003&&
+      recentGain<-.006&&rsi<=50&&rsi>22;
+
+    const buySetups=[
+      trendBuy?'EMA + impuls':null,
+      breakoutBuy?'Breakout confirmat':null,
+      pullbackBuy?'Pullback în tendință':null
+    ].filter(Boolean);
+    const sellSetups=[
+      trendSell?'EMA + impuls':null,
+      breakoutSell?'Breakout confirmat':null,
+      pullbackSell?'Pullback în tendință':null
+    ].filter(Boolean);
+    const strategyBuy=buySetups.length, strategySell=sellSetups.length;
+    const dominant=buy>sell?'BUY':'SELL';
+    // Conflicting setups mean ABSTAIN, regardless of candle colors.
+    const opposedSetups=strategyBuy>0&&strategySell>0;
+    const winningSetups=dominant==='BUY'?buySetups:sellSetups;
+    const strongEvidence=winningSetups.length>=1 && best>=4 &&
+      (dominant==='BUY'?factorsBuy[0]&&factorsBuy[1]:factorsSell[0]&&factorsSell[1]);
+
     // Do not provide a candidate from one noisy vote or a tied vote.
-    if(best>=3&&Math.abs(buy-sell)>=2){
-      curve.previewDirection=buy>sell?'BUY':'SELL';
+    if(best>=3&&Math.abs(buy-sell)>=2&&!opposedSetups&&
+      (dominant==='BUY'?strategyBuy>0:strategySell>0)){
+      curve.previewDirection=dominant;
     }else{
       curve.previewDirection='NONE';
     }
@@ -311,15 +355,15 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const confidence=best/5;
     const score=Math.min(.84,.46+best*.065+quality*.08+Math.min(.05,Math.abs(slopeRecent)*.14));
     if(curve.previewDirection==='NONE'){
-      return wait('EMA / impuls / structură nealiniate • AȘTEAPTĂ',null,score,confidence);
+      return wait('Strategiile gratuite nu sunt aliniate • AȘTEAPTĂ',null,score,confidence);
     }
     const dir=curve.previewDirection;
     const buySide=dir==='BUY';
     const factors=buySide?factorsBuy:factorsSell;
     const activeExpected=buySide?'GREEN':'RED';
     const active=candle?candle.activeColor:null;
-    const conflicts=factors.filter(Boolean).length<4 ||
-      (buySide?sell>=2:buy>=2);
+    const conflicts=!strongEvidence || factors.filter(Boolean).length<4 ||
+      opposedSetups || (buySide?sell>=2:buy>=2);
     if(conflicts){
       return wait('CANDIDAT '+(buySide?'BUY':'SELL')+' • lipsesc confirmări independente',dir,score,confidence);
     }
@@ -345,7 +389,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       return wait('Impuls aproape de epuizare conform oscilatorului estimat',dir,score,confidence);
     }
 
-    const model='Confluență EMA + impuls + structură';
+    const model='OFFLINE • '+winningSetups.join(' + ');
     return {
       clear:true,dir,atlas:model,idx:50,score,
       trendStrength:Math.min(1,Math.abs(slopeFull)/.28),
