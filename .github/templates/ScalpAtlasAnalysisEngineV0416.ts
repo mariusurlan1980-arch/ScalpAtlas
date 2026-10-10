@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.6-free-multi-strategy';
+  const ENGINE_VERSION='0.3.7-free-local-neural-filter';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -476,13 +476,81 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return lines;
   }
 
+  // LOCAL NEURAL AI v1.0.53 (no service, no subscription, no internet).
+  // The weights were trained on SYNTHETIC chart-like price traces to classify
+  // the currently visible trend, not future market returns. The neural classifier
+  // is an extra abstention filter ONLY. It never invents BUY or SELL.
+  const OFFLINE_AI_WEIGHTS=__SCALP_ATLAS_OFFLINE_MODEL_V1053__;
+  function chartFeaturesForAi(curve){
+    const pts=curve&&curve.pts;
+    if(!pts||pts.length<28||!Number.isFinite(curve.h)||curve.h<=0)return null;
+    const n=pts.length;
+    const raw=pts.map(p=>(curve.h-p.y)/curve.h);
+    if(raw.some(v=>!Number.isFinite(v)))return null;
+    const values=[];
+    for(let j=0;j<40;j++){
+      const pos=(n-1)*j/39,lo=Math.floor(pos),hi=Math.min(n-1,lo+1),mix=pos-lo;
+      values.push(raw[lo]*(1-mix)+raw[hi]*mix);
+    }
+    const span=Math.max(1e-6,Math.max(...values)-Math.min(...values));
+    if(span<.003)return null;
+    const v=values.map(z=>(z-values[0])/span);
+    const d=v.slice(1).map((x,i)=>x-v[i]);
+    const slope=(series)=>{
+      const count=series.length,mean=(count-1)/2,meanY=series.reduce((a,b)=>a+b,0)/count;
+      let num=0,den=0;
+      series.forEach((y,i)=>{num+=(i-mean)*(y-meanY);den+=(i-mean)**2;});
+      return den?num/den*(count-1):0;
+    };
+    const up=(xs)=>2*xs.filter(x=>x>0).length/xs.length-1;
+    const net=v[39];
+    const movement=d.reduce((a,b)=>a+Math.abs(b),0);
+    const f=[
+      slope(v),slope(v.slice(-20)),slope(v.slice(-10)),net,
+      v[39]-v[26],v[26]-v[12],
+      up(d),up(d.slice(-14)),
+      Math.min(5,median(d.map(Math.abs))*10),
+      Math.log1p(movement/Math.max(Math.abs(net),.04))
+    ];
+    return f.every(Number.isFinite)?f:null;
+  }
+  function localNeuralVote(curve){
+    const x=chartFeaturesForAi(curve),m=OFFLINE_AI_WEIGHTS;
+    if(!x||!m||m.inputMean.length!==10||m.w1.length!==16||m.w2.length!==3)
+      return {direction:'WAIT',confidence:0,margin:0};
+    const scaled=x.map((v,i)=>(v-m.inputMean[i])/Math.max(.001,m.inputStd[i]));
+    const h=m.w1.map((row,j)=>Math.tanh(row.reduce((a,w,i)=>a+w*scaled[i],m.b1[j])));
+    const logits=m.w2.map((row,k)=>row.reduce((a,w,i)=>a+w*h[i],m.b2[k]));
+    const hi=Math.max(...logits),exp=logits.map(v=>Math.exp(v-hi)),sum=exp.reduce((a,b)=>a+b,0);
+    const p=exp.map(v=>v/sum);
+    const k=p.indexOf(Math.max(...p));
+    const other=Math.max(...p.filter((_,i)=>i!==k));
+    return {direction:m.labels[k]||'WAIT',confidence:p[k],margin:p[k]-other};
+  }
+  function applyLocalNeuralGate(curve,r){
+    const ml=localNeuralVote(curve);
+    const agrees=r&&r.clear&&ml.direction===r.dir&&ml.confidence>=.80&&ml.margin>=.50;
+    if(r&&r.clear&&!agrees){
+      // Always fail closed if neural weights, pixels or decision are uncertain.
+      curve.previewDirection='NONE';
+      return {...r,clear:false,dir:'NONE',score:Math.min(.69,r.score),
+        reason:'AI local neconfirmat sau nesigur • FĂRĂ BIP'};
+    }
+    if(r&&r.clear&&agrees){
+      return {...r,atlas:r.atlas+' + AI LOCAL'};
+    }
+    // A non-trade is NEVER upgraded to a trade by machine learning.
+    if(ml.direction!==curve.previewDirection)curve.previewDirection='NONE';
+    return r;
+  }
+
   function run(dataUrl,timeframe){
     const img=new Image();
     img.onload=function(){
       try{
         const curve=buildPriceCurve(img);
         if(!curve){send({type:'ERROR',message:'Imaginea nu a putut fi citită.'});return;}
-        const r=classify(curve),anchor=curve.anchor;
+        const baseline=classify(curve),r=applyLocalNeuralGate(curve,baseline),anchor=curve.anchor;
         const duration=r.clear?directionDurationFor(timeframe,r,curve):null;
         send({
           type:'RESULT',
