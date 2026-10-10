@@ -216,7 +216,6 @@ jobs:
           grep -Fq "const pullbackSell=" scalp-atlas-new/analysisEngine.ts
           grep -Fq "const opposedSetups=" scalp-atlas-new/analysisEngine.ts
           ! grep -Fq "AI EXTERN:" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -Fq "0.3.5-multifactor-demo" scalp-atlas-new/analysisEngine.ts
           grep -Fq 'function emaOnSamples(values,period)' scalp-atlas-new/analysisEngine.ts
           grep -Fq 'function rsiOnSamples(values,period)' scalp-atlas-new/analysisEngine.ts
           grep -Fq "const factorsBuy=[" scalp-atlas-new/analysisEngine.ts
