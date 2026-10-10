@@ -47,8 +47,8 @@ if "--ui" in sys.argv:
 """,
         "state and settings action")
     s=replace_once(s,
-        "              <Text style={styles.overlayHint}>După pornire, deschide Pocket Option. Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.</Text>\n",
-        """              <Text style={styles.overlayHint}>După pornire, deschide Pocket Option. Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.</Text>
+        "              <Text style={styles.overlayHint}>După pornire, deschide graficul brokerului. Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.</Text>\n",
+        """              <Text style={styles.overlayHint}>După pornire, deschide graficul brokerului. Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.</Text>
               <Pressable style={styles.overlayStopButton} onPress={() => setAiEditorOpen(v => !v)}>
                 <Text style={styles.overlayStopButtonText}>AI EXTERN: {aiEnabled ? 'ACTIV' : 'NECONECTAT / OPRIT'} · CONFIGURARE</Text>
               </Pressable>
