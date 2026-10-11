@@ -344,29 +344,35 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const strongEvidence=winningSetups.length>=1 && best>=4 &&
       (dominant==='BUY'?factorsBuy[0]&&factorsBuy[1]:factorsSell[0]&&factorsSell[1]);
 
-    // Do not provide a candidate from one noisy vote or a tied vote.
-    // COLOR CONSISTENCY v1.0.54: pixels are not broker OHLC data.
-    // Disallow BUY candidates after red/mixed candles and SELL after green.
-    // The forming candle must also agree; uncertain frames mean WAIT.
-    const buyCandlesAligned=closedGreen&&!!candle&&candle.activeColor==='GREEN';
-    const sellCandlesAligned=closedRed&&!!candle&&candle.activeColor==='RED';
-    if(best>=3&&Math.abs(buy-sell)>=2&&!opposedSetups&&
-      (dominant==='BUY'?strategyBuy>0&&buyCandlesAligned:strategySell>0&&sellCandlesAligned)){
-      curve.previewDirection=dominant;
-    }else{
-      curve.previewDirection='NONE';
-    }
+    // PREVIEW/CONFIRMATION SPLIT v1.0.55:
+    // A tentative direction is OBSERVATION ONLY (never entry, never BIP).
+    // Do not suppress the visual candidate simply because the final candle
+    // filter has correctly blocked a trade. Never invent direction from
+    // a tie, one noisy vote or mutually opposed strategies.
+    const visualBuy=best>=3&&buy-sell>=2&&strategyBuy>0&&strategySell===0 &&
+      factorsBuy[0]&&factorsBuy[1];
+    const visualSell=best>=3&&sell-buy>=2&&strategySell>0&&strategyBuy===0 &&
+      factorsSell[0]&&factorsSell[1];
+    curve.previewDirection=visualBuy?'BUY':visualSell?'SELL':'NONE';
 
     const confidence=best/5;
     const score=Math.min(.84,.46+best*.065+quality*.08+Math.min(.05,Math.abs(slopeRecent)*.14));
     if(curve.previewDirection==='NONE'){
-      return wait('Strategiile gratuite nu sunt aliniate • AȘTEAPTĂ',null,score,confidence);
+      return wait('Nu există încă un model coerent • verifică graficul / timeframe-ul • AȘTEAPTĂ',null,score,confidence);
     }
     const dir=curve.previewDirection;
     const buySide=dir==='BUY';
     const factors=buySide?factorsBuy:factorsSell;
     const activeExpected=buySide?'GREEN':'RED';
     const active=candle?candle.activeColor:null;
+    // COLOR CONSISTENCY v1.0.54 stays MANDATORY for a real signal.
+    // 2 CLOSED bodies with correct color and a non-opposing active candle
+    // are required; mixed/unclear colors mean WAIT (but visual preview stays).
+    const aligned=buySide?closedGreen&&active==='GREEN':closedRed&&active==='RED';
+    if(!aligned){
+      return wait('CANDIDAT '+dir+' NEVALIDAT • 2 lumânări închise și lumânarea activă trebuie să confirme • FĂRĂ BIP • NU INTRA',
+        dir,score,confidence);
+    }
     const conflicts=!strongEvidence || factors.filter(Boolean).length<4 ||
       opposedSetups || (buySide?sell>=2:buy>=2);
     if(conflicts){
@@ -537,15 +543,15 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const agrees=r&&r.clear&&ml.direction===r.dir&&ml.confidence>=.80&&ml.margin>=.50;
     if(r&&r.clear&&!agrees){
       // Always fail closed if neural weights, pixels or decision are uncertain.
-      curve.previewDirection='NONE';
+      // Keep diagnostic preview visible; the AI veto only the actual trade.
       return {...r,clear:false,dir:'NONE',score:Math.min(.69,r.score),
-        reason:'AI local neconfirmat sau nesigur • FĂRĂ BIP'};
+        reason:'CANDIDAT NEVALIDAT • AI local neconfirmat sau nesigur • FĂRĂ BIP • NU INTRA'};
     }
     if(r&&r.clear&&agrees){
       return {...r,atlas:r.atlas+' + AI LOCAL'};
     }
     // A non-trade is NEVER upgraded to a trade by machine learning.
-    if(ml.direction!==curve.previewDirection)curve.previewDirection='NONE';
+    // Do not hide the PREVIEW due to AI disagreement. This is not a signal.
     return r;
   }
 
