@@ -345,8 +345,13 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       (dominant==='BUY'?factorsBuy[0]&&factorsBuy[1]:factorsSell[0]&&factorsSell[1]);
 
     // Do not provide a candidate from one noisy vote or a tied vote.
+    // COLOR CONSISTENCY v1.0.54: pixels are not broker OHLC data.
+    // Disallow BUY candidates after red/mixed candles and SELL after green.
+    // The forming candle must also agree; uncertain frames mean WAIT.
+    const buyCandlesAligned=closedGreen&&!!candle&&candle.activeColor==='GREEN';
+    const sellCandlesAligned=closedRed&&!!candle&&candle.activeColor==='RED';
     if(best>=3&&Math.abs(buy-sell)>=2&&!opposedSetups&&
-      (dominant==='BUY'?strategyBuy>0:strategySell>0)){
+      (dominant==='BUY'?strategyBuy>0&&buyCandlesAligned:strategySell>0&&sellCandlesAligned)){
       curve.previewDirection=dominant;
     }else{
       curve.previewDirection='NONE';
