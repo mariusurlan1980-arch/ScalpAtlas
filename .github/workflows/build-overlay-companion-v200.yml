@@ -125,7 +125,7 @@ jobs:
           grep -Fq 'val focusTf = normalizeTimeframe(focusText)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'currentTimeframe = "AUTO"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'cropAndScale(0.69f, 0.28f, 0.89f, 0.46f)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq "EARLY M5 BIP GUARD v1.0.47" .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq "M5 COUNTDOWN GUARD v1.0.56" .github/native-overlay/ScalpOverlayService.kt
           grep -Fq "val timingRejection = m10EntryTimingRejection(now) ?: m5EntryTimingRejection(now)" .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'chartCountdownTf != "M5"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'currentTimeframe == "M5" || currentTimeframe == "M10"' .github/native-overlay/ScalpOverlayService.kt
