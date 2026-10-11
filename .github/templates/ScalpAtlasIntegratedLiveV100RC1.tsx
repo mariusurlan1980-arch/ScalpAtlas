@@ -29,6 +29,9 @@ type Outcome = 'PENDING' | 'WIN' | 'LOSS';
 
 type AnalysisResult = {
   signal: Signal;
+  // v1.0.55: visual candidate is NOT a trade or an audio confirmation.
+  candidateDirection?: 'BUY' | 'SELL' | 'NONE';
+  candidateConfirmed?: boolean;
   state?: 'SIGNAL' | 'WAIT' | 'NONE' | 'INVALID';
   bias?: Bias;
   pattern: string;
@@ -670,6 +673,21 @@ export default function LiveAnalysisApp() {
               }
             }
           } else {
+            // PREVIEW DISPLAY v1.0.55: visible early direction, but NO BIP,
+            // no expiry and no change to confirmation conditions.
+            const watch = rawResult.candidateDirection;
+            if (watch === 'BUY' || watch === 'SELL') {
+              result = {
+                ...result,
+                signal: 'NONE',
+                state: 'WAIT',
+                bias: watch,
+                expiry: null,
+                directionMin: null,
+                directionMax: null,
+                reason: result.reason || 'CANDIDAT NEVALIDAT • FĂRĂ BIP • NU INTRA',
+              };
+            }
             signalCandidateRef.current = { dir: null, count: 0, firstAt: 0, lastAt: 0 };
             setDirectionRemainingSeconds(0);
             setDirectionWindowSeconds(0);
@@ -686,7 +704,9 @@ export default function LiveAnalysisApp() {
           const candidateCount = signalCandidateRef.current.dir === result.bias ? signalCandidateRef.current.count : 0;
           const requiredConfirmations = timeframeRef.current === 'M1' || timeframeRef.current === 'M10' || !timeframeRef.current ? 3 : 2;
           const suffix = candidateCount > 0 && candidateCount < requiredConfirmations ? ` • ${candidateCount}/${requiredConfirmations}` : '';
-          setMessage(`${t('wait')}${result.bias ? ' ' + result.bias : ''}${suffix}`);
+          setMessage(result.bias && result.reason.startsWith('CANDIDAT')
+            ? `CANDIDAT ${result.bias} • NECONFIRMAT • NU INTRA • FĂRĂ BIP`
+            : `${t('wait')}${result.bias ? ' ' + result.bias : ''}${suffix}`);
         } else if (result.signal === 'BUY' || result.signal === 'SELL') {
           setMessage(`${result.signal} CONFIRMAT • ${result.pattern} • ${result.probability}%`);
         } else {
@@ -733,18 +753,20 @@ export default function LiveAnalysisApp() {
   }, [history]);
 
   const isWait = analysis?.state === 'WAIT' || (analysis?.signal === 'NONE' && !!analysis?.bias);
+  const isPreviewOnly = isWait && !!analysis?.bias && !!analysis?.reason?.startsWith('CANDIDAT');
   const resultTitle = analysis
     ? analysis.state === 'INVALID'
       ? t('chartMissing')
       : isWait
-        ? `${t('wait')}${analysis.bias ? ' ' + analysis.bias : ''}`
+        ? isPreviewOnly ? `CANDIDAT ${analysis.bias} • NU INTRA` : `${t('wait')}${analysis.bias ? ' ' + analysis.bias : ''}`
         : analysis.signal === 'NONE'
           ? t('noSignal')
           : analysis.signal
     : t('pending');
 
-  const resultTone =
-    analysis?.signal === 'BUY' || (isWait && analysis?.bias === 'BUY')
+  const resultTone = isPreviewOnly
+    ? styles.wait
+    : analysis?.signal === 'BUY' || (isWait && analysis?.bias === 'BUY')
       ? styles.buy
       : analysis?.signal === 'SELL' || (isWait && analysis?.bias === 'SELL')
         ? styles.sell
