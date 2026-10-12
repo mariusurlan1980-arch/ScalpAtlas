@@ -217,3 +217,29 @@ The free-tier preflight now aborts a silent SSE stream after at most 15 seconds
 bip or order. A blank stream remains `FREE_LIVE_STREAM_EMPTY`.
 The module still needs a genuinely authorized no-cost read-only API key for
 the user and has no access to the user's broker password/session.
+
+## Own numeric M5 research strategy — v0.1 (12 October 2026)
+
+`ownLiveResearchEngine.js` now computes SCALP ATLAS' **own, locally
+evaluated M5 strategy**, rather than relying on a broker's indicator:
+on 32 numeric complete and consecutive candles, EMA9/21, two matching
+closed candle bodies, median true-range risk, last-candle expansion,
+12-bar extremum distance, and last numerical tick direction. It
+**abstains** when the feed is stale (>12s), candles are missing, candles
+do not align with the current tick, recent support/resistance is too near,
+or the newest numerical tick contradicts direction. It never estimates
+a statistically calibrated win probability.
+
+**No numeric Pocket Option OTC LIVE feed is connected yet**, so the
+new strategy produces at most `LAB_OBSERVATION_ONLY` and hard-coded
+`beepAllowed:false`, `orderAllowed:false`, `suggestTrade:false`.
+No changes were made to Android's installed v1.0.59 interface or overlay.
+
+An additional research readiness check demands authenticated authorized
+same-instrument broker-feed matching and at least 200 verified *settled*
+Demo trades to compute payout-adjusted observed expectancy. Neither this
+sample threshold nor a favorable backtest guarantees profitability, and
+even a theoretical research pass does not enable beep or broker actions.
+A 92% binary payout requires >52.08% wins (on decisive trades, before
+other uncertainties) merely to have positive gross expectancy.
+Research-only, no money risk, budget $0.
