@@ -13,6 +13,8 @@ on:
       - 'scalp-atlas-new/freeM5Backtest.test.js'
       - 'scalp-atlas-new/quoteMatchAuditor.js'
       - 'scalp-atlas-new/quoteMatchAuditor.test.js'
+      - 'scalp-atlas-new/ownLiveResearchEngine.js'
+      - 'scalp-atlas-new/ownLiveResearchEngine.test.js'
       - 'scalp-atlas-new/LIVE_OTC_README.md'
       - '.github/workflows/verify-live-otc-research.yml'
   workflow_dispatch:
@@ -27,4 +29,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify no fake signals and read-only ticker safety
-        run: node --test scalp-atlas-new/liveDataEngine.test.js scalp-atlas-new/otchartsReadOnlyAdapter.test.js scalp-atlas-new/freeLiveProbe.test.js scalp-atlas-new/freeM5Backtest.test.js scalp-atlas-new/quoteMatchAuditor.test.js
+        run: node --test scalp-atlas-new/liveDataEngine.test.js scalp-atlas-new/otchartsReadOnlyAdapter.test.js scalp-atlas-new/freeLiveProbe.test.js scalp-atlas-new/freeM5Backtest.test.js scalp-atlas-new/quoteMatchAuditor.test.js scalp-atlas-new/ownLiveResearchEngine.test.js
