@@ -102,3 +102,25 @@ not grant any entitlement to OTCharts' unrelated third-party quote API.
   source commit, debug log or server. Pocket Option passwords/tokens/SSID
   are NEVER inputs. A free-tier consent or OAuth-like scoped key is not provided
   by the Pocket Option broker.
+
+## FREE LIVE PRE-FLIGHT (read-only, no account signup by assistant)
+
+A one-shot free entitlement/clock/quote probe has been added:
+`node scalp-atlas-new/freeLiveProbe.js`.
+It does nothing and says `NEEDS_FREE_PROVIDER_API_KEY` when no free
+provider API key has been authorized. After the user has a free account and
+locally configured `OTCHARTS_API_KEY` privately, it calls free `/v1/usage`
+first. It **will not** open a stream on a paid plan, a free plan reporting zero
+stream slots, or any uncertain entitlement. If a free stream is granted, it
+inspects 12 real numeric quotes and stops without subscribing permanently
+or generating BUY/SELL/bip. A positive probe is **not evidence that the
+prices exactly match Pocket Option** and cannot yet make the app usable.
+
+CI validation: `node --test scalp-atlas-new/liveDataEngine.test.js
+scalp-atlas-new/otchartsReadOnlyAdapter.test.js
+scalp-atlas-new/freeLiveProbe.test.js`.
+
+As of October 12, 2026, vendor pages contradict themselves regarding
+free SSE entitlement; absent a privately authenticated key, it is impossible
+to confirm the free allowance. Our status must remain **NO LIVE CONNECTION**
+until a genuine permitted streaming API is independently verified.
