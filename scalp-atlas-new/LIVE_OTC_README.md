@@ -124,3 +124,36 @@ As of October 12, 2026, vendor pages contradict themselves regarding
 free SSE entitlement; absent a privately authenticated key, it is impossible
 to confirm the free allowance. Our status must remain **NO LIVE CONNECTION**
 until a genuine permitted streaming API is independently verified.
+
+## Verifiable FREE historical research result (2026-10-12)
+
+We ran a reproducible read-only study on the independent publisher's
+`PHCStanton/pocket-option-otc-dataset` public EURUSD_otc compressed sample:
+10,000 rows (2026-03-31 21:27:23 UTC to 2026-04-01 12:23:36 UTC),
+SHA-256 `e9a3e0300283f277f742166c1a299e64c8f8f2ae07f2ec6608b86ad45d5faed2`.
+Source: `https://github.com/PHCStanton/pocket-option-otc-dataset`.
+The source's accuracy and correspondence to the Pocket Option app have
+NOT been independently verified; these are NOT LIVE quotes.
+
+A conservative M5 two-closed-candle EMA9/21 strategy with a hypothetical
+5-minute entry-to-expiry contract and 92% fixed payout returned:
+
+- 15 complete contiguous M5 candles, 3 breaks/discontinuities;
+- **0 eligible historical trades**, 0 wins, 0 losses, **UNKNOWN win rate**;
+- **INSUFFICIENT SAMPLE**. No edge or profitability conclusion whatsoever.
+- At a hypothetical 92% binary payout, break-even is **52.0833%** wins
+  among decisive (non-tie) contracts BEFORE execution uncertainties.
+  This figure is arithmetic, **not observed accuracy**.
+
+Reproduce on GitHub Actions: workflow
+`.github/workflows/research-free-historical-m5.yml`.
+`node scalp-atlas-new/freeM5Backtest.js <public-sample.csv.gz>`.
+Unit tests for fill timing, 5-second delay, gaps, and future-leakage prevention
+passed in `.github/workflows/verify-live-otc-research.yml`.
+No session scraping, no account credentials, no prices bought, no order execution.
+
+**Resulting release decision:** DO NOT package a numeric Pocket Option LIVE APK.
+The free samples do not provide a real-time source and cannot verify signal
+performance. Wait for authorized, verified live price transport available at
+$0; otherwise keep existing Android app explicitly labelled SCREEN ANALYSIS,
+not numeric live pricing.
