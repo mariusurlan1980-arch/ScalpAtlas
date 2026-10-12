@@ -43,7 +43,9 @@ test('Do not silently compare ordinary spot Forex instruments to OTC',()=>{
 test('Do not match quotes separated by 20s as if simultaneous',()=>{
  const r=check(fixture({lag:20}));
  assert.equal(r.state,'NOT_VERIFIED');
- assert.ok(['EXCESSIVE_QUOTE_TIMING_GAPS','TOO_FEW_TIME_ALIGNED_QUOTES'].includes(r.reason));
+ assert.equal(r.state,'NOT_VERIFIED');
+ assert.equal(r.beepAllowed,false);
+ assert.ok(['EXCESSIVE_QUOTE_TIMING_GAPS','TOO_FEW_TIME_ALIGNED_QUOTES','BROKER_PRICE_MISMATCH'].includes(r.reason));
 });
 test('Too short independent sample must not allow signals',()=>{
  const r=check(fixture({count:35}));
