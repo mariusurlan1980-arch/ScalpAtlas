@@ -5,7 +5,7 @@ const body=fs.readFileSync('scalp-atlas-new/analysisEngine.ts','utf8');
 if(body.includes('__SCALP_ATLAS_OFFLINE_MODEL_V1053__'))throw Error('AI weights not embedded in build');
 if(!body.includes('LOCAL NEURAL AI v1.0.53')||!body.includes('applyLocalNeuralGate(curve,baseline)'))throw Error('Model or BIP gate missing');
 const from=body.indexOf('  function linReg(');
-const to=body.indexOf('  function run(dataUrl,timeframe)',from);
+const to=body.indexOf('  function run(dataUrl,timeframe,frameId)',from);
 if(from<0||to<from)throw Error('Cannot find trained local neural filter');
 const {classify,applyLocalNeuralGate,localNeuralVote}=new Function(body.slice(from,to)+';return {classify,applyLocalNeuralGate,localNeuralVote};')();
 function chart(kind,active,closes){
