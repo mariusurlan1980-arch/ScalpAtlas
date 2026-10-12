@@ -4,18 +4,19 @@ const assert=require('node:assert/strict');
 const {directionFromClosedBars,evaluateFixedExpiry}=require('./freeM5Backtest');
 
 const s=1800000000;
-function bars(n,kind='UP'){
+function bars(n,kind='UP',interval=30){
   const ticks=[];
   for(let i=0;i<n;i++){
     const time=s+i*300;
     // deliberately consistent long bull trend; no future bar lookahead.
     const p=1.10+i*.0004;
-    for(let j=0;j<10;j++) {
-      const fraction=j/9;
+    const samples=300/interval;
+    for(let j=0;j<samples;j++) {
+      const fraction=j/(samples-1);
       const value=kind==='UP'
         ?p+.0003*fraction
         :1.30-i*.0004-.0003*fraction;
-      ticks.push({t:time+j*30,p:value,session:1});
+      ticks.push({t:time+j*interval,p:value,session:1});
     }
   }
   return ticks;
@@ -43,7 +44,7 @@ test('no lookahead: prefix results unchanged by any later ticks',()=>{
    .map(t=>[t.entryTime,t.expiryTime,t.entryPrice,t.outcome]),oldEntries);
 });
 test('5 minute settlement AFTER entry, not bar-close extrapolation',()=>{
- const r=evaluateFixedExpiry(bars(55),{delaySeconds:5});
+ const r=evaluateFixedExpiry(bars(55,'UP',5),{delaySeconds:5});
  assert.ok(r.rawTrades.length>0);
  for(const t of r.rawTrades){
    assert.ok(t.entryTime>=t.signalTime+5);
@@ -51,8 +52,10 @@ test('5 minute settlement AFTER entry, not bar-close extrapolation',()=>{
  }
 });
 test('tick gap resets and never invents missing candles',()=>{
- const p=bars(22);
- const broken=[...p,bars(55).slice(250)];
+ const broken=bars(55).filter(x=>{
+   const bar=Math.floor((x.t-s)/300);
+   return bar!==22&&bar!==23;
+ });
  const r=evaluateFixedExpiry(broken);
  assert.ok(r.discontinuities>0);
 });
