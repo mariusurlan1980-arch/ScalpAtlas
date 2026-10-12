@@ -270,18 +270,18 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       const low=Math.min(...tail),at=tail.lastIndexOf(low);
       const bounced=last-low;
       const location=(last-lo)/span;
-      // An earlier local low followed by a meaningful rebound, still in
+      // An earlier local low with at least five intervening samples and a\n      // meaningful rebound, still in
       // the lower half of the observed region, invalidates an instant SELL.
-      if(at>=2&&at<tail.length-2&&location<=.44&&
-         bounced>=Math.max(.006,span*.10)){
+      if(at>=2&&at<=tail.length-6&&location<=.44&&
+         bounced>=Math.max(.006,span*.18)){
         return 'POSIBILĂ REVENIRE DIN MINIM • risc SELL lângă suport vizual • NU INTRA • FĂRĂ BIP';
       }
     }else if(dir==='BUY'){
       const high=Math.max(...tail),at=tail.lastIndexOf(high);
       const rejected=high-last;
       const location=(hi-last)/span;
-      if(at>=2&&at<tail.length-2&&location<=.44&&
-         rejected>=Math.max(.006,span*.10)){
+      if(at>=2&&at<=tail.length-6&&location<=.44&&
+         rejected>=Math.max(.006,span*.18)){
         return 'POSIBILĂ RESPINGERE LA MAXIM • risc BUY lângă rezistență vizuală • NU INTRA • FĂRĂ BIP';
       }
     }
