@@ -124,4 +124,30 @@ function assertSymbol(symbol) {
   if(typeof symbol!=='string'||!/^[A-Z0-9#]{3,24}_otc$/.test(symbol))
     throw new Error('INVALID_POCKET_OTC_SYMBOL');
 }
-module.exports={makeOTChartsClient};
+/**
+ * Read-only ZERO-BUDGET entitlement check. Read /v1/usage first.
+ * Never attempt a paid upgrade, subscribe to a stream or call candles from
+ * this function. The API provider has published conflicting free-tier limits;
+ * the actual authenticated response is decisive.
+ */
+function checkFreeOnlyAccess(usage, symbol = 'EURUSD_otc') {
+  if(!usage || typeof usage!=='object')return {freeLive:false,reason:'USAGE_NOT_VERIFIED'};
+  if(!Array.isArray(usage.books)||!usage.books.includes('otc'))
+    return {freeLive:false,reason:'OTC_BOOK_NOT_OPEN'};
+  const name=String(usage.plan||usage.planName||'').toLowerCase();
+  if(!name.includes('free'))return {freeLive:false,reason:'NOT_FREE_PLAN'};
+  if(!usage.streams || !Number.isSafeInteger(usage.streams.limit) ||
+     !Number.isSafeInteger(usage.streams.open))
+    return {freeLive:false,reason:'STREAM_ENTITLEMENT_UNVERIFIED'};
+  if(usage.streams.limit<1)return {freeLive:false,reason:'NO_FREE_STREAM'};
+  if(usage.streams.open>=usage.streams.limit)
+    return {freeLive:false,reason:'FREE_STREAM_SLOT_BUSY'};
+  if(usage.streams.instrumentsPerStream !== null &&
+     (!Number.isSafeInteger(usage.streams.instrumentsPerStream)||
+      usage.streams.instrumentsPerStream<1))
+    return {freeLive:false,reason:'FREE_STREAM_INSTRUMENT_CAP_UNKNOWN'};
+  try { assertSymbol(symbol); } catch{return {freeLive:false,reason:'INVALID_SYMBOL'};}
+  return {freeLive:true,reason:'FREE_SLOT_AVAILABLE_UNTESTED',
+    caveat:'STREAM_STILL_REQUIRES_REAL_PROVIDER_CONFIRMATION_AND_CLOCK_VALIDATION'};
+}
+module.exports={makeOTChartsClient,checkFreeOnlyAccess};
