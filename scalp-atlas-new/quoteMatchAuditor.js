@@ -69,7 +69,9 @@ function verifyNumericQuoteAlignment({
     safeForTrading:false,beepAllowed:false};
   if(observedSeconds<minObservedSeconds||checked<minComparisons)return wait('TOO_FEW_TIME_ALIGNED_QUOTES',result);
   if(result.mismatchFraction>maxMismatchFraction)return wait('BROKER_PRICE_MISMATCH',result);
-  if(lagged>Math.max(3,Math.ceil((vendorTicks.length+brokerTicks.length)*.10)))
+  // Conservative edge-coverage check: aligning two dense but shifted tick
+  // sequences at their overlapping interior may falsely imply quote equality.
+  if(lagged>Math.max(2,Math.ceil(Math.min(vendorTicks.length,brokerTicks.length)*.05)))
     return wait('EXCESSIVE_QUOTE_TIMING_GAPS',result);
   // A passing matching sample is NOT a real-time authenticated broker feed,
   // and cannot by itself authorize BUY/SELL, probabilities or sound.
