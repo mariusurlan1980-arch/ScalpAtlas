@@ -1,0 +1,22 @@
+name: Live OTC research unit tests
+on:
+  push:
+    branches: ['research/live-otc-feed-20261012']
+    paths:
+      - 'scalp-atlas-new/liveDataEngine.js'
+      - 'scalp-atlas-new/liveDataEngine.test.js'
+      - 'scalp-atlas-new/LIVE_OTC_README.md'
+      - '.github/workflows/verify-live-otc-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify no fake signals and read-only ticker safety
+        run: node --test scalp-atlas-new/liveDataEngine.test.js
