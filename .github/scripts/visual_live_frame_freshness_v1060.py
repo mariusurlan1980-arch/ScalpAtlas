@@ -35,55 +35,38 @@ one(
 'frame metadata')
 
 one(
-'''           "RESULT" -> {
-             analysisBusy = false
-             resultCount += 1
-             val result = payload.optJSONObject("result") ?: return
-             handleResult(result)
-           }
-''',
-'''           "RESULT" -> {
-             val result = payload.optJSONObject("result") ?: return
-             val responseFrameId = result.optLong("frameId", -1L)
-             if (!isFreshLiveFrameResponse(responseFrameId)) {
-               ignoredLateResults += 1
-               // Never clear the busy flag of a *newer* frame because an
-               // earlier, timed-out WebView operation just finished.
-               if (responseFrameId == latestSubmittedFrameId) {
-                 analysisBusy = false
-                 clearVisualCandidateAfterExpiredFrame()
-                 updateOverlay(
-                   "AȘTEAPTĂ",
-                   "LIVE VIZUAL • cadru întârziat • FĂRĂ BIP",
-                   "Analiza din imaginea anterioară a fost respinsă"
-                 )
-               }
-               return
-             }
-             analysisBusy = false
-             resultCount += 1
-             handleResult(result)
-           }
+'          "RESULT" -> {\n',
+'''          "RESULT" -> {
+            val responseFrameId = payload.optJSONObject("result")?.optLong("frameId", -1L) ?: -1L
+            if (!isFreshLiveFrameResponse(responseFrameId)) {
+              ignoredLateResults += 1
+              // A delayed callback must never unlock the newer image request.
+              if (responseFrameId == latestSubmittedFrameId) {
+                analysisBusy = false
+                clearVisualCandidateAfterExpiredFrame()
+                updateOverlay(
+                  "AȘTEAPTĂ",
+                  "LIVE VIZUAL • cadru întârziat • FĂRĂ BIP",
+                  "Imagine veche respinsă automat"
+                )
+              }
+              return
+            }
 ''',
 'RESULT native callback')
 
 one(
-'''           "ERROR" -> {
-             analysisBusy = false
-             errorCount += 1
-''',
-'''           "ERROR" -> {
-             val responseFrameId = payload.optLong("frameId", -1L)
-             if (!isFreshLiveFrameResponse(responseFrameId)) {
-               ignoredLateResults += 1
-               if (responseFrameId == latestSubmittedFrameId) {
-                 analysisBusy = false
-                 clearVisualCandidateAfterExpiredFrame()
-               }
-               return
-             }
-             analysisBusy = false
-             errorCount += 1
+'          "ERROR" -> {\n',
+'''          "ERROR" -> {
+            val responseFrameId = payload.optLong("frameId", -1L)
+            if (!isFreshLiveFrameResponse(responseFrameId)) {
+              ignoredLateResults += 1
+              if (responseFrameId == latestSubmittedFrameId) {
+                analysisBusy = false
+                clearVisualCandidateAfterExpiredFrame()
+              }
+              return
+            }
 ''',
 'ERROR native callback')
 
