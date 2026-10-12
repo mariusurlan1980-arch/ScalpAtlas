@@ -655,17 +655,21 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         ' • OBSERVAȚIE VIZUALĂ • NEVALIDAT • NU INTRA • FĂRĂ BIP'};
   }
 
-  function run(dataUrl,timeframe){
+  // VISUAL LIVE FRAME-ID v1.0.60: each native screen frame has a unique ID.
+  // Without this, a slow analysis response can be mistaken for a newer frame.
+  // This does NOT make screenshots into numeric tick data.
+  function run(dataUrl,timeframe,frameId){
     const img=new Image();
     img.onload=function(){
       try{
         const curve=buildPriceCurve(img);
-        if(!curve){send({type:'ERROR',message:'Imaginea nu a putut fi citită.'});return;}
+        if(!curve){send({type:'ERROR',frameId,message:'Imaginea nu a putut fi citită.'});return;}
         const baseline=classify(curve),filtered=applyLocalNeuralGate(curve,baseline),r=addExtremeRejectionPreview(curve,filtered),anchor=curve.anchor;
         const duration=r.clear?directionDurationFor(timeframe,r,curve):null;
         send({
           type:'RESULT',
           result:{
+            frameId:Number.isSafeInteger(frameId)?frameId:0,
             signal:r.clear?r.dir:'NONE',
             // Diagnostic only; candidate can be present while signal=NONE.
             candidateDirection:(curve.previewDirection==='BUY'||curve.previewDirection==='SELL')
@@ -688,17 +692,17 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
           }
         });
       }catch(e){
-        send({type:'ERROR',message:e&&e.message?e.message:String(e)});
+        send({type:'ERROR',frameId,message:e&&e.message?e.message:String(e)});
       }
     };
-    img.onerror=function(){send({type:'ERROR',message:'Fotografia nu a putut fi încărcată în motorul de analiză.'});};
+    img.onerror=function(){send({type:'ERROR',frameId,message:'Captura ecranului nu a putut fi încărcată în motorul de analiză.'});};
     img.src=dataUrl;
   }
 
   function onMessage(event){
     try{
       const msg=JSON.parse(event.data||'{}');
-      if(msg.type==='ANALYZE'&&msg.dataUrl)run(msg.dataUrl,msg.timeframe||'M15');
+      if(msg.type==='ANALYZE'&&msg.dataUrl)run(msg.dataUrl,msg.timeframe||'M15',Number(msg.frameId)||0);
     }catch(e){
       send({type:'ERROR',message:'Mesaj de analiză invalid.'});
     }
@@ -706,7 +710,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 
   // Native overlay can call the analyzer directly. This avoids large MessageEvent
   // payloads and reduces latency / dropped frames on Android WebView.
-  window.ScalpAtlasAnalyze=function(dataUrl,timeframe){run(dataUrl,timeframe||'M10');};
+  window.ScalpAtlasAnalyze=function(dataUrl,timeframe,frameId){run(dataUrl,timeframe||'M10',Number(frameId)||0);};
   window.ScalpAtlasPing=function(){send({type:'READY',atlasCount:ATLAS.length,engineVersion:ENGINE_VERSION});};
   document.addEventListener('message',onMessage);
   window.addEventListener('message',onMessage);
