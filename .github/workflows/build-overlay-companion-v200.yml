@@ -1,4 +1,4 @@
-name: SCALP ATLAS v1.0.56 M5 TIME GUARD REPAIR
+name: SCALP ATLAS v1.0.57 VISUAL EXTREME WATCH
 
 on:
   push:
@@ -28,6 +28,7 @@ on:
       - '.github/scripts/test_free_offline_v1052.cjs'
       - '.github/scripts/test_local_neural_v1053.cjs'
       - '.github/scripts/test_candle_consistency_v1054.cjs'
+      - '.github/scripts/test_extreme_rejection_v1057.cjs'
       - '.github/models/offline_ai_synthetic_v1053.json'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
@@ -186,10 +187,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.56'
+          expo['version']='1.0.57'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=156
+          expo['android']['versionCode']=157
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -238,6 +239,8 @@ jobs:
           grep -Fq 'FREE OFFLINE STRATEGY ENSEMBLE v1.0.52' scalp-atlas-new/analysisEngine.ts
           grep -Fq 'LOCAL NEURAL AI v1.0.53' scalp-atlas-new/analysisEngine.ts
           grep -Fq 'COLOR CONSISTENCY v1.0.54' scalp-atlas-new/analysisEngine.ts
+          grep -Fq 'EXTREME REJECTION WATCH v1.0.57' scalp-atlas-new/analysisEngine.ts
+          grep -Fq 'addExtremeRejectionPreview(curve,filtered)' scalp-atlas-new/analysisEngine.ts
           grep -Fq 'applyLocalNeuralGate(curve,baseline)' scalp-atlas-new/analysisEngine.ts
           grep -Fq 'const OFFLINE_AI_WEIGHTS=' scalp-atlas-new/analysisEngine.ts
           ! grep -Fq '__SCALP_ATLAS_OFFLINE_MODEL_V1053__' scalp-atlas-new/analysisEngine.ts
@@ -337,6 +340,7 @@ jobs:
           node .github/scripts/test_free_offline_v1052.cjs
           node .github/scripts/test_local_neural_v1053.cjs
           node .github/scripts/test_candle_consistency_v1054.cjs
+          node .github/scripts/test_extreme_rejection_v1057.cjs
 
       - name: TypeScript check
         working-directory: scalp-atlas-new
@@ -508,12 +512,12 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.56-ORICE-BROKER.apk
+          cp "$APK" ScalpAtlas-v1.0.57-ORICE-BROKER.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.56-ORICE-BROKER
-          path: ScalpAtlas-v1.0.56-ORICE-BROKER.apk
+          name: ScalpAtlas-v1.0.57-ORICE-BROKER
+          path: ScalpAtlas-v1.0.57-ORICE-BROKER.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -522,9 +526,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.56-orice-broker --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.56-orice-broker \
-            ScalpAtlas-v1.0.56-ORICE-BROKER.apk \
+          gh release delete scalp-atlas-v1.0.57-orice-broker --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.57-orice-broker \
+            ScalpAtlas-v1.0.57-ORICE-BROKER.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.56 ORICE BROKER" \
-            --notes "Scalp Atlas v1.0.56 - Pentru M5, fereastra rigida 20–65 secunde dupa deschidere este inlocuita cu 30–270 secunde RAMASE, pastrand verificarea cronometru OCR 2 citiri. Este o protectie tehnica pentru evitarea tranzitiei de lumanare, nu dovada de profitabilitate. CANDIDAT ramane NEVALIDAT si FARA BIP, semnalul confirmat cere in continuare toate filtrele. Interfata veche, pachetul Android si semnatura ramase aceleasi, instalarea peste versiunea anterioara este posibila. Precizia pe Pocket Option OTC nu a fost demonstrata. Testati numai Demo. Anterior:  păstrează interfața și funcțiile din v1.0.53. Blochează BUY/SELL și candidații dacă ultimele 2 lumânări închise nu au aceeași culoare cu direcția ori lumânarea activă se opune. Filtru din PIXELI - nu OHLC real. Precizia tranzacțiilor nu este demonstrată. Testați doar pe Demo. V1.0.53: 100% GRATUIT si OFFLINE. Include un model neural MLP cu 16 neuroni ascunsi, antrenat pe TRASEE SINTETICE doar pentru clasificarea directiei vizibile, ca filtru suplimentar al strategiilor EMA/Breakout/Pullback. Semnalul BUY/SELL si BIP sunt emise numai daca algoritmul clasic si modelul neural local sunt de acord; in caz de conflict, WAIT FARA BIP. Modelul NU a fost antrenat sau validat pe cotatii Pocket Option OTC ori pe rezultate viitoare ale tranzactiilor, astfel ca precizia de tranzactionare este NECUNOSCUTA. Fara servicii platite, server, API key, abonament sau date trimise extern. Pastrata interfata/overlay. TESTATI FARA BANI REALI."
+            --title "SCALP ATLAS v1.0.57 ORICE BROKER" \
+            --notes "SCALP ATLAS v1.0.57: observatii vizuale preliminare ale unei posibile respingeri la maxim/minim dupa o urcare/coborare si o miscare contrara vizibila. Sunt candidati pentru OBSERVATIE doar cand filtrele obisnuite nu dau o directie. NU autorizeaza tranzactii si NU pot produce BIP; directia finala necesita confirmare separata, iar performanta pe OTC nu este validata. Pastram interfata CLEAN VIEW, overlay, M5/M10, limitarile de timp OCR, filtrul pentru 2 lumanari inchise si semnatura APK existenta. Antrenamentul AI actual e doar sintetic. Test numai pe Demo."
