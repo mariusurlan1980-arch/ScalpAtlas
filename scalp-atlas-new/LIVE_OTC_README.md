@@ -157,3 +157,34 @@ The free samples do not provide a real-time source and cannot verify signal
 performance. Wait for authorized, verified live price transport available at
 $0; otherwise keep existing Android app explicitly labelled SCREEN ANALYSIS,
 not numeric live pricing.
+
+## Numeric price-match research gate — 2026-10-12
+
+`quoteMatchAuditor.js` implements a conservative **numeric against numeric**
+timestamp/price matching audit for one Pocket Option OTC instrument, with
+independent source names, chronological quote checks, minimum 30 paired ticks
+and >=120 seconds, tolerance checks, stale/missing/shifted overlap rejection,
+and a hard `beepAllowed:false`, `safeForTrading:false` result **on every path**.
+
+The benchmark reference MUST be independently obtained authorised
+Pocket Option quotes, not an ordinary EUR/USD spot feed and not copied vendor
+quotes. Even passing this audit cannot prove the source is really the broker:
+provenance and end-to-end time alignment must be externally verified.
+Unit tests deliberately simulate manipulated/mismatched/delayed quotes. The
+existing Android UI, overlay and APK remain unchanged.
+
+Provider public documentation is genuinely contradictory:
+`https://otcharts.com/pricing` has advertised one SSE stream on a FREE key;
+`https://otcharts.com/api` and `https://otcharts.com/llms.txt` report NO
+free streaming. We cannot make a real paid/zero-cost entitlement conclusion
+from those public pages. The authenticated free `GET /v1/usage` would settle
+the entitlement for this account, but **no free provider account / API key is
+present or verified here**. The user's Gmail support inquiry still had no
+response at time of check. Do not claim numeric Pocket Option LIVE connection.
+
+Run all current research tests: `node --test
+scalp-atlas-new/liveDataEngine.test.js
+scalp-atlas-new/otchartsReadOnlyAdapter.test.js
+scalp-atlas-new/freeLiveProbe.test.js
+scalp-atlas-new/freeM5Backtest.test.js
+scalp-atlas-new/quoteMatchAuditor.test.js`.
