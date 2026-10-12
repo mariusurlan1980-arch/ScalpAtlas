@@ -10,11 +10,12 @@ function bars(n,kind='UP'){
     const time=s+i*300;
     // deliberately consistent long bull trend; no future bar lookahead.
     const p=1.10+i*.0004;
-    if(kind==='UP'){
-      ticks.push({t:time,p,session:1},{t:time+180,p:p+.0003,session:1});
-    }else{
-      ticks.push({t:time,p:1.30-i*.0004,session:1},
-        {t:time+180,p:1.30-i*.0004-.0003,session:1});
+    for(let j=0;j<10;j++) {
+      const fraction=j/9;
+      const value=kind==='UP'
+        ?p+.0003*fraction
+        :1.30-i*.0004-.0003*fraction;
+      ticks.push({t:time+j*30,p:value,session:1});
     }
   }
   return ticks;
@@ -35,7 +36,7 @@ test('all signals use closed bars; deterministic bullish demo wins',()=>{
  assert.ok(r.insufficientSample);
 });
 test('no lookahead: prefix results unchanged by any later ticks',()=>{
- const full=bars(57),prefix=full.slice(0,100);
+ const full=bars(57),prefix=full.slice(0,500);
  const old=evaluateFixedExpiry(prefix),all=evaluateFixedExpiry(full);
  const oldEntries=old.rawTrades.map(t=>[t.entryTime,t.expiryTime,t.entryPrice,t.outcome]);
  assert.deepEqual(all.rawTrades.filter(t=>t.expiryTime<=prefix.at(-1).t)
@@ -51,7 +52,7 @@ test('5 minute settlement AFTER entry, not bar-close extrapolation',()=>{
 });
 test('tick gap resets and never invents missing candles',()=>{
  const p=bars(22);
- const broken=[...p,bars(55).slice(50)];
+ const broken=[...p,bars(55).slice(250)];
  const r=evaluateFixedExpiry(broken);
  assert.ok(r.discontinuities>0);
 });
