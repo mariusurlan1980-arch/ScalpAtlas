@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {makeOTChartsClient}=require('./otchartsReadOnlyAdapter');
+const {makeOTChartsClient,checkFreeOnlyAccess}=require('./otchartsReadOnlyAdapter');
 
 const KEY='test_only_never_a_real_key';
 const textHeaders={'content-type':'text/event-stream'};
@@ -115,4 +115,21 @@ test('history never falsely marks newest bar as closed, checks gaps',async()=>{
 test('no third-party orders or accounts function exists',()=>{
  const api=clientWith(()=>new Response('{}',{status:200}));
  assert.deepEqual(Object.keys(api).sort(),['candles','stream','symbols','usage']);
+});
+
+test('Free-only mode declines no SSE entitlement even if REST works',()=>{
+ const gate=checkFreeOnlyAccess({plan:'free',books:['otc'],streams:{limit:0,open:0,instrumentsPerStream:0}});
+ assert.deepEqual(gate,{freeLive:false,reason:'NO_FREE_STREAM'});
+});
+test('Free-only mode declines paid, unknown, busy and wrong-book streams',()=>{
+ assert.equal(checkFreeOnlyAccess({plan:'api_lite',books:['otc'],streams:{limit:1,open:0,instrumentsPerStream:5}}).reason,'NOT_FREE_PLAN');
+ assert.equal(checkFreeOnlyAccess({plan:'free',books:['forex'],streams:{limit:1,open:0,instrumentsPerStream:1}}).reason,'OTC_BOOK_NOT_OPEN');
+ assert.equal(checkFreeOnlyAccess({plan:'free',books:['otc'],streams:{limit:1,open:1,instrumentsPerStream:1}}).reason,'FREE_STREAM_SLOT_BUSY');
+ assert.equal(checkFreeOnlyAccess({plan:'free',books:['otc']}).reason,'STREAM_ENTITLEMENT_UNVERIFIED');
+});
+test('Positive free stream is preliminary entitlement, not live quote verification',()=>{
+ const gate=checkFreeOnlyAccess({plan:'free',books:['otc'],streams:{limit:1,open:0,instrumentsPerStream:1}});
+ assert.equal(gate.freeLive,true);
+ assert.equal(gate.reason,'FREE_SLOT_AVAILABLE_UNTESTED');
+ assert.match(gate.caveat,/CLOCK_VALIDATION/);
 });
