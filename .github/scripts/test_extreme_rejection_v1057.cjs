@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const body=fs.readFileSync('scalp-atlas-new/analysisEngine.ts','utf8');
 const regStart=body.indexOf('  function linReg('),medianStart=body.indexOf('  function median(');
 const helperStart=body.indexOf('  // EXTREME REJECTION WATCH v1.0.57');
-const runStart=body.indexOf('  function run(dataUrl,timeframe)');
+const runStart=body.indexOf('  function run(dataUrl,timeframe,frameId)');
 assert.ok(regStart>0&&medianStart>regStart&&helperStart>medianStart&&runStart>helperStart,'engine functions must exist');
 const source=body.slice(regStart,medianStart)+body.slice(helperStart,runStart);
 const {detectExtremeRejectionWatch,addExtremeRejectionPreview}=
