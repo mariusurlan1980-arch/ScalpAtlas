@@ -615,14 +615,20 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const test=(kind)=>{
       const extremeY=kind==='SELL'?Math.min(...recent.map(p=>p.y)):Math.max(...recent.map(p=>p.y));
       const at=recent.findIndex(p=>p.y===extremeY);
-      if(at<6||at>recent.length-5)return;
+      // FRESH REJECTION WATCH v1.0.59:
+      // 5-8 recent chart samples after the extremum, not a peak from
+      // many previous bars. Pixels are NOT candle timestamps.
+      const distanceFromExtreme=recent.length-1-at;
+      if(at<6||distanceFromExtreme<5||distanceFromExtreme>8)return;
       const before=recent.slice(0,at+1),after=recent.slice(at);
       const entry=linReg(before),exit=linReg(after);
       const into=-entry.slope*w/h,away=-exit.slope*w/h;
       const approach=(kind==='SELL'?before[0].y-extremeY:extremeY-before[0].y)/h;
       const rejection=(kind==='SELL'?end.y-extremeY:extremeY-end.y)/h;
       const opposing=kind==='SELL'?'RED':'GREEN';
-      if(!colors.includes(opposing))return;
+      // Do not show a red SELL candidate against an active green candle
+      // (or bullish BUY against red), even for a non-tradable preview.
+      if(!colors.includes(opposing)||candle.activeColor!==opposing)return;
       if(approach<.035||rejection<.045)return;
       if(kind==='SELL'&&(into<.024||away>-.024))return;
       if(kind==='BUY'&&(into>-.024||away<.024))return;
