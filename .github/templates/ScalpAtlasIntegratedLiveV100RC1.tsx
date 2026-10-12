@@ -332,7 +332,7 @@ export default function LiveAnalysisApp() {
       if (state === 'OVERLAY_PERMISSION_REQUIRED') {
         setMessage('Activează „Afișare peste alte aplicații”, apoi revino și pornește din nou SUPRAPUNERE.');
       } else if (state === 'STARTED') {
-        setMessage('SUPRAPUNERE pornită. Deschide Pocket Option; analiza rămâne M10.');
+        setMessage('SUPRAPUNERE pornită. Deschide graficul brokerului; instrumentul și timeframe-ul sunt detectate automat.');
       } else {
         setMessage(String(state || 'SUPRAPUNERE pregătită.'));
       }
@@ -901,7 +901,7 @@ export default function LiveAnalysisApp() {
             <Text style={styles.titleViolet}>ALP </Text>
             <Text style={styles.titleMagenta}>ATLAS</Text>
           </Text>
-          <Text style={styles.subtitle}>OVERLAY • POCKET OPTION • {SCALP_ATLAS_COUNT} {t('models')} • v2.0.2 • {languageCode.toUpperCase()}{regionCode ? `-${regionCode}` : ''}</Text>
+          <Text style={styles.subtitle}>OVERLAY • ORICE BROKER • {SCALP_ATLAS_COUNT} {t('models')} • v2.0.2 • {languageCode.toUpperCase()}{regionCode ? `-${regionCode}` : ''}</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable style={styles.languageButton} onPress={() => setShowLanguagePicker(true)}>
@@ -939,16 +939,16 @@ export default function LiveAnalysisApp() {
           {Platform.OS === 'android' && (
             <View style={styles.overlayPrimaryCard}>
               <Text style={styles.overlayPrimaryTitle}>SCALP ATLAS OVERLAY</Text>
-              <Text style={styles.overlayPrimarySub}>UN SINGUR TELEFON • PESTE POCKET OPTION</Text>
+              <Text style={styles.overlayPrimarySub}>UN SINGUR TELEFON • ORICE GRAFIC</Text>
               <View style={styles.overlayModeRow}>
                 <Pressable style={styles.overlayModeButton} onPress={() => void startOverlayMode()}>
-                  <Text style={styles.overlayModeButtonText}>SUPRAPUNERE LIVE · PESTE POCKET OPTION</Text>
+                  <Text style={styles.overlayModeButtonText}>SUPRAPUNERE LIVE · ORICE BROKER</Text>
                 </Pressable>
                 <Pressable style={styles.overlayStopButton} onPress={() => void stopOverlayMode()}>
                   <Text style={styles.overlayStopButtonText}>OPREȘTE</Text>
                 </Pressable>
               </View>
-              <Text style={styles.overlayHint}>După pornire, deschide Pocket Option. Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.</Text>
+              <Text style={styles.overlayHint}>După pornire, deschide graficul brokerului. Ține apăsat pe fereastra Scalp Atlas și trage pentru poziționare.</Text>
             </View>
           )}
           {!permission ? (
