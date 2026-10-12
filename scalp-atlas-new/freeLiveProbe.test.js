@@ -62,3 +62,34 @@ test('Bad free key receives refusal and does not attempt paid upgrade',async()=>
  assert.equal(r.status,'PROVIDER_USAGE_UNAVAILABLE');
  assert.ok(r.message.includes('KEY_REJECTED'));
 });
+
+test('Quiet free stream times out, never claims connected or enables bip',async()=>{
+ let requestCount=0,aborted=false;
+ const r=await probeFreePocketOtc({apiKey:'test_only_free_key',maxTicks:2,timeoutMs:120,
+   fetchImpl:async(url,opts)=>{
+     requestCount++;
+     if(url.endsWith('/v1/usage'))
+       return new Response(JSON.stringify({plan:'free',books:['otc'],
+         streams:{limit:1,open:0,instrumentsPerStream:1}}),{status:200});
+     const stream=new ReadableStream({start(controller){
+       controller.enqueue(new TextEncoder().encode(
+         'event: connected\\ndata: {"symbols":["EURUSD_otc"]}\\n\\n'));
+       opts.signal.addEventListener('abort',()=>{
+         aborted=true;controller.error(new Error('READ_ABORTED'));
+       },{once:true});
+     }});
+     return new Response(stream,{status:200,
+       headers:{'content-type':'text/event-stream'}});
+   }});
+ assert.equal(requestCount,2);
+ assert.equal(aborted,true);
+ assert.equal(r.status,'FREE_LIVE_STREAM_TIMEOUT');
+ assert.equal(r.connected,false);
+ assert.equal(r.paidUpgradeAttempted,false);
+});
+test('Unreasonable wait times are refused before any network call',async()=>{
+ await assert.rejects(
+   probeFreePocketOtc({apiKey:'test_only_free_key',timeoutMs:60000,
+     fetchImpl:async()=>{throw Error('MUST NOT FETCH')}}),
+   /INVALID_FREE_PROBE_TIMEOUT/);
+});
