@@ -34,6 +34,7 @@ one(
 
 one(
 '''      if (detectedPair != null && detectedPair != currentPair) {
+        resetSignalStateForMarketChange()
         currentPair = detectedPair
         changed = true
       }
