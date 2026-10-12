@@ -188,3 +188,32 @@ scalp-atlas-new/otchartsReadOnlyAdapter.test.js
 scalp-atlas-new/freeLiveProbe.test.js
 scalp-atlas-new/freeM5Backtest.test.js
 scalp-atlas-new/quoteMatchAuditor.test.js`.
+
+## Source verification 2026-10-12 (public pages, not an authenticated API account)
+
+We revisited the **currently served** provider pages:
+- https://otcharts.com/pricing — Free API $0, 200 calls in initial month,
+  five instruments, **NO LIVE STREAMING**, streaming starts at $15/month.
+- https://otcharts.com/api — Free 200 calls/week and **0** open live streams
+  in the published table.
+- Older crawled versions of the pricing page and the vendor's GitHub
+  otcharts-python README say **one free live stream**. These claims conflict
+  with the provider's currently served site: do not promise this feature.
+  Only an authenticated free `GET /v1/usage` showing `streams.limit>0`
+  plus an authorized successful SSE subscription would establish access.
+
+**Current decision:** The user's budget is strictly $0; do not buy or
+recommend Lite. We cannot deliver a genuine numeric LIVE Pocket Option APK
+from this source at present. Existing v1.0.59 app is still SCREEN CAPTURE /
+PIXEL ANALYSIS and must not be misrepresented as a direct price feed.
+The user's request explicitly excludes photographs; do not rebrand frame
+sampling as direct numeric live quotes. Research code remains separate/draft.
+
+## 2026-10-12 stream timeout safeguards
+
+The free-tier preflight now aborts a silent SSE stream after at most 15 seconds
+(default, configurable up to 45s). A stalled read is reported as
+`FREE_LIVE_STREAM_TIMEOUT` and cannot become a confirmed connection, entry,
+bip or order. A blank stream remains `FREE_LIVE_STREAM_EMPTY`.
+The module still needs a genuinely authorized no-cost read-only API key for
+the user and has no access to the user's broker password/session.
