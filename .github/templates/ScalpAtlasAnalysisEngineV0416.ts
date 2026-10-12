@@ -555,13 +555,64 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return r;
   }
 
+  // EXTREME REJECTION WATCH v1.0.57 (VISUAL PREVIEW ONLY).
+  // Uses sampled image pixels, NOT broker OHLC, not true wick geometry,
+  // and never creates a confirmed trade or starts the alert sound.
+  function detectExtremeRejectionWatch(curve){
+    if(!curve||curve.quality<.52||(curve.spanCoverage||0)<.36||!Array.isArray(curve.pts)||curve.pts.length<30)
+      return null;
+    const candle=curve.recentCandleColors;
+    const colors=candle&&Array.isArray(candle.closedColors)?candle.closedColors:[];
+    if(colors.length!==2)return null;
+    const recent=curve.pts.slice(-Math.max(24,Math.floor(curve.pts.length*.55)));
+    const end=recent[recent.length-1],h=curve.h,w=curve.w;
+    if(!end||!Number.isFinite(end.y)||!Number.isFinite(h)||h<=0||!Number.isFinite(w)||w<=0)
+      return null;
+    const moves=[];
+    const test=(kind)=>{
+      const extremeY=kind==='SELL'?Math.min(...recent.map(p=>p.y)):Math.max(...recent.map(p=>p.y));
+      const at=recent.findIndex(p=>p.y===extremeY);
+      if(at<6||at>recent.length-5)return;
+      const before=recent.slice(0,at+1),after=recent.slice(at);
+      const entry=linReg(before),exit=linReg(after);
+      const into=-entry.slope*w/h,away=-exit.slope*w/h;
+      const approach=(kind==='SELL'?before[0].y-extremeY:extremeY-before[0].y)/h;
+      const rejection=(kind==='SELL'?end.y-extremeY:extremeY-end.y)/h;
+      const opposing=kind==='SELL'?'RED':'GREEN';
+      if(!colors.includes(opposing))return;
+      if(approach<.035||rejection<.045)return;
+      if(kind==='SELL'&&(into<.024||away>-.024))return;
+      if(kind==='BUY'&&(into>-.024||away<.024))return;
+      // Reject a tiny one-pixel fluctuation dressed up as an extremum.
+      if(Math.abs(end.y-extremeY)<Math.max(8,h*.045))return;
+      moves.push({direction:kind,amount:rejection,pattern:kind==='SELL'
+        ?'OBSERVAȚIE • respingere posibilă la maxim'
+        :'OBSERVAȚIE • respingere posibilă la minim'});
+    };
+    test('BUY');
+    test('SELL');
+    // Ambiguous or simultaneous directions mean no candidate.
+    return moves.length===1?moves[0]:null;
+  }
+
+  function addExtremeRejectionPreview(curve,result){
+    if(result.clear||curve.previewDirection==='BUY'||curve.previewDirection==='SELL')return result;
+    const observation=detectExtremeRejectionWatch(curve);
+    if(!observation)return result;
+    curve.previewDirection=observation.direction;
+    return {...result,clear:false,dir:'NONE',atlas:observation.pattern,
+      score:Math.min(.60,result.score||.55),
+      reason:'CANDIDAT '+observation.direction+' • posibilă respingere a '+(observation.direction==='SELL'?'maximului':'minimului')+
+        ' • OBSERVAȚIE VIZUALĂ • NEVALIDAT • NU INTRA • FĂRĂ BIP'};
+  }
+
   function run(dataUrl,timeframe){
     const img=new Image();
     img.onload=function(){
       try{
         const curve=buildPriceCurve(img);
         if(!curve){send({type:'ERROR',message:'Imaginea nu a putut fi citită.'});return;}
-        const baseline=classify(curve),r=applyLocalNeuralGate(curve,baseline),anchor=curve.anchor;
+        const baseline=classify(curve),filtered=applyLocalNeuralGate(curve,baseline),r=addExtremeRejectionPreview(curve,filtered),anchor=curve.anchor;
         const duration=r.clear?directionDurationFor(timeframe,r,curve):null;
         send({
           type:'RESULT',
