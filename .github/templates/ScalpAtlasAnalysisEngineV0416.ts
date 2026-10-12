@@ -250,6 +250,44 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return 100*gains/(gains+losses);
   }
 
+  // EXTREMUM ENTRY GUARD v1.0.58: block BIP on a plausible bounce
+  // away from nearby visual support or on rejection below resistance.
+  // Pixel price samples are NOT verified OHLC or real support/resistance.
+  // This is a conservative veto only and never generates a BUY/SELL.
+  function localExtremumRisk(curve,dir){
+    if(!curve||!Array.isArray(curve.pts)||curve.pts.length<30||
+       !Number.isFinite(curve.h)||curve.h<=0||curve.quality<.52||
+       (curve.spanCoverage||0)<.36)return null;
+    const samples=curve.pts.slice(-Math.min(42,curve.pts.length))
+      .map(p=>(curve.h-p.y)/curve.h);
+    if(samples.some(v=>!Number.isFinite(v)))return null;
+    const hi=Math.max(...samples),lo=Math.min(...samples),span=hi-lo;
+    // A compressed range cannot reliably establish a nearby extremum.
+    if(span<.022)return null;
+    const last=samples[samples.length-1];
+    const tail=samples.slice(-Math.min(20,samples.length));
+    if(dir==='SELL'){
+      const low=Math.min(...tail),at=tail.lastIndexOf(low);
+      const bounced=last-low;
+      const location=(last-lo)/span;
+      // An earlier local low followed by a meaningful rebound, still in
+      // the lower half of the observed region, invalidates an instant SELL.
+      if(at>=2&&at<tail.length-2&&location<=.44&&
+         bounced>=Math.max(.006,span*.10)){
+        return 'POSIBILĂ REVENIRE DIN MINIM • risc SELL lângă suport vizual • NU INTRA • FĂRĂ BIP';
+      }
+    }else if(dir==='BUY'){
+      const high=Math.max(...tail),at=tail.lastIndexOf(high);
+      const rejected=high-last;
+      const location=(hi-last)/span;
+      if(at>=2&&at<tail.length-2&&location<=.44&&
+         rejected>=Math.max(.006,span*.10)){
+        return 'POSIBILĂ RESPINGERE LA MAXIM • risc BUY lângă rezistență vizuală • NU INTRA • FĂRĂ BIP';
+      }
+    }
+    return null;
+  }
+
   function classify(curve){
     const {pts,w,h,quality}=curve;
     const wait=(reason,estimate,score,consensus)=>({
@@ -399,6 +437,11 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     if((buySide&&rsi>79)||( !buySide&&rsi<21 )){
       return wait('Impuls aproape de epuizare conform oscilatorului estimat',dir,score,confidence);
     }
+
+    // Final conservative gate: keep the visible candidate, but suppress
+    // confirmation, expiry and sound when price may be reversing.
+    const extremeRisk=localExtremumRisk(curve,dir);
+    if(extremeRisk)return wait('CANDIDAT '+dir+' NEVALIDAT • '+extremeRisk,dir,score,confidence);
 
     const model='OFFLINE • '+winningSetups.join(' + ');
     return {
