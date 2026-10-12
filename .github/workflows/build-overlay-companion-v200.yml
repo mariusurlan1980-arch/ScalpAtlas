@@ -1,4 +1,4 @@
-name: SCALP ATLAS v1.0.60 LIVE VISUAL FRESH FRAMES
+name: SCALP ATLAS v1.0.61 STABLE OTC IDENTITY
 
 on:
   push:
@@ -32,6 +32,8 @@ on:
       - '.github/scripts/test_extremum_entry_guard_v1058.cjs'
       - '.github/scripts/visual_live_frame_freshness_v1060.py'
       - '.github/scripts/test_visual_live_frame_v1060.cjs'
+      - '.github/scripts/stabilize_otc_pair_v1061.py'
+      - '.github/scripts/test_otc_pair_stability_v1061.cjs'
       - '.github/models/offline_ai_synthetic_v1053.json'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
@@ -85,6 +87,8 @@ jobs:
           python3 .github/scripts/one_direction_guard_v1049.py
           python3 .github/scripts/m5_countdown_guard_v1056.py
           python3 .github/scripts/visual_live_frame_freshness_v1060.py
+          python3 .github/scripts/stabilize_otc_pair_v1061.py
+          grep -Fq 'OTC OCR IDENTITY v1.0.61' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq "LIVE SCREEN RESULT FRESHNESS v1.0.60" .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'M5 COUNTDOWN GUARD v1.0.56' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (remaining !in 30..270)' .github/native-overlay/ScalpOverlayService.kt
@@ -192,10 +196,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS'
           expo['slug']='scalp-atlas'
-          expo['version']='1.0.60'
+          expo['version']='1.0.61'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=160
+          expo['android']['versionCode']=161
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -350,6 +354,7 @@ jobs:
           node .github/scripts/test_extreme_rejection_v1057.cjs
           node .github/scripts/test_extremum_entry_guard_v1058.cjs
           node .github/scripts/test_visual_live_frame_v1060.cjs
+          node .github/scripts/test_otc_pair_stability_v1061.cjs
 
       - name: TypeScript check
         working-directory: scalp-atlas-new
@@ -521,12 +526,12 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.60-ORICE-BROKER.apk
+          cp "$APK" ScalpAtlas-v1.0.61-ORICE-BROKER.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.60-ORICE-BROKER
-          path: ScalpAtlas-v1.0.60-ORICE-BROKER.apk
+          name: ScalpAtlas-v1.0.61-ORICE-BROKER
+          path: ScalpAtlas-v1.0.61-ORICE-BROKER.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -535,9 +540,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.60-orice-broker --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.60-orice-broker \
-            ScalpAtlas-v1.0.60-ORICE-BROKER.apk \
+          gh release delete scalp-atlas-v1.0.61-orice-broker --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.61-orice-broker \
+            ScalpAtlas-v1.0.61-ORICE-BROKER.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.60 ORICE BROKER" \
-            --notes "SCALP ATLAS v1.0.60: suprapunere LIVE VIZUALA peste graficele brokerilor, exact aceeasi interfata Clean View. O analiza din captura ecranului poarta ID-ul cadrului si este ignorata daca rezultatul vine dintr-un cadru anterior sau dupa 4,5 secunde; nu poate declansa BIP pe baza acelei imagini vechi. Se pastreaza verificarea perechii, OCR pentru M5/M10, temporizarea si confirmarea lumânărilor, directia unica si deduplicarea semnalelor. LIVE VIZUAL inseamna captura ecranului in timp real, NU cotații numerice / flux oficial direct de la Pocket Option. Motor experimental, acuratetea si profitabilitatea NU sunt demonstrate. Testati doar Demo; nu intrati automat pe baza bipului."
+            --title "SCALP ATLAS v1.0.61 ORICE BROKER" \
+            --notes "SCALP ATLAS v1.0.61: suprapunere LIVE VIZUALA peste Pocket Option si alte grafice, aceeasi interfata veche Clean View, M5/M10 OCR. Identificarea unei perechi OTC nu se reseteaza cand o singura citire OCR omite temporar OTC (EUR/RUB OTC versus EUR/RUB). O schimbare reala de instrument cere doua citiri OCR consecutive, cu bip suspendat in timpul verificarii. Se pastreaza filtrul de frame intarziat din v1.0.60, semnalele prudente si protecțiile de timp. Nu exista conexiune numerica autorizata Pocket Option; acesta este doar LIVE VIZUAL. Acuratetea si profitabilitatea nu sunt demonstrate; test doar Demo, fara intrare automata la bip."
