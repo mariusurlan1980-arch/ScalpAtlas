@@ -91,7 +91,7 @@ function evaluateFixedExpiry(ticks,{payout=.92,delaySeconds=0}={}){
       gaps++;closed.length=0;live=null;pending=null;position=null;
     }
     // Existing position settlement at first actual quote at or after expiry.
-    if(position&&tick.t>=position.entryTime+EXPIRY){
+    if(position&&position.entryTime!==null&&tick.t>=position.entryTime+EXPIRY){
       const lag=tick.t-(position.entryTime+EXPIRY);
       if(lag<=ALLOWED_EXIT_LAG){
         const side=position.dir==='BUY'?1:-1,move=side*(tick.p-position.entryPrice);
