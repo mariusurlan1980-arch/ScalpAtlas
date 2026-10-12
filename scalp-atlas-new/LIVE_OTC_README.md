@@ -81,3 +81,24 @@ do not send any Pocket Option password, SSID or cookie.
 
 **Credentials vs user entitlements:** A validated account on Pocket Option does
 not grant any entitlement to OTCharts' unrelated third-party quote API.
+
+## FREE-ONLY policy (user decision 2026-10-12)
+
+- Subscription budget is strictly **USD 0**. NO paid plan, no trial requesting a credit card, no trade orders.
+- Public vendor pages and indexed versions are inconsistent: current direct
+  `/pricing` and `/api` pages have advertised **no free SSE streams**
+  and approximately 200 free historical requests; separately crawled copies
+  and the provider's Python GitHub client advertise one free live stream
+  and 1,500 requests/week. **These do not establish an entitlement**.
+- Trust the authenticated response from `GET /v1/usage` for this particular
+  free account: `books` includes `otc`, `streams.limit` > 0 and there is
+  an unused stream slot. Do not attempt SSE if `limit === 0`. No workaround
+  or fabricated live candles if the provider refuses.
+- During free access, first compare one OTC instrument's vendor OHLC with the
+  same Pocket Option symbol, interval and correctly calibrated clock.
+  If a quote stream is not available free, pause REAL numeric live integration.
+  Do not substitute ordinary Forex or image scanning and call it Pocket Option LIVE.
+- Any API key is private to the user's installation, not a chat message,
+  source commit, debug log or server. Pocket Option passwords/tokens/SSID
+  are NEVER inputs. A free-tier consent or OAuth-like scoped key is not provided
+  by the Pocket Option broker.
