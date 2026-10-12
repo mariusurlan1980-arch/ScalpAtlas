@@ -44,3 +44,40 @@ Release criteria: provider eligibility established, authenticated READ-ONLY quot
 demonstrated, source vs Pocket Option matching and latency measured, timestamp
 calibration documented, source outage behavior tested, 300 out-of-sample historical
 situations and 200 logged demo signals reviewed; no BUY/SELL without verification.
+
+## Implementation update (2026-10-12)
+`otchartsReadOnlyAdapter.js` now implements a strict read-only client for OTCharts:
+`usage()`, `symbols()`, `candles()`, and SSE `stream()`.
+It validates the stream's `connected` and `dropped` messages and refuses stale,
+missing, invalid, wrong-symbol and unverified-clock ticks through the separate
+numeric OHLC collector. This is **not** installed in the old Android APK,
+not a quote-provider account connection, and not proof of provider feed accuracy.
+
+**Current published vendor prices checked 12 October 2026:**
+Free **$0**: 200 historical/API requests in the first month, **NO SSE live stream**.
+Lite: **$15/month**, one SSE stream carrying up to five instruments; the vendor
+can change plans. See https://otcharts.com/pricing and https://otcharts.com/api .
+The provider is unofficial and must first be assessed for license, data matching,
+latency and safety. No paid subscription or broker login should be made on the
+user's behalf. A free-tier key may be tested privately for historical candles,
+but not a real live stream under these currently published terms.
+
+**Research unit tests:** `node --test scalp-atlas-new/liveDataEngine.test.js
+scalp-atlas-new/otchartsReadOnlyAdapter.test.js`.
+Never put an OTCharts key in the repository, URL, screenshots, or chat.
+Use provider-owned account access and an appropriately secured local setup;
+do not send any Pocket Option password, SSID or cookie.
+
+**Next milestones before an Android LIVE APK:**
+1. User independently verifies their free API entitlements via provider dashboard.
+2. Compare same-symbol/clock vendor OHLC against actual Pocket Option OTC charts
+   and identify time-offset / latency, without assuming the data matches.
+3. If streaming access is genuinely available and expressly approved, integrate
+   a protected key store and subscription state into the Android app. Show a
+   persistent STOPPED/STALE/DISCONNECTED state, and never beep without validated
+   complete bars. No periodic candle polling pretending to be live.
+4. Run forward demo tests of 5-min trade outcomes and report win/loss/tie,
+   payout-adjusted expectancy and sample-size uncertainty.
+
+**Credentials vs user entitlements:** A validated account on Pocket Option does
+not grant any entitlement to OTCharts' unrelated third-party quote API.
