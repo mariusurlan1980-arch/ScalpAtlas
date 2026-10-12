@@ -89,7 +89,7 @@ test('200 records cannot bypass measured live source and validation gates',()=>{
  assert.equal(r.state,'RESEARCH_METRICS_ONLY');
  assert.equal(r.winRate,.5);
  assert.equal(r.samples,200);
- assert.equal(r.expectedNetPerUnitRisk,-.04);
+ assert.ok(Math.abs(r.expectedNetPerUnitRisk-(-.04))<1e-10);
  assert.equal(r.beepAllowed,false);
 });
 test('Fewer than 200 verified Demo settlements blocks readiness',()=>{
