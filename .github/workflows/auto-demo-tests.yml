@@ -7,15 +7,19 @@ on:
     paths:
       - 'scalp-atlas-new/autoDemoEngine.ts'
       - 'scalp-atlas-new/liveDemoBridge.ts'
+      - 'scalp-atlas-new/pocketOptionScreenSource.ts'
       - 'tests/autoDemoEngine.test.mts'
       - 'tests/liveDemoBridge.test.mts'
+      - 'tests/pocketOptionScreenSource.test.mts'
       - '.github/workflows/auto-demo-tests.yml'
   pull_request:
     paths:
       - 'scalp-atlas-new/autoDemoEngine.ts'
       - 'scalp-atlas-new/liveDemoBridge.ts'
+      - 'scalp-atlas-new/pocketOptionScreenSource.ts'
       - 'tests/autoDemoEngine.test.mts'
       - 'tests/liveDemoBridge.test.mts'
+      - 'tests/pocketOptionScreenSource.test.mts'
       - '.github/workflows/auto-demo-tests.yml'
   workflow_dispatch:
 
