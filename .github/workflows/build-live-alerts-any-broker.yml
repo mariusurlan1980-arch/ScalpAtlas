@@ -5,7 +5,6 @@ on:
     branches: [feature/live-alerts-any-broker-20261013]
     paths:
       - '.github/workflows/build-live-alerts-any-broker.yml'
-      - '.github/overlay-companion-v200.patch'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -30,8 +29,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply isolated overlay companion patch
-        run: git apply .github/overlay-companion-v200.patch
+      - name: Reuse existing overlay source without conflicting legacy patch
+        run: |
+          set -e
+          test -s .github/native-overlay/ScalpOverlayService.kt
+          test -s .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
+          echo "Using current generic broker overlay sources; old Pocket Option-only patch skipped."
 
       - name: Apply stable Scalp Atlas patches
         run: |
