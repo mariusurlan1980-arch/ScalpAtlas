@@ -120,11 +120,27 @@ class ScalpOverlayService : Service() {
 
   private val mainHandler = Handler(Looper.getMainLooper())
 
+  // Keep the display synchronized with Android's real accessibility state.
+  // The ON preference alone does NOT mean a demo trade can be clicked.
+  private val autoDemoStatusMonitor = object : Runnable {
+    override fun run() {
+      if (overlayView == null) return
+      if (!ScalpAutoDemoAccessibilityService.isConnected() &&
+          ScalpAutoDemoAccessibilityService.isEnabled(this@ScalpOverlayService)) {
+        // Fail closed if Android revokes/stops accessibility while the app runs.
+        ScalpAutoDemoAccessibilityService.setEnabled(this@ScalpOverlayService, false)
+      }
+      refreshAutoDemoText()
+      mainHandler.postDelayed(this, 2500L)
+    }
+  }
+
   override fun onCreate() {
     super.onCreate()
     windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
     createNotificationChannel()
     createOverlay()
+    mainHandler.postDelayed(autoDemoStatusMonitor, 2500L)
     createAnalyzer()
   }
 
@@ -293,7 +309,7 @@ class ScalpOverlayService : Service() {
     // prevent some devices from delivering a long-press gesture.
     // This only reads accessibility and NEVER dispatches a broker click.
     demoDiagnosticText = TextView(this).apply {
-      text = "TEST CONEXIUNE DEMO • v1.0.65"
+      text = "TEST CONEXIUNE DEMO • v1.0.66"
       textSize = 11f
       gravity = Gravity.CENTER
       setTextColor(Color.rgb(70, 220, 235))
@@ -302,7 +318,7 @@ class ScalpOverlayService : Service() {
         val status = ScalpAutoDemoAccessibilityService.checkDemoReadiness()
         val previous = getSharedPreferences("scalp_atlas_demo_diagnostics", Context.MODE_PRIVATE)
           .getString("lastStatus", "NICIO ÎNCERCARE DUPĂ BIP")
-        text = "v1.0.65 TEST: $status\nULTIMUL BIP: $previous"
+        text = "v1.0.66 TEST: $status\nULTIMUL BIP: $previous"
         setTextColor(Color.rgb(255, 201, 74))
       }
     }
@@ -1366,35 +1382,47 @@ class ScalpOverlayService : Service() {
     candidateCount = 0
     candidateLastAt = 0L
 
-    // DEMO EXPERIMENT: two consecutive *scans* plus separate candle
-    // color and M10 countdown heuristics; no claim of future profit.
+    // Sound confirms only the model signal, NOT a broker trade.
+    // Android Accessibility operations run on the main thread. Guard against
+    // queuing delayed clicks or sending a click after symbol/timeframe changed.
     playBip()
-    val autoDemoResult = ScalpAutoDemoAccessibilityService.requestDemoTrade(rawSignal)
-    // A BIP is a signal only. Keep the exact Android execution attempt result
-    // until the next confirmation; do NOT call it a successful broker trade.
-    getSharedPreferences("scalp_atlas_demo_diagnostics", Context.MODE_PRIVATE).edit()
-      .putString("lastStatus", autoDemoResult)
-      .putLong("lastAtUtcMillis", now)
-      .apply()
-    mainHandler.post {
-      refreshAutoDemoText(autoDemoResult)
-      demoDiagnosticText?.text = "v1.0.65 • " + autoDemoResult
-    }
+    val confirmedPair = currentPair
+    val confirmedTimeframe = currentTimeframe
+    val signalCreatedAt = now
     val expiryLabel = if (expiry > 0) "$expiry min" else "—"
     updateOverlay(
       signalLabel(rawSignal),
       "CONFIRMAT " + REQUIRED_CONFIRMATIONS + "/" + REQUIRED_CONFIRMATIONS + " • Scor " + score + "%",
-      "BIP • Expirare $expiryLabel • $pattern • $currentPair • $currentTimeframe • $autoDemoResult"
+      "BIP • $expiryLabel • $pattern • $confirmedPair • $confirmedTimeframe • verific AUTO DEMO"
     )
+    mainHandler.post {
+      val autoDemoResult = when {
+        System.currentTimeMillis() - signalCreatedAt > 2500L ->
+          "BLOCAT: SEMNAL PREA VECHI PENTRU CLICK"
+        currentPair != confirmedPair || currentTimeframe != confirmedTimeframe ->
+          "BLOCAT: GRAFIC SCHIMBAT ÎNAINTE DE CLICK"
+        !ScalpAutoDemoAccessibilityService.isConnected() ->
+          "BLOCAT: ACCESIBILITATE ANDROID OPRITĂ"
+        else -> ScalpAutoDemoAccessibilityService.requestDemoTrade(rawSignal)
+      }
+      // Persist the real attempt status (not a claimed broker execution).
+      getSharedPreferences("scalp_atlas_demo_diagnostics", Context.MODE_PRIVATE).edit()
+        .putString("lastStatus", autoDemoResult)
+        .putLong("lastAtUtcMillis", signalCreatedAt)
+        .apply()
+      refreshAutoDemoText(autoDemoResult)
+      demoDiagnosticText?.text = "v1.0.66 • " + autoDemoResult
+    }
   }
 
   private fun refreshAutoDemoText(status: String? = null) {
     val connected = ScalpAutoDemoAccessibilityService.isConnected()
     val enabled = ScalpAutoDemoAccessibilityService.isEnabled(this)
-    val value = status ?: when {
-      !connected -> "ACTIVEAZĂ ACCESIBILITATEA"
-      enabled -> "PORNIT • NUMAI QT DEMO"
-      else -> "OPRIT"
+    val value = when {
+      !connected -> "BLOCAT • ACCESIBILITATE"
+      !enabled -> "OPRIT"
+      status != null -> status
+      else -> "PORNIT • NUMAI QT DEMO"
     }
     autoDemoText?.text = "AUTO DEMO: " + value
     autoDemoText?.setTextColor(
@@ -1452,6 +1480,7 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    mainHandler.removeCallbacks(autoDemoStatusMonitor)
     try { virtualDisplay?.release() } catch (_: Throwable) {}
     try { imageReader?.close() } catch (_: Throwable) {}
     try { mediaProjection?.stop() } catch (_: Throwable) {}
