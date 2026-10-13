@@ -73,6 +73,7 @@ class ScalpOverlayService : Service() {
   private var modelText: TextView? = null
   private var titleText: TextView? = null
   private var autoDemoText: TextView? = null
+  private var demoDiagnosticText: TextView? = null
 
   private var mediaProjection: MediaProjection? = null
   private var virtualDisplay: VirtualDisplay? = null
@@ -287,6 +288,25 @@ class ScalpOverlayService : Service() {
       LinearLayout.LayoutParams.MATCH_PARENT,
       LinearLayout.LayoutParams.WRAP_CONTENT
     ).apply { topMargin = dp(7) })
+
+    // Explicit tap test because the Android overlay's drag handler may
+    // prevent some devices from delivering a long-press gesture.
+    // This only reads accessibility and NEVER dispatches a broker click.
+    demoDiagnosticText = TextView(this).apply {
+      text = "TEST CONEXIUNE DEMO • ATINGE"
+      textSize = 11f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(70, 220, 235))
+      setPadding(dp(8), dp(10), dp(8), dp(10))
+      setOnClickListener {
+        text = "TEST: " + ScalpAutoDemoAccessibilityService.checkDemoReadiness()
+        setTextColor(Color.rgb(255, 201, 74))
+      }
+    }
+    root.addView(demoDiagnosticText, LinearLayout.LayoutParams(
+      LinearLayout.LayoutParams.MATCH_PARENT,
+      LinearLayout.LayoutParams.WRAP_CONTENT
+    ).apply { topMargin = dp(3) })
 
     val params = WindowManager.LayoutParams(
       dp(215),
