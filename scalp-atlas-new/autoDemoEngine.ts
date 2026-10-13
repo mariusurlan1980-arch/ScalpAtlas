@@ -44,6 +44,8 @@ export class AutoDemoEngine {
     if (!Number.isFinite(signal.observedAt) || signal.observedAt > now ||
         now - signal.observedAt > MAX_SIGNAL_AGE_MS)
       return { accepted: false, reason: 'STALE_SIGNAL' };
+    if (!(signal.timeframe in EXPIRY_MS))
+      return { accepted: false, reason: 'UNSUPPORTED_TIMEFRAME' };
     const key = signal.market + ':' + signal.timeframe;
     const previous = this.lastDirection.get(key);
     if (previous && now - previous.time < EXPIRY_MS[signal.timeframe])
