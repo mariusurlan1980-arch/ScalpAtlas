@@ -74,6 +74,7 @@ class ScalpOverlayService : Service() {
   private var titleText: TextView? = null
   private var autoDemoText: TextView? = null
   private var demoDiagnosticText: TextView? = null
+  private var lastAttemptVisibleUntil = 0L
 
   private var mediaProjection: MediaProjection? = null
   private var virtualDisplay: VirtualDisplay? = null
@@ -130,7 +131,10 @@ class ScalpOverlayService : Service() {
         // Fail closed if Android revokes/stops accessibility while the app runs.
         ScalpAutoDemoAccessibilityService.setEnabled(this@ScalpOverlayService, false)
       }
-      refreshAutoDemoText()
+      if (System.currentTimeMillis() >= lastAttemptVisibleUntil ||
+          !ScalpAutoDemoAccessibilityService.isConnected()) {
+        refreshAutoDemoText()
+      }
       mainHandler.postDelayed(this, 2500L)
     }
   }
@@ -309,7 +313,7 @@ class ScalpOverlayService : Service() {
     // prevent some devices from delivering a long-press gesture.
     // This only reads accessibility and NEVER dispatches a broker click.
     demoDiagnosticText = TextView(this).apply {
-      text = "TEST CONEXIUNE DEMO • v1.0.66"
+      text = "TEST CONEXIUNE DEMO • v1.0.67"
       textSize = 11f
       gravity = Gravity.CENTER
       setTextColor(Color.rgb(70, 220, 235))
@@ -318,7 +322,8 @@ class ScalpOverlayService : Service() {
         val status = ScalpAutoDemoAccessibilityService.checkDemoReadiness()
         val previous = getSharedPreferences("scalp_atlas_demo_diagnostics", Context.MODE_PRIVATE)
           .getString("lastStatus", "NICIO ÎNCERCARE DUPĂ BIP")
-        text = "v1.0.66 TEST: $status\nULTIMUL BIP: $previous"
+        val audit = paperAttemptSummary()
+        text = "v1.0.67 TEST: $status\nULTIMUL BIP: $previous\n$audit"
         setTextColor(Color.rgb(255, 201, 74))
       }
     }
@@ -1093,11 +1098,56 @@ class ScalpOverlayService : Service() {
           .put("sentAt", now)
           .put("reviewAt", now + 5 * 60_000L)
           .put("barKey", key)
+          .put("attemptStatus", "BIP_WITHOUT_BROKER_CONFIRMATION")
+          .put("executionConfirmed", false)
           .put("outcome", "REQUIRES_PRICE_VERIFICATION")
       )
       prefs.edit().putString("events", recent.toString()).apply()
     } catch (_: Exception) {
       // An optional private journal must not crash the real-time overlay.
+    }
+  }
+
+  // This audit distinguishes a detected signal from an Android click and
+  // from an accepted broker trade. It never fabricates win/loss outcomes.
+  private fun recordAttemptStatus(barKey: String?, sentAt: Long, status: String) {
+    if (barKey == null) return
+    try {
+      val prefs = getSharedPreferences("scalp_atlas_paper_signals", Context.MODE_PRIVATE)
+      val previous = org.json.JSONArray(prefs.getString("events", "[]"))
+      for (i in previous.length() - 1 downTo 0) {
+        val event = previous.optJSONObject(i) ?: continue
+        if (event.optString("barKey") == barKey && event.optLong("sentAt") == sentAt) {
+          event.put("attemptStatus", status)
+          event.put("attemptAtUtcMillis", System.currentTimeMillis())
+          event.put("clickRequestedToAndroid", status.startsWith("APĂSARE TRIMISĂ"))
+          event.put("executionConfirmed", false)
+          event.put("outcome", "REQUIRES_PRICE_VERIFICATION")
+          prefs.edit().putString("events", previous.toString()).apply()
+          break
+        }
+      }
+    } catch (_: Exception) {
+      // A broken audit log must not cause a retry or a duplicate click.
+    }
+  }
+
+  private fun paperAttemptSummary(): String {
+    return try {
+      val prefs = getSharedPreferences("scalp_atlas_paper_signals", Context.MODE_PRIVATE)
+      val items = org.json.JSONArray(prefs.getString("events", "[]"))
+      var requested = 0
+      var blocked = 0
+      for (i in 0 until items.length()) {
+        val event = items.optJSONObject(i) ?: continue
+        val status = event.optString("attemptStatus", "")
+        if (event.optBoolean("clickRequestedToAndroid", false)) requested++
+        if (status.startsWith("BLOCAT") || status == "AUTO DEMO OPRIT" ||
+            status == "SERVICIU ACCESIBILITATE OPRIT") blocked++
+      }
+      "Semnale ${items.length()} • Cereri Android $requested • Blocate $blocked • Confirmări broker 0"
+    } catch (_: Exception) {
+      "Jurnal local indisponibil"
     }
   }
 
@@ -1405,13 +1455,17 @@ class ScalpOverlayService : Service() {
           "BLOCAT: ACCESIBILITATE ANDROID OPRITĂ"
         else -> ScalpAutoDemoAccessibilityService.requestDemoTrade(rawSignal)
       }
+      // No retry of an unknown/dispatched click: protects demo account against
+      // accidental duplicate orders after an uncertain broker response.
+      recordAttemptStatus(currentChartBarKey, signalCreatedAt, autoDemoResult)
+      lastAttemptVisibleUntil = System.currentTimeMillis() + 30_000L
       // Persist the real attempt status (not a claimed broker execution).
       getSharedPreferences("scalp_atlas_demo_diagnostics", Context.MODE_PRIVATE).edit()
         .putString("lastStatus", autoDemoResult)
         .putLong("lastAtUtcMillis", signalCreatedAt)
         .apply()
       refreshAutoDemoText(autoDemoResult)
-      demoDiagnosticText?.text = "v1.0.66 • " + autoDemoResult
+      demoDiagnosticText?.text = "v1.0.67 • " + autoDemoResult
     }
   }
 
