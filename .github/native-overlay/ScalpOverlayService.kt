@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.hardware.display.DisplayManager
@@ -35,6 +36,9 @@ import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import kotlin.math.max
@@ -55,6 +59,8 @@ class ScalpOverlayService : Service() {
     private const val ANALYSIS_TIMEOUT_MS = 5000L
     private const val CONFIRMATION_SPACING_MS = 20000L
     private const val REQUIRED_CONFIRMATIONS = 3
+    private const val OCR_INTERVAL_MS = 3000L
+    private const val TF_STALE_MS = 18000L
   }
 
   private lateinit var windowManager: WindowManager
@@ -87,6 +93,15 @@ class ScalpOverlayService : Service() {
   private var lockedDir: String? = null
   private var lockedUntil = 0L
   @Volatile private var selectedTimeframe = "M10"
+  @Volatile private var tfAutomatic = true
+  @Volatile private var tfVerified = false
+  @Volatile private var confirmedTfAt = 0L
+  @Volatile private var lastOcrAttemptAt = 0L
+  @Volatile private var ocrBusy = false
+  private var pendingTf: String? = null
+  private var pendingTfCount = 0
+  private var pendingTfAt = 0L
+  private val ocrRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
   @Volatile private var chartZone = 1
   private var tfControl: TextView? = null
   private var chartControl: TextView? = null
@@ -244,18 +259,29 @@ class ScalpOverlayService : Service() {
       gravity = Gravity.CENTER_VERTICAL
     }
     tfControl = TextView(this).apply {
-      text = "TF M10 ▸"
+      text = "TF AUTO ▸"
       setTextColor(Color.rgb(70, 220, 235))
       textSize = 12f
       setPadding(0, dp(5), dp(18), dp(3))
       setOnClickListener {
-        val frames = arrayOf("M5", "M10", "M15")
-        val next = (frames.indexOf(selectedTimeframe) + 1) % frames.size
-        selectedTimeframe = frames[next]
-        text = "TF " + selectedTimeframe + " ▸"
+        // Automatic by default. Manual fallback if broker hides timeframe text.
+        val modes = arrayOf("AUTO", "M5", "M10", "M15")
+        val current = if (tfAutomatic) "AUTO" else selectedTimeframe
+        val next = modes[(modes.indexOf(current) + 1) % modes.size]
+        tfAutomatic = next == "AUTO"
+        tfVerified = !tfAutomatic
+        pendingTf = null
+        pendingTfCount = 0
+        confirmedTfAt = 0L
+        if (!tfAutomatic) selectedTimeframe = next
+        text = "TF " + next + " ▸"
         resetSignalState()
         resetVisualBaseline()
-        updateOverlay("AȘTEAPTĂ", "Timeframe: " + selectedTimeframe, "Alege graficul corect")
+        updateOverlay(
+          "AȘTEAPTĂ",
+          if (tfAutomatic) "AUTO • caut intervalul brokerului" else "Manual " + selectedTimeframe,
+          if (tfAutomatic) "Bip oprit până la identificarea M5/M10/M15" else "Verifică intervalul de pe grafic"
+        )
       }
     }
     chartControl = TextView(this).apply {
@@ -458,6 +484,85 @@ class ScalpOverlayService : Service() {
     return now - lastVisualChangeAt <= 12_000L
   }
 
+  /**
+   * ML Kit reads the broker's visible timeframe caption in a full-size frame.
+   * Only recognises a leading, standalone M5/M10/M15 or 5m/10m/15m:
+   * avoids '00:05:00' (expiry) and 'TF M10' inside our own floating window.
+   * Two consistent reads are required; uncertain OCR means NO SIGNAL.
+   */
+  private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
+    if (!tfAutomatic || ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
+    ocrBusy = true
+    lastOcrAttemptAt = now
+
+    val targetWidth = minOf(840, frame.width)
+    val targetHeight = max(1, (frame.height * targetWidth.toFloat() / frame.width).roundToInt())
+    val copy = try {
+      Bitmap.createScaledBitmap(frame, targetWidth, targetHeight, true)
+    } catch (error: Throwable) {
+      ocrBusy = false
+      return
+    }
+    ocrRecognizer.process(InputImage.fromBitmap(copy, 0))
+      .addOnSuccessListener { result ->
+        if (!tfAutomatic) return@addOnSuccessListener
+        val pattern = Regex("""(?i)^\s*(M5|M10|M15|5M|10M|15M)(?:\s|$|[^A-Z0-9])""")
+        val values = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+          val raw = pattern.find(line.text.trim())?.groupValues?.get(1)?.uppercase() ?: return@mapNotNull null
+          if (raw.startsWith("M")) raw else "M" + raw.dropLast(1)
+        }.distinct()
+
+        val observedAt = System.currentTimeMillis()
+        if (values.size == 1) {
+          val found = values[0]
+          if (pendingTf != found || observedAt - pendingTfAt > 9000L) {
+            pendingTf = found
+            pendingTfCount = 1
+            pendingTfAt = observedAt
+            if (tfVerified && found != selectedTimeframe) {
+              tfVerified = false
+              resetSignalState()
+              updateOverlay("AȘTEAPTĂ", "AUTO • verific " + found,
+                "Schimbare interval detectată • aștept confirmarea")
+            }
+          } else {
+            pendingTfCount += 1
+            pendingTfAt = observedAt
+            if (pendingTfCount >= 2 && tfAutomatic) {
+              val changed = !tfVerified || selectedTimeframe != found
+              selectedTimeframe = found
+              tfVerified = true
+              confirmedTfAt = observedAt
+              tfControl?.text = "TF AUTO " + found + " ▸"
+              if (changed) {
+                resetSignalState()
+                resetVisualBaseline()
+                updateOverlay("AȘTEAPTĂ", "AUTO • " + found + " confirmat",
+                  "Timeframe citit din ecran • analiza poate începe")
+              }
+            }
+          }
+        } else if (tfVerified && observedAt - confirmedTfAt > TF_STALE_MS) {
+          tfVerified = false
+          resetSignalState()
+          updateOverlay("AȘTEAPTĂ", "TF necunoscut",
+            "Nu se poate confirma intervalul • selectează TF manual")
+        }
+      }
+      .addOnFailureListener {
+        if (tfAutomatic && System.currentTimeMillis() - confirmedTfAt > TF_STALE_MS) {
+          tfVerified = false
+          resetSignalState()
+          updateOverlay("AȘTEAPTĂ", "OCR indisponibil",
+            "Alege M5, M10 sau M15 manual • fără bip în AUTO")
+        }
+      }
+      .addOnCompleteListener {
+        if (copy !== frame) copy.recycle()
+        ocrBusy = false
+      }
+  }
+
   private fun startProjection(resultCode: Int, resultData: Intent) {
     if (mediaProjection != null) return
 
@@ -542,6 +647,20 @@ class ScalpOverlayService : Service() {
       val fullFrame = Bitmap.createBitmap(raw, 0, 0, width, height)
       if (fullFrame !== raw) raw.recycle()
 
+      // OCR reads the BROKER SCREEN, not the reduced chart crop.
+      // No signal is permitted in AUTO until timeframe is confirmed.
+      scheduleTimeframeOcr(fullFrame, now)
+      if (tfAutomatic && (!tfVerified || now - confirmedTfAt > TF_STALE_MS)) {
+        if (tfVerified) {
+          tfVerified = false
+          resetSignalState()
+        }
+        fullFrame.recycle()
+        updateOverlay("AȘTEAPTĂ", "TF AUTO • caut M5/M10/M15",
+          "Intervalul brokerului nu este confirmat • bip dezactivat")
+        return
+      }
+
       // User-selectable ROI for different broker layouts; no clicks on broker.
       val zone = chartZone
       val portrait = height >= width
@@ -612,6 +731,10 @@ class ScalpOverlayService : Service() {
   private fun handleResult(result: JSONObject) {
     val now = System.currentTimeMillis()
     if (result.optString("timeframe", "") != selectedTimeframe) return
+    if (tfAutomatic && (!tfVerified || now - confirmedTfAt > TF_STALE_MS)) {
+      resetSignalState()
+      return
+    }
     val rawSignal = result.optString("signal", "NONE")
     val score = result.optInt("probability", 0)
     val quality = result.optInt("quality", 0)
@@ -727,6 +850,7 @@ class ScalpOverlayService : Service() {
     mainHandler.post {
       try {
         val player = MediaPlayer.create(this, if (direction == "BUY") R.raw.scalp_buy_bip else R.raw.scalp_sell_bip)
+        player?.setVolume(1f, 1f)
         player?.setOnCompletionListener { it.release() }
         player?.start()
       } catch (_: Throwable) {}
@@ -761,6 +885,7 @@ class ScalpOverlayService : Service() {
     try { virtualDisplay?.release() } catch (_: Throwable) {}
     try { imageReader?.close() } catch (_: Throwable) {}
     try { mediaProjection?.stop() } catch (_: Throwable) {}
+    try { if (::ocrRecognizer.isInitialized) ocrRecognizer.close() } catch (_: Throwable) {}
     virtualDisplay = null
     imageReader = null
     mediaProjection = null
