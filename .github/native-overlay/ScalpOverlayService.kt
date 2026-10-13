@@ -74,6 +74,9 @@ class ScalpOverlayService : Service() {
   @Volatile private var analysisBusy = false
   @Volatile private var analysisStartedAt = 0L
   @Volatile private var lastFrameAt = 0L
+  @Volatile private var activeFrameId = -1L
+  @Volatile private var previousVisualSample: IntArray? = null
+  @Volatile private var lastVisualChangeAt = 0L
   @Volatile private var frameCount = 0L
   @Volatile private var resultCount = 0L
   @Volatile private var errorCount = 0L
@@ -95,6 +98,12 @@ class ScalpOverlayService : Service() {
     lockedDir = null
     lockedUntil = 0L
     analysisBusy = false
+    activeFrameId = -1L
+  }
+
+  private fun resetVisualBaseline() {
+    previousVisualSample = null
+    lastVisualChangeAt = 0L
   }
 
   private val mainHandler = Handler(Looper.getMainLooper())
@@ -129,7 +138,7 @@ class ScalpOverlayService : Service() {
         }
       }
     }
-    return START_STICKY
+    return START_NOT_STICKY
   }
 
   override fun onBind(intent: Intent?): IBinder? = null
@@ -245,6 +254,7 @@ class ScalpOverlayService : Service() {
         selectedTimeframe = frames[next]
         text = "TF " + selectedTimeframe + " ▸"
         resetSignalState()
+        resetVisualBaseline()
         updateOverlay("AȘTEAPTĂ", "Timeframe: " + selectedTimeframe, "Alege graficul corect")
       }
     }
@@ -257,6 +267,7 @@ class ScalpOverlayService : Service() {
         chartZone = (chartZone + 1) % 3
         text = "GRAFIC " + (chartZone + 1) + "/3 ▸"
         resetSignalState()
+        resetVisualBaseline()
         updateOverlay("AȘTEAPTĂ", "Zonă grafic " + (chartZone + 1) + "/3", "Verifică dacă zona include lumânările")
       }
     }
@@ -365,13 +376,18 @@ class ScalpOverlayService : Service() {
             updateOverlay("AȘTEAPTĂ", "LIVE • motor ACTIV", "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount)
           }
           "RESULT" -> {
-            analysisBusy = false
-            resultCount += 1
             val result = payload.optJSONObject("result") ?: return
+            if (result.optLong("frameId", -1L) != activeFrameId) return
+            analysisBusy = false
+            activeFrameId = -1L
+            resultCount += 1
             handleResult(result)
           }
           "ERROR" -> {
+            val failedId = payload.optLong("frameId", -1L)
+            if (failedId != activeFrameId) return
             analysisBusy = false
+            activeFrameId = -1L
             errorCount += 1
             updateOverlay(
               "AȘTEAPTĂ",
@@ -408,6 +424,38 @@ class ScalpOverlayService : Service() {
       }
     }
     return false
+  }
+
+  /**
+   * Check chart-region changes: three confirmations from an unchanged screenshot
+   * must never become a sounding trading recommendation.
+   */
+  private fun hasFreshChartMotion(bitmap: Bitmap, now: Long): Boolean {
+    val sampled = IntArray(24 * 14)
+    var k = 0
+    for (row in 0 until 14) {
+      val y = (bitmap.height * (row + 1) / 15).coerceIn(0, bitmap.height - 1)
+      for (col in 0 until 24) {
+        val x = (bitmap.width * (col + 1) / 25).coerceIn(0, bitmap.width - 1)
+        sampled[k++] = bitmap.getPixel(x, y)
+      }
+    }
+    val previous = previousVisualSample
+    previousVisualSample = sampled
+    if (previous == null) {
+      lastVisualChangeAt = now
+      return true
+    }
+    var changed = 0
+    for (i in sampled.indices) {
+      val a = sampled[i]
+      val b = previous[i]
+      if (kotlin.math.abs(Color.red(a) - Color.red(b)) > 12 ||
+          kotlin.math.abs(Color.green(a) - Color.green(b)) > 12 ||
+          kotlin.math.abs(Color.blue(a) - Color.blue(b)) > 12) changed++
+    }
+    if (changed >= 2) lastVisualChangeAt = now
+    return now - lastVisualChangeAt <= 12_000L
   }
 
   private fun startProjection(resultCode: Int, resultData: Intent) {
@@ -475,6 +523,9 @@ class ScalpOverlayService : Service() {
       val now = System.currentTimeMillis()
       if (analysisBusy && now - analysisStartedAt > ANALYSIS_TIMEOUT_MS) {
         analysisBusy = false
+        activeFrameId = -1L
+        errorCount += 1
+        updateOverlay("AȘTEAPTĂ", "Motor întârziat", "Rezultat expirat • reiau analiza")
       }
       if (!analyzerReady || analysisBusy || now - lastFrameAt < MIN_FRAME_INTERVAL_MS) return
 
@@ -506,7 +557,14 @@ class ScalpOverlayService : Service() {
       if (!isUsableChartImage(chartFrame)) {
         chartFrame.recycle()
         resetSignalState()
+        resetVisualBaseline()
         updateOverlay("AȘTEAPTĂ", "GRAFIC NECITIBIL", "Alege altă zonă • fără alerte")
+        return
+      }
+      if (!hasFreshChartMotion(chartFrame, now)) {
+        chartFrame.recycle()
+        resetSignalState()
+        updateOverlay("AȘTEAPTĂ", "GRAFIC STATIC", "Imagine neschimbată peste 12s • fără bip")
         return
       }
 
@@ -523,19 +581,29 @@ class ScalpOverlayService : Service() {
       val base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
       lastFrameAt = now
       frameCount += 1
+      val frameId = frameCount
+      val tfAtCapture = selectedTimeframe
+      activeFrameId = frameId
       analysisBusy = true
       analysisStartedAt = now
 
       mainHandler.post {
-        val dataUrl = "data:image/jpeg;base64," + base64
-        val quotedUrl = JSONObject.quote(dataUrl)
-        analyzerWebView?.evaluateJavascript(
-          "window.ScalpAtlasAnalyze && window.ScalpAtlasAnalyze(" + quotedUrl + "," + JSONObject.quote(selectedTimeframe) + ");",
-          null
-        )
+        if (activeFrameId == frameId) {
+          val dataUrl = "data:image/jpeg;base64," + base64
+          val quotedUrl = JSONObject.quote(dataUrl)
+          analyzerWebView?.evaluateJavascript(
+            "window.ScalpAtlasAnalyze && window.ScalpAtlasAnalyze(" + quotedUrl + "," +
+              JSONObject.quote(tfAtCapture) + "," + frameId + ");",
+            null
+          )
+        }
       }
-    } catch (_: Throwable) {
+    } catch (error: Throwable) {
       analysisBusy = false
+      activeFrameId = -1L
+      errorCount += 1
+      updateOverlay("AȘTEAPTĂ", "Captură nereușită",
+        (error.message ?: "Eroare captură") + " • Erori " + errorCount)
     } finally {
       image.close()
     }
@@ -564,10 +632,11 @@ class ScalpOverlayService : Service() {
           pattern + " • direcție activă " + formatSeconds(seconds)
         )
       } else {
+        // Keep confirmed BUY/SELL visible throughout its lock; no repeated bip.
         updateOverlay(
-          "AȘTEAPTĂ",
-          currentLock + " rămâne activ • " + formatSeconds(seconds),
-          "Semnal opus blocat până la expirarea ferestrei"
+          currentLock,
+          "Semnal activ • " + formatSeconds(seconds) + " rămase",
+          "Fără alertă opusă în aceeași fereastră"
         )
       }
       return
