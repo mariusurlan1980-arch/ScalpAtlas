@@ -1,4 +1,4 @@
-import { AutoDemoEngine, type DemoDecision, type Direction, type Timeframe } from './autoDemoEngine';
+import { AutoDemoEngine, type DemoDecision, type Direction, type Timeframe } from './autoDemoEngine.ts';
 
 /** Bridge for verified LIVE analysis events. Never touches Pocket Option or other broker apps. */
 export type LiveAnalysisEvent = {
