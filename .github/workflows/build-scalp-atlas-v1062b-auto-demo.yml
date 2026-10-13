@@ -1,4 +1,4 @@
-name: SCALP ATLAS v1.0.62 AUTO DEMO INTEGRAT
+name: SCALP ATLAS v1.0.63 DEMO DIAGNOSTIC
 
 on:
   push:
@@ -46,13 +46,14 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
+      - '.github/workflows/build-scalp-atlas-v1062b-auto-demo.yml'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: scalp-atlas-overlay-companion
+  group: scalp-atlas-v1063-demo-diagnostic
   cancel-in-progress: true
 
 jobs:
@@ -178,7 +179,7 @@ jobs:
           expo['version']='1.0.62'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.app'
-          expo['android']['versionCode']=162
+          expo['android']['versionCode']=163
           expo['ios']['bundleIdentifier']='com.scalpatlas.app'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -525,12 +526,12 @@ jobs:
           PY
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-v1.0.62-AUTO-DEMO.apk
+          cp "$APK" ScalpAtlas-v1.0.63-DEMO-DIAGNOSTIC.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.62-AUTO-DEMO
-          path: ScalpAtlas-v1.0.62-AUTO-DEMO.apk
+          name: ScalpAtlas-v1.0.63-DEMO-DIAGNOSTIC
+          path: ScalpAtlas-v1.0.63-DEMO-DIAGNOSTIC.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -539,9 +540,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.62-auto-demo --cleanup-tag --yes || true
-          gh release create scalp-atlas-v1.0.62-auto-demo \
-            ScalpAtlas-v1.0.62-AUTO-DEMO.apk \
+          gh release delete scalp-atlas-v1.0.63-demo-diagnostic --cleanup-tag --yes || true
+          gh release create scalp-atlas-v1.0.63-demo-diagnostic \
+            ScalpAtlas-v1.0.63-DEMO-DIAGNOSTIC.apk \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.62 AUTO DEMO" \
-            --notes "Aceeași aplicație și interfață Scalp Atlas. AUTO DEMO este implicit oprit și execută numai când serviciul de accesibilitate vede clar QT Demo și butonul CUMPĂRAȚI/VINDEȚI. Dacă verificarea lipsește, nu apasă. Test exclusiv pe cont Demo; acuratețea și profitabilitatea nu sunt garantate."
+            --title "SCALP ATLAS v1.0.63 AUTO DEMO" \
+            --notes "Aceeași interfață originală. Corecție diagnostică: ține apăsat AUTO DEMO pentru verificare fără ordin. După BIP afișăm motivul exact al blocării sau faptul că apăsarea a fost trimisă, fără să pretindem confirmarea trade-ului. Exclusiv QT Demo; fără garanția rezultatelor."
