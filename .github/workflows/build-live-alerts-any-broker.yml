@@ -1,4 +1,4 @@
-name: SCALP ATLAS LIVE Alerts multi-broker v3.0.4
+name: SCALP ATLAS LIVE Alerts multi-broker v3.0.5
 
 on:
   push:
@@ -66,10 +66,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.0.4'
+          expo['version']='3.0.5'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=304
+          expo['android']['versionCode']=305
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -182,6 +182,10 @@ jobs:
           grep -q 'opticalCandleGate' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q 'opticalCandleGate' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'maskSelfOverlay' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'lastCapturedImageAt' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'Gravity.TOP or Gravity.START' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'lastRenderedCounterAt >= 6500L' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q 'M10 • fără semnal clar • Scor' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'floatArrayOf(0.55f, 0.83f, 0.89f)' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Generate Android project
@@ -305,11 +309,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.4.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.5.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.0.4
-          path: ScalpAtlas-LIVE-Alerts-v3.0.4.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.0.5
+          path: ScalpAtlas-LIVE-Alerts-v3.0.5.apk
           if-no-files-found: error
           retention-days: 30
