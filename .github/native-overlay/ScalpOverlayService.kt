@@ -293,13 +293,16 @@ class ScalpOverlayService : Service() {
     // prevent some devices from delivering a long-press gesture.
     // This only reads accessibility and NEVER dispatches a broker click.
     demoDiagnosticText = TextView(this).apply {
-      text = "TEST CONEXIUNE DEMO • ATINGE"
+      text = "TEST CONEXIUNE DEMO • v1.0.65"
       textSize = 11f
       gravity = Gravity.CENTER
       setTextColor(Color.rgb(70, 220, 235))
       setPadding(dp(8), dp(10), dp(8), dp(10))
       setOnClickListener {
-        text = "TEST: " + ScalpAutoDemoAccessibilityService.checkDemoReadiness()
+        val status = ScalpAutoDemoAccessibilityService.checkDemoReadiness()
+        val previous = getSharedPreferences("scalp_atlas_demo_diagnostics", Context.MODE_PRIVATE)
+          .getString("lastStatus", "NICIO ÎNCERCARE DUPĂ BIP")
+        text = "v1.0.65 TEST: $status\nULTIMUL BIP: $previous"
         setTextColor(Color.rgb(255, 201, 74))
       }
     }
@@ -1367,9 +1370,16 @@ class ScalpOverlayService : Service() {
     // color and M10 countdown heuristics; no claim of future profit.
     playBip()
     val autoDemoResult = ScalpAutoDemoAccessibilityService.requestDemoTrade(rawSignal)
-    // Keep execution status visible beyond the 10-second sound/signal overlay.
-    // A BIP alone proves only a signal, not a broker trade.
-    mainHandler.post { refreshAutoDemoText(autoDemoResult) }
+    // A BIP is a signal only. Keep the exact Android execution attempt result
+    // until the next confirmation; do NOT call it a successful broker trade.
+    getSharedPreferences("scalp_atlas_demo_diagnostics", Context.MODE_PRIVATE).edit()
+      .putString("lastStatus", autoDemoResult)
+      .putLong("lastAtUtcMillis", now)
+      .apply()
+    mainHandler.post {
+      refreshAutoDemoText(autoDemoResult)
+      demoDiagnosticText?.text = "v1.0.65 • " + autoDemoResult
+    }
     val expiryLabel = if (expiry > 0) "$expiry min" else "—"
     updateOverlay(
       signalLabel(rawSignal),

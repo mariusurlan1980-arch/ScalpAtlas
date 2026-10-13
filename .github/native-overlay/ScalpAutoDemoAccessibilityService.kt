@@ -68,7 +68,14 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
       } else {
         listOf("VINDEȚI", "VINDETI", "SELL")
       }
-      val target = service.findButton(root, labels) ?: return "BLOCAT: BUTON NEDETECTAT"
+      // Validate BOTH distinct controls on the same QT Demo window.
+      // Prevent clicking a generic page/container when only one label was found.
+      val buy = service.findButton(root, listOf("CUMPĂRAȚI", "CUMPARATI", "BUY"))
+        ?: return "BLOCAT: BUTON CUMPĂRARE INACCESIBIL"
+      val sell = service.findButton(root, listOf("VINDEȚI", "VINDETI", "SELL"))
+        ?: return "BLOCAT: BUTON VÂNZARE INACCESIBIL"
+      if (buy == sell) return "BLOCAT: BUTOANE AMBIGUE"
+      val target = if (direction == "BUY") buy else sell
       val clicked = service.clickNodeOrCenter(target)
       if (!clicked) return "BLOCAT: APĂSARE EȘUATĂ"
       lastClickAt = now
@@ -117,10 +124,23 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
     for (i in 0 until node.childCount) node.getChild(i)?.let { collectText(it, out) }
   }
 
+  // A loose "contains(BUY)" can match BUY LIMIT, help messages or headers.
+  // Accept only a visible button label, optionally followed by a payout percent.
+  private fun matchesButtonLabel(raw: String, labels: List<String>): Boolean {
+    val normalized = raw.uppercase().replace(Regex("\\s+"), " ").trim()
+    if (normalized.isEmpty()) return false
+    return labels.any { candidate ->
+      val label = candidate.uppercase()
+      normalized == label ||
+        normalized.matches(Regex("^" + Regex.escape(label) + "\\s+\\d{1,3}\\s*%$"))
+    }
+  }
+
   private fun findButton(node: AccessibilityNodeInfo, labels: List<String>): AccessibilityNodeInfo? {
-    val own = ((node.text?.toString() ?: "") + " " +
-      (node.contentDescription?.toString() ?: "")).uppercase()
-    if (labels.any { own.contains(it) }) return node
+    if (node.isVisibleToUser && node.isEnabled) {
+      if (matchesButtonLabel(node.text?.toString() ?: "", labels) ||
+          matchesButtonLabel(node.contentDescription?.toString() ?: "", labels)) return node
+    }
     for (i in 0 until node.childCount) {
       val match = node.getChild(i)?.let { findButton(it, labels) }
       if (match != null) return match
@@ -129,15 +149,28 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
   }
 
   private fun clickNodeOrCenter(node: AccessibilityNodeInfo): Boolean {
-    var clickable: AccessibilityNodeInfo? = node
-    while (clickable != null) {
-      if (clickable.isClickable && clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
-      clickable = clickable.parent
-    }
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
     val bounds = android.graphics.Rect()
     node.getBoundsInScreen(bounds)
-    if (bounds.isEmpty) return false
+    if (bounds.isEmpty || !node.isVisibleToUser || !node.isEnabled) return false
+
+    // Never invoke ACTION_CLICK on a distant clickable ancestor: that might
+    // be a whole WebView rather than the CUMPĂRAȚI/VINDEȚI button.
+    var clickable: AccessibilityNodeInfo? = node
+    var depth = 0
+    while (clickable != null && depth < 2) {
+      val box = android.graphics.Rect()
+      clickable.getBoundsInScreen(box)
+      if (!box.isEmpty && box.contains(bounds.centerX(), bounds.centerY()) &&
+          box.height() <= maxOf(bounds.height() * 4, 200) &&
+          box.width() <= maxOf(bounds.width() * 4, 400) &&
+          clickable.isVisibleToUser && clickable.isEnabled &&
+          clickable.isClickable && clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+        return true
+      }
+      clickable = clickable.parent
+      depth++
+    }
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
     val path = Path().apply { moveTo(bounds.exactCenterX(), bounds.exactCenterY()) }
     val gesture = GestureDescription.Builder()
       .addStroke(GestureDescription.StrokeDescription(path, 0, 80))
