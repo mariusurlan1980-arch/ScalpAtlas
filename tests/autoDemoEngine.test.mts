@@ -29,3 +29,11 @@ test('rejects stale and invalid chart data', () => {
   assert.equal(engine.evaluate({...base,validChart:false}).accepted,false);
   assert.equal(engine.evaluate({...base,confidence:0.5}).accepted,false);
 });
+
+test('rejects unsupported timeframe even when called from untyped runtime', () => {
+  const engine = new AutoDemoEngine(() => 1_000_000);
+  const signal = { market: 'EUR/USD', direction: 'BUY', timeframe: 'M1', confidence: 0.9, observedAt: 1_000_000, price: 1.1, validChart: true } as const;
+  const result = engine.evaluate(signal as unknown as Parameters<AutoDemoEngine['evaluate']>[0]);
+  assert.equal(result.accepted, false);
+  assert.equal(engine.getHistory().length, 0);
+});
