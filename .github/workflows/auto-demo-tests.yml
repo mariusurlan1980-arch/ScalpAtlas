@@ -6,12 +6,16 @@ on:
       - feature/auto-demo-engine-20261013
     paths:
       - 'scalp-atlas-new/autoDemoEngine.ts'
+      - 'scalp-atlas-new/liveDemoBridge.ts'
       - 'tests/autoDemoEngine.test.mts'
+      - 'tests/liveDemoBridge.test.mts'
       - '.github/workflows/auto-demo-tests.yml'
   pull_request:
     paths:
       - 'scalp-atlas-new/autoDemoEngine.ts'
+      - 'scalp-atlas-new/liveDemoBridge.ts'
       - 'tests/autoDemoEngine.test.mts'
+      - 'tests/liveDemoBridge.test.mts'
       - '.github/workflows/auto-demo-tests.yml'
   workflow_dispatch:
 
@@ -27,4 +31,4 @@ jobs:
         with:
           node-version: '22'
       - name: Test AUTO DEMO guard and expiry behavior
-        run: node --experimental-strip-types --test tests/autoDemoEngine.test.mts
+        run: node --experimental-strip-types --test tests/*.test.mts
