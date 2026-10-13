@@ -258,6 +258,11 @@ class ScalpOverlayService : Service() {
       gravity = Gravity.CENTER
       setPadding(dp(8), dp(7), dp(8), dp(7))
       background = rounded(Color.rgb(16, 31, 48), Color.rgb(70, 220, 235))
+      // LONG PRESS = non-trading readiness test (never clicks Pocket Option).
+      setOnLongClickListener {
+        refreshAutoDemoText("TEST: " + ScalpAutoDemoAccessibilityService.checkDemoReadiness())
+        true
+      }
       setOnClickListener {
         if (!ScalpAutoDemoAccessibilityService.isConnected()) {
           ScalpAutoDemoAccessibilityService.setEnabled(this@ScalpOverlayService, false)
@@ -1342,11 +1347,14 @@ class ScalpOverlayService : Service() {
     // color and M10 countdown heuristics; no claim of future profit.
     playBip()
     val autoDemoResult = ScalpAutoDemoAccessibilityService.requestDemoTrade(rawSignal)
+    // Keep execution status visible beyond the 10-second sound/signal overlay.
+    // A BIP alone proves only a signal, not a broker trade.
+    mainHandler.post { refreshAutoDemoText(autoDemoResult) }
+    val expiryLabel = if (expiry > 0) "$expiry min" else "—"
     updateOverlay(
       signalLabel(rawSignal),
       "CONFIRMAT " + REQUIRED_CONFIRMATIONS + "/" + REQUIRED_CONFIRMATIONS + " • Scor " + score + "%",
-      "BIP • Expirare " + if (expiry > 0) expiry.toString() + " min" else "—" +
-        " • " + pattern + " • $currentPair • $currentTimeframe • " + autoDemoResult
+      "BIP • Expirare $expiryLabel • $pattern • $currentPair • $currentTimeframe • $autoDemoResult"
     )
   }
 
