@@ -792,6 +792,8 @@ class ScalpOverlayService : Service() {
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
     val pattern = result.optString("pattern", "—")
+    val reason = result.optString("reason", "")
+    val opticalCount = result.optInt("opticalCandleCount", 0)
 
     // The lock is independent of OCR and frame-capture reset paths.
     // A confirmed SELL cannot turn into a candidate BUY until it expires.
@@ -844,8 +846,8 @@ class ScalpOverlayService : Service() {
       candidateLastAt = 0L
       updateOverlay(
         "AȘTEAPTĂ",
-        timeframe + " • fără semnal clar • Scor " + score + "%",
-        pattern
+        timeframe + " • fără semnal clar • Scor " + score,
+        if (reason.isNotBlank()) reason else pattern + " • Lumânări detectate " + opticalCount
       )
       return
     }
