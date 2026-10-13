@@ -543,6 +543,7 @@ class ScalpOverlayService : Service() {
 
   private fun handleResult(result: JSONObject) {
     val now = System.currentTimeMillis()
+    if (result.optString("timeframe", "") != selectedTimeframe) return
     val rawSignal = result.optString("signal", "NONE")
     val score = result.optInt("probability", 0)
     val quality = result.optInt("quality", 0)
@@ -559,7 +560,7 @@ class ScalpOverlayService : Service() {
       if (confirmedSignal == currentLock) {
         updateOverlay(
           currentLock,
-          "Scor " + score + "% • Expirare " + if (expiry > 0) expiry.toString() + " min" else "—",
+          "Scor orientativ " + score + " • Durată " + if (expiry > 0) expiry.toString() + " min" else "—",
           pattern + " • direcție activă " + formatSeconds(seconds)
         )
       } else {
@@ -626,8 +627,8 @@ class ScalpOverlayService : Service() {
     }
 
     // SIGNAL LOCK v1.0.23
-    // Blocarea direcției trebuie să urmeze expirarea recomandată a trade-ului,
-    // nu fereastra mai lungă de direcție. Pe M10 expirarea motorului este 5–7 min.
+    // Blocarea direcției urmează fereastra indicativă a semnalului,
+    // pentru a evita alerte contradictorii în câteva secunde.
     val lockMinutes = when {
       expiry in 5..7 -> expiry
       expiry > 0 -> expiry.coerceIn(5, 7)
@@ -639,10 +640,10 @@ class ScalpOverlayService : Service() {
     candidateCount = 0
     candidateLastAt = 0L
 
-    playBip()
+    playBip(confirmedSignal)
     updateOverlay(
       confirmedSignal,
-      "Scor " + score + "% • Expirare " + if (expiry > 0) expiry.toString() + " min" else "—",
+      "Scor orientativ " + score + " • Durată " + if (expiry > 0) expiry.toString() + " min" else "—",
       pattern + " • direcție estimată " + if (directionMax > 0) directionMax.toString() + " min" else timeframe
     )
   }
@@ -653,10 +654,10 @@ class ScalpOverlayService : Service() {
     return "%02d:%02d".format(minutes, seconds)
   }
 
-  private fun playBip() {
+  private fun playBip(direction: String) {
     mainHandler.post {
       try {
-        val player = MediaPlayer.create(this, R.raw.scalp_bip)
+        val player = MediaPlayer.create(this, if (direction == "BUY") R.raw.scalp_buy_bip else R.raw.scalp_sell_bip)
         player?.setOnCompletionListener { it.release() }
         player?.start()
       } catch (_: Throwable) {}
