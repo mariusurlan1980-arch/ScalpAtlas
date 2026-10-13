@@ -1,0 +1,30 @@
+name: AUTO DEMO engine tests
+
+on:
+  push:
+    branches:
+      - feature/auto-demo-engine-20261013
+    paths:
+      - 'scalp-atlas-new/autoDemoEngine.ts'
+      - 'tests/autoDemoEngine.test.mts'
+      - '.github/workflows/auto-demo-tests.yml'
+  pull_request:
+    paths:
+      - 'scalp-atlas-new/autoDemoEngine.ts'
+      - 'tests/autoDemoEngine.test.mts'
+      - '.github/workflows/auto-demo-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-auto-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test AUTO DEMO guard and expiry behavior
+        run: node --experimental-strip-types --test tests/autoDemoEngine.test.mts
