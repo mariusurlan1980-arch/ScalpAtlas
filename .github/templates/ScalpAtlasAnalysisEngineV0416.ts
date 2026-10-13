@@ -494,17 +494,18 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return lines;
   }
 
-  function run(dataUrl,timeframe){
+  function run(dataUrl,timeframe,frameId){
     const img=new Image();
     img.onload=function(){
       try{
         const curve=buildPriceCurve(img);
-        if(!curve){send({type:'ERROR',message:'Imaginea nu a putut fi citită.'});return;}
+        if(!curve){send({type:'ERROR',frameId,message:'Imaginea nu a putut fi citită.'});return;}
         const r=classify(curve),anchor=curve.anchor;
         const duration=r.clear?directionDurationFor(timeframe,r,curve):null;
         send({
           type:'RESULT',
           result:{
+            frameId,
             signal:r.clear?r.dir:'NONE',
             timeframe:String(timeframe||'M10'),
             pattern:r.atlas,
@@ -524,10 +525,10 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
           }
         });
       }catch(e){
-        send({type:'ERROR',message:e&&e.message?e.message:String(e)});
+        send({type:'ERROR',frameId,message:e&&e.message?e.message:String(e)});
       }
     };
-    img.onerror=function(){send({type:'ERROR',message:'Fotografia nu a putut fi încărcată în motorul de analiză.'});};
+    img.onerror=function(){send({type:'ERROR',frameId,message:'Fotografia nu a putut fi încărcată în motorul de analiză.'});};
     img.src=dataUrl;
   }
 
@@ -542,7 +543,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 
   // Native overlay can call the analyzer directly. This avoids large MessageEvent
   // payloads and reduces latency / dropped frames on Android WebView.
-  window.ScalpAtlasAnalyze=function(dataUrl,timeframe){run(dataUrl,timeframe||'M10');};
+  window.ScalpAtlasAnalyze=function(dataUrl,timeframe,frameId){run(dataUrl,timeframe||'M10',frameId);};
   window.ScalpAtlasPing=function(){send({type:'READY',atlasCount:ATLAS.length,engineVersion:ENGINE_VERSION});};
   document.addEventListener('message',onMessage);
   window.addEventListener('message',onMessage);
