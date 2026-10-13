@@ -83,7 +83,19 @@ class ScalpOverlayService : Service() {
   private var candidateLastAt = 0L
   private var lockedDir: String? = null
   private var lockedUntil = 0L
-  private var pocketDetected = false
+  @Volatile private var selectedTimeframe = "M10"
+  @Volatile private var chartZone = 1
+  private var tfControl: TextView? = null
+  private var chartControl: TextView? = null
+
+  private fun resetSignalState() {
+    candidateDir = null
+    candidateCount = 0
+    candidateLastAt = 0L
+    lockedDir = null
+    lockedUntil = 0L
+    analysisBusy = false
+  }
 
   private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -113,7 +125,7 @@ class ScalpOverlayService : Service() {
         if (resultCode != 0 && data != null) {
           startProjection(resultCode, data)
         } else {
-          updateOverlay("AȘTEAPTĂ", "M10 • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
+          updateOverlay("AȘTEAPTĂ", "LIVE • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
         }
       }
     }
@@ -141,7 +153,7 @@ class ScalpOverlayService : Service() {
         "Scalp Atlas suprapunere",
         NotificationManager.IMPORTANCE_LOW
       )
-      channel.description = "Analiză live M10 peste Pocket Option"
+      channel.description = "Citire grafic live peste aplicația selectată"
       getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
   }
@@ -150,7 +162,7 @@ class ScalpOverlayService : Service() {
     NotificationCompat.Builder(this, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.ic_menu_view)
       .setContentTitle("SCALP ATLAS • SUPRAPUNERE LIVE")
-      .setContentText("Analiză M10 în timp real")
+      .setContentText("Alerte BUY/SELL fără executare ordine")
       .setOngoing(true)
       .setPriority(NotificationCompat.PRIORITY_LOW)
       .build()
@@ -179,7 +191,7 @@ class ScalpOverlayService : Service() {
     }
 
     val title = TextView(this).apply {
-      text = "SCALP ATLAS • M10"
+      text = "SCALP ATLAS • LIVE"
       setTextColor(Color.rgb(70, 220, 235))
       textSize = 13f
       setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -212,13 +224,46 @@ class ScalpOverlayService : Service() {
     }
 
     modelText = TextView(this).apply {
-      text = "Motor M10 • 3 confirmări"
+      text = "ALERTE NUMAI • 3 confirmări"
       setTextColor(Color.rgb(135, 153, 176))
       textSize = 10f
       setPadding(0, dp(2), 0, 0)
     }
 
+    val controls = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER_VERTICAL
+    }
+    tfControl = TextView(this).apply {
+      text = "TF M10 ▸"
+      setTextColor(Color.rgb(70, 220, 235))
+      textSize = 12f
+      setPadding(0, dp(5), dp(18), dp(3))
+      setOnClickListener {
+        val frames = arrayOf("M5", "M10", "M15")
+        val next = (frames.indexOf(selectedTimeframe) + 1) % frames.size
+        selectedTimeframe = frames[next]
+        text = "TF " + selectedTimeframe + " ▸"
+        resetSignalState()
+        updateOverlay("AȘTEAPTĂ", "Timeframe: " + selectedTimeframe, "Alege graficul corect")
+      }
+    }
+    chartControl = TextView(this).apply {
+      text = "GRAFIC 2/3 ▸"
+      setTextColor(Color.rgb(210, 222, 238))
+      textSize = 12f
+      setPadding(0, dp(5), 0, dp(3))
+      setOnClickListener {
+        chartZone = (chartZone + 1) % 3
+        text = "GRAFIC " + (chartZone + 1) + "/3 ▸"
+        resetSignalState()
+        updateOverlay("AȘTEAPTĂ", "Zonă grafic " + (chartZone + 1) + "/3", "Verifică dacă zona include lumânările")
+      }
+    }
+    controls.addView(tfControl)
+    controls.addView(chartControl)
     root.addView(header)
+    root.addView(controls)
     root.addView(signalText)
     root.addView(detailText)
     root.addView(modelText)
@@ -283,11 +328,11 @@ class ScalpOverlayService : Service() {
             if (analyzerReady) {
               updateOverlay(
                 "AȘTEAPTĂ",
-                "M10 • motor ACTIV",
+                "LIVE • motor ACTIV",
                 "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
               )
             } else {
-              updateOverlay("AȘTEAPTĂ", "M10 • HTML încărcat", "Verific motorul...")
+              updateOverlay("AȘTEAPTĂ", "LIVE • HTML încărcat", "Verific motorul...")
               view?.evaluateJavascript(
                 "window.ScalpAtlasPing && window.ScalpAtlasPing();",
                 null
@@ -317,7 +362,7 @@ class ScalpOverlayService : Service() {
           "READY" -> {
             analyzerReady = true
             analysisBusy = false
-            updateOverlay("AȘTEAPTĂ", "M10 • motor ACTIV", "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount)
+            updateOverlay("AȘTEAPTĂ", "LIVE • motor ACTIV", "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount)
           }
           "RESULT" -> {
             analysisBusy = false
@@ -330,7 +375,7 @@ class ScalpOverlayService : Service() {
             errorCount += 1
             updateOverlay(
               "AȘTEAPTĂ",
-              "M10 • cadru respins",
+              "LIVE • cadru respins",
               payload.optString("message", "Analiză indisponibilă") +
                 " • Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
             )
@@ -342,62 +387,27 @@ class ScalpOverlayService : Service() {
     }
   }
 
-  private fun isPocketOptionFrame(bitmap: Bitmap): Boolean {
-    // POCKET OPTION GATE v1.0.22
-    // Pocket Option Classic mode has two large saturated action buttons near the
-    // lower part of the screen: green BUY and red SELL. We use those UI anchors
-    // to stop Scalp Atlas from analyzing the launcher, wallpaper or another app.
+  /**
+   * Broker-neutral basic visual check; analysis engine makes signal decision.
+   * Android 14 MediaProjection can capture a selected app window.
+   */
+  private fun isUsableChartImage(bitmap: Bitmap): Boolean {
     val w = bitmap.width
     val h = bitmap.height
-    if (w < 100 || h < 200) return false
-
-    val y0 = (h * 0.70f).roundToInt().coerceIn(0, h - 2)
-    val y1 = (h * 0.91f).roundToInt().coerceIn(y0 + 1, h)
-    val x0 = (w * 0.03f).roundToInt()
-    val x1 = (w * 0.97f).roundToInt()
-
-    var samples = 0
-    var green = 0
-    var red = 0
-    var leftGreen = 0
-    var rightRed = 0
-
-    var y = y0
-    while (y < y1) {
-      var x = x0
-      while (x < x1) {
-        val p = bitmap.getPixel(x, y)
-        val r = Color.red(p)
-        val g = Color.green(p)
-        val b = Color.blue(p)
-        samples += 1
-
-        val isGreen = g > 105 && g > r * 1.18 && g > b * 1.08
-        val isRed = r > 145 && r > g * 1.22 && r > b * 1.10
-
-        if (isGreen) {
-          green += 1
-          if (x < w / 2) leftGreen += 1
-        }
-        if (isRed) {
-          red += 1
-          if (x > w / 2) rightRed += 1
-        }
-        x += 6
+    if (w < 150 || h < 90) return false
+    val colors = HashSet<Int>()
+    val strideX = max(3, w / 32)
+    val strideY = max(3, h / 24)
+    for (y in 0 until h step strideY) {
+      for (x in 0 until w step strideX) {
+        val pixel = bitmap.getPixel(x, y)
+        val key = ((Color.red(pixel) / 24) shl 16) or
+          ((Color.green(pixel) / 24) shl 8) or (Color.blue(pixel) / 24)
+        colors.add(key)
+        if (colors.size >= 9) return true
       }
-      y += 6
     }
-
-    if (samples <= 0) return false
-    val greenRatio = green.toFloat() / samples
-    val redRatio = red.toFloat() / samples
-    val leftGreenRatio = leftGreen.toFloat() / samples
-    val rightRedRatio = rightRed.toFloat() / samples
-
-    return greenRatio >= 0.028f &&
-      redRatio >= 0.028f &&
-      leftGreenRatio >= 0.018f &&
-      rightRedRatio >= 0.018f
+    return false
   }
 
   private fun startProjection(resultCode: Int, resultData: Intent) {
@@ -433,7 +443,7 @@ class ScalpOverlayService : Service() {
     )
 
     startFramePolling(width, height)
-    updateOverlay("AȘTEAPTĂ", "M10 • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
+    updateOverlay("AȘTEAPTĂ", "LIVE • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
   }
 
   private fun startFramePolling(width: Int, height: Int) {
@@ -448,7 +458,7 @@ class ScalpOverlayService : Service() {
         if (lastFrameAt > 0L && now - lastFrameAt > 2500L) {
           updateOverlay(
             "AȘTEAPTĂ",
-            "M10 • FLUX ÎNGHEȚAT",
+            "LIVE • FLUX ÎNGHEȚAT",
             "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount + " • repornește SUPRAPUNERE"
           )
         }
@@ -481,50 +491,27 @@ class ScalpOverlayService : Service() {
       val fullFrame = Bitmap.createBitmap(raw, 0, 0, width, height)
       if (fullFrame !== raw) raw.recycle()
 
-      val onPocketOption = isPocketOptionFrame(fullFrame)
-      if (!onPocketOption) {
-        if (pocketDetected) {
-          pocketDetected = false
-          candidateDir = null
-          candidateCount = 0
-          candidateLastAt = 0L
-        }
-        fullFrame.recycle()
-        updateOverlay(
-          "AȘTEAPTĂ",
-          "POCKET OPTION NEDETECTAT",
-          "Analiza este oprită în afara platformei"
-        )
-        return
-      } else if (!pocketDetected) {
-        pocketDetected = true
-        updateOverlay(
-          "AȘTEAPTĂ",
-          "POCKET OPTION DETECTAT • M10",
-          "Analiză activă"
-        )
-      }
-
-      // POCKET OPTION CHART CROP v1.0.16:
-      // Motorul primește doar zona centrală a graficului, nu antetul, butoanele,
-      // soldul sau fereastra Scalp Atlas. În portret păstrăm aproximativ 16–72%
-      // din înălțimea ecranului; în landscape folosim o zonă mai largă.
-      val cropTop = if (height >= width) {
-        (height * 0.16f).roundToInt().coerceIn(0, height - 2)
-      } else {
-        (height * 0.08f).roundToInt().coerceIn(0, height - 2)
-      }
-      val cropBottom = if (height >= width) {
-        (height * 0.72f).roundToInt().coerceIn(cropTop + 1, height)
-      } else {
-        (height * 0.88f).roundToInt().coerceIn(cropTop + 1, height)
-      }
+      // User-selectable ROI for different broker layouts; no clicks on broker.
+      val zone = chartZone
+      val portrait = height >= width
+      val topFraction = if (portrait) floatArrayOf(0.07f, 0.16f, 0.28f)[zone]
+        else floatArrayOf(0.03f, 0.08f, 0.17f)[zone]
+      val bottomFraction = if (portrait) floatArrayOf(0.55f, 0.72f, 0.89f)[zone]
+        else floatArrayOf(0.72f, 0.88f, 0.96f)[zone]
+      val cropTop = (height * topFraction).roundToInt().coerceIn(0, height - 2)
+      val cropBottom = (height * bottomFraction).roundToInt().coerceIn(cropTop + 1, height)
       val chartHeight = max(1, cropBottom - cropTop)
       val chartFrame = Bitmap.createBitmap(fullFrame, 0, cropTop, width, chartHeight)
       if (chartFrame !== fullFrame) fullFrame.recycle()
+      if (!isUsableChartImage(chartFrame)) {
+        chartFrame.recycle()
+        resetSignalState()
+        updateOverlay("AȘTEAPTĂ", "GRAFIC NECITIBIL", "Alege altă zonă • fără alerte")
+        return
+      }
 
       // STREAM FIX v1.0.17: smaller payload + direct JS entrypoint.
-      val targetWidth = minOf(420, width)
+      val targetWidth = minOf(520, width)
       val targetHeight = max(1, (chartHeight * (targetWidth.toFloat() / width)).roundToInt())
       val scaled = if (targetWidth != width) Bitmap.createScaledBitmap(chartFrame, targetWidth, targetHeight, true) else chartFrame
       if (scaled !== chartFrame) chartFrame.recycle()
@@ -543,7 +530,7 @@ class ScalpOverlayService : Service() {
         val dataUrl = "data:image/jpeg;base64," + base64
         val quotedUrl = JSONObject.quote(dataUrl)
         analyzerWebView?.evaluateJavascript(
-          "window.ScalpAtlasAnalyze && window.ScalpAtlasAnalyze(" + quotedUrl + ",'M10');",
+          "window.ScalpAtlasAnalyze && window.ScalpAtlasAnalyze(" + quotedUrl + "," + JSONObject.quote(selectedTimeframe) + ");",
           null
         )
       }
@@ -558,6 +545,10 @@ class ScalpOverlayService : Service() {
     val now = System.currentTimeMillis()
     val rawSignal = result.optString("signal", "NONE")
     val score = result.optInt("probability", 0)
+    val quality = result.optInt("quality", 0)
+    val timeframe = selectedTimeframe
+    // Indicatorul nu reprezintă probabilitate statistică verificată.
+    val confirmedSignal = if (quality >= 55 && score >= 70) rawSignal else "NONE"
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
     val pattern = result.optString("pattern", "—")
@@ -565,7 +556,7 @@ class ScalpOverlayService : Service() {
     val currentLock = lockedDir
     if (currentLock != null && now < lockedUntil) {
       val seconds = max(0L, (lockedUntil - now) / 1000L)
-      if (rawSignal == currentLock) {
+      if (confirmedSignal == currentLock) {
         updateOverlay(
           currentLock,
           "Scor " + score + "% • Expirare " + if (expiry > 0) expiry.toString() + " min" else "—",
@@ -589,7 +580,7 @@ class ScalpOverlayService : Service() {
       candidateLastAt = 0L
     }
 
-    if (rawSignal != "BUY" && rawSignal != "SELL") {
+    if (confirmedSignal != "BUY" && confirmedSignal != "SELL") {
       val candidateStillFresh =
         candidateDir != null &&
         candidateCount > 0 &&
@@ -600,7 +591,7 @@ class ScalpOverlayService : Service() {
         updateOverlay(
           "AȘTEAPTĂ " + candidateDir,
           "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • semnalul este reverificat",
-          "M10 • candidat păstrat"
+          timeframe + " • candidat păstrat"
         )
         return
       }
@@ -610,14 +601,14 @@ class ScalpOverlayService : Service() {
       candidateLastAt = 0L
       updateOverlay(
         "AȘTEAPTĂ",
-        "M10 • fără semnal clar • Scor " + score + "%",
+        timeframe + " • fără semnal clar • Scor " + score + "%",
         pattern
       )
       return
     }
 
-    if (candidateDir != rawSignal) {
-      candidateDir = rawSignal
+    if (candidateDir != confirmedSignal) {
+      candidateDir = confirmedSignal
       candidateCount = 1
       candidateLastAt = now
     } else if (now - candidateLastAt >= CONFIRMATION_SPACING_MS) {
@@ -627,9 +618,9 @@ class ScalpOverlayService : Service() {
 
     if (candidateCount < REQUIRED_CONFIRMATIONS) {
       updateOverlay(
-        "AȘTEAPTĂ " + rawSignal,
+        "AȘTEAPTĂ " + confirmedSignal,
         "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • Scor " + score + "%",
-        pattern + " • M10"
+        pattern + " • " + timeframe
       )
       return
     }
@@ -642,7 +633,7 @@ class ScalpOverlayService : Service() {
       expiry > 0 -> expiry.coerceIn(5, 7)
       else -> 6
     }
-    lockedDir = rawSignal
+    lockedDir = confirmedSignal
     lockedUntil = now + lockMinutes * 60_000L
     candidateDir = null
     candidateCount = 0
@@ -650,9 +641,9 @@ class ScalpOverlayService : Service() {
 
     playBip()
     updateOverlay(
-      rawSignal,
+      confirmedSignal,
       "Scor " + score + "% • Expirare " + if (expiry > 0) expiry.toString() + " min" else "—",
-      pattern + " • direcție estimată " + if (directionMax > 0) directionMax.toString() + " min" else "M10"
+      pattern + " • direcție estimată " + if (directionMax > 0) directionMax.toString() + " min" else timeframe
     )
   }
 
