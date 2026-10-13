@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
@@ -64,6 +66,7 @@ class ScalpOverlayService : Service() {
 
   private lateinit var windowManager: WindowManager
   private var overlayView: View? = null
+  @Volatile private var overlayWindowParams: WindowManager.LayoutParams? = null
   private var signalText: TextView? = null
   private var detailText: TextView? = null
   private var modelText: TextView? = null
@@ -351,6 +354,7 @@ class ScalpOverlayService : Service() {
     }
 
     overlayView = root
+    overlayWindowParams = params
     windowManager.addView(root, params)
   }
 
@@ -629,6 +633,38 @@ class ScalpOverlayService : Service() {
     handler.post(task)
   }
 
+  /**
+   * MediaProjection captures our own window. Mask it before analyzing candles;
+   * our red SELL, green borders and text are not broker price action.
+   * Occluded prices cannot be restored, so signals must fail closed.
+   */
+  private fun maskSelfOverlay(source: Bitmap, screenWidth: Int, cropTop: Int): Bitmap {
+    val params = overlayWindowParams ?: return source
+    val view = overlayView ?: return source
+    val w = view.width
+    val h = view.height
+    if (w <= 0 || h <= 0) return source
+
+    val margin = dp(14)
+    val left = screenWidth - params.x - w - margin
+    val right = screenWidth - params.x + margin
+    val top = params.y - cropTop - margin
+    val bottom = params.y - cropTop + h + margin
+    if (right <= 0 || left >= source.width || bottom <= 0 || top >= source.height) return source
+
+    val copy = source.copy(Bitmap.Config.ARGB_8888, true)
+    val canvas = Canvas(copy)
+    canvas.drawRect(
+      left.toFloat().coerceAtLeast(0f),
+      top.toFloat().coerceAtLeast(0f),
+      right.toFloat().coerceAtMost(copy.width.toFloat()),
+      bottom.toFloat().coerceAtMost(copy.height.toFloat()),
+      Paint().apply { color = Color.rgb(13, 18, 30); style = Paint.Style.FILL }
+    )
+    source.recycle()
+    return copy
+  }
+
   private fun processLatestImage(reader: ImageReader, width: Int, height: Int) {
     val image = reader.acquireLatestImage() ?: return
     try {
@@ -676,13 +712,14 @@ class ScalpOverlayService : Service() {
       val portrait = height >= width
       val topFraction = if (portrait) floatArrayOf(0.07f, 0.16f, 0.28f)[zone]
         else floatArrayOf(0.03f, 0.08f, 0.17f)[zone]
-      val bottomFraction = if (portrait) floatArrayOf(0.55f, 0.72f, 0.89f)[zone]
+      val bottomFraction = if (portrait) floatArrayOf(0.55f, 0.83f, 0.89f)[zone]
         else floatArrayOf(0.72f, 0.88f, 0.96f)[zone]
       val cropTop = (height * topFraction).roundToInt().coerceIn(0, height - 2)
       val cropBottom = (height * bottomFraction).roundToInt().coerceIn(cropTop + 1, height)
       val chartHeight = max(1, cropBottom - cropTop)
-      val chartFrame = Bitmap.createBitmap(fullFrame, 0, cropTop, width, chartHeight)
-      if (chartFrame !== fullFrame) fullFrame.recycle()
+      val originalChartFrame = Bitmap.createBitmap(fullFrame, 0, cropTop, width, chartHeight)
+      if (originalChartFrame !== fullFrame) fullFrame.recycle()
+      val chartFrame = maskSelfOverlay(originalChartFrame, width, cropTop)
       if (!isUsableChartImage(chartFrame)) {
         chartFrame.recycle()
         resetSignalState()
@@ -750,7 +787,8 @@ class ScalpOverlayService : Service() {
     val quality = result.optInt("quality", 0)
     val timeframe = selectedTimeframe
     // Indicatorul nu reprezintă probabilitate statistică verificată.
-    val confirmedSignal = if (quality >= 55 && score >= 70) rawSignal else "NONE"
+    val opticalGate = result.optBoolean("opticalCandleGate", false)
+    val confirmedSignal = if (quality >= 55 && score >= 70 && opticalGate) rawSignal else "NONE"
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
     val pattern = result.optString("pattern", "—")
@@ -903,6 +941,7 @@ class ScalpOverlayService : Service() {
     try { imageReader?.close() } catch (_: Throwable) {}
     try { mediaProjection?.stop() } catch (_: Throwable) {}
     try { ocrRecognizer.close() } catch (_: Throwable) {}
+    overlayWindowParams = null
     virtualDisplay = null
     imageReader = null
     mediaProjection = null
