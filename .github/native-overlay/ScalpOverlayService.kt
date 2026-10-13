@@ -24,6 +24,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
+import android.text.TextUtils
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Base64
@@ -82,6 +83,12 @@ class ScalpOverlayService : Service() {
   @Volatile private var analysisBusy = false
   @Volatile private var analysisStartedAt = 0L
   @Volatile private var lastFrameAt = 0L
+  @Volatile private var lastCapturedImageAt = 0L
+  @Volatile private var lastFreezeNoticeAt = 0L
+  private var lastRenderedSignal = ""
+  private var lastRenderedDetails = ""
+  private var lastRenderedModel = ""
+  private var lastRenderedCounterAt = 0L
   @Volatile private var activeFrameId = -1L
   @Volatile private var previousVisualSample: IntArray? = null
   @Volatile private var lastVisualChangeAt = 0L
@@ -213,6 +220,7 @@ class ScalpOverlayService : Service() {
   private fun createOverlay() {
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
+      minimumHeight = dp(155)
       setPadding(dp(12), dp(10), dp(12), dp(10))
       background = rounded(Color.rgb(7, 16, 30), Color.rgb(40, 211, 151))
       elevation = dp(10).toFloat()
@@ -245,6 +253,8 @@ class ScalpOverlayService : Service() {
       text = "AȘTEAPTĂ"
       setTextColor(Color.rgb(255, 201, 74))
       textSize = 24f
+      maxLines = 1
+      ellipsize = TextUtils.TruncateAt.END
       setTypeface(typeface, android.graphics.Typeface.BOLD)
       setPadding(0, dp(4), 0, 0)
     }
@@ -253,6 +263,9 @@ class ScalpOverlayService : Service() {
       text = "Flux ecran • pregătire"
       setTextColor(Color.rgb(210, 222, 238))
       textSize = 12f
+      minLines = 2
+      maxLines = 2
+      ellipsize = TextUtils.TruncateAt.END
       setPadding(0, dp(2), 0, 0)
     }
 
@@ -260,6 +273,9 @@ class ScalpOverlayService : Service() {
       text = "ALERTE NUMAI • 3 confirmări"
       setTextColor(Color.rgb(135, 153, 176))
       textSize = 10f
+      minLines = 2
+      maxLines = 2
+      ellipsize = TextUtils.TruncateAt.END
       setPadding(0, dp(2), 0, 0)
     }
 
@@ -323,9 +339,9 @@ class ScalpOverlayService : Service() {
         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
       PixelFormat.TRANSLUCENT
     ).apply {
-      // Ținem overlay-ul sus, în afara zonei de grafic analizate.
-      gravity = Gravity.TOP or Gravity.END
-      x = dp(10)
+      // Prefer left edge so the latest candles beside right price axis stay visible.
+      gravity = Gravity.TOP or Gravity.START
+      x = dp(8)
       y = dp(28)
     }
 
@@ -619,11 +635,15 @@ class ScalpOverlayService : Service() {
         processLatestImage(imageReader!!, width, height)
 
         val now = System.currentTimeMillis()
-        if (lastFrameAt > 0L && now - lastFrameAt > 2500L) {
+        // A refused signal isn't a frozen Android screen stream.
+        if (lastCapturedImageAt > 0L &&
+            now - lastCapturedImageAt > 3500L &&
+            now - lastFreezeNoticeAt > 5000L) {
+          lastFreezeNoticeAt = now
           updateOverlay(
             "AȘTEAPTĂ",
-            "LIVE • FLUX ÎNGHEȚAT",
-            "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount + " • repornește SUPRAPUNERE"
+            "Captură ecran întreruptă",
+            "Nu sosesc imagini de la Android • repornește SUPRAPUNERE"
           )
         }
 
@@ -639,22 +659,22 @@ class ScalpOverlayService : Service() {
    * Occluded prices cannot be restored, so signals must fail closed.
    */
   private fun maskSelfOverlay(source: Bitmap, screenWidth: Int, cropTop: Int): Bitmap {
-    val params = overlayWindowParams ?: return source
     val view = overlayView ?: return source
     val w = view.width
     val h = view.height
     if (w <= 0 || h <= 0) return source
 
-    val margin = dp(14)
-    val left = screenWidth - params.x - w - margin
-    val right = screenWidth - params.x + margin
-    val top = params.y - cropTop - margin
-    val bottom = params.y - cropTop + h + margin
+    // Read real window location, not Gravity.END arithmetic.
+    val location = IntArray(2)
+    view.getLocationOnScreen(location)
+    val margin = dp(12)
+    val left = location[0] - margin
+    val right = location[0] + w + margin
+    val top = location[1] - cropTop - margin
+    val bottom = location[1] - cropTop + h + margin
     if (right <= 0 || left >= source.width || bottom <= 0 || top >= source.height) return source
-
     val copy = source.copy(Bitmap.Config.ARGB_8888, true)
-    val canvas = Canvas(copy)
-    canvas.drawRect(
+    Canvas(copy).drawRect(
       left.toFloat().coerceAtLeast(0f),
       top.toFloat().coerceAtLeast(0f),
       right.toFloat().coerceAtMost(copy.width.toFloat()),
@@ -669,6 +689,7 @@ class ScalpOverlayService : Service() {
     val image = reader.acquireLatestImage() ?: return
     try {
       val now = System.currentTimeMillis()
+      lastCapturedImageAt = now
       if (analysisBusy && now - analysisStartedAt > ANALYSIS_TIMEOUT_MS) {
         analysisBusy = false
         activeFrameId = -1L
@@ -834,9 +855,10 @@ class ScalpOverlayService : Service() {
 
       if (candidateStillFresh) {
         updateOverlay(
-          "AȘTEAPTĂ " + candidateDir,
-          "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • semnalul este reverificat",
-          timeframe + " • candidat păstrat"
+          "AȘTEAPTĂ",
+          "Candidat " + candidateDir + " " + candidateCount + "/" + REQUIRED_CONFIRMATIONS +
+            " • fără bip până la confirmare",
+          timeframe + " • reverific direcția"
         )
         return
       }
@@ -846,8 +868,9 @@ class ScalpOverlayService : Service() {
       candidateLastAt = 0L
       updateOverlay(
         "AȘTEAPTĂ",
-        timeframe + " • fără semnal clar • Scor " + score,
-        if (reason.isNotBlank()) reason else pattern + " • Lumânări detectate " + opticalCount
+        if (reason.isNotBlank()) reason else "Analiza graficului este neconcludentă",
+        timeframe + " • scor orientativ " + score +
+          " • lumânări recunoscute " + opticalCount
       )
       return
     }
@@ -863,8 +886,9 @@ class ScalpOverlayService : Service() {
 
     if (candidateCount < REQUIRED_CONFIRMATIONS) {
       updateOverlay(
-        "AȘTEAPTĂ " + confirmedSignal,
-        "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • Scor " + score + "%",
+        "AȘTEAPTĂ",
+        "Candidat " + confirmedSignal + " " + candidateCount + "/" + REQUIRED_CONFIRMATIONS +
+          " • fără bip până la confirmare",
         pattern + " • " + timeframe
       )
       return
@@ -922,16 +946,34 @@ class ScalpOverlayService : Service() {
 
   private fun updateOverlay(signal: String, details: String, model: String) {
     mainHandler.post {
-      signalText?.text = signal
-      signalText?.setTextColor(
-        when {
-          signal.startsWith("BUY") -> Color.rgb(52, 218, 148)
-          signal.startsWith("SELL") -> Color.rgb(255, 88, 96)
-          else -> Color.rgb(255, 201, 74)
-        }
-      )
-      detailText?.text = details
-      modelText?.text = model + " • Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
+      val now = System.currentTimeMillis()
+      val signalChanged = signal != lastRenderedSignal
+      val detailsChanged = details != lastRenderedDetails
+      val reasonChanged = model != lastRenderedModel
+      val countersDue = now - lastRenderedCounterAt >= 6500L
+
+      // Do not repaint the floating panel for every JPEG analysis / frame count.
+      if (signalChanged) {
+        lastRenderedSignal = signal
+        signalText?.text = signal
+        signalText?.setTextColor(
+          when (signal) {
+            "BUY" -> Color.rgb(52, 218, 148)
+            "SELL" -> Color.rgb(255, 88, 96)
+            else -> Color.rgb(255, 201, 74)
+          }
+        )
+      }
+      if (detailsChanged) {
+        lastRenderedDetails = details
+        detailText?.text = details
+      }
+      if (reasonChanged || countersDue) {
+        lastRenderedModel = model
+        if (countersDue) lastRenderedCounterAt = now
+        modelText?.text = model + " • Cadre " + frameCount +
+          " • Rez " + resultCount + " • Erori " + errorCount
+      }
     }
   }
 
