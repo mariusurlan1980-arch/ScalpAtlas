@@ -1,4 +1,4 @@
-name: SCALP ATLAS LIVE Alerts multi-broker v3.0.1
+name: SCALP ATLAS LIVE Alerts multi-broker v3.0.2
 
 on:
   push:
@@ -65,10 +65,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.0.1'
+          expo['version']='3.0.2'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=301
+          expo['android']['versionCode']=302
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -101,7 +101,11 @@ jobs:
           grep -q "ScalpAtlasAnalyze" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q "isUsableChartImage" .github/native-overlay/ScalpOverlayService.kt
           grep -q 'GRAFIC 2/3' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'TF M10' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'TF AUTO' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'scheduleTimeframeOcr' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'TextRecognition.getClient' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'pendingTfCount >= 2' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'OCR_INTERVAL_MS' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'playBip(confirmedSignal)' .github/native-overlay/ScalpOverlayService.kt
           ! grep -q 'isPocketOptionFrame' .github/native-overlay/ScalpOverlayService.kt
           ! grep -E -q 'placeDemoOrder|AccessibilityService|performGlobalAction|dispatchGesture' .github/native-overlay/ScalpOverlayService.kt
@@ -132,18 +136,18 @@ jobs:
           npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage expo-ocr-kit react-native-webview
           npm install tesseract.js
 
-      - name: Generate Bip 1
+      - name: Generate longer, higher BUY and SELL beeps
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import math,struct,wave
           assets=Path('scalp-atlas-new/assets'); assets.mkdir(parents=True,exist_ok=True)
-          rate=44100; duration=.35; amp=.23
-          for name,freq in [('buy-alert.wav',880.0),('sell-alert.wav',620.0)]:
+          rate=44100; duration=1.15; amp=.36
+          for name,freq in [('buy-alert.wav',1220.0),('sell-alert.wav',980.0)]:
               frames=bytearray()
               for i in range(int(rate*duration)):
                   t=i/rate
-                  fade=min(1.0,t/.01,(duration-t)/.03)
+                  fade=min(1.0,t/.025,(duration-t)/.085)
                   sample=int(32767*amp*max(0.0,fade)*math.sin(2*math.pi*freq*t))
                   frames+=struct.pack('<h',sample)
               with wave.open(str(assets/name),'wb') as w:
@@ -281,11 +285,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.1.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.2.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.0.1
-          path: ScalpAtlas-LIVE-Alerts-v3.0.1.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.0.2
+          path: ScalpAtlas-LIVE-Alerts-v3.0.2.apk
           if-no-files-found: error
           retention-days: 30
