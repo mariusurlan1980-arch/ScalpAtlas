@@ -115,7 +115,7 @@ jobs:
           assert 'lockedUntil = 0L' not in reset, 'confirmed alert expiry must survive capture/OCR reset'
           assert 'lockedUntil = now + lockMinutes * 60_000L' in code
           assert 'if (currentLock != null && now < lockedUntil)' in code
-          assert 'AȘTEAPTĂ " + confirmedSignal' in code
+          assert '"Candidat " + confirmedSignal' in code, 'candidate should be detailed without flickering headline'
           print('PASS: active BUY/SELL cannot flip during capture/OCR state resets')
           PY
           grep -q 'playBip(confirmedSignal)' .github/native-overlay/ScalpOverlayService.kt
