@@ -106,12 +106,18 @@ class ScalpOverlayService : Service() {
   private var tfControl: TextView? = null
   private var chartControl: TextView? = null
 
+  /**
+   * Reset unfinished analysis when the screen or OCR is temporarily unavailable.
+   *
+   * IMPORTANT: Never cancel an already-confirmed alert here. Android OCR can
+   * temporarily lose the M5 label, and a frozen/occluded region can recover.
+   * Clearing the lock used to produce SELL then AȘTEAPTĂ BUY seconds later.
+   * Only handleResult() may expire the confirmed lock after lockedUntil.
+   */
   private fun resetSignalState() {
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
-    lockedDir = null
-    lockedUntil = 0L
     analysisBusy = false
     activeFrameId = -1L
   }
@@ -749,6 +755,8 @@ class ScalpOverlayService : Service() {
     val directionMax = result.optInt("directionMax", 0)
     val pattern = result.optString("pattern", "—")
 
+    // The lock is independent of OCR and frame-capture reset paths.
+    // A confirmed SELL cannot turn into a candidate BUY until it expires.
     val currentLock = lockedDir
     if (currentLock != null && now < lockedUntil) {
       val seconds = max(0L, (lockedUntil - now) / 1000L)
@@ -830,8 +838,10 @@ class ScalpOverlayService : Service() {
       expiry > 0 -> expiry.coerceIn(5, 7)
       else -> 6
     }
-    lockedDir = confirmedSignal
+    // Publish expiry before direction so other callbacks cannot treat the
+    // freshly published direction as an expired lock.
     lockedUntil = now + lockMinutes * 60_000L
+    lockedDir = confirmedSignal
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
@@ -886,6 +896,9 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    // Service shutdown ends the session; no signal lock survives a new start.
+    lockedDir = null
+    lockedUntil = 0L
     try { virtualDisplay?.release() } catch (_: Throwable) {}
     try { imageReader?.close() } catch (_: Throwable) {}
     try { mediaProjection?.stop() } catch (_: Throwable) {}
