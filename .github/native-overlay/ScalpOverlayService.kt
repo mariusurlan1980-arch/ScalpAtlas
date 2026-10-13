@@ -313,7 +313,7 @@ class ScalpOverlayService : Service() {
     // prevent some devices from delivering a long-press gesture.
     // This only reads accessibility and NEVER dispatches a broker click.
     demoDiagnosticText = TextView(this).apply {
-      text = "TEST CONEXIUNE DEMO • v1.0.68"
+      text = "TEST CONEXIUNE DEMO • v1.0.69"
       textSize = 11f
       gravity = Gravity.CENTER
       setTextColor(Color.rgb(70, 220, 235))
@@ -323,7 +323,7 @@ class ScalpOverlayService : Service() {
         val previous = getSharedPreferences("scalp_atlas_demo_diagnostics", Context.MODE_PRIVATE)
           .getString("lastStatus", "NICIO ÎNCERCARE DUPĂ BIP")
         val audit = paperAttemptSummary()
-        text = "v1.0.68 TEST: $status\nULTIMUL BIP: $previous\n$audit"
+        text = "v1.0.69 TEST: $status\nULTIMUL BIP: $previous\n$audit"
         setTextColor(Color.rgb(255, 201, 74))
       }
     }
@@ -1465,7 +1465,7 @@ class ScalpOverlayService : Service() {
         .putLong("lastAtUtcMillis", signalCreatedAt)
         .apply()
       refreshAutoDemoText(autoDemoResult)
-      demoDiagnosticText?.text = "v1.0.68 • " + autoDemoResult
+      demoDiagnosticText?.text = "v1.0.69 • " + autoDemoResult
     }
   }
 

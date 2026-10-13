@@ -44,7 +44,7 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
       if (!isEnabled(service)) return "AUTO DEMO OPRIT"
       if (attemptsSinceArm >= MAX_DEMO_ATTEMPTS_PER_ARM)
         return "BLOCAT: LIMITĂ 3 TESTE DEMO • OPREȘTE/REPORNEȘTE"
-      val root = service.findTradeWindow() ?: return "BLOCAT: POCKET OPTION NU E ÎN PRIM-PLAN"
+      val root = service.findTradeWindow() ?: return service.describeWindowForReadOnlyTest()
       val text = buildString { service.collectText(root, this) }.uppercase()
       if (!text.contains("QT DEMO")) return "BLOCAT: QT DEMO NEDETECTAT"
       if (text.contains("REAL ACCOUNT") || text.contains("CONT REAL")) {
@@ -105,6 +105,24 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
   override fun onDestroy() {
     if (instance === this) instance = null
     super.onDestroy()
+  }
+
+  // DIAGNOSTIC ONLY: expose Android package identity and whether the visible
+  // "QT Demo" label is present in the accessibility tree. No broker button
+  // search or click is performed here. Do not whitelist unknown apps based only
+  // on their display text: package identity must first be verified separately.
+  private fun describeWindowForReadOnlyTest(): String {
+    val active = rootInActiveWindow
+    val pkg = active?.packageName?.toString()?.take(90) ?: "FĂRĂ FEREASTRĂ ACTIVĂ"
+    val accessibleText = try {
+      if (active != null) buildString { collectText(active, this) }.uppercase() else ""
+    } catch (_: Throwable) { "" }
+    val qt = if (accessibleText.contains("QT DEMO")) "DA" else "NU"
+    val others = try {
+      windows.mapNotNull { it.root?.packageName?.toString() }
+        .distinct().filter { it != pkg }.take(3).joinToString(", ").ifBlank { "—" }
+    } catch (_: Throwable) { "INDISPONIBIL" }
+    return "BLOCAT: FEREASTRĂ=$pkg • QT-DEMO-TEXT=$qt • ALTE=$others"
   }
 
   private fun findTradeWindow(): AccessibilityNodeInfo? {
