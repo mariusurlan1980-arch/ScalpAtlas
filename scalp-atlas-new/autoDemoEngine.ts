@@ -31,7 +31,8 @@ const EXPIRY_MS: Record<Timeframe, number> = { M5: 300_000, M10: 600_000, M15: 9
 export class AutoDemoEngine {
   private trades: DemoTrade[] = [];
   private lastDirection = new Map<string, { direction: Direction; time: number }>();
-  constructor(private readonly now: () => number = Date.now) {}
+  private readonly now: () => number;
+  constructor(now: () => number = Date.now) { this.now = now; }
   getHistory(): DemoTrade[] { return this.trades.map(t => ({ ...t })); }
   evaluate(signal: DemoSignal): DemoDecision {
     const now = this.now();
