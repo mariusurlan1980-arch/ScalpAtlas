@@ -506,6 +506,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
           type:'RESULT',
           result:{
             signal:r.clear?r.dir:'NONE',
+            timeframe:String(timeframe||'M10'),
             pattern:r.atlas,
             probability:Math.round(r.score*100),
             expiry:r.clear?expiryFor(timeframe,r.score):null,
