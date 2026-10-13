@@ -18,6 +18,10 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
     private const val PREFS = "scalp_atlas_auto_demo"
     private const val ENABLED = "enabled"
     private const val MIN_CLICK_INTERVAL_MS = 60_000L
+    // Initial unattended-demo verification must never run an unlimited stream of
+    // orders. Explicit OFF -> ON by the owner rearms the three-attempt budget.
+    private const val MAX_DEMO_ATTEMPTS_PER_ARM = 3
+    @Volatile private var attemptsSinceArm = 0
 
     @Volatile private var instance: ScalpAutoDemoAccessibilityService? = null
     @Volatile private var lastClickAt = 0L
@@ -28,7 +32,9 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
       service.getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(ENABLED, false)
 
     fun setEnabled(service: android.content.Context, enabled: Boolean) {
+      val wasEnabled = isEnabled(service)
       service.getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(ENABLED, enabled).apply()
+      if (enabled && !wasEnabled) attemptsSinceArm = 0
     }
 
     // Read-only test: long press AUTO DEMO in the original overlay.
@@ -36,7 +42,9 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
     fun checkDemoReadiness(): String {
       val service = instance ?: return "SERVICIU ACCESIBILITATE OPRIT"
       if (!isEnabled(service)) return "AUTO DEMO OPRIT"
-      val root = service.findTradeWindow() ?: return "BLOCAT: ECRAN DEMO INACCESIBIL"
+      if (attemptsSinceArm >= MAX_DEMO_ATTEMPTS_PER_ARM)
+        return "BLOCAT: LIMITĂ 3 TESTE DEMO • OPREȘTE/REPORNEȘTE"
+      val root = service.findTradeWindow() ?: return "BLOCAT: POCKET OPTION NU E ÎN PRIM-PLAN"
       val text = buildString { service.collectText(root, this) }.uppercase()
       if (!text.contains("QT DEMO")) return "BLOCAT: QT DEMO NEDETECTAT"
       if (text.contains("REAL ACCOUNT") || text.contains("CONT REAL")) {
@@ -45,18 +53,20 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
       val buy = service.findButton(root, listOf("CUMPĂRAȚI", "CUMPARATI", "BUY"))
       val sell = service.findButton(root, listOf("VINDEȚI", "VINDETI", "SELL"))
       if (buy == null || sell == null) return "BLOCAT: BUTOANE BUY/SELL INVIZIBILE"
-      return "TEST OK • BUTOANE VIZIBILE • FĂRĂ CLICK"
+      return "TEST OK • BUTOANE VIZIBILE • $attemptsSinceArm/3 TESTE • FĂRĂ CLICK"
     }
 
     fun requestDemoTrade(direction: String): String {
       val service = instance ?: return "SERVICIU ACCESIBILITATE OPRIT"
       if (!isEnabled(service)) return "AUTO DEMO OPRIT"
       if (direction != "BUY" && direction != "SELL") return "DIRECȚIE INVALIDĂ"
+      if (attemptsSinceArm >= MAX_DEMO_ATTEMPTS_PER_ARM)
+        return "BLOCAT: LIMITĂ 3 TESTE DEMO • OPREȘTE/REPORNEȘTE"
       val now = SystemClock.elapsedRealtime()
       if (now - lastClickAt < MIN_CLICK_INTERVAL_MS) return "BLOCAT: PAUZĂ 60 SEC"
 
       // Do not click the Scalp Atlas overlay: it also displays the words QT DEMO.
-      val root = service.findTradeWindow() ?: return "BLOCAT: ECRAN DEMO INACCESIBIL"
+      val root = service.findTradeWindow() ?: return "BLOCAT: POCKET OPTION NU E ÎN PRIM-PLAN"
       val allText = buildString { service.collectText(root, this) }.uppercase()
       if (!allText.contains("QT DEMO")) return "BLOCAT: QT DEMO NEDETECTAT"
       if (allText.contains("REAL ACCOUNT") || allText.contains("CONT REAL")) {
@@ -79,7 +89,8 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
       val clicked = service.clickNodeOrCenter(target)
       if (!clicked) return "BLOCAT: APĂSARE EȘUATĂ"
       lastClickAt = now
-      return "APĂSARE TRIMISĂ " + direction + " • VERIFICĂ ISTORICUL DEMO"
+      attemptsSinceArm += 1
+      return "APĂSARE TRIMISĂ " + direction + " • TEST " + attemptsSinceArm + "/3 • VERIFICĂ ISTORICUL DEMO"
     }
   }
 
@@ -97,25 +108,17 @@ class ScalpAutoDemoAccessibilityService : AccessibilityService() {
   }
 
   private fun findTradeWindow(): AccessibilityNodeInfo? {
-    val roots = mutableListOf<AccessibilityNodeInfo>()
-    rootInActiveWindow?.let { roots.add(it) }
-    try {
-      for (window in windows) window.root?.let { roots.add(it) }
-    } catch (_: Throwable) {
-      // Some devices do not expose every underlying Android window.
-    }
-    // Exclude our own overlay even if it says "QT DEMO".
-    // Only a separately accessible broker/browser window can authorize a demo click.
-    for (candidate in roots) {
-      val pkg = candidate.packageName?.toString() ?: continue
-      if (pkg == packageName) continue
-      val all = buildString { collectText(candidate, this) }.uppercase()
-      if (all.contains("QT DEMO")) return candidate
-    }
-    return roots.firstOrNull {
-      val pkg = it.packageName?.toString()
-      pkg != null && pkg != packageName
-    }
+    // The previously permissive fallback chose ANY other application window.
+    // Never click Settings, ChatGPT, notifications or another app merely because
+    // "QT DEMO" is written there. Only the foreground Pocket Option application
+    // can authorize a Demo click. Browsers/PWAs remain blocked until the origin
+    // can be verified reliably in a separate reviewed implementation.
+    val active = rootInActiveWindow ?: return null
+    val activePackage = active.packageName?.toString()?.lowercase() ?: return null
+    if (!activePackage.contains("pocketoption") || activePackage == packageName) return null
+    val all = buildString { collectText(active, this) }.uppercase()
+    if (!all.contains("QT DEMO")) return null
+    return active
   }
 
   private fun collectText(node: AccessibilityNodeInfo, out: StringBuilder) {
