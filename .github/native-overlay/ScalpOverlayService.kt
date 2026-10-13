@@ -9,7 +9,6 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.Rect
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.hardware.display.DisplayManager
@@ -97,6 +96,7 @@ class ScalpOverlayService : Service() {
   @Volatile private var tfVerified = false
   @Volatile private var confirmedTfAt = 0L
   @Volatile private var lastOcrAttemptAt = 0L
+  @Volatile private var lastTfStatusAt = 0L
   @Volatile private var ocrBusy = false
   private var pendingTf: String? = null
   private var pendingTfCount = 0
@@ -498,7 +498,8 @@ class ScalpOverlayService : Service() {
     val targetWidth = minOf(840, frame.width)
     val targetHeight = max(1, (frame.height * targetWidth.toFloat() / frame.width).roundToInt())
     val copy = try {
-      Bitmap.createScaledBitmap(frame, targetWidth, targetHeight, true)
+      if (targetWidth == frame.width) frame.copy(Bitmap.Config.ARGB_8888, false)
+      else Bitmap.createScaledBitmap(frame, targetWidth, targetHeight, true)
     } catch (error: Throwable) {
       ocrBusy = false
       return
@@ -656,8 +657,11 @@ class ScalpOverlayService : Service() {
           resetSignalState()
         }
         fullFrame.recycle()
-        updateOverlay("AȘTEAPTĂ", "TF AUTO • caut M5/M10/M15",
-          "Intervalul brokerului nu este confirmat • bip dezactivat")
+        if (now - lastTfStatusAt >= 2000L) {
+          lastTfStatusAt = now
+          updateOverlay("AȘTEAPTĂ", "TF AUTO • caut M5/M10/M15",
+            "Intervalul brokerului nu este confirmat • bip dezactivat")
+        }
         return
       }
 
@@ -885,7 +889,7 @@ class ScalpOverlayService : Service() {
     try { virtualDisplay?.release() } catch (_: Throwable) {}
     try { imageReader?.close() } catch (_: Throwable) {}
     try { mediaProjection?.stop() } catch (_: Throwable) {}
-    try { if (::ocrRecognizer.isInitialized) ocrRecognizer.close() } catch (_: Throwable) {}
+    try { ocrRecognizer.close() } catch (_: Throwable) {}
     virtualDisplay = null
     imageReader = null
     mediaProjection = null
