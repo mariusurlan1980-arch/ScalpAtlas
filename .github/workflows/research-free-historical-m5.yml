@@ -1,0 +1,31 @@
+name: FREE OTC Sample M5 Research (Unverified Source)
+on:
+  workflow_dispatch:
+  push:
+    branches: ['research/live-otc-feed-20261012']
+    paths:
+      - 'scalp-atlas-new/freeM5Backtest.js'
+      - '.github/workflows/research-free-historical-m5.yml'
+permissions:
+  contents: read
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download independently published, unverified free OTC sample
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 2 --connect-timeout 20 --max-time 90 \
+            'https://raw.githubusercontent.com/PHCStanton/pocket-option-otc-dataset/main/data/samples/EURUSD_otc_sample.csv.gz' \
+            --output /tmp/EURUSD_otc_sample.csv.gz
+          test "$(stat -c%s /tmp/EURUSD_otc_sample.csv.gz)" -lt 500000
+          file /tmp/EURUSD_otc_sample.csv.gz
+      - name: Run honest 5-minute fixed-expiry study
+        run: |
+          node scalp-atlas-new/freeM5Backtest.js /tmp/EURUSD_otc_sample.csv.gz
+          echo 'NOT A LIVE STREAM, NOT Pocket Option verified matching quotes.'
+          echo 'Zero trades or <200 trades means sample is insufficient. No claim of win rate.'
