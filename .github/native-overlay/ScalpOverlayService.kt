@@ -479,35 +479,52 @@ class ScalpOverlayService : Service() {
   }
 
   /**
-   * Check chart-region changes: three confirmations from an unchanged screenshot
-   * must never become a sounding trading recommendation.
+   * Track genuine small price/candle changes in the live broker's chart.
+   *
+   * Older 24x14 sampling skipped thin OTC candle bodies/wicks, incorrectly
+   * labelling a working MediaProjection stream as "GRAFIC STATIC".
+   * Use a dense sample on the plot's latest-candle side; our own overlay has
+   * already been masked from the bitmap at this point.
+   *
+   * The window is 35s, not 12s: a quiet candle may barely change between
+   * samples. If it genuinely stays unchanged, reject trade alerts.
+   * These pixels verify chart activity, NOT trade direction or accuracy.
    */
   private fun hasFreshChartMotion(bitmap: Bitmap, now: Long): Boolean {
-    val sampled = IntArray(24 * 14)
+    val columns = 88
+    val rows = 72
+    val sampled = IntArray(columns * rows)
     var k = 0
-    for (row in 0 until 14) {
-      val y = (bitmap.height * (row + 1) / 15).coerceIn(0, bitmap.height - 1)
-      for (col in 0 until 24) {
-        val x = (bitmap.width * (col + 1) / 25).coerceIn(0, bitmap.width - 1)
+    for (row in 0 until rows) {
+      val yFraction = 0.025f + 0.88f * (row + 0.5f) / rows
+      val y = (bitmap.height * yFraction).toInt().coerceIn(0, bitmap.height - 1)
+      for (col in 0 until columns) {
+        val xFraction = 0.31f + 0.62f * (col + 0.5f) / columns
+        val x = (bitmap.width * xFraction).toInt().coerceIn(0, bitmap.width - 1)
         sampled[k++] = bitmap.getPixel(x, y)
       }
     }
+
     val previous = previousVisualSample
     previousVisualSample = sampled
-    if (previous == null) {
+    if (previous == null || previous.size != sampled.size) {
       lastVisualChangeAt = now
       return true
     }
+
     var changed = 0
     for (i in sampled.indices) {
-      val a = sampled[i]
-      val b = previous[i]
-      if (kotlin.math.abs(Color.red(a) - Color.red(b)) > 12 ||
-          kotlin.math.abs(Color.green(a) - Color.green(b)) > 12 ||
-          kotlin.math.abs(Color.blue(a) - Color.blue(b)) > 12) changed++
+      val current = sampled[i]
+      val old = previous[i]
+      if (kotlin.math.abs(Color.red(current) - Color.red(old)) > 8 ||
+          kotlin.math.abs(Color.green(current) - Color.green(old)) > 8 ||
+          kotlin.math.abs(Color.blue(current) - Color.blue(old)) > 8) {
+        changed++
+        if (changed >= 2) break
+      }
     }
     if (changed >= 2) lastVisualChangeAt = now
-    return now - lastVisualChangeAt <= 12_000L
+    return now - lastVisualChangeAt <= 35_000L
   }
 
   /**
@@ -751,7 +768,11 @@ class ScalpOverlayService : Service() {
       if (!hasFreshChartMotion(chartFrame, now)) {
         chartFrame.recycle()
         resetSignalState()
-        updateOverlay("AȘTEAPTĂ", "GRAFIC STATIC", "Imagine neschimbată peste 12s • fără bip")
+        updateOverlay(
+          "AȘTEAPTĂ",
+          "Nu văd mișcare în ultimele 35s",
+          "Captură activă • aștept lumânări noi • fără bip"
+        )
         return
       }
 
