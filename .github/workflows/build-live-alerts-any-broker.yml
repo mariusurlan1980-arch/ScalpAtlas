@@ -1,4 +1,4 @@
-name: SCALP ATLAS LIVE Alerts multi-broker v3.0.9
+name: SCALP ATLAS LIVE Alerts multi-broker v3.1.0
 
 on:
   push:
@@ -17,6 +17,7 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
       - '.github/scripts/test_live_candle_evidence.mjs'
+      - '.github/scripts/test_live_confirmation_freshness.mjs'
   workflow_dispatch:
 
 concurrency:
@@ -66,10 +67,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.0.9'
+          expo['version']='3.1.0'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=309
+          expo['android']['versionCode']=310
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -193,6 +194,10 @@ jobs:
       - name: Test optical candle gate from actual native-embedded analyzer
         run: |
           node .github/scripts/test_live_candle_evidence.mjs
+          node .github/scripts/test_live_confirmation_freshness.mjs
+          grep -q "candidateDirection:r.clear?r.dir:'NONE'" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+          grep -q 'private val maxObservations = 100' .github/native-overlay/SignalJournal.kt
+          grep -q 'journal.observe(' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'opticalCandleGate' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q 'opticalCandleGate' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'maskSelfOverlay' .github/native-overlay/ScalpOverlayService.kt
@@ -360,11 +365,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.9.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.1.0.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.0.9
-          path: ScalpAtlas-LIVE-Alerts-v3.0.9.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.1.0
+          path: ScalpAtlas-LIVE-Alerts-v3.1.0.apk
           if-no-files-found: error
           retention-days: 30
