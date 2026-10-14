@@ -1,4 +1,4 @@
-name: SCALP ATLAS LIVE Alerts multi-broker v3.0.8
+name: SCALP ATLAS LIVE Alerts multi-broker v3.0.9
 
 on:
   push:
@@ -66,10 +66,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.0.8'
+          expo['version']='3.0.9'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=308
+          expo['android']['versionCode']=309
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -148,22 +148,36 @@ jobs:
           npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage expo-ocr-kit react-native-webview
           npm install tesseract.js
 
-      - name: Generate longer, higher BUY and SELL beeps
+      - name: Generate 2.3-second high and distinct BUY and SELL beeps
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import math,struct,wave
           assets=Path('scalp-atlas-new/assets'); assets.mkdir(parents=True,exist_ok=True)
-          rate=44100; duration=1.15; amp=.36
+          rate=44100; duration=2.3; amp=.36
           for name,freq in [('buy-alert.wav',1220.0),('sell-alert.wav',980.0)]:
               frames=bytearray()
               for i in range(int(rate*duration)):
                   t=i/rate
-                  fade=min(1.0,t/.025,(duration-t)/.085)
+                  fade=min(1.0,t/.025,(duration-t)/.15)
                   sample=int(32767*amp*max(0.0,fade)*math.sin(2*math.pi*freq*t))
                   frames+=struct.pack('<h',sample)
               with wave.open(str(assets/name),'wb') as w:
                   w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(frames)
+          PY
+
+      - name: Verify both alert durations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import wave
+          for filename in ['buy-alert.wav', 'sell-alert.wav']:
+              p=Path('scalp-atlas-new/assets')/filename
+              with wave.open(str(p), 'rb') as wav:
+                  assert wav.getframerate()==44100, 'bad beep sample rate'
+                  seconds=wav.getnframes()/wav.getframerate()
+                  assert 2.25 <= seconds <= 2.35, f'Wrong beep length {filename}: {seconds}'
+                  print(filename, round(seconds,2), 'seconds')
           PY
 
       - name: Generate launcher icon
@@ -183,6 +197,9 @@ jobs:
           grep -q 'opticalCandleGate' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'maskSelfOverlay' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'lastCapturedImageAt' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'lastAnalysisResultAt' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'ANALIZĂ LIVE' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'handler.postDelayed(this, 550L)' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'private const val ALERT_FRESH_MS = 30_000L' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'lockedAt = now' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'msSinceBeep < ALERT_FRESH_MS' .github/native-overlay/ScalpOverlayService.kt
@@ -343,11 +360,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.8.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.9.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.0.8
-          path: ScalpAtlas-LIVE-Alerts-v3.0.8.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.0.9
+          path: ScalpAtlas-LIVE-Alerts-v3.0.9.apk
           if-no-files-found: error
           retention-days: 30
