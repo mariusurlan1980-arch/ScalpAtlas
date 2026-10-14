@@ -220,6 +220,43 @@ internal class SignalJournal(private val context: Context) {
     appendLine("Inregistrari: ${entries.length()}")
     appendLine("Observatii diagnostic: ${observations.length()} (esantionare ~15 sec)")
     appendLine()
+    appendLine("TEST LIVE AUTOMAT 30 MINUTE:")
+    try {
+      val reportFile = File(dir, "live_test_sessions.json")
+      if (reportFile.isFile) {
+        val tests = JSONArray(reportFile.readText(Charsets.UTF_8))
+        val begin = (tests.length() - 3).coerceAtLeast(0)
+        for (i in begin until tests.length()) {
+          val test = tests.optJSONObject(i) ?: continue
+          appendLine(
+            stamp(test.optLong("startedAt")) + " • " + test.optString("status") +
+            " • durata planificata " + test.optInt("targetMinutes") + " min"
+          )
+          appendLine(
+            "  Cadre capturate: " + test.optLong("capturedFrames") +
+            " | Analize complete: " + test.optLong("analyzedFrames") +
+            " | Erori: " + test.optLong("errors")
+          )
+          appendLine(
+            "  BIP BUY: " + test.optInt("buyBips") +
+            " | BIP SELL: " + test.optInt("sellBips")
+          )
+          val events = test.optJSONObject("events")
+          if (events != null) {
+            val keys = events.keys()
+            while (keys.hasNext()) {
+              val key = keys.next()
+              appendLine("  " + key + ": " + events.optInt(key))
+            }
+          }
+        }
+      } else {
+        appendLine("  Nicio sesiune de test LIVE inregistrata.")
+      }
+    } catch (_: Throwable) {
+      appendLine("  Raportul testului LIVE nu poate fi citit.")
+    }
+    appendLine()
     appendLine("MOTIVE DE RESPINGERE / OBSERVATII MOTOR:")
     val counts = linkedMapOf<String, Int>()
     for (i in 0 until observations.length()) {
@@ -273,6 +310,12 @@ internal class SignalJournal(private val context: Context) {
         zip.putNextEntry(ZipEntry("Jurnal-semne.txt"))
         zip.write(buildReport().toByteArray(Charsets.UTF_8))
         zip.closeEntry()
+        val sessions = File(dir, "live_test_sessions.json")
+        if (sessions.isFile) {
+          zip.putNextEntry(ZipEntry("Test-LIVE-sesiuni.json"))
+          sessions.inputStream().use { it.copyTo(zip) }
+          zip.closeEntry()
+        }
         val exportedNames = mutableSetOf<String>()
         fun writeFile(name: String) {
           if (name.isEmpty() || !name.matches(Regex("[a-zA-Z0-9_.-]+")) ||
