@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.3-market-regime-diagnostics';
+  const ENGINE_VERSION='0.3.4-separated-optical-bars';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -185,7 +185,12 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     for(const c of cols){
       if(!c.color)continue;
       const last=runs[runs.length-1];
-      if(last&&last.color===c.color&&c.x-last.end<=2){
+      // A one-pixel EMPTY column is a possible bar boundary, not a bridge.
+      // With <=2, two adjacent same-colour M5 candles merged into one
+      // virtual candle; the optical two-closed-bar gate then falsely rejected
+      // a valid matching pair as "culori opuse". Touching bars remain merged
+      // (ambiguous pixels must fail closed rather than invent two bars).
+      if(last&&last.color===c.color&&c.x-last.end<=1){
         last.end=c.x;last.samples++;last.maxBody=Math.max(last.maxBody,c.body);
         last.extent=Math.max(last.extent,c.extent);
       }else runs.push({start:c.x,end:c.x,color:c.color,samples:1,maxBody:c.body,extent:c.extent});
