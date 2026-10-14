@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.0-m10-medium-expiry';
+  const ENGINE_VERSION='0.3.4-separated-optical-bars';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -139,6 +139,79 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const anchor=sm[sm.length-1]||null;
     const spanCoverage=sm.length>1?(sm[sm.length-1].x-sm[0].x)/w:0;
     return {pts:sm,w,h,quality,anchor,spanCoverage};
+  }
+
+  /**
+   * Optical candle evidence: unlike the legacy curve, this checks separate
+   * candle-colour strips, body widths, and the last TWO completed bars.
+   * It never claims actual broker OHLC prices; full OHLC reconstruction
+   * requires a verified data feed or calibrated chart scale.
+   *
+   * Fail closed: no distinct bars = NO SIGNAL. The rightmost bar may still
+   * be forming, so only the two bars immediately to its left are considered.
+   */
+  function candleEvidence(curve,wantedDirection){
+    if(!curve||!curve.w||!curve.h)return {ok:false,reason:'Graficul nu poate fi citit ca lumânări'};
+    const w=curve.w,h=curve.h;
+    const px=ctx.getImageData(0,0,w,h).data;
+    const left=Math.floor(w*.08),right=Math.floor(w*.85);
+    const top=Math.floor(h*.12),bottom=Math.floor(h*.83);
+    const cols=[];
+    for(let x=left;x<right;x++){
+      let red=0,green=0;
+      let redRun=0,greenRun=0,maxRedRun=0,maxGreenRun=0;
+      let redTop=bottom,greenTop=bottom,redBottom=top,greenBottom=top;
+      for(let y=top;y<bottom;y++){
+        const i=(y*w+x)*4;
+        const r=px[i],g=px[i+1],b=px[i+2];
+        const isRed=r>105&&r>g*1.10&&r>b*1.04&&r-Math.min(g,b)>36;
+        const isGreen=g>80&&g>r*1.12&&g>b*.88&&g-Math.min(r,b)>33;
+        if(isRed){red++;redRun++;redTop=Math.min(redTop,y);redBottom=y;}
+        else redRun=0;
+        if(isGreen){green++;greenRun++;greenTop=Math.min(greenTop,y);greenBottom=y;}
+        else greenRun=0;
+        if(redRun>maxRedRun)maxRedRun=redRun;
+        if(greenRun>maxGreenRun)maxGreenRun=greenRun;
+      }
+      const redBody=red>=5&&maxRedRun>=3&&red>green*1.4;
+      const greenBody=green>=5&&maxGreenRun>=3&&green>red*1.4;
+      let color=null,body=0,extent=0;
+      if(redBody&&!greenBody){color='SELL';body=maxRedRun;extent=redBottom-redTop;}
+      if(greenBody&&!redBody){color='BUY';body=maxGreenRun;extent=greenBottom-greenTop;}
+      cols.push({x,color,body,extent});
+    }
+
+    const runs=[];
+    for(const c of cols){
+      if(!c.color)continue;
+      const last=runs[runs.length-1];
+      // A one-pixel EMPTY column is a possible bar boundary, not a bridge.
+      // With <=2, two adjacent same-colour M5 candles merged into one
+      // virtual candle; the optical two-closed-bar gate then falsely rejected
+      // a valid matching pair as "culori opuse". Touching bars remain merged
+      // (ambiguous pixels must fail closed rather than invent two bars).
+      if(last&&last.color===c.color&&c.x-last.end<=1){
+        last.end=c.x;last.samples++;last.maxBody=Math.max(last.maxBody,c.body);
+        last.extent=Math.max(last.extent,c.extent);
+      }else runs.push({start:c.x,end:c.x,color:c.color,samples:1,maxBody:c.body,extent:c.extent});
+    }
+
+    const maxWidth=Math.max(12,Math.round(w*.045));
+    const candles=runs.filter(c=>
+      c.samples>=2&&c.end-c.start+1<=maxWidth&&
+      c.maxBody>=3&&c.extent>=4
+    );
+    if(candles.length<3)return {ok:false,reason:'Nu pot identifica trei lumânări distincte',count:candles.length};
+    const current=candles[candles.length-1],closedB=candles[candles.length-2],closedA=candles[candles.length-3];
+    if(current.end<w*.52)return {ok:false,reason:'Ultimele lumânări nu sunt suficient de vizibile',count:candles.length};
+    // If the chart has very wide gaps, the last bodies may belong to labels/UI.
+    if(current.start-closedB.end>w*.12||closedB.start-closedA.end>w*.12)
+      return {ok:false,reason:'Lumânările recente nu sunt contigue',count:candles.length};
+    if(closedA.color!==closedB.color)
+      return {ok:false,reason:'Ultimele două lumânări închise au culori opuse',count:candles.length};
+    if(closedA.color!==wantedDirection)
+      return {ok:false,reason:'Ultimele lumânări închise contrazic semnalul',count:candles.length};
+    return {ok:true,reason:'',count:candles.length,closedDirection:closedB.color};
   }
 
   function classify(curve){
@@ -494,39 +567,58 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return lines;
   }
 
-  function run(dataUrl,timeframe){
+  function run(dataUrl,timeframe,frameId){
     const img=new Image();
     img.onload=function(){
       try{
         const curve=buildPriceCurve(img);
-        if(!curve){send({type:'ERROR',message:'Imaginea nu a putut fi citită.'});return;}
+        if(!curve){send({type:'ERROR',frameId,message:'Imaginea nu a putut fi citită.'});return;}
         const r=classify(curve),anchor=curve.anchor;
-        const duration=r.clear?directionDurationFor(timeframe,r,curve):null;
+        // Optical regime is computed from the current screenshot only:
+        // NOT broker price OHLC, never a verified per-asset volatility metric.
+        const vol=Math.max(0,Math.min(1,Number(r.volatility)||0));
+        const trend=Math.max(0,Math.min(1,Number(r.trendStrength)||0));
+        const recent=Math.max(0,Math.min(1,Number(r.recentStrength)||0));
+        const marketRegime=curve.quality<.42?'NECITIBIL':
+          vol>.80?'AGITAT':
+          trend>.52&&recent>.46?'TENDINTA':
+          trend<.30&&recent<.30?'LATERAL':'MIXT';
+        const evidence=r.clear?candleEvidence(curve,r.dir):{ok:false,reason:''};
+        const clear=r.clear&&evidence.ok;
+        const duration=clear?directionDurationFor(timeframe,r,curve):null;
         send({
           type:'RESULT',
           result:{
-            signal:r.clear?r.dir:'NONE',
+            frameId,
+            signal:clear?r.dir:'NONE',
+            // Diagnostic candidate blocked by the final optical gate, never alert directly.
+            candidateDirection:r.clear?r.dir:'NONE',
+            marketRegime,
+            timeframe:String(timeframe||'M10'),
             pattern:r.atlas,
             probability:Math.round(r.score*100),
-            expiry:r.clear?expiryFor(timeframe,r.score):null,
+            expiry:clear?expiryFor(timeframe,r.score):null,
             directionMin:duration?duration.min:null,
             directionMax:duration?duration.max:null,
             trendStrength:duration?Math.round(duration.trendStrength*100):null,
             volatility:duration?Math.round(duration.volatility*100):null,
-            reason:r.reason||'',
+            reason:!r.clear?(r.reason||''):(evidence.reason||''),
             atlasCount:ATLAS.length,
             anchorX:anchor?anchor.x/curve.w:null,
             anchorY:anchor?((anchor.lo+anchor.hi)/2)/curve.h:null,
             quality:Math.round(curve.quality*100),
+            opticalCandleCount:evidence.count||0,
+            opticalCandleGate:!!evidence.ok,
+            // This is an optical cross-check, NOT exchange OHLC data.,
             trendLines:trendLinesFor(curve,r),
             engineVersion:ENGINE_VERSION
           }
         });
       }catch(e){
-        send({type:'ERROR',message:e&&e.message?e.message:String(e)});
+        send({type:'ERROR',frameId,message:e&&e.message?e.message:String(e)});
       }
     };
-    img.onerror=function(){send({type:'ERROR',message:'Fotografia nu a putut fi încărcată în motorul de analiză.'});};
+    img.onerror=function(){send({type:'ERROR',frameId,message:'Fotografia nu a putut fi încărcată în motorul de analiză.'});};
     img.src=dataUrl;
   }
 
@@ -541,7 +633,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 
   // Native overlay can call the analyzer directly. This avoids large MessageEvent
   // payloads and reduces latency / dropped frames on Android WebView.
-  window.ScalpAtlasAnalyze=function(dataUrl,timeframe){run(dataUrl,timeframe||'M10');};
+  window.ScalpAtlasAnalyze=function(dataUrl,timeframe,frameId){run(dataUrl,timeframe||'M10',frameId);};
   window.ScalpAtlasPing=function(){send({type:'READY',atlasCount:ATLAS.length,engineVersion:ENGINE_VERSION});};
   document.addEventListener('message',onMessage);
   window.addEventListener('message',onMessage);
