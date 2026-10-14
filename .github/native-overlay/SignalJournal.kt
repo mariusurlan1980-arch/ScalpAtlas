@@ -26,6 +26,12 @@ internal class SignalJournal(private val context: Context) {
   private val index = File(dir, "index.json")
   private val maxRecords = 50
   private val entries = JSONArray()
+  // Small, bounded, device-only diagnostics sampled once every 15 seconds.
+  private val diagnosticIndex = File(dir, "diagnostics.json")
+  private val maxObservations = 100
+  private val observations = JSONArray()
+  private var lastObservedAt = 0L
+  private var lastDiagnosticImageAt = 0L
 
   init {
     dir.mkdirs()
@@ -35,6 +41,13 @@ internal class SignalJournal(private val context: Context) {
         val start = (saved.length() - maxRecords).coerceAtLeast(0)
         for (i in start until saved.length()) {
           saved.optJSONObject(i)?.let { entries.put(it) }
+        }
+      }
+      if (diagnosticIndex.isFile) {
+        val saved = JSONArray(diagnosticIndex.readText(Charsets.UTF_8))
+        val start = (saved.length() - maxObservations).coerceAtLeast(0)
+        for (i in start until saved.length()) {
+          saved.optJSONObject(i)?.let { observations.put(it) }
         }
       }
     } catch (_: Throwable) {
@@ -51,6 +64,67 @@ internal class SignalJournal(private val context: Context) {
       index.writeText(entries.toString(2), Charsets.UTF_8)
       temporary.delete()
     }
+  }
+
+  /**
+   * Records WHY the engine emitted WAIT or considered an optical candidate.
+   * Sampling once per 15 seconds avoids degrading the LIVE chart loop.
+   * Never treats an optical score as statistical win probability.
+   */
+  @Synchronized
+  fun observe(
+    now: Long,
+    timeframe: String,
+    market: String,
+    rawSignal: String,
+    accepted: Boolean,
+    score: Int,
+    quality: Int,
+    opticalGate: Boolean,
+    opticalCount: Int,
+    reason: String,
+    screenshot: ByteArray?
+  ) {
+    if (now - lastObservedAt < 15_000L) return
+    lastObservedAt = now
+    val classification = when {
+      accepted -> "CANDIDAT_OPTIC"
+      quality < 55 -> "CALITATE_IMAGINE"
+      !opticalGate && rawSignal == "NONE" && score >= 70 ->
+        "OPTIC_SAU_DIRECTIE_NECLARA"
+      !opticalGate -> "LUMANARI_NEIDENTIFICATE"
+      score < 70 -> "SCOR_SUB_PRAG"
+      else -> "FARA_DIRECTIE"
+    }
+    val record = JSONObject()
+      .put("timestamp", now)
+      .put("timeframe", timeframe.take(10))
+      .put("market", market.take(24))
+      .put("signal", rawSignal.take(6))
+      .put("classification", classification)
+      .put("scoreOrientativ", score)
+      .put("quality", quality)
+      .put("opticalGate", opticalGate)
+      .put("opticalCount", opticalCount)
+      .put("reason", reason.take(180))
+
+    // Approximately one diagnostic chart screenshot every two minutes.
+    // Export only when JURNAL is explicitly tapped.
+    if (screenshot != null && screenshot.isNotEmpty() &&
+        (lastDiagnosticImageAt == 0L || now - lastDiagnosticImageAt >= 120_000L)) {
+      val photo = "diag_" + now + ".jpg"
+      File(dir, photo).writeBytes(screenshot)
+      record.put("snapshot", photo)
+      lastDiagnosticImageAt = now
+    }
+    if (observations.length() >= maxObservations) {
+      val old = observations.optJSONObject(0)
+      val name = old?.optString("snapshot", "") ?: ""
+      if (name.isNotBlank()) File(dir, name).delete()
+      observations.remove(0)
+    }
+    observations.put(record)
+    diagnosticIndex.writeText(observations.toString(2), Charsets.UTF_8)
   }
 
   @Synchronized
@@ -145,7 +219,18 @@ internal class SignalJournal(private val context: Context) {
     appendLine("Perechea si intervalul din imagini trebuie reverificate manual.")
     appendLine("Capturile la 5 minute NU certifică pretul de intrare/iesire.")
     appendLine("Inregistrari: ${entries.length()}")
+    appendLine("Observatii diagnostic: ${observations.length()} (esantionare ~15 sec)")
     appendLine()
+    appendLine("MOTIVE DE RESPINGERE / OBSERVATII MOTOR:")
+    val counts = linkedMapOf<String, Int>()
+    for (i in 0 until observations.length()) {
+      val item = observations.optJSONObject(i) ?: continue
+      val key = item.optString("classification", "NEIDENTIFICAT")
+      counts[key] = (counts[key] ?: 0) + 1
+    }
+    for ((reason, count) in counts) appendLine("  " + reason + ": " + count)
+    appendLine()
+    appendLine("SEMNALE AUDIO:")
     for (i in 0 until entries.length()) {
       val item = entries.optJSONObject(i) ?: continue
       appendLine("${i + 1}. ${stamp(item.optLong("timestamp"))} • " +
@@ -156,6 +241,21 @@ internal class SignalJournal(private val context: Context) {
       if (!item.isNull("followupAt")) {
         appendLine("   Captura T+5m: ${stamp(item.optLong("followupAt"))}")
       }
+    }
+    appendLine()
+    appendLine("OBSERVATII LIVE: ora | pereche | TF | semnal brut | scor | calitate | lumânări | blocaj")
+    for (i in 0 until observations.length()) {
+      val o = observations.optJSONObject(i) ?: continue
+      appendLine(
+        stamp(o.optLong("timestamp")) + " | " + o.optString("market") +
+        " | " + o.optString("timeframe") +
+        " | " + o.optString("signal") +
+        " | " + o.optInt("scoreOrientativ") +
+        " | " + o.optInt("quality") +
+        " | " + o.optInt("opticalCount") +
+        " | " + o.optString("classification") +
+        " | " + o.optString("reason").replace("\\n", " ").take(100)
+      )
     }
     appendLine()
     appendLine("Nu utiliza acest raport pentru a calcula rata de castig fara preturi OHLC comparabile.")
@@ -174,16 +274,25 @@ internal class SignalJournal(private val context: Context) {
         zip.putNextEntry(ZipEntry("Jurnal-semne.txt"))
         zip.write(buildReport().toByteArray(Charsets.UTF_8))
         zip.closeEntry()
+        val exportedNames = mutableSetOf<String>()
+        fun writeFile(name: String) {
+          if (name.isEmpty() || !name.matches(Regex("[a-zA-Z0-9_.-]+")) ||
+              !exportedNames.add(name)) return
+          val file = File(dir, name)
+          if (!file.isFile) return
+          zip.putNextEntry(ZipEntry("capturi/" + name))
+          file.inputStream().use { it.copyTo(zip) }
+          zip.closeEntry()
+        }
         for (i in 0 until entries.length()) {
           val obj = entries.optJSONObject(i) ?: continue
           for (key in listOf("startImage", "followupImage")) {
-            val name = obj.optString(key, "")
-            val file = File(dir, name)
-            if (name.isEmpty() || !file.isFile) continue
-            zip.putNextEntry(ZipEntry("capturi/" + name))
-            file.inputStream().use { it.copyTo(zip) }
-            zip.closeEntry()
+            writeFile(obj.optString(key, ""))
           }
+        }
+        for (i in 0 until observations.length()) {
+          val obj = observations.optJSONObject(i) ?: continue
+          writeFile(obj.optString("snapshot", ""))
         }
       }
     }
