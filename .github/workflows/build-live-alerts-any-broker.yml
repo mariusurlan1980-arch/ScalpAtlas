@@ -1,4 +1,4 @@
-name: SCALP ATLAS LIVE Alerts multi-broker v3.2.1
+name: SCALP ATLAS LIVE Alerts multi-broker v3.2.2
 
 on:
   push:
@@ -68,10 +68,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.2.1'
+          expo['version']='3.2.2'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=321
+          expo['android']['versionCode']=322
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -390,11 +390,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.2.1.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.2.2.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.2.1
-          path: ScalpAtlas-LIVE-Alerts-v3.2.1.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.2.2
+          path: ScalpAtlas-LIVE-Alerts-v3.2.2.apk
           if-no-files-found: error
           retention-days: 30
