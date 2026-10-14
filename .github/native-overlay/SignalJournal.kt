@@ -90,9 +90,8 @@ internal class SignalJournal(private val context: Context) {
     val classification = when {
       accepted -> "CANDIDAT_OPTIC"
       quality < 55 -> "CALITATE_IMAGINE"
-      !opticalGate && rawSignal == "NONE" && score >= 70 ->
-        "OPTIC_SAU_DIRECTIE_NECLARA"
-      !opticalGate -> "LUMANARI_NEIDENTIFICATE"
+      rawSignal == "NONE" -> "STRUCTURA_SAU_IMPULS_NECLAR"
+      !opticalGate -> "BLOCAJ_LUMANARI"
       score < 70 -> "SCOR_SUB_PRAG"
       else -> "FARA_DIRECTIE"
     }
