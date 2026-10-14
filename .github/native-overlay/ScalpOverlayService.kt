@@ -141,6 +141,9 @@ class ScalpOverlayService : Service() {
   private var pendingTf: String? = null
   private var pendingTfCount = 0
   private var pendingTfAt = 0L
+  private var manualTfMismatchCount = 0
+  private var manualTfMismatchAt = 0L
+  @Volatile private var manualTfConflict = false
   private val ocrRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
   @Volatile private var chartZone = 1
   private var tfControl: TextView? = null
@@ -355,6 +358,9 @@ class ScalpOverlayService : Service() {
         pendingTf = null
         pendingTfCount = 0
         confirmedTfAt = 0L
+        manualTfMismatchCount = 0
+        manualTfMismatchAt = 0L
+        manualTfConflict = false
         if (!tfAutomatic) selectedTimeframe = next
         text = "TF " + next + " ▸"
         clearOnInstrumentChange()
@@ -671,10 +677,13 @@ class ScalpOverlayService : Service() {
         val observedAt = System.currentTimeMillis()
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
-        val pairPattern = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b""")
+        // OTC and ordinary charts using the same currency symbols must NOT
+        // share confirmations, locks or per-instrument diagnostics.
+        val pairPattern = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b(\s*\(?\s*OTC\s*\)?)?""")
         val pairs = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
           val match = pairPattern.find(line.text) ?: return@mapNotNull null
-          match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase()
+          val base = match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase()
+          if (match.groupValues[3].contains("OTC", ignoreCase = true)) "$base OTC" else base
         }.distinct()
         // Require TWO consistent OCR detections. The first different asset
         // immediately invalidates a confirmed pair and old signal candidates.
@@ -713,7 +722,29 @@ class ScalpOverlayService : Service() {
             "Fără bip până la reconfirmarea instrumentului")
         }
 
-        if (!tfAutomatic) return@addOnSuccessListener
+        if (!tfAutomatic) {
+          // Manual fallback must not silently interpret a visible M15 chart
+          // as M5. Two consistent contradictory readings fail closed.
+          if (values.size == 1) {
+            if (values[0] == selectedTimeframe) {
+              manualTfConflict = false
+              manualTfMismatchCount = 0
+              manualTfMismatchAt = 0L
+            } else {
+              if (observedAt - manualTfMismatchAt > 9_000L) manualTfMismatchCount = 0
+              manualTfMismatchCount += 1
+              manualTfMismatchAt = observedAt
+              if (manualTfMismatchCount >= 2 && !manualTfConflict) {
+                manualTfConflict = true
+                clearOnInstrumentChange()
+                updateOverlay("AȘTEAPTĂ", "TF diferit pe Pocket Option",
+                  "Selectat " + selectedTimeframe + " • detectat " + values[0] +
+                    " • bip blocat")
+              }
+            }
+          }
+          return@addOnSuccessListener
+        }
 
         if (values.size == 1) {
           val found = values[0]
@@ -929,6 +960,17 @@ class ScalpOverlayService : Service() {
         return
       }
 
+      if (!tfAutomatic && manualTfConflict) {
+        resetSignalState()
+        fullFrame.recycle()
+        if (now - lastTfStatusAt >= 2000L) {
+          lastTfStatusAt = now
+          updateOverlay("AȘTEAPTĂ", "Timeframe diferit",
+            "Setează TF din aplicație identic cu Pocket Option • fără bip")
+        }
+        return
+      }
+
       // New pair or stale/unknown OCR label: NEVER emit a BUY/SELL. A
       // generic screenshot is not a verified instrument identity.
       if (!pairReady(now)) {
@@ -1035,7 +1077,7 @@ class ScalpOverlayService : Service() {
     if (result.optString("timeframe", "") != selectedTimeframe) return
     // Results coming back after OCR detects a different pair belong to the
     // previous chart; they must never be published as signals on this one.
-    if (!pairReady(now) || frameMarketEpoch != marketEpoch ||
+    if (manualTfConflict || !pairReady(now) || frameMarketEpoch != marketEpoch ||
         frameMarket != currentPair(now)) {
       resetSignalState()
       updateOverlay("AȘTEAPTĂ", "Pereche neconfirmată sau schimbată",
