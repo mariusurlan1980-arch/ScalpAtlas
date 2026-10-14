@@ -78,7 +78,10 @@ class ScalpOverlayService : Service() {
   private var detailText: TextView? = null
   private var modelText: TextView? = null
   private var journalControl: TextView? = null
+  private var testStatusText: TextView? = null
   private lateinit var journal: SignalJournal
+  private lateinit var liveTest: LiveTestMonitor
+  private var lastTestStatusAt = 0L
   @Volatile private var latestMarket = "NEIDENTIFICAT"
   @Volatile private var latestMarketAt = 0L
   @Volatile private var latestChartJpegBytes: ByteArray? = null
@@ -160,6 +163,7 @@ class ScalpOverlayService : Service() {
     super.onCreate()
     windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
     journal = SignalJournal(this)
+    liveTest = LiveTestMonitor(this)
     createNotificationChannel()
     createOverlay()
     createAnalyzer()
@@ -364,6 +368,18 @@ class ScalpOverlayService : Service() {
       }
     }
     root.addView(journalControl)
+
+    // Observational test starts automatically when Android screen sharing starts.
+    // This row does not change the user's usual BUY/SELL display or audio.
+    testStatusText = TextView(this).apply {
+      text = "TEST LIVE • pornește cu suprapunerea"
+      setTextColor(Color.rgb(112, 214, 163))
+      textSize = 10.5f
+      maxLines = 1
+      ellipsize = TextUtils.TruncateAt.END
+      setPadding(0, dp(3), 0, 0)
+    }
+    root.addView(testStatusText)
 
     val params = WindowManager.LayoutParams(
       dp(215),
@@ -687,6 +703,10 @@ class ScalpOverlayService : Service() {
       captureHandler
     )
 
+    if (virtualDisplay != null) {
+      liveTest.begin(System.currentTimeMillis(), frameCount, resultCount, errorCount)
+      mainHandler.post { testStatusText?.text = "TEST LIVE 30:00 • pornit" }
+    }
     startFramePolling(width, height)
     updateOverlay("AȘTEAPTĂ", "LIVE • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
   }
@@ -712,6 +732,23 @@ class ScalpOverlayService : Service() {
           )
         }
 
+        // The test does not stop LIVE after 30m; it only closes its report.
+        if (now - lastTestStatusAt >= 5_500L) {
+          lastTestStatusAt = now
+          try {
+            val label = liveTest.tick(
+              now, frameCount, resultCount, errorCount,
+              !tfAutomatic || (tfVerified && now - confirmedTfAt <= TF_STALE_MS),
+              lastCapturedImageAt > 0L && now - lastCapturedImageAt <= 3500L,
+              lastAnalysisResultAt > 0L && now - lastAnalysisResultAt <= 5000L
+            )
+            mainHandler.post {
+              if (testStatusText?.text?.toString() != label) testStatusText?.text = label
+            }
+          } catch (_: Throwable) {
+            // The test is observational; logging must never stop chart capture.
+          }
+        }
         handler.postDelayed(this, 550L)
       }
     }
@@ -896,6 +933,13 @@ class ScalpOverlayService : Service() {
     val reason = result.optString("reason", "")
     val opticalCount = result.optInt("opticalCandleCount", 0)
 
+    try {
+      liveTest.onClassifier(
+        now, confirmedSignal, result.optString("candidateDirection", "NONE"),
+        score, quality, opticalGate, opticalCount
+      )
+    } catch (_: Throwable) {}
+
     // Sample diagnostic telemetry locally: track which gate rejects signals.
     // Observations are never labelled wins/losses and do not place orders.
     try {
@@ -1044,6 +1088,7 @@ class ScalpOverlayService : Service() {
     } catch (_: Throwable) {
       // The signal/audio can still work if file storage temporarily fails.
     }
+    try { liveTest.onBeep(now, confirmedSignal) } catch (_: Throwable) {}
     playBip(confirmedSignal)
     updateOverlay(
       confirmedSignal,
@@ -1118,6 +1163,9 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    try {
+      liveTest.end(System.currentTimeMillis(), frameCount, resultCount, errorCount, false)
+    } catch (_: Throwable) {}
     // Service shutdown ends the session; no signal lock survives a new start.
     lockedDir = null
     lockedUntil = 0L
