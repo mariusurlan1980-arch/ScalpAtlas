@@ -73,6 +73,11 @@ class ScalpOverlayService : Service() {
   private var signalText: TextView? = null
   private var detailText: TextView? = null
   private var modelText: TextView? = null
+  private var journalControl: TextView? = null
+  private lateinit var journal: SignalJournal
+  @Volatile private var latestMarket = "NEIDENTIFICAT"
+  @Volatile private var latestMarketAt = 0L
+  @Volatile private var latestChartJpegBytes: ByteArray? = null
 
   private var mediaProjection: MediaProjection? = null
   private var virtualDisplay: VirtualDisplay? = null
@@ -145,6 +150,7 @@ class ScalpOverlayService : Service() {
   override fun onCreate() {
     super.onCreate()
     windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    journal = SignalJournal(this)
     createNotificationChannel()
     createOverlay()
     createAnalyzer()
@@ -332,6 +338,23 @@ class ScalpOverlayService : Service() {
     root.addView(signalText)
     root.addView(detailText)
     root.addView(modelText)
+
+    // No automatic uploads; tap to export records and screenshots as ZIP.
+    journalControl = TextView(this).apply {
+      text = "JURNAL ${journal.size()} ▸"
+      setTextColor(Color.rgb(115, 205, 212))
+      textSize = 11f
+      setPadding(0, dp(6), 0, dp(1))
+      setOnClickListener {
+        try {
+          journal.share()
+        } catch (error: Throwable) {
+          updateOverlay("AȘTEAPTĂ", "Jurnalul nu a putut fi trimis",
+            error.message ?: "Export indisponibil")
+        }
+      }
+    }
+    root.addView(journalControl)
 
     val params = WindowManager.LayoutParams(
       dp(215),
@@ -560,6 +583,18 @@ class ScalpOverlayService : Service() {
         }.distinct()
 
         val observedAt = System.currentTimeMillis()
+        // Read an explicit FX pair only when visible on the captured broker screen.
+        // If OCR cannot find one, never guess which asset was selected.
+        val pairPattern = Regex("""(?i)\\b([A-Z]{3})\\s*/\\s*([A-Z]{3})\\b""")
+        val pairs = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+          val match = pairPattern.find(line.text) ?: return@mapNotNull null
+          match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase()
+        }.distinct()
+        if (pairs.size == 1) {
+          latestMarket = pairs[0]
+          latestMarketAt = observedAt
+        }
+
         if (values.size == 1) {
           val found = values[0]
           if (pendingTf != found || observedAt - pendingTfAt > 9000L) {
@@ -789,7 +824,18 @@ class ScalpOverlayService : Service() {
       scaled.compress(Bitmap.CompressFormat.JPEG, 52, stream)
       scaled.recycle()
 
-      val base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+      val capturedJpeg = stream.toByteArray()
+      latestChartJpegBytes = capturedJpeg
+      // A follow-up is only a saved picture; never mark WIN/LOSS from pixels.
+      val observedMarket = if (now - latestMarketAt <= 15_000L) latestMarket
+        else "NEIDENTIFICAT"
+      try {
+        journal.followUp(now, observedMarket, selectedTimeframe, capturedJpeg)
+      } catch (_: Throwable) {
+        // Journal I/O must never stop the actual chart analysis loop.
+      }
+
+      val base64 = Base64.encodeToString(capturedJpeg, Base64.NO_WRAP)
       lastFrameAt = now
       frameCount += 1
       val frameId = frameCount
@@ -944,6 +990,19 @@ class ScalpOverlayService : Service() {
     candidateCount = 0
     candidateLastAt = 0L
 
+    // Record every genuine BIP once, along with a private chart snapshot.
+    // This is a SIMULATED signal log, NOT a broker-order or profit log.
+    try {
+      val market = if (now - latestMarketAt <= 15_000L) latestMarket
+        else "NEIDENTIFICAT"
+      val picture = if (now - lastFrameAt <= 4000L) latestChartJpegBytes else null
+      val count = journal.record(
+        now, confirmedSignal, timeframe, market, score, pattern, picture
+      )
+      mainHandler.post { journalControl?.text = "JURNAL " + count + " ▸" }
+    } catch (_: Throwable) {
+      // The signal/audio can still work if file storage temporarily fails.
+    }
     playBip(confirmedSignal)
     updateOverlay(
       confirmedSignal,
