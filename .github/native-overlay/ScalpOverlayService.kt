@@ -82,6 +82,7 @@ class ScalpOverlayService : Service() {
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
   private var lastTestStatusAt = 0L
+  @Volatile private var keepScreenForTest = false
   @Volatile private var latestMarket = "NEIDENTIFICAT"
   @Volatile private var latestMarketAt = 0L
   @Volatile private var latestChartJpegBytes: ByteArray? = null
@@ -425,6 +426,32 @@ class ScalpOverlayService : Service() {
     windowManager.addView(root, params)
   }
 
+  /**
+   * Keep the physical screen awake ONLY during the time-limited 30-minute
+   * observation test. The FLAG_KEEP_SCREEN_ON window flag needs no dangerous
+   * device-admin permissions and cannot override a manual power-button lock.
+   *
+   * No wakelock or keep-screen behavior survives service shutdown.
+   */
+  private fun setKeepScreenForTest(enabled: Boolean) {
+    if (keepScreenForTest == enabled) return
+    keepScreenForTest = enabled
+    mainHandler.post {
+      val params = overlayWindowParams ?: return@post
+      val root = overlayView ?: return@post
+      val flag = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+      val newFlags = if (keepScreenForTest) params.flags or flag
+        else params.flags and flag.inv()
+      if (params.flags == newFlags) return@post
+      params.flags = newFlags
+      try {
+        windowManager.updateViewLayout(root, params)
+      } catch (_: Throwable) {
+        // Device/OEM can ignore keep-awake; the LIVE journal will record gaps.
+      }
+    }
+  }
+
   private fun createAnalyzer() {
     mainHandler.post {
       val web = WebView(this).apply {
@@ -705,7 +732,8 @@ class ScalpOverlayService : Service() {
 
     if (virtualDisplay != null) {
       liveTest.begin(System.currentTimeMillis(), frameCount, resultCount, errorCount)
-      mainHandler.post { testStatusText?.text = "TEST LIVE 30:00 • pornit" }
+      setKeepScreenForTest(true)
+      mainHandler.post { testStatusText?.text = "TEST LIVE 30:00 • ECRAN PORNIT" }
     }
     startFramePolling(width, height)
     updateOverlay("AȘTEAPTĂ", "LIVE • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
@@ -742,6 +770,9 @@ class ScalpOverlayService : Service() {
               lastCapturedImageAt > 0L && now - lastCapturedImageAt <= 3500L,
               lastAnalysisResultAt > 0L && now - lastAnalysisResultAt <= 5000L
             )
+            // Monitoring may end without closing the LIVE overlay. Restore
+            // normal Android auto-lock as soon as the 30-minute test finishes.
+            setKeepScreenForTest(liveTest.isActive())
             mainHandler.post {
               if (testStatusText?.text?.toString() != label) testStatusText?.text = label
             }
@@ -1163,6 +1194,7 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    setKeepScreenForTest(false)
     try {
       liveTest.end(System.currentTimeMillis(), frameCount, resultCount, errorCount, false)
     } catch (_: Throwable) {}
