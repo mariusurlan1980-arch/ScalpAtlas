@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.1-optical-candle-gate';
+  const ENGINE_VERSION='0.3.2-live-diagnostic-confirmations';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -196,16 +196,16 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       c.samples>=2&&c.end-c.start+1<=maxWidth&&
       c.maxBody>=3&&c.extent>=4
     );
-    if(candles.length<3)return {ok:false,reason:'Nu pot identifica trei lumânări distincte'};
+    if(candles.length<3)return {ok:false,reason:'Nu pot identifica trei lumânări distincte',count:candles.length};
     const current=candles[candles.length-1],closedB=candles[candles.length-2],closedA=candles[candles.length-3];
-    if(current.end<w*.52)return {ok:false,reason:'Ultimele lumânări nu sunt suficient de vizibile'};
+    if(current.end<w*.52)return {ok:false,reason:'Ultimele lumânări nu sunt suficient de vizibile',count:candles.length};
     // If the chart has very wide gaps, the last bodies may belong to labels/UI.
     if(current.start-closedB.end>w*.12||closedB.start-closedA.end>w*.12)
-      return {ok:false,reason:'Lumânările recente nu sunt contigue'};
+      return {ok:false,reason:'Lumânările recente nu sunt contigue',count:candles.length};
     if(closedA.color!==closedB.color)
-      return {ok:false,reason:'Ultimele două lumânări închise au culori opuse'};
+      return {ok:false,reason:'Ultimele două lumânări închise au culori opuse',count:candles.length};
     if(closedA.color!==wantedDirection)
-      return {ok:false,reason:'Ultimele lumânări închise contrazic semnalul'};
+      return {ok:false,reason:'Ultimele lumânări închise contrazic semnalul',count:candles.length};
     return {ok:true,reason:'',count:candles.length,closedDirection:closedB.color};
   }
 
@@ -577,6 +577,8 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
           result:{
             frameId,
             signal:clear?r.dir:'NONE',
+            // Diagnostic candidate blocked by the final optical gate, never alert directly.
+            candidateDirection:r.clear?r.dir:'NONE',
             timeframe:String(timeframe||'M10'),
             pattern:r.atlas,
             probability:Math.round(r.score*100),
