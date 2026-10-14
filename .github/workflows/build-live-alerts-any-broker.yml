@@ -1,4 +1,4 @@
-name: SCALP ATLAS LIVE Alerts multi-broker v3.0.7
+name: SCALP ATLAS LIVE Alerts multi-broker v3.0.8
 
 on:
   push:
@@ -66,10 +66,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.0.7'
+          expo['version']='3.0.8'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=307
+          expo['android']['versionCode']=308
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -187,6 +187,12 @@ jobs:
           grep -q 'lockedAt = now' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'msSinceBeep < ALERT_FRESH_MS' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'NU este semnal nou de intrare' .github/native-overlay/ScalpOverlayService.kt
+          test -s .github/native-overlay/SignalJournal.kt
+          grep -q 'journal.record(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'journal.followUp(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'journal.share()' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'outcome", "NEVERIFICAT"' .github/native-overlay/SignalJournal.kt
+          ! grep -E -q 'executeTrade|placeDemoOrder|dispatchGesture' .github/native-overlay/SignalJournal.kt
           grep -q 'val columns = 88' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'val rows = 72' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'lastVisualChangeAt <= 35_000L' .github/native-overlay/ScalpOverlayService.kt
@@ -227,7 +233,8 @@ jobs:
           cp .github/native-overlay/ScalpOverlayPackage.kt "$JAVA_DIR/ScalpOverlayPackage.kt"
           cp .github/native-overlay/ScalpOverlayModule.kt "$JAVA_DIR/ScalpOverlayModule.kt"
           cp .github/native-overlay/ScalpOverlayService.kt "$JAVA_DIR/ScalpOverlayService.kt"
-          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt; do
+          cp .github/native-overlay/SignalJournal.kt "$JAVA_DIR/SignalJournal.kt"
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
 
@@ -260,8 +267,27 @@ jobs:
           service='<service android:name=".ScalpOverlayService" android:exported="false" android:foregroundServiceType="mediaProjection" />'
           if service not in s:
               s=s.replace('</application>', '    '+service+'\n  </application>', 1)
+          journal_provider=(
+              '<provider android:name="androidx.core.content.FileProvider" '
+              'android:authorities="${applicationId}.journalfiles" '
+              'android:exported="false" android:grantUriPermissions="true">'
+              '<meta-data android:name="android.support.FILE_PROVIDER_PATHS" '
+              'android:resource="@xml/scalp_journal_paths" />'
+              '</provider>'
+          )
+          if 'android:authorities="${applicationId}.journalfiles"' not in s:
+              s=s.replace('</application>', '    '+journal_provider+'\\n  </application>', 1)
           m.write_text(s,encoding='utf-8')
           PY
+
+          mkdir -p scalp-atlas-new/android/app/src/main/res/xml
+          cat > scalp-atlas-new/android/app/src/main/res/xml/scalp_journal_paths.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths xmlns:android="http://schemas.android.com/apk/res/android">
+            <cache-path name="journal_shares" path="signal_journal_exports/" />
+          </paths>
+          XML
+          test -s scalp-atlas-new/android/app/src/main/res/xml/scalp_journal_paths.xml
 
           mkdir -p scalp-atlas-new/android/app/src/main/res/raw
           cp scalp-atlas-new/assets/buy-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
@@ -317,11 +343,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.7.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.0.8.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.0.7
-          path: ScalpAtlas-LIVE-Alerts-v3.0.7.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.0.8
+          path: ScalpAtlas-LIVE-Alerts-v3.0.8.apk
           if-no-files-found: error
           retention-days: 30
