@@ -83,7 +83,8 @@ internal class SignalJournal(private val context: Context) {
     opticalGate: Boolean,
     opticalCount: Int,
     reason: String,
-    screenshot: ByteArray?
+    screenshot: ByteArray?,
+    marketRegime: String
   ) {
     if (now - lastObservedAt < 15_000L) return
     lastObservedAt = now
@@ -99,6 +100,7 @@ internal class SignalJournal(private val context: Context) {
       .put("timestamp", now)
       .put("timeframe", timeframe.take(10))
       .put("market", market.take(24))
+      .put("marketRegime", marketRegime.take(30))
       .put("signal", rawSignal.take(6))
       .put("classification", classification)
       .put("scoreOrientativ", score)
@@ -257,6 +259,44 @@ internal class SignalJournal(private val context: Context) {
       appendLine("  Raportul testului LIVE nu poate fi citit.")
     }
     appendLine()
+    appendLine("PROFILURI PE PERECHE SI TIMEFRAME (NUMARARI, NU WIN/LOSS):")
+    val profiles = linkedMapOf<String, JSONObject>()
+    fun marketProfile(market: String, tf: String): JSONObject {
+      val key = market + " • " + tf
+      return profiles.getOrPut(key) {
+        JSONObject().put("samples", 0).put("opticalCandidates", 0)
+          .put("buyBips", 0).put("sellBips", 0).put("regimes", JSONObject())
+      }
+    }
+    for (i in 0 until observations.length()) {
+      val row = observations.optJSONObject(i) ?: continue
+      val profile = marketProfile(row.optString("market"), row.optString("timeframe"))
+      profile.put("samples", profile.optInt("samples") + 1)
+      if (row.optString("classification") == "CANDIDAT_OPTIC") {
+        profile.put("opticalCandidates", profile.optInt("opticalCandidates") + 1)
+      }
+      val regimes = profile.optJSONObject("regimes") ?: continue
+      val regime = row.optString("marketRegime", "NEDETERMINAT")
+      regimes.put(regime, regimes.optInt(regime) + 1)
+    }
+    for (i in 0 until entries.length()) {
+      val row = entries.optJSONObject(i) ?: continue
+      val profile = marketProfile(row.optString("market"), row.optString("timeframe"))
+      val key = if (row.optString("direction") == "BUY") "buyBips" else "sellBips"
+      profile.put(key, profile.optInt(key) + 1)
+    }
+    if (profiles.isEmpty()) appendLine("  Nu exista inca date.")
+    for ((pair, profile) in profiles) {
+      appendLine(
+        pair + " | observații: " + profile.optInt("samples") +
+        " | candidate: " + profile.optInt("opticalCandidates") +
+        " | BIP BUY: " + profile.optInt("buyBips") +
+        " | BIP SELL: " + profile.optInt("sellBips")
+      )
+      val regimes = profile.optJSONObject("regimes")
+      if (regimes != null) appendLine("  Regimuri vizuale: " + regimes.toString())
+    }
+    appendLine()
     appendLine("MOTIVE DE RESPINGERE / OBSERVATII MOTOR:")
     val counts = linkedMapOf<String, Int>()
     for (i in 0 until observations.length()) {
@@ -279,12 +319,13 @@ internal class SignalJournal(private val context: Context) {
       }
     }
     appendLine()
-    appendLine("OBSERVATII LIVE: ora | pereche | TF | semnal brut | scor | calitate | lumânări | blocaj")
+    appendLine("OBSERVATII LIVE: ora | pereche | TF | regim | semnal brut | scor | calitate | lumânări | blocaj")
     for (i in 0 until observations.length()) {
       val o = observations.optJSONObject(i) ?: continue
       appendLine(
         stamp(o.optLong("timestamp")) + " | " + o.optString("market") +
         " | " + o.optString("timeframe") +
+        " | " + o.optString("marketRegime", "NEDETERMINAT") +
         " | " + o.optString("signal") +
         " | " + o.optInt("scoreOrientativ") +
         " | " + o.optInt("quality") +
