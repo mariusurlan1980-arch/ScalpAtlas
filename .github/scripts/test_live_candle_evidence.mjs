@@ -45,6 +45,23 @@ const consistent = buildScreenshot(series(['SELL','BUY','SELL','SELL','BUY']));
 assert.equal(consistent('SELL').ok, true, 'two matching closed bars allow optical evidence');
 assert.equal(consistent('BUY').ok, false, 'conflicting closed bars must reject BUY');
 
+// M5 screenshot regression (2026-10-14): consecutive bearish bodies with
+// only ONE empty pixel between adjacent bodies must be counted separately.
+// Previously the old <=2 gap merger coalesced the two SELL bars, so an
+// otherwise matching two-closed-bar test wrongly reported "culori opuse".
+const tightBodies = buildScreenshot(['SELL','BUY','SELL','SELL','BUY']
+  .map((color, i) => ({ color, x: 220 + i * 9, y: 75 + (i % 3) * 7 })));
+assert.equal(tightBodies('SELL').ok, true,
+  'one-pixel gap means two distinct closed SELL bars');
+assert.equal(tightBodies('BUY').ok, false,
+  'tight two-closed-bar check must still reject BUY');
+// No empty pixel at all: same-colour bodies cannot be separated reliably.
+// Never invent two candles from a continuous block just to force a signal.
+const touchingBodies = buildScreenshot(['SELL','SELL','SELL','SELL','BUY']
+  .map((color, i) => ({ color, x: 220 + i * 8, y: 75 + (i % 3) * 7 })));
+assert.equal(touchingBodies('SELL').ok, false,
+  'uncertain touching bodies must fail closed');
+
 const conflicting = buildScreenshot(series(['BUY','SELL','BUY','SELL','BUY']));
 assert.equal(conflicting('SELL').ok, false, 'alternating closed bars must reject SELL');
 assert.match(conflicting('SELL').reason, /culori opuse/);
@@ -59,4 +76,4 @@ const oldBars = buildScreenshot(['SELL','SELL','SELL','SELL','BUY']
   .map((color,i)=>({color,x:40+i*17,y:65})));
 assert.equal(oldBars('SELL').ok, false, 'old candles far left cannot trigger an alert');
 
-console.log('PASS: 6 optical evidence cases (consistent, opposite, conflicting, blank, sparse, stale).');
+console.log('PASS: 9 optical evidence cases including 1px-gap regression and touching-body fail-closed.');
