@@ -276,7 +276,7 @@ jobs:
               '</provider>'
           )
           if 'android:authorities="${applicationId}.journalfiles"' not in s:
-              s=s.replace('</application>', '    '+journal_provider+'\\n  </application>', 1)
+              s=s.replace('</application>', '    '+journal_provider+'\n  </application>', 1)
           m.write_text(s,encoding='utf-8')
           PY
 
