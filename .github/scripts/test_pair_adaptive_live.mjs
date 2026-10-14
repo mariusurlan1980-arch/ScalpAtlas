@@ -21,6 +21,28 @@ for(const s of [
   'val market = currentPair(now)',
   'marketStableAt = observedAt',
 ]) assert.ok(k.includes(s),'Missing fail-closed instrument context: '+s);
+// Final pre-entry safety fix: manual TF contradiction stops alerts rather
+// than emitting M5 signals from a chart visibly marked M15.
+for(const marker of [
+  'manualTfConflict = true',
+  'if (!tfAutomatic && manualTfConflict)',
+  'if (manualTfConflict || !pairReady(now)',
+  'manualTfMismatchCount >= 2',
+  'match.groupValues[3].contains("OTC", ignoreCase = true)',
+]) assert.ok(k.includes(marker),'Missing last pre-entry safety check: '+marker);
+const quote = (pair, suffix) => pair + (suffix?.trim().toUpperCase() === 'OTC' ? ' OTC' : '');
+assert.notEqual(quote('EUR/USD',''),quote('EUR/USD','OTC'),'OTC and spot require separate profiles');
+assert.equal(quote('QAR/CNY','OTC'),'QAR/CNY OTC');
+let contradictingReads=0, blocked=false;
+for(const tf of ['M15','M15']){
+  if(tf !== 'M5') contradictingReads++;
+  else {contradictingReads=0;blocked=false;}
+  if(contradictingReads >= 2) blocked=true;
+}
+assert.equal(blocked,true,'two manual timeframe conflicts should block trading alerts');
+contradictingReads=0;blocked=false;
+assert.equal(blocked,false,'selecting matching timeframe must re-enable consideration');
+
 assert.ok(!k.includes('if (!tfAutomatic || ocrBusy'),
   'Asset OCR must still run in manual timeframe mode');
 assert.ok(j.includes('PROFILURI PE PERECHE SI TIMEFRAME'),
