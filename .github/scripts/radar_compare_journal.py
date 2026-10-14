@@ -54,7 +54,14 @@ def read_observations(archive: zipfile.ZipFile) -> list[dict]:
 def compare(observations: list[dict], min_samples: int = 8) -> dict:
     """Require >2 instruments observed recently; NEVER rank one screenshot."""
     groups: dict[tuple[str, str], list[dict]] = collections.defaultdict(list)
-    for item in observations:
+    # Never combine stale days/weeks of unrelated observations into a
+    # fictional current preference. Compare one recent manual sweep only.
+    newest = max((item["at"] for item in observations), default=None)
+    recent = [
+        item for item in observations
+        if newest is not None and dt.timedelta(0) <= newest - item["at"] <= dt.timedelta(minutes=45)
+    ]
+    for item in recent:
         groups[item["market"], item["tf"]].append(item)
     profiles = []
     for (market, tf), items in groups.items():
