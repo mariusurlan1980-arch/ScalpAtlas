@@ -61,6 +61,8 @@ class ScalpOverlayService : Service() {
     private const val ANALYSIS_TIMEOUT_MS = 5000L
     private const val CONFIRMATION_SPACING_MS = 20000L
     private const val REQUIRED_CONFIRMATIONS = 3
+    // A direction's 5-7 minute lock is NOT a 5-7 minute window for NEW entries.
+    private const val ALERT_FRESH_MS = 30_000L
     private const val OCR_INTERVAL_MS = 3000L
     private const val TF_STALE_MS = 18000L
   }
@@ -101,6 +103,7 @@ class ScalpOverlayService : Service() {
   private var candidateLastAt = 0L
   private var lockedDir: String? = null
   private var lockedUntil = 0L
+  private var lockedAt = 0L
   @Volatile private var selectedTimeframe = "M10"
   @Volatile private var tfAutomatic = true
   @Volatile private var tfVerified = false
@@ -842,18 +845,26 @@ class ScalpOverlayService : Service() {
     val currentLock = lockedDir
     if (currentLock != null && now < lockedUntil) {
       val seconds = max(0L, (lockedUntil - now) / 1000L)
-      if (confirmedSignal == currentLock) {
+      val msSinceBeep = if (lockedAt > 0L) now - lockedAt else Long.MAX_VALUE
+      // Keep BUY/SELL visible just long enough to read the fresh BIP.
+      // Never depict an old 5-7 minute direction lock as a new trade entry.
+      // If the optical engine confidently reverses, invalidate immediately.
+      val alertStillFresh =
+        msSinceBeep >= 0L &&
+        msSinceBeep < ALERT_FRESH_MS &&
+        confirmedSignal != if (currentLock == "BUY") "SELL" else "BUY"
+      if (alertStillFresh) {
         updateOverlay(
           currentLock,
-          "Scor orientativ " + score + " • Durată " + if (expiry > 0) expiry.toString() + " min" else "—",
-          pattern + " • direcție activă " + formatSeconds(seconds)
+          "BIP emis • " + formatSeconds((ALERT_FRESH_MS - msSinceBeep) / 1000L) +
+            " pentru vizualizare",
+          "Semnal recent, NU garanție • " + timeframe
         )
       } else {
-        // Keep confirmed BUY/SELL visible throughout its lock; no repeated bip.
         updateOverlay(
-          currentLock,
-          "Semnal activ • " + formatSeconds(seconds) + " rămase",
-          "Fără alertă opusă în aceeași fereastră"
+          "AȘTEAPTĂ",
+          currentLock + " anterior • NU este semnal nou de intrare",
+          "Protecție fără alerte opuse • " + formatSeconds(seconds) + " rămase"
         )
       }
       return
@@ -862,6 +873,7 @@ class ScalpOverlayService : Service() {
     if (currentLock != null && now >= lockedUntil) {
       lockedDir = null
       lockedUntil = 0L
+      lockedAt = 0L
       candidateDir = null
       candidateCount = 0
       candidateLastAt = 0L
@@ -926,6 +938,7 @@ class ScalpOverlayService : Service() {
     // Publish expiry before direction so other callbacks cannot treat the
     // freshly published direction as an expired lock.
     lockedUntil = now + lockMinutes * 60_000L
+    lockedAt = now
     lockedDir = confirmedSignal
     candidateDir = null
     candidateCount = 0
@@ -1002,6 +1015,7 @@ class ScalpOverlayService : Service() {
     // Service shutdown ends the session; no signal lock survives a new start.
     lockedDir = null
     lockedUntil = 0L
+    lockedAt = 0L
     try { virtualDisplay?.release() } catch (_: Throwable) {}
     try { imageReader?.close() } catch (_: Throwable) {}
     try { mediaProjection?.stop() } catch (_: Throwable) {}
