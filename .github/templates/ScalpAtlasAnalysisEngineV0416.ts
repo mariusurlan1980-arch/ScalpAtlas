@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.2-live-diagnostic-confirmations';
+  const ENGINE_VERSION='0.3.3-market-regime-diagnostics';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -569,6 +569,15 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         const curve=buildPriceCurve(img);
         if(!curve){send({type:'ERROR',frameId,message:'Imaginea nu a putut fi citită.'});return;}
         const r=classify(curve),anchor=curve.anchor;
+        // Optical regime is computed from the current screenshot only:
+        // NOT broker price OHLC, never a verified per-asset volatility metric.
+        const vol=Math.max(0,Math.min(1,Number(r.volatility)||0));
+        const trend=Math.max(0,Math.min(1,Number(r.trendStrength)||0));
+        const recent=Math.max(0,Math.min(1,Number(r.recentStrength)||0));
+        const marketRegime=curve.quality<.42?'NECITIBIL':
+          vol>.80?'AGITAT':
+          trend>.52&&recent>.46?'TENDINTA':
+          trend<.30&&recent<.30?'LATERAL':'MIXT';
         const evidence=r.clear?candleEvidence(curve,r.dir):{ok:false,reason:''};
         const clear=r.clear&&evidence.ok;
         const duration=clear?directionDurationFor(timeframe,r,curve):null;
@@ -579,6 +588,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             signal:clear?r.dir:'NONE',
             // Diagnostic candidate blocked by the final optical gate, never alert directly.
             candidateDirection:r.clear?r.dir:'NONE',
+            marketRegime,
             timeframe:String(timeframe||'M10'),
             pattern:r.atlas,
             probability:Math.round(r.score*100),
