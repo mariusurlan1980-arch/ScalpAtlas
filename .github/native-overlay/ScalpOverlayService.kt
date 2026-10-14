@@ -357,8 +357,8 @@ class ScalpOverlayService : Service() {
         confirmedTfAt = 0L
         if (!tfAutomatic) selectedTimeframe = next
         text = "TF " + next + " ▸"
-        resetSignalState()
-        resetVisualBaseline()
+        clearOnInstrumentChange()
+        marketStableAt = System.currentTimeMillis()
         updateOverlay(
           "AȘTEAPTĂ",
           if (tfAutomatic) "AUTO • caut intervalul brokerului" else "Manual " + selectedTimeframe,
@@ -723,7 +723,8 @@ class ScalpOverlayService : Service() {
             pendingTfAt = observedAt
             if (tfVerified && found != selectedTimeframe) {
               tfVerified = false
-              resetSignalState()
+              clearOnInstrumentChange()
+              marketStableAt = observedAt
               updateOverlay("AȘTEAPTĂ", "AUTO • verific " + found,
                 "Schimbare interval detectată • aștept confirmarea")
             }
@@ -737,8 +738,8 @@ class ScalpOverlayService : Service() {
               confirmedTfAt = observedAt
               tfControl?.text = "TF AUTO " + found + " ▸"
               if (changed) {
-                resetSignalState()
-                resetVisualBaseline()
+                clearOnInstrumentChange()
+                marketStableAt = observedAt
                 updateOverlay("AȘTEAPTĂ", "AUTO • " + found + " confirmat",
                   "Timeframe citit din ecran • analiza poate începe")
               }
