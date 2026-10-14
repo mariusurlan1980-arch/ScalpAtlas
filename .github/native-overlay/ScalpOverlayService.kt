@@ -61,6 +61,10 @@ class ScalpOverlayService : Service() {
     private const val ANALYSIS_TIMEOUT_MS = 5000L
     private const val CONFIRMATION_SPACING_MS = 20000L
     private const val REQUIRED_CONFIRMATIONS = 3
+    // If optical evidence disappears, an old candidate must not recover as
+    // if it had been continuously confirmed for the past minute.
+    private const val CANDIDATE_EVIDENCE_GRACE_MS = 5_000L
+    private const val CANDIDATE_MAX_AGE_MS = 70_000L
     // A direction's 5-7 minute lock is NOT a 5-7 minute window for NEW entries.
     private const val ALERT_FRESH_MS = 30_000L
     private const val OCR_INTERVAL_MS = 3000L
@@ -107,6 +111,8 @@ class ScalpOverlayService : Service() {
   private var candidateDir: String? = null
   private var candidateCount = 0
   private var candidateLastAt = 0L
+  private var candidateLastSeenAt = 0L
+  private var candidateStartedAt = 0L
   private var lockedDir: String? = null
   private var lockedUntil = 0L
   private var lockedAt = 0L
@@ -137,6 +143,8 @@ class ScalpOverlayService : Service() {
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
+    candidateLastSeenAt = 0L
+    candidateStartedAt = 0L
     analysisBusy = false
     activeFrameId = -1L
   }
@@ -888,6 +896,22 @@ class ScalpOverlayService : Service() {
     val reason = result.optString("reason", "")
     val opticalCount = result.optInt("opticalCandleCount", 0)
 
+    // Sample diagnostic telemetry locally: track which gate rejects signals.
+    // Observations are never labelled wins/losses and do not place orders.
+    try {
+      val market = if (now - latestMarketAt <= 15_000L) latestMarket
+        else "NEIDENTIFICAT"
+      val picture = if (now - lastFrameAt <= 4000L) latestChartJpegBytes else null
+      val tentativeDirection = result.optString("candidateDirection", "NONE")
+      journal.observe(
+        now, timeframe, market, tentativeDirection,
+        confirmedSignal == "BUY" || confirmedSignal == "SELL",
+        score, quality, opticalGate, opticalCount, reason, picture
+      )
+    } catch (_: Throwable) {
+      // A diagnostic error must not interrupt the audio or live chart stream.
+    }
+
     // The lock is independent of OCR and frame-capture reset paths.
     // A confirmed SELL cannot turn into a candidate BUY until it expires.
     val currentLock = lockedDir
@@ -925,14 +949,18 @@ class ScalpOverlayService : Service() {
       candidateDir = null
       candidateCount = 0
       candidateLastAt = 0L
+      candidateLastSeenAt = 0L
+      candidateStartedAt = 0L
     }
 
     if (confirmedSignal != "BUY" && confirmedSignal != "SELL") {
       val candidateStillFresh =
         candidateDir != null &&
         candidateCount > 0 &&
-        candidateLastAt > 0L &&
-        now - candidateLastAt <= 65000L
+        candidateLastSeenAt > 0L &&
+        now - candidateLastSeenAt <= CANDIDATE_EVIDENCE_GRACE_MS &&
+        candidateStartedAt > 0L &&
+        now - candidateStartedAt <= CANDIDATE_MAX_AGE_MS
 
       if (candidateStillFresh) {
         updateOverlay(
@@ -947,6 +975,8 @@ class ScalpOverlayService : Service() {
       candidateDir = null
       candidateCount = 0
       candidateLastAt = 0L
+      candidateLastSeenAt = 0L
+      candidateStartedAt = 0L
       updateOverlay(
         "AȘTEAPTĂ",
         if (reason.isNotBlank()) reason else "Analiza graficului este neconcludentă",
@@ -956,14 +986,21 @@ class ScalpOverlayService : Service() {
       return
     }
 
-    if (candidateDir != confirmedSignal) {
+    val candidateEvidenceExpired =
+      candidateLastSeenAt <= 0L ||
+      now - candidateLastSeenAt > CANDIDATE_EVIDENCE_GRACE_MS ||
+      candidateStartedAt <= 0L ||
+      now - candidateStartedAt > CANDIDATE_MAX_AGE_MS
+    if (candidateDir != confirmedSignal || candidateEvidenceExpired) {
       candidateDir = confirmedSignal
       candidateCount = 1
       candidateLastAt = now
+      candidateStartedAt = now
     } else if (now - candidateLastAt >= CONFIRMATION_SPACING_MS) {
       candidateCount += 1
       candidateLastAt = now
     }
+    candidateLastSeenAt = now
 
     if (candidateCount < REQUIRED_CONFIRMATIONS) {
       updateOverlay(
@@ -991,6 +1028,8 @@ class ScalpOverlayService : Service() {
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
+    candidateLastSeenAt = 0L
+    candidateStartedAt = 0L
 
     // Record every genuine BIP once, along with a private chart snapshot.
     // This is a SIMULATED signal log, NOT a broker-order or profit log.
