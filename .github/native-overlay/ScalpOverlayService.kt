@@ -585,7 +585,7 @@ class ScalpOverlayService : Service() {
         val observedAt = System.currentTimeMillis()
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
-        val pairPattern = Regex("""(?i)\\b([A-Z]{3})\\s*/\\s*([A-Z]{3})\\b""")
+        val pairPattern = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b""")
         val pairs = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
           val match = pairPattern.find(line.text) ?: return@mapNotNull null
           match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase()
