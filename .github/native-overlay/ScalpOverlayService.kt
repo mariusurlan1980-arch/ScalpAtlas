@@ -91,6 +91,7 @@ class ScalpOverlayService : Service() {
   @Volatile private var analysisStartedAt = 0L
   @Volatile private var lastFrameAt = 0L
   @Volatile private var lastCapturedImageAt = 0L
+  @Volatile private var lastAnalysisResultAt = 0L
   @Volatile private var lastFreezeNoticeAt = 0L
   private var lastRenderedSignal = ""
   private var lastRenderedDetails = ""
@@ -459,6 +460,7 @@ class ScalpOverlayService : Service() {
             analysisBusy = false
             activeFrameId = -1L
             resultCount += 1
+            lastAnalysisResultAt = System.currentTimeMillis()
             handleResult(result)
           }
           "ERROR" -> {
@@ -1064,8 +1066,14 @@ class ScalpOverlayService : Service() {
       if (reasonChanged || countersDue) {
         lastRenderedModel = model
         if (countersDue) lastRenderedCounterAt = now
-        modelText?.text = model + " • Cadre " + frameCount +
-          " • Rez " + resultCount + " • Erori " + errorCount
+        val streamState = when {
+          lastAnalysisResultAt > 0L && now - lastAnalysisResultAt <= 5000L -> "ANALIZĂ LIVE"
+          lastCapturedImageAt > 0L && now - lastCapturedImageAt <= 3500L -> "CAPTURĂ LIVE"
+          else -> "FĂRĂ FLUX"
+        }
+        modelText?.text = streamState + " • " + model +
+          " • Cadre " + frameCount + " • Rez " + resultCount +
+          " • Erori " + errorCount
       }
     }
   }
