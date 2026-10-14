@@ -64,6 +64,7 @@ internal class LiveTestMonitor(context: Context) {
       .put("buyBips", 0)
       .put("sellBips", 0)
       .put("events", JSONObject())
+      .put("markets", JSONObject())
     if (history.length() >= 8) history.remove(0)
     history.put(test)
     active = test
@@ -77,9 +78,22 @@ internal class LiveTestMonitor(context: Context) {
     events.put(event, events.optInt(event, 0) + 1)
   }
 
+  private fun profile(test: JSONObject, market: String): JSONObject {
+    val markets = test.optJSONObject("markets") ?: JSONObject().also { test.put("markets", it) }
+    val key = market.take(24).ifBlank { "NEIDENTIFICAT" }
+    return markets.optJSONObject(key) ?: JSONObject()
+      .put("samples", 0)
+      .put("opticalCandidates", 0)
+      .put("buyBips", 0)
+      .put("sellBips", 0)
+      .put("regimes", JSONObject())
+      .also { markets.put(key, it) }
+  }
+
   @Synchronized
   fun onClassifier(now: Long, signal: String, tentative: String, score: Int,
-                   quality: Int, opticalGate: Boolean, opticalCount: Int) {
+                   quality: Int, opticalGate: Boolean, opticalCount: Int,
+                   market: String, marketRegime: String) {
     val test = active ?: return
     if (now >= test.optLong("scheduledEndAt")) return
     if (now - lastClassifierAt < 15_000L) return
@@ -94,6 +108,16 @@ internal class LiveTestMonitor(context: Context) {
       else -> "FARA_DIRECTIE_CLARA"
     }
     increment(test, reason)
+    val item = profile(test, market)
+    item.put("samples", item.optInt("samples", 0) + 1)
+    if (reason == "CANDIDAT_VALIDAT_OPTIC") {
+      item.put("opticalCandidates", item.optInt("opticalCandidates", 0) + 1)
+    }
+    val regimes = item.optJSONObject("regimes") ?: JSONObject().also {
+      item.put("regimes", it)
+    }
+    val label = marketRegime.take(30)
+    regimes.put(label, regimes.optInt(label, 0) + 1)
   }
 
   // Once 30 minutes elapse, keep-screen-on must be released even while the
@@ -102,12 +126,14 @@ internal class LiveTestMonitor(context: Context) {
   fun isActive(): Boolean = active != null
 
   @Synchronized
-  fun onBeep(now: Long, direction: String) {
+  fun onBeep(now: Long, direction: String, market: String) {
     val test = active ?: return
     if (now >= test.optLong("scheduledEndAt")) return
     val field = if (direction == "BUY") "buyBips" else if (direction == "SELL")
       "sellBips" else return
     test.put(field, test.optInt(field, 0) + 1)
+    val item = profile(test, market)
+    item.put(field, item.optInt(field, 0) + 1)
     persist()
   }
 
