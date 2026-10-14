@@ -1213,7 +1213,7 @@ class ScalpOverlayService : Service() {
     } catch (_: Throwable) {
       // The signal/audio can still work if file storage temporarily fails.
     }
-    try { liveTest.onBeep(now, confirmedSignal) } catch (_: Throwable) {}
+    try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
     playBip(confirmedSignal)
     updateOverlay(
       confirmedSignal,
