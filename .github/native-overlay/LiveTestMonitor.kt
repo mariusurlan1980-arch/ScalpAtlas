@@ -96,6 +96,11 @@ internal class LiveTestMonitor(context: Context) {
     increment(test, reason)
   }
 
+  // Once 30 minutes elapse, keep-screen-on must be released even while the
+  // chart capture service continues to run.
+  @Synchronized
+  fun isActive(): Boolean = active != null
+
   @Synchronized
   fun onBeep(now: Long, direction: String) {
     val test = active ?: return
