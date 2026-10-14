@@ -1,4 +1,4 @@
-name: SCALP ATLAS LIVE Alerts multi-broker v3.1.0
+name: SCALP ATLAS LIVE Alerts multi-broker v3.1.1
 
 on:
   push:
@@ -67,10 +67,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.1.0'
+          expo['version']='3.1.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=310
+          expo['android']['versionCode']=311
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -198,6 +198,15 @@ jobs:
           grep -q "candidateDirection:r.clear?r.dir:'NONE'" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q 'private val maxObservations = 100' .github/native-overlay/SignalJournal.kt
           grep -q 'journal.observe(' .github/native-overlay/ScalpOverlayService.kt
+          test -s .github/native-overlay/LiveTestMonitor.kt
+          grep -q 'liveTest.begin(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'liveTest.tick(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'liveTest.onClassifier(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'liveTest.onBeep(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'testStatusText' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'Test-LIVE-sesiuni.json' .github/native-overlay/SignalJournal.kt
+          grep -q '30L \* 60_000L' .github/native-overlay/LiveTestMonitor.kt
+          ! grep -E -q 'AccessibilityService|dispatchGesture|placeDemoOrder' .github/native-overlay/LiveTestMonitor.kt
           grep -q 'opticalCandleGate' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q 'opticalCandleGate' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'maskSelfOverlay' .github/native-overlay/ScalpOverlayService.kt
@@ -256,7 +265,8 @@ jobs:
           cp .github/native-overlay/ScalpOverlayModule.kt "$JAVA_DIR/ScalpOverlayModule.kt"
           cp .github/native-overlay/ScalpOverlayService.kt "$JAVA_DIR/ScalpOverlayService.kt"
           cp .github/native-overlay/SignalJournal.kt "$JAVA_DIR/SignalJournal.kt"
-          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt; do
+          cp .github/native-overlay/LiveTestMonitor.kt "$JAVA_DIR/LiveTestMonitor.kt"
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
 
@@ -365,11 +375,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.1.0.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.1.1.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.1.0
-          path: ScalpAtlas-LIVE-Alerts-v3.1.0.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.1.1
+          path: ScalpAtlas-LIVE-Alerts-v3.1.1.apk
           if-no-files-found: error
           retention-days: 30
