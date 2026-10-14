@@ -928,6 +928,23 @@ class ScalpOverlayService : Service() {
         return
       }
 
+      // New pair or stale/unknown OCR label: NEVER emit a BUY/SELL. A
+      // generic screenshot is not a verified instrument identity.
+      if (!pairReady(now)) {
+        resetSignalState()
+        fullFrame.recycle()
+        if (now - lastTfStatusAt >= 2000L) {
+          lastTfStatusAt = now
+          updateOverlay(
+            "AȘTEAPTĂ",
+            if (marketVerified) "Pereche " + latestMarket + " • stabilizare"
+              else "Pereche neconfirmată",
+            "Aștept două citiri OCR și grafic stabil • fără bip"
+          )
+        }
+        return
+      }
+
       // User-selectable ROI for different broker layouts; no clicks on broker.
       val zone = chartZone
       val portrait = height >= width
@@ -972,8 +989,7 @@ class ScalpOverlayService : Service() {
       val capturedJpeg = stream.toByteArray()
       latestChartJpegBytes = capturedJpeg
       // A follow-up is only a saved picture; never mark WIN/LOSS from pixels.
-      val observedMarket = if (now - latestMarketAt <= 15_000L) latestMarket
-        else "NEIDENTIFICAT"
+      val observedMarket = currentPair(now)
       try {
         journal.followUp(now, observedMarket, selectedTimeframe, capturedJpeg)
       } catch (_: Throwable) {
@@ -985,6 +1001,8 @@ class ScalpOverlayService : Service() {
       frameCount += 1
       val frameId = frameCount
       val tfAtCapture = selectedTimeframe
+      frameMarket = currentPair(now)
+      frameMarketEpoch = marketEpoch
       activeFrameId = frameId
       analysisBusy = true
       analysisStartedAt = now
@@ -1014,6 +1032,15 @@ class ScalpOverlayService : Service() {
   private fun handleResult(result: JSONObject) {
     val now = System.currentTimeMillis()
     if (result.optString("timeframe", "") != selectedTimeframe) return
+    // Results coming back after OCR detects a different pair belong to the
+    // previous chart; they must never be published as signals on this one.
+    if (!pairReady(now) || frameMarketEpoch != marketEpoch ||
+        frameMarket != currentPair(now)) {
+      resetSignalState()
+      updateOverlay("AȘTEAPTĂ", "Pereche neconfirmată sau schimbată",
+        "Rezultat vechi respins • fără bip")
+      return
+    }
     if (tfAutomatic && (!tfVerified || now - confirmedTfAt > TF_STALE_MS)) {
       resetSignalState()
       return
@@ -1034,21 +1061,22 @@ class ScalpOverlayService : Service() {
     try {
       liveTest.onClassifier(
         now, confirmedSignal, result.optString("candidateDirection", "NONE"),
-        score, quality, opticalGate, opticalCount
+        score, quality, opticalGate, opticalCount, currentPair(now),
+        result.optString("marketRegime", "NEDETERMINAT")
       )
     } catch (_: Throwable) {}
 
     // Sample diagnostic telemetry locally: track which gate rejects signals.
     // Observations are never labelled wins/losses and do not place orders.
     try {
-      val market = if (now - latestMarketAt <= 15_000L) latestMarket
-        else "NEIDENTIFICAT"
+      val market = currentPair(now)
       val picture = if (now - lastFrameAt <= 4000L) latestChartJpegBytes else null
       val tentativeDirection = result.optString("candidateDirection", "NONE")
       journal.observe(
         now, timeframe, market, tentativeDirection,
         confirmedSignal == "BUY" || confirmedSignal == "SELL",
-        score, quality, opticalGate, opticalCount, reason, picture
+        score, quality, opticalGate, opticalCount, reason, picture,
+        result.optString("marketRegime", "NEDETERMINAT")
       )
     } catch (_: Throwable) {
       // A diagnostic error must not interrupt the audio or live chart stream.
@@ -1176,8 +1204,7 @@ class ScalpOverlayService : Service() {
     // Record every genuine BIP once, along with a private chart snapshot.
     // This is a SIMULATED signal log, NOT a broker-order or profit log.
     try {
-      val market = if (now - latestMarketAt <= 15_000L) latestMarket
-        else "NEIDENTIFICAT"
+      val market = currentPair(now)
       val picture = if (now - lastFrameAt <= 4000L) latestChartJpegBytes else null
       val count = journal.record(
         now, confirmedSignal, timeframe, market, score, pattern, picture
