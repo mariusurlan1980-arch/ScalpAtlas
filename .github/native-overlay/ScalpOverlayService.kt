@@ -69,6 +69,9 @@ class ScalpOverlayService : Service() {
     private const val ALERT_FRESH_MS = 30_000L
     private const val OCR_INTERVAL_MS = 3000L
     private const val TF_STALE_MS = 18000L
+    private const val MARKET_STALE_MS = 12_000L
+    private const val MARKET_SETTLE_MS = 6_000L
+    private const val MARKET_OCR_CONFIRMATIONS = 2
   }
 
   private lateinit var windowManager: WindowManager
@@ -85,6 +88,14 @@ class ScalpOverlayService : Service() {
   @Volatile private var keepScreenForTest = false
   @Volatile private var latestMarket = "NEIDENTIFICAT"
   @Volatile private var latestMarketAt = 0L
+  @Volatile private var marketVerified = false
+  @Volatile private var marketStableAt = 0L
+  @Volatile private var marketEpoch = 0L
+  private var pendingMarket: String? = null
+  private var pendingMarketCount = 0
+  private var pendingMarketAt = 0L
+  @Volatile private var frameMarketEpoch = -1L
+  @Volatile private var frameMarket = "NEIDENTIFICAT"
   @Volatile private var latestChartJpegBytes: ByteArray? = null
 
   private var mediaProjection: MediaProjection? = null
@@ -152,6 +163,29 @@ class ScalpOverlayService : Service() {
     analysisBusy = false
     activeFrameId = -1L
   }
+
+  /**
+   * Instrument changes must never inherit the previous pair's 3 confirmations,
+   * BUY/SELL headline, or its 5-7 minute direction lock.
+   * This is distinct from transient timeframe OCR failures.
+   */
+  private fun clearOnInstrumentChange() {
+    resetSignalState()
+    lockedDir = null
+    lockedUntil = 0L
+    lockedAt = 0L
+    resetVisualBaseline()
+    marketEpoch += 1L
+  }
+
+  private fun currentPair(now: Long): String =
+    if (marketVerified && now - latestMarketAt <= MARKET_STALE_MS)
+      latestMarket else "NEIDENTIFICAT"
+
+  private fun pairReady(now: Long): Boolean =
+    marketVerified &&
+      now - latestMarketAt <= MARKET_STALE_MS &&
+      now - marketStableAt >= MARKET_SETTLE_MS
 
   private fun resetVisualBaseline() {
     previousVisualSample = null
@@ -613,7 +647,7 @@ class ScalpOverlayService : Service() {
    * Two consistent reads are required; uncertain OCR means NO SIGNAL.
    */
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
-    if (!tfAutomatic || ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
+    if (ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
     ocrBusy = true
     lastOcrAttemptAt = now
 
@@ -628,7 +662,6 @@ class ScalpOverlayService : Service() {
     }
     ocrRecognizer.process(InputImage.fromBitmap(copy, 0))
       .addOnSuccessListener { result ->
-        if (!tfAutomatic) return@addOnSuccessListener
         val pattern = Regex("""(?i)^\s*(M5|M10|M15|5M|10M|15M)(?:\s|$|[^A-Z0-9])""")
         val values = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
           val raw = pattern.find(line.text.trim())?.groupValues?.get(1)?.uppercase() ?: return@mapNotNull null
@@ -643,10 +676,44 @@ class ScalpOverlayService : Service() {
           val match = pairPattern.find(line.text) ?: return@mapNotNull null
           match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase()
         }.distinct()
+        // Require TWO consistent OCR detections. The first different asset
+        // immediately invalidates a confirmed pair and old signal candidates.
         if (pairs.size == 1) {
-          latestMarket = pairs[0]
-          latestMarketAt = observedAt
+          val foundPair = pairs[0]
+          if (foundPair != latestMarket && marketVerified) {
+            marketVerified = false
+            clearOnInstrumentChange()
+            updateOverlay("AȘTEAPTĂ", "Pereche schimbată • verific " + foundPair,
+              "BUY/SELL anterior anulat • aștept identificarea perechii")
+          }
+          if (pendingMarket != foundPair || observedAt - pendingMarketAt > 9_000L) {
+            pendingMarket = foundPair
+            pendingMarketCount = 1
+          } else {
+            pendingMarketCount += 1
+          }
+          pendingMarketAt = observedAt
+          if (pendingMarketCount >= MARKET_OCR_CONFIRMATIONS) {
+            if (!marketVerified || latestMarket != foundPair) {
+              latestMarket = foundPair
+              marketVerified = true
+              marketStableAt = observedAt
+              clearOnInstrumentChange()
+              updateOverlay("AȘTEAPTĂ", "Pereche " + foundPair + " confirmată",
+                "Analiză separată • aștept stabilizarea graficului")
+            }
+            latestMarketAt = observedAt
+          }
+        } else if (marketVerified && observedAt - latestMarketAt > MARKET_STALE_MS) {
+          marketVerified = false
+          pendingMarket = null
+          pendingMarketCount = 0
+          resetSignalState()
+          updateOverlay("AȘTEAPTĂ", "Pereche neidentificată",
+            "Fără bip până la reconfirmarea instrumentului")
         }
+
+        if (!tfAutomatic) return@addOnSuccessListener
 
         if (values.size == 1) {
           val found = values[0]
