@@ -1,4 +1,4 @@
-name: SCALP ATLAS LIVE Alerts multi-broker v3.2.0
+name: SCALP ATLAS LIVE Alerts multi-broker v3.2.1
 
 on:
   push:
@@ -68,10 +68,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.2.0'
+          expo['version']='3.2.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=320
+          expo['android']['versionCode']=321
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -202,6 +202,9 @@ jobs:
           grep -q 'journal.observe(' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'pairReady(now)' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'frameMarketEpoch != marketEpoch' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'manualTfMismatchCount >= 2' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'if (!tfAutomatic \&\& manualTfConflict)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'contains("OTC", ignoreCase = true)' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'PROFILURI PE PERECHE SI TIMEFRAME' .github/native-overlay/SignalJournal.kt
           grep -q 'marketRegime,' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q 'onBeep(now: Long, direction: String, market: String)' .github/native-overlay/LiveTestMonitor.kt
@@ -387,11 +390,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.2.0.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.2.1.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.2.0
-          path: ScalpAtlas-LIVE-Alerts-v3.2.0.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.2.1
+          path: ScalpAtlas-LIVE-Alerts-v3.2.1.apk
           if-no-files-found: error
           retention-days: 30
