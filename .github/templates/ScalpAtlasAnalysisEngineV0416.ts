@@ -273,6 +273,35 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       ?'Respinge suport • fitil inferior':'Respinge rezistență • fitil superior'};
   }
 
+
+  // Experimental DEMO-only: visible trend continuation or pullback resumption.
+  // Optical candle colours are NOT verified OHLC and have no measured edge.
+  // Require the same two CLOSED candle colours as the strict wick setup,
+  // a stable preceding sequence and independently aligned trend.
+  function trendPullbackEvidence(curve,wantedDirection,colors){
+    if(!colors||!colors.ok||!Array.isArray(colors.bars))
+      return {ok:false,reason:colors&&colors.reason||'Lumânări insuficiente'};
+    const bars=colors.bars;
+    if(bars.length<7)return {ok:false,reason:'Mai puțin de șapte lumânări distincte'};
+    const closed=bars.slice(-3,-1);
+    if(closed.length!==2||closed.some(b=>b.color!==wantedDirection))
+      return {ok:false,reason:'Două lumânări închise neconfirmate'};
+    // The rightmost still-forming candle is NEVER considered closed.
+    const prior=bars.slice(-6,-3);
+    if(prior.length<3)return {ok:false,reason:'Istoric recent insuficient'};
+    const pullback=prior[prior.length-1].color!==wantedDirection;
+    const continuation=prior.filter(b=>b.color===wantedDirection).length>=2;
+    if(!pullback&&!continuation)
+      return {ok:false,reason:'Lipsă revenire sau continuitate după retragere'};
+    return {
+      ok:true,
+      dir:wantedDirection,
+      pattern:pullback
+        ?(wantedDirection==='BUY'?'Retragere BUY • reluare trend':'Retragere SELL • reluare trend')
+        :(wantedDirection==='BUY'?'Continuare trend BUY':'Continuare trend SELL')
+    };
+  }
+
   function classify(curve){
     const {pts,w,h,quality}=curve;
     if(pts.length<10||quality<.25)return {clear:false,dir:'NONE',atlas:'—',idx:0,score:0,reason:'Imagine insuficient de clară'};
@@ -647,20 +676,26 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         const buyWick=wickRejectionEvidence(curve,'BUY',buyColors);
         const sellWick=wickRejectionEvidence(curve,'SELL',sellColors);
         const wick=buyWick.ok?buyWick:sellWick.ok?sellWick:null;
+        const buyTrend=trendPullbackEvidence(curve,'BUY',buyColors);
+        const sellTrend=trendPullbackEvidence(curve,'SELL',sellColors);
+        const trendSetup=buyTrend.ok?buyTrend:sellTrend.ok?sellTrend:null;
+        const setup=wick||trendSetup;
         const recentPts=curve.pts.slice(-Math.max(10,Math.floor(curve.pts.length*.5)));
         const normalizedSlope=-linReg(recentPts).slope*curve.w/curve.h;
-        const trendAligned=!!wick&&(wick.dir==='BUY'?normalizedSlope>.015:normalizedSlope<-.015);
+        const trendAligned=!!setup&&(setup.dir==='BUY'?normalizedSlope>.015:normalizedSlope<-.015);
         const supportedTf=['M5','M10','M15'].includes(String(timeframe));
-        const wickOk=!!wick&&trendAligned&&supportedTf&&curve.quality>=.55&&
+        const setupOk=!!setup&&trendAligned&&supportedTf&&curve.quality>=.55&&
           marketRegime==='TENDINTA';
-        const r={...base,clear:wickOk,dir:wickOk?wick.dir:'NONE',
-          atlas:wickOk?wick.pattern:'Așteaptă respingere cu fitil',
-          score:wickOk?Math.min(.85,.72+Math.min(.09,wick.ratio*.035)+curve.quality*.045)
+        const r={...base,clear:setupOk,dir:setupOk?setup.dir:'NONE',
+          atlas:setupOk?setup.pattern:'Așteaptă confirmarea trendului/retragerii',
+          score:setupOk?(wick
+            ?Math.min(.85,.72+Math.min(.09,wick.ratio*.035)+curve.quality*.045)
+            :Math.min(.83,.70+curve.quality*.095+Math.min(.04,Math.abs(normalizedSlope)*.14)))
             :Math.min(.69,Number(base.score)||0),
-          reason:wickOk?'':!supportedTf?'Interval nevalidat: folosește M5/M10/M15'
+          reason:setupOk?'':!supportedTf?'Interval nevalidat: folosește M5/M10/M15'
             :marketRegime!=='TENDINTA'?'Piață neclară/laterală: fără bip'
-            :!trendAligned&&wick?'Respingere contra direcției: fără bip'
-            :(buyWick.reason||sellWick.reason||'Fără respingere confirmată')};
+            :!trendAligned&&setup?'Confirmare contra trendului: fără bip'
+            :(buyTrend.reason||sellTrend.reason||buyWick.reason||sellWick.reason||'Fără confirmare de trend/retragere')};
         const evidence=r.clear?candleEvidence(curve,r.dir):{ok:false,reason:r.reason};
         const clear=r.clear&&evidence.ok;
         const duration=clear?directionDurationFor(timeframe,r,curve):null;
@@ -675,7 +710,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             timeframe:String(timeframe||'M10'),
             pattern:r.atlas,
             probability:Math.round(r.score*100),
-            expiry:clear?5:null,
+            expiry:clear?(String(timeframe)==='M10'?10:String(timeframe)==='M15'?15:5):null,
             directionMin:duration?duration.min:null,
             directionMax:duration?duration.max:null,
             trendStrength:duration?Math.round(duration.trendStrength*100):null,
@@ -690,6 +725,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             opticalCandleCount:Math.max(buyColors.count||0,sellColors.count||0),
             opticalCandleGate:!!evidence.ok&&clear,
             wickRejectionGate:!!clear&&!!wick,
+            trendPullbackGate:!!clear&&!!trendSetup,
             // This is an optical cross-check, NOT exchange OHLC data.,
             trendLines:trendLinesFor(curve,r),
             engineVersion:ENGINE_VERSION
