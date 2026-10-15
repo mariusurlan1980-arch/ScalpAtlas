@@ -51,7 +51,7 @@ assert.equal(screen(bearish.map((b,i)=>i===5?{...b,color:'BUY'}:b))('SELL').ok,f
   'two opposite closed bodies = no SELL');
 assert.equal(screen(bullish.slice(0,4))('BUY').ok,false,'not enough candles = no signal');
 assert.match(source,/marketRegime==='TENDINTA'/,'mixed markets must be blocked');
-assert.match(source,/wickRejectionGate:!!clear&&!!wick/,'native gate gets optical rejection flag');
+assert.match(source,/wickRejectionGate:!!clear&&setup===chosenWick/,'native wick setup is independently gated');
 assert.ok(source.includes("expiry:clear?(String(timeframe)==='M10'?10"),'expiry is 10 minutes on M10 demo');
 assert.match(kotlin,/\(wickGate \|\| trendGate\) && readableTrend/,'native bip must require optical wick or confirmed trend');
 assert.ok(source.includes("signal:clear?r.dir:'NONE'"),'live bridge shape unchanged');
