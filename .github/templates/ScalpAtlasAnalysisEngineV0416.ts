@@ -302,6 +302,62 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     };
   }
 
+
+  // Exactly three live DEMO setups: trend scalp, pullback resumption and
+  // local minimum/maximum reversal. No legacy 70-pattern score can issue an alert.
+  // These are visual structures, not authenticated OTC quotes.
+  function simpleScalpContext(curve){
+    const pts=curve.pts||[],w=curve.w,h=curve.h;
+    if(pts.length<12||curve.quality<.55||(curve.spanCoverage||0)<.26)
+      return {regime:'NECITIBIL',direction:'NONE',recent:0,micro:0,volatility:1,quality:curve.quality||0};
+    const recent=-linReg(pts.slice(-Math.max(10,Math.floor(pts.length*.48)))).slope*w/h;
+    const micro=-linReg(pts.slice(-Math.max(7,Math.floor(pts.length*.23)))).slope*w/h;
+    const full=-linReg(pts).slope*w/h;
+    const deltas=pts.slice(1).map((p,i)=>Math.abs(p.y-pts[i].y)/h);
+    const volatility=Math.min(1,median(deltas)/.035);
+    const directional=Math.abs(recent)>.028&&Math.abs(micro)>.020&&
+      Math.sign(recent)===Math.sign(micro);
+    const direction=directional?(recent>0?'BUY':'SELL'):'NONE';
+    return {regime:volatility>.80?'AGITAT':directional?'TENDINTA':'MIXT',
+      direction,recent,micro,full,volatility,quality:curve.quality};
+  }
+
+  function extremeReversalEvidence(curve,wantedDirection,colors,context){
+    if(!colors||!colors.ok||!Array.isArray(colors.bars)||colors.bars.length<7)
+      return {ok:false,reason:'Lipsește confirmarea optică pentru minim/maxim'};
+    if(!curve||!context||context.regime==='NECITIBIL'||context.regime==='AGITAT')
+      return {ok:false,reason:'Grafic nesigur pentru schimbare de trend'};
+    const pts=curve.pts||[],h=curve.h,w=curve.w;
+    const tail=pts.slice(-Math.max(12,Math.floor(pts.length*.38)));
+    if(tail.length<10)return {ok:false,reason:'Istoric prea scurt pentru maxim/minim'};
+    // Exclude the last two samples: a real turn needs a few observations AFTER
+    // the extreme. Also reject extrema that happened too far back.
+    const eligible=tail.slice(0,-2);
+    let idx=0;
+    for(let i=1;i<eligible.length;i++){
+      const better=wantedDirection==='BUY'?eligible[i].y>eligible[idx].y:
+        eligible[i].y<eligible[idx].y;
+      if(better)idx=i;
+    }
+    const remaining=tail.length-1-idx;
+    if(remaining<3||remaining>Math.max(8,Math.floor(tail.length*.60)))
+      return {ok:false,reason:'Minimul/maximul nu este recent'};
+    const before=tail.slice(Math.max(0,idx-5),idx+1);
+    const after=tail.slice(idx);
+    if(before.length<4||after.length<4)return {ok:false,reason:'Schimbare de direcție neconfirmată'};
+    const priorSlope=-linReg(before).slope*w/h;
+    const reboundSlope=-linReg(after).slope*w/h;
+    const rebound=(tail[tail.length-1].y-tail[idx].y)/h;
+    const confirmed=wantedDirection==='BUY'
+      ?priorSlope<-.025&&reboundSlope>.025&&rebound<-.014
+      :priorSlope>.025&&reboundSlope<-.025&&rebound>.014;
+    if(!confirmed)return {ok:false,reason:'Maxim/minim fără schimbare clară de direcție'};
+    // A genuine reversal turns against the previous swing, not just a candle
+    // colour change inside an otherwise fast directional move.
+    return {ok:true,dir:wantedDirection,
+      pattern:wantedDirection==='BUY'?'Minim local • schimbare BUY':'Maxim local • schimbare SELL'};
+  }
+
   function classify(curve){
     const {pts,w,h,quality}=curve;
     if(pts.length<10||quality<.25)return {clear:false,dir:'NONE',atlas:'—',idx:0,score:0,reason:'Imagine insuficient de clară'};
@@ -661,41 +717,47 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       try{
         const curve=buildPriceCurve(img);
         if(!curve){send({type:'ERROR',frameId,message:'Imaginea nu a putut fi citită.'});return;}
-        const base=classify(curve),anchor=curve.anchor;
-        // Optical regime is computed from the current screenshot only:
-        // NOT broker price OHLC, never a verified per-asset volatility metric.
-        const vol=Math.max(0,Math.min(1,Number(base.volatility)||0));
-        const trend=Math.max(0,Math.min(1,Number(base.trendStrength)||0));
-        const recent=Math.max(0,Math.min(1,Number(base.recentStrength)||0));
-        const marketRegime=curve.quality<.42?'NECITIBIL':
-          vol>.80?'AGITAT':
-          trend>.52&&recent>.46?'TENDINTA':
-          trend<.30&&recent<.30?'LATERAL':'MIXT';
-        // Live v3.2.3: breakout setups no longer emit audio alerts.
+        const anchor=curve.anchor;
+        const context=simpleScalpContext(curve);
         const buyColors=candleEvidence(curve,'BUY'),sellColors=candleEvidence(curve,'SELL');
         const buyWick=wickRejectionEvidence(curve,'BUY',buyColors);
         const sellWick=wickRejectionEvidence(curve,'SELL',sellColors);
-        const wick=buyWick.ok?buyWick:sellWick.ok?sellWick:null;
         const buyTrend=trendPullbackEvidence(curve,'BUY',buyColors);
         const sellTrend=trendPullbackEvidence(curve,'SELL',sellColors);
-        const trendSetup=buyTrend.ok?buyTrend:sellTrend.ok?sellTrend:null;
-        const setup=wick||trendSetup;
-        const recentPts=curve.pts.slice(-Math.max(10,Math.floor(curve.pts.length*.5)));
-        const normalizedSlope=-linReg(recentPts).slope*curve.w/curve.h;
-        const trendAligned=!!setup&&(setup.dir==='BUY'?normalizedSlope>.015:normalizedSlope<-.015);
+        const buyExtreme=extremeReversalEvidence(curve,'BUY',buyColors,context);
+        const sellExtreme=extremeReversalEvidence(curve,'SELL',sellColors,context);
         const supportedTf=['M5','M10','M15'].includes(String(timeframe));
-        const setupOk=!!setup&&trendAligned&&supportedTf&&curve.quality>=.55&&
-          marketRegime==='TENDINTA';
-        const r={...base,clear:setupOk,dir:setupOk?setup.dir:'NONE',
-          atlas:setupOk?setup.pattern:'Așteaptă confirmarea trendului/retragerii',
-          score:setupOk?(wick
-            ?Math.min(.85,.72+Math.min(.09,wick.ratio*.035)+curve.quality*.045)
-            :Math.min(.83,.70+curve.quality*.095+Math.min(.04,Math.abs(normalizedSlope)*.14)))
-            :Math.min(.69,Number(base.score)||0),
+        const trendDir=context.direction;
+        // Prioritize clearly turning local minima/maxima, then wick rejection,
+        // then trend pullback and finally trend scalp continuation.
+        const extrema=buyExtreme.ok?buyExtreme:sellExtreme.ok?sellExtreme:null;
+        const wick=buyWick.ok?buyWick:sellWick.ok?sellWick:null;
+        const trendSetup=buyTrend.ok?buyTrend:sellTrend.ok?sellTrend:null;
+        const chosenExtreme=extrema&&Math.sign(context.micro)===
+          (extrema.dir==='BUY'?1:-1)?extrema:null;
+        const chosenWick=wick&&context.regime==='TENDINTA'&&
+          wick.dir===trendDir?wick:null;
+        const chosenTrend=trendSetup&&context.regime==='TENDINTA'&&
+          trendSetup.dir===trendDir?trendSetup:null;
+        const setup=chosenExtreme||chosenWick||chosenTrend;
+        const marketRegime=context.regime==='MIXT'&&chosenExtreme?'REVERSARE':context.regime;
+        const setupOk=!!setup&&supportedTf&&
+          (marketRegime==='TENDINTA'||marketRegime==='REVERSARE')&&
+          curve.quality>=.55;
+        const r={clear:setupOk,dir:setupOk?setup.dir:'NONE',
+          atlas:setupOk?setup.pattern:'Așteaptă trend, retragere sau extrem local',
+          // Optical reliability score only; not calibrated probability of WIN.
+          score:setupOk?Math.min(.83,.70+curve.quality*.10+
+            Math.min(.035,Math.abs(context.micro)*.12)):.20,
           reason:setupOk?'':!supportedTf?'Interval nevalidat: folosește M5/M10/M15'
-            :marketRegime!=='TENDINTA'?'Piață neclară/laterală: fără bip'
-            :!trendAligned&&setup?'Confirmare contra trendului: fără bip'
-            :(buyTrend.reason||sellTrend.reason||buyWick.reason||sellWick.reason||'Fără confirmare de trend/retragere')};
+            :context.regime==='NECITIBIL'?'Lumânările sau graficul nu pot fi citite'
+            :context.regime==='AGITAT'?'Piață prea agitată: fără bip'
+            :'Fără confirmare de trend, retragere sau minim/maxim',
+          volatility:context.volatility,quality:curve.quality,
+          trendStrength:Math.min(1,Math.abs(context.full||0)/.28),
+          recentStrength:Math.min(1,Math.abs(context.recent||0)/.35),
+          microStrength:Math.min(1,Math.abs(context.micro||0)/.35),
+          consensus:1};
         const evidence=r.clear?candleEvidence(curve,r.dir):{ok:false,reason:r.reason};
         const clear=r.clear&&evidence.ok;
         const duration=clear?directionDurationFor(timeframe,r,curve):null;
@@ -724,8 +786,9 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             // Previously every rejected setup logged zero bars because `evidence` was a dummy object.
             opticalCandleCount:Math.max(buyColors.count||0,sellColors.count||0),
             opticalCandleGate:!!evidence.ok&&clear,
-            wickRejectionGate:!!clear&&!!wick,
-            trendPullbackGate:!!clear&&!!trendSetup,
+            wickRejectionGate:!!clear&&setup===chosenWick,
+            trendPullbackGate:!!clear&&setup===chosenTrend,
+            extremeReversalGate:!!clear&&setup===chosenExtreme,
             // This is an optical cross-check, NOT exchange OHLC data.,
             trendLines:trendLinesFor(curve,r),
             engineVersion:ENGINE_VERSION
