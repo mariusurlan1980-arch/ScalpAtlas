@@ -387,7 +387,7 @@ jobs:
           NODE_ENV: production
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
 
       - name: Verify APK, analyzer, signature, and app identity
         run: |
@@ -399,6 +399,12 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
+          if unzip -Z1 "$APK" | grep -E '^lib/(x86|x86_64|armeabi-v7a)/'; then
+            echo "Unexpected non-arm64 native binaries in Motorola APK" >&2
+            exit 1
+          fi
+          unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
+          test "$(stat -c %s "$APK")" -lt 95000000
           cp "$APK" ScalpAtlas-LIVE-Alerts-v3.2.4-SAFETY-FIX.apk
 
       - uses: actions/upload-artifact@v4
