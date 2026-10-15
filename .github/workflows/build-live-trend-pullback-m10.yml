@@ -28,6 +28,9 @@ concurrency:
   group: scalp-atlas-live-trend-pullback-20261015
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -416,3 +419,19 @@ jobs:
           path: ScalpAtlas-LIVE-Alerts-v3.2.5-TREND-PULLBACK-DEMO.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish direct APK for DEMO (no ZIP required on phone)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FILE="ScalpAtlas-LIVE-Alerts-v3.2.5-TREND-PULLBACK-DEMO.apk"
+          test -s "$FILE"
+          TAG="scalp-atlas-live-v3.2.5-three-setups-demo"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "SCALP ATLAS LIVE v3.2.5 • 3 strategii • DEMO" \
+              --notes "APK Android experimental cu suprapunere LIVE. Trei setup-uri vizuale: continuare/scalp trend, retragere si revenire, minim/maxim local cu inversare confirmata. M10: expirare indicativa 10 minute. BUY/SELL sunt alerte, nu ordine. Fara rentabilitate validata; testati EXCLUSIV in cont DEMO. Nu garantam WIN. Fara dublarea mizei." \
+              --prerelease
