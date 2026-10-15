@@ -18,6 +18,7 @@ on:
       - '.github/native-overlay/**'
       - '.github/scripts/test_live_candle_evidence.mjs'
       - '.github/scripts/test_live_confirmation_freshness.mjs'
+      - '.github/scripts/test_live_wick_rejection_v323.mjs'
       - '.github/scripts/test_pair_adaptive_live.mjs'
       - '.github/scripts/test_live_journal_freshness_v324.mjs'
       - '.github/scripts/test_live_trend_pullback_m10.mjs'
