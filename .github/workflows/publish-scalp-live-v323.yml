@@ -1,0 +1,50 @@
+name: Publish Scalp Atlas LIVE v3.2.3 APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-scalp-live-v323.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified Android build artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: "11948642367"
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            --output scalp-build.zip
+          unzip -t scalp-build.zip
+          unzip -j scalp-build.zip "ScalpAtlas-LIVE-Alerts-v3.2.3-WICK-TEST.apk"
+          mv "ScalpAtlas-LIVE-Alerts-v3.2.3-WICK-TEST.apk" "ScalpAtlas-LIVE-v3.2.3-Motorola.apk"
+          echo "5048cef4d0c181347a4e62589171b49248781dc704fdbab6c504dfa5ca5b8686  ScalpAtlas-LIVE-v3.2.3-Motorola.apk" | sha256sum --check
+
+      - name: Publish permanent direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="scalp-atlas-live-v3.2.3-motorola"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" ScalpAtlas-LIVE-v3.2.3-Motorola.apk --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" ScalpAtlas-LIVE-v3.2.3-Motorola.apk \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "ae1e56342dbb779f52cd80864a77a140c2fd8750" \
+              --title "Scalp Atlas LIVE v3.2.3 - Motorola Android (test)" \
+              --notes "APK verificat din build-ul Android v3.2.3 (15 octombrie 2026). Aceasta este o versiune TEST, nu o promisiune de profit. Instalare doar pe dispozitiv Android compatibil, analiză și teste exclusiv DEMO. Nu execută automat ordine reale." \
+              --prerelease
+          fi
