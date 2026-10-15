@@ -25,6 +25,9 @@ internal class SignalJournal(private val context: Context) {
   private val dir = File(context.filesDir, "signal_journal")
   private val index = File(dir, "index.json")
   private val maxRecords = 50
+  // Accept only screenshots from the real T+5m window, not 10-20 minutes later.
+  private val targetFollowupMs = 5L * 60_000L
+  private val followupToleranceMs = 45_000L
   private val entries = JSONArray()
   // Small, bounded, device-only diagnostics sampled once every 15 seconds.
   private val diagnosticIndex = File(dir, "diagnostics.json")
@@ -185,21 +188,28 @@ internal class SignalJournal(private val context: Context) {
       val item = entries.optJSONObject(i) ?: continue
       if (item.optString("status") != "ASTEPTARE_T_PLUS_5_MIN") continue
       val elapsed = now - item.optLong("timestamp")
-      if (elapsed < 5 * 60_000L) continue
-      // If the broker changed during the signal, do not fake an outcome.
+      if (elapsed < targetFollowupMs) continue
+      // Reject an overdue frame even when the SAME pair/TF returns much later.
+      // The old journal called a 10-20 minute image a T+5m screenshot.
+      if (elapsed > targetFollowupMs + followupToleranceMs) {
+        item.put("status", "FARA_CAPTURA_COMPARABILA")
+        item.put("followupReason", "CAPTURA_INTARZIATA")
+        item.put("followupDelaySeconds", elapsed / 1000L)
+        changed = true
+        continue
+      }
+      // If the broker changed, wait briefly for a comparable frame, never
+      // substitute a screenshot from a different instrument/timeframe.
       if (item.optString("market") == "NEIDENTIFICAT" ||
           market != item.optString("market") ||
           tf != item.optString("timeframe")) {
-        if (elapsed > 7 * 60_000L) {
-          item.put("status", "FARA_CAPTURA_COMPARABILA")
-          changed = true
-        }
         continue
       }
       val name = "dupa_5m_" + item.optString("id") + ".jpg"
       File(dir, name).writeBytes(frame)
       item.put("followupImage", name)
       item.put("followupAt", now)
+      item.put("followupDelaySeconds", elapsed / 1000L)
       item.put("status", "CAPTURI_DISPONIBILE")
       item.put("outcome", "NEVERIFICAT")
       changed = true
@@ -316,6 +326,12 @@ internal class SignalJournal(private val context: Context) {
       appendLine("   T+5m: ${item.optString("status")} • rezultat: NEVERIFICAT")
       if (!item.isNull("followupAt")) {
         appendLine("   Captura T+5m: ${stamp(item.optLong("followupAt"))}")
+      }
+      if (!item.isNull("followupDelaySeconds")) {
+        appendLine("   Interval real de la BIP: ${item.optLong("followupDelaySeconds")} sec")
+      }
+      if (item.optString("followupReason") == "CAPTURA_INTARZIATA") {
+        appendLine("   NOTĂ: captură prea târzie; comparația la 5 minute este invalidă.")
       }
     }
     appendLine()
