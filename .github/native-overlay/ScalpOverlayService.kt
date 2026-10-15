@@ -1109,9 +1109,15 @@ class ScalpOverlayService : Service() {
     // pullback; never signal from a breakout score alone or a mixed chart.
     val wickGate = result.optBoolean("wickRejectionGate", false)
     val trendGate = result.optBoolean("trendPullbackGate", false)
-    val readableTrend = result.optString("marketRegime", "") == "TENDINTA"
+    val extremeGate = result.optBoolean("extremeReversalGate", false)
+    val regime = result.optString("marketRegime", "")
+    val readableTrend = regime == "TENDINTA"
+    // Three permitted sources: scalp/continuation, pullback, or confirmed
+    // local minimum/maximum reversal. Never alert without optical candles.
+    val allowedSetup = ((wickGate || trendGate) && readableTrend) ||
+        (extremeGate && regime == "REVERSARE")
     val confirmedSignal = if (quality >= 55 && score >= 70 && opticalGate &&
-        (wickGate || trendGate) && readableTrend) rawSignal else "NONE"
+        allowedSetup) rawSignal else "NONE"
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
     val pattern = result.optString("pattern", "—")
