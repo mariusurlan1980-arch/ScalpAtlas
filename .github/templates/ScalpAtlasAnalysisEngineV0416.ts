@@ -740,7 +740,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         const chosenTrend=trendSetup&&context.regime==='TENDINTA'&&
           trendSetup.dir===trendDir?trendSetup:null;
         const setup=chosenExtreme||chosenWick||chosenTrend;
-        const marketRegime=context.regime==='MIXT'&&chosenExtreme?'REVERSARE':context.regime;
+        const marketRegime=chosenExtreme?'REVERSARE':context.regime;
         const setupOk=!!setup&&supportedTf&&
           (marketRegime==='TENDINTA'||marketRegime==='REVERSARE')&&
           curve.quality>=.55;
