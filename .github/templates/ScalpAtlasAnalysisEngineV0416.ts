@@ -783,7 +783,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             anchorY:anchor?((anchor.lo+anchor.hi)/2)/curve.h:null,
             quality:Math.round(curve.quality*100),
             // Report detected optical bars even if the higher-level wick/trend gate rejects the setup.
-            // Previously every rejected setup logged zero bars because `evidence` was a dummy object.
+            // Previously rejected setups logged zero bars because evidence was a dummy object.
             opticalCandleCount:Math.max(buyColors.count||0,sellColors.count||0),
             opticalCandleGate:!!evidence.ok&&clear,
             wickRejectionGate:!!clear&&setup===chosenWick,
