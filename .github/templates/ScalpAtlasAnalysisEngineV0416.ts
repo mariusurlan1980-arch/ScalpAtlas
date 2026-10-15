@@ -62,8 +62,10 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     canvas.width=w;canvas.height=h;ctx.clearRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
 
     const data=ctx.getImageData(0,0,w,h).data;
-    // Exclude bottom trading buttons and the far-right action/price panel.
-    const x0=Math.floor(w*.02),x1=Math.floor(w*.84),y0=Math.floor(h*.12),y1=Math.floor(h*.73);
+    // The saved LIVE captures contain the app's own overlay headline from about 68% height.
+    // Exclude it from price-curve extraction, otherwise coloured UI text is mistaken for price candles.
+    // This is a conservative fail-closed chart ROI, not a relaxation of the signal gate.
+    const x0=Math.floor(w*.02),x1=Math.floor(w*.84),y0=Math.floor(h*.12),y1=Math.floor(h*.68);
     const bins=64,binW=(x1-x0)/bins,pts=[];
     const minSpan=Math.max(3,h*.008),clusterGap=Math.max(4,h*.014);
 
@@ -155,7 +157,8 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const w=curve.w,h=curve.h;
     const px=ctx.getImageData(0,0,w,h).data;
     const left=Math.floor(w*.08),right=Math.floor(w*.85);
-    const top=Math.floor(h*.12),bottom=Math.floor(h*.83);
+    // The native overlay may occupy y >= 0.68*h; never treat its green/red UI as a candle.
+    const top=Math.floor(h*.12),bottom=Math.floor(h*.68);
     const cols=[];
     for(let x=left;x<right;x++){
       let red=0,green=0;
@@ -223,7 +226,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const bars=colors.bars,n=bars.length;
     if(n<6)return {ok:false,reason:'Prea puține lumânări pentru suport/rezistență'};
     const w=curve.w,h=curve.h,px=ctx.getImageData(0,0,w,h).data;
-    const y0=Math.floor(h*.12),y1=Math.floor(h*.83);
+    const y0=Math.floor(h*.12),y1=Math.floor(h*.68);
     const isColor=(i)=>{
       const r=px[i],g=px[i+1],b=px[i+2];
       return wantedDirection==='BUY'
@@ -682,7 +685,9 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             anchorX:anchor?anchor.x/curve.w:null,
             anchorY:anchor?((anchor.lo+anchor.hi)/2)/curve.h:null,
             quality:Math.round(curve.quality*100),
-            opticalCandleCount:evidence.count||0,
+            // Report detected optical bars even if the higher-level wick/trend gate rejects the setup.
+            // Previously every rejected setup logged zero bars because `evidence` was a dummy object.
+            opticalCandleCount:Math.max(buyColors.count||0,sellColors.count||0),
             opticalCandleGate:!!evidence.ok&&clear,
             wickRejectionGate:!!clear&&!!wick,
             // This is an optical cross-check, NOT exchange OHLC data.,
