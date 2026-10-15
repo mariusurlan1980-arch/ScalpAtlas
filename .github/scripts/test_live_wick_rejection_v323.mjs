@@ -52,7 +52,7 @@ assert.equal(screen(bearish.map((b,i)=>i===5?{...b,color:'BUY'}:b))('SELL').ok,f
 assert.equal(screen(bullish.slice(0,4))('BUY').ok,false,'not enough candles = no signal');
 assert.match(source,/marketRegime==='TENDINTA'/,'mixed markets must be blocked');
 assert.match(source,/wickRejectionGate:!!clear&&!!wick/,'native gate gets optical rejection flag');
-assert.match(source,/expiry:clear\\?5:null/,'expiry fixed at five minutes for demo');
+assert.ok(source.includes('expiry:clear?5:null'),'expiry fixed at five minutes for demo');
 assert.match(kotlin,/wickGate && readableTrend/,'native bip must require optical wick');
 assert.ok(source.includes("signal:clear?r.dir:'NONE'"),'live bridge shape unchanged');
 console.log('PASS: 5 synthetic optical scenarios and 5 LIVE safety invariants');
