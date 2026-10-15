@@ -1,0 +1,26 @@
+name: Verify Scalp Atlas wick-rejection motor
+on:
+  push:
+    branches:
+      - fix/live-wick-rejection-20261015
+  pull_request:
+    branches:
+      - feature/live-alerts-any-broker-20261013
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prior LIVE candle evidence regression
+        run: node .github/scripts/test_live_candle_evidence.mjs
+      - name: Prior LIVE confirmation freshness regression
+        run: node .github/scripts/test_live_confirmation_freshness.mjs
+      - name: Prior LIVE pair separation regression
+        run: node .github/scripts/test_pair_adaptive_live.mjs
+      - name: New LIVE wick-rejection regression
+        run: node .github/scripts/test_live_wick_rejection_v323.mjs

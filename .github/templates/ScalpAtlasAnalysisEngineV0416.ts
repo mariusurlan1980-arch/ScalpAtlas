@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.3.4-separated-optical-bars';
+  const ENGINE_VERSION='3.2.3-wick-rejection-research';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -62,8 +62,10 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     canvas.width=w;canvas.height=h;ctx.clearRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
 
     const data=ctx.getImageData(0,0,w,h).data;
-    // Exclude bottom trading buttons and the far-right action/price panel.
-    const x0=Math.floor(w*.02),x1=Math.floor(w*.84),y0=Math.floor(h*.12),y1=Math.floor(h*.73);
+    // The saved LIVE captures contain the app's own overlay headline from about 68% height.
+    // Exclude it from price-curve extraction, otherwise coloured UI text is mistaken for price candles.
+    // This is a conservative fail-closed chart ROI, not a relaxation of the signal gate.
+    const x0=Math.floor(w*.02),x1=Math.floor(w*.84),y0=Math.floor(h*.12),y1=Math.floor(h*.68);
     const bins=64,binW=(x1-x0)/bins,pts=[];
     const minSpan=Math.max(3,h*.008),clusterGap=Math.max(4,h*.014);
 
@@ -155,7 +157,8 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const w=curve.w,h=curve.h;
     const px=ctx.getImageData(0,0,w,h).data;
     const left=Math.floor(w*.08),right=Math.floor(w*.85);
-    const top=Math.floor(h*.12),bottom=Math.floor(h*.83);
+    // The native overlay may occupy y >= 0.68*h; never treat its green/red UI as a candle.
+    const top=Math.floor(h*.12),bottom=Math.floor(h*.68);
     const cols=[];
     for(let x=left;x<right;x++){
       let red=0,green=0;
@@ -211,7 +214,63 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       return {ok:false,reason:'Ultimele două lumânări închise au culori opuse',count:candles.length};
     if(closedA.color!==wantedDirection)
       return {ok:false,reason:'Ultimele lumânări închise contrazic semnalul',count:candles.length};
-    return {ok:true,reason:'',count:candles.length,closedDirection:closedB.color};
+    return {ok:true,reason:'',count:candles.length,closedDirection:closedB.color,bars:candles};
+  }
+
+
+  // Optical only: this is NOT exchange OHLC and it cannot predict trade outcomes.
+  // Require a visible rejected extreme and a second CLOSED bar in the same direction.
+  function wickRejectionEvidence(curve,wantedDirection,colors){
+    if(!colors||!colors.ok||!Array.isArray(colors.bars))
+      return {ok:false,reason:colors&&colors.reason||'Lumânări neconfirmate'};
+    const bars=colors.bars,n=bars.length;
+    if(n<6)return {ok:false,reason:'Prea puține lumânări pentru suport/rezistență'};
+    const w=curve.w,h=curve.h,px=ctx.getImageData(0,0,w,h).data;
+    const y0=Math.floor(h*.12),y1=Math.floor(h*.68);
+    const isColor=(i)=>{
+      const r=px[i],g=px[i+1],b=px[i+2];
+      return wantedDirection==='BUY'
+        ?g>80&&g>r*1.12&&g>b*.88&&g-Math.min(r,b)>33
+        :r>105&&r>g*1.10&&r>b*1.04&&r-Math.min(g,b)>36;
+    };
+    function geometry(bar){
+      const left=Math.max(0,bar.start),right=Math.min(w-1,bar.end);
+      const width=right-left+1;
+      if(width<3)return null;
+      let top=y1,bottom=y0,bodyTop=y1,bodyBottom=y0,bodyRows=0;
+      const required=Math.max(2,Math.ceil(width*.65));
+      for(let y=y0;y<y1;y++){
+        let row=0;
+        for(let x=left;x<=right;x++)if(isColor((y*w+x)*4))row++;
+        if(row>0){top=Math.min(top,y);bottom=Math.max(bottom,y);}
+        if(row>=required){bodyTop=Math.min(bodyTop,y);bodyBottom=Math.max(bodyBottom,y);bodyRows++;}
+      }
+      if(bodyRows<5||bottom<=top||bodyBottom<bodyTop)return null;
+      return {top,bottom,bodyTop,bodyBottom,body:bodyBottom-bodyTop+1};
+    }
+    const rejected=geometry(bars[n-3]),confirmed=geometry(bars[n-2]);
+    if(!rejected||!confirmed)
+      return {ok:false,reason:'Fitilul și corpul lumânării sunt neclare'};
+    const history=bars.slice(Math.max(0,n-8),n-3).map(geometry).filter(Boolean);
+    if(history.length<2)return {ok:false,reason:'Suport/rezistență neverificabile'};
+    const wick=wantedDirection==='BUY'
+      ?rejected.bottom-rejected.bodyBottom:rejected.bodyTop-rejected.top;
+    const opposite=wantedDirection==='BUY'
+      ?rejected.bodyTop-rejected.top:rejected.bottom-rejected.bodyBottom;
+    const ratio=wick/Math.max(1,rejected.body);
+    if(ratio<1.6||opposite>rejected.body*.8)
+      return {ok:false,reason:'Fără fitil dominant de respingere'};
+    const tolerance=Math.max(4,Math.round(h*.025));
+    const nearLevel=wantedDirection==='BUY'
+      ?rejected.bottom>=Math.max(...history.map(c=>c.bottom))-tolerance
+      :rejected.top<=Math.min(...history.map(c=>c.top))+tolerance;
+    if(!nearLevel)return {ok:false,reason:'Nu există respingere lângă nivelul recent'};
+    const resumption=wantedDirection==='BUY'
+      ?confirmed.bodyTop<=rejected.bodyTop-2
+      :confirmed.bodyBottom>=rejected.bodyBottom+2;
+    if(!resumption)return {ok:false,reason:'A doua lumânare nu confirmă revenirea'};
+    return {ok:true,dir:wantedDirection,ratio,pattern:wantedDirection==='BUY'
+      ?'Respinge suport • fitil inferior':'Respinge rezistență • fitil superior'};
   }
 
   function classify(curve){
@@ -573,17 +632,36 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
       try{
         const curve=buildPriceCurve(img);
         if(!curve){send({type:'ERROR',frameId,message:'Imaginea nu a putut fi citită.'});return;}
-        const r=classify(curve),anchor=curve.anchor;
+        const base=classify(curve),anchor=curve.anchor;
         // Optical regime is computed from the current screenshot only:
         // NOT broker price OHLC, never a verified per-asset volatility metric.
-        const vol=Math.max(0,Math.min(1,Number(r.volatility)||0));
-        const trend=Math.max(0,Math.min(1,Number(r.trendStrength)||0));
-        const recent=Math.max(0,Math.min(1,Number(r.recentStrength)||0));
+        const vol=Math.max(0,Math.min(1,Number(base.volatility)||0));
+        const trend=Math.max(0,Math.min(1,Number(base.trendStrength)||0));
+        const recent=Math.max(0,Math.min(1,Number(base.recentStrength)||0));
         const marketRegime=curve.quality<.42?'NECITIBIL':
           vol>.80?'AGITAT':
           trend>.52&&recent>.46?'TENDINTA':
           trend<.30&&recent<.30?'LATERAL':'MIXT';
-        const evidence=r.clear?candleEvidence(curve,r.dir):{ok:false,reason:''};
+        // Live v3.2.3: breakout setups no longer emit audio alerts.
+        const buyColors=candleEvidence(curve,'BUY'),sellColors=candleEvidence(curve,'SELL');
+        const buyWick=wickRejectionEvidence(curve,'BUY',buyColors);
+        const sellWick=wickRejectionEvidence(curve,'SELL',sellColors);
+        const wick=buyWick.ok?buyWick:sellWick.ok?sellWick:null;
+        const recentPts=curve.pts.slice(-Math.max(10,Math.floor(curve.pts.length*.5)));
+        const normalizedSlope=-linReg(recentPts).slope*curve.w/curve.h;
+        const trendAligned=!!wick&&(wick.dir==='BUY'?normalizedSlope>.015:normalizedSlope<-.015);
+        const supportedTf=['M5','M10','M15'].includes(String(timeframe));
+        const wickOk=!!wick&&trendAligned&&supportedTf&&curve.quality>=.55&&
+          marketRegime==='TENDINTA';
+        const r={...base,clear:wickOk,dir:wickOk?wick.dir:'NONE',
+          atlas:wickOk?wick.pattern:'Așteaptă respingere cu fitil',
+          score:wickOk?Math.min(.85,.72+Math.min(.09,wick.ratio*.035)+curve.quality*.045)
+            :Math.min(.69,Number(base.score)||0),
+          reason:wickOk?'':!supportedTf?'Interval nevalidat: folosește M5/M10/M15'
+            :marketRegime!=='TENDINTA'?'Piață neclară/laterală: fără bip'
+            :!trendAligned&&wick?'Respingere contra direcției: fără bip'
+            :(buyWick.reason||sellWick.reason||'Fără respingere confirmată')};
+        const evidence=r.clear?candleEvidence(curve,r.dir):{ok:false,reason:r.reason};
         const clear=r.clear&&evidence.ok;
         const duration=clear?directionDurationFor(timeframe,r,curve):null;
         send({
@@ -597,7 +675,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             timeframe:String(timeframe||'M10'),
             pattern:r.atlas,
             probability:Math.round(r.score*100),
-            expiry:clear?expiryFor(timeframe,r.score):null,
+            expiry:clear?5:null,
             directionMin:duration?duration.min:null,
             directionMax:duration?duration.max:null,
             trendStrength:duration?Math.round(duration.trendStrength*100):null,
@@ -607,8 +685,11 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
             anchorX:anchor?anchor.x/curve.w:null,
             anchorY:anchor?((anchor.lo+anchor.hi)/2)/curve.h:null,
             quality:Math.round(curve.quality*100),
-            opticalCandleCount:evidence.count||0,
-            opticalCandleGate:!!evidence.ok,
+            // Report detected optical bars even if the higher-level wick/trend gate rejects the setup.
+            // Previously every rejected setup logged zero bars because `evidence` was a dummy object.
+            opticalCandleCount:Math.max(buyColors.count||0,sellColors.count||0),
+            opticalCandleGate:!!evidence.ok&&clear,
+            wickRejectionGate:!!clear&&!!wick,
             // This is an optical cross-check, NOT exchange OHLC data.,
             trendLines:trendLinesFor(curve,r),
             engineVersion:ENGINE_VERSION
