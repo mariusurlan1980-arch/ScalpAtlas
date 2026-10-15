@@ -66,6 +66,32 @@ const conflicting = buildScreenshot(series(['BUY','SELL','BUY','SELL','BUY']));
 assert.equal(conflicting('SELL').ok, false, 'alternating closed bars must reject SELL');
 assert.match(conflicting('SELL').reason, /culori opuse/);
 
+// Reproduction of 15 Oct 2026 real captures: the green Scalp Atlas title and
+// action-button text appeared below ~68% height, to the RIGHT of broker candles.
+// Such UI must not masquerade as the three most recent closed bars.
+const brokerPlusOverlay = buildScreenshot([
+  ...series(['SELL','BUY','SELL','SELL','BUY']),
+  {color:'BUY', x:304, y:181},
+  {color:'BUY', x:336, y:182},
+  {color:'BUY', x:368, y:183},
+]);
+assert.equal(brokerPlusOverlay('SELL').ok, true,
+  'green overlay/UI text below chart must not override closed SELL bars');
+assert.equal(brokerPlusOverlay('BUY').ok, false,
+  'own overlay must not fabricate matching BUY candles');
+const onlyOverlay = buildScreenshot([
+  {color:'BUY', x:300, y:180},
+  {color:'BUY', x:328, y:180},
+  {color:'BUY', x:356, y:180},
+]);
+assert.equal(onlyOverlay('BUY').count || 0, 0,
+  'UI-only image must report zero optical candles');
+assert.equal(onlyOverlay('BUY').ok, false,
+  'UI-only image must never qualify as a trade');
+
+assert.match(source, /opticalCandleCount:Math\.max\(buyColors\.count\|\|0,sellColors\.count\|\|0\)/,
+  'journal must report detected optical candles even when wick filter blocks audio');
+
 const blank = buildScreenshot([]);
 assert.equal(blank('BUY').ok, false, 'blank screenshots fail closed');
 
@@ -76,4 +102,4 @@ const oldBars = buildScreenshot(['SELL','SELL','SELL','SELL','BUY']
   .map((color,i)=>({color,x:40+i*17,y:65})));
 assert.equal(oldBars('SELL').ok, false, 'old candles far left cannot trigger an alert');
 
-console.log('PASS: 9 optical evidence cases including 1px-gap regression and touching-body fail-closed.');
+console.log('PASS: optical candle tests include UI-occlusion regression, 1px-gap and fail-closed handling.');
