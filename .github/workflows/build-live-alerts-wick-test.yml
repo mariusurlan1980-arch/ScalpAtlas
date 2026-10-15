@@ -1,4 +1,4 @@
-name: Build SCALP ATLAS LIVE v3.2.3 Wick Test
+name: Build SCALP ATLAS LIVE v3.2.4 Safety Fix
 
 on:
   push:
@@ -19,10 +19,11 @@ on:
       - '.github/scripts/test_live_candle_evidence.mjs'
       - '.github/scripts/test_live_confirmation_freshness.mjs'
       - '.github/scripts/test_pair_adaptive_live.mjs'
+      - '.github/scripts/test_live_journal_freshness_v324.mjs'
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-wick-test-20261015
+  group: scalp-atlas-live-safety-20261015
   cancel-in-progress: true
 
 jobs:
@@ -68,10 +69,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE ALERT'
           expo['slug']='scalp-atlas-live-alert'
-          expo['version']='3.2.3'
+          expo['version']='3.2.4'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=323
+          expo['android']['versionCode']=324
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           if 'CAMERA' not in permissions:
@@ -102,6 +103,7 @@ jobs:
           node .github/scripts/test_live_confirmation_freshness.mjs
           node .github/scripts/test_pair_adaptive_live.mjs
           node .github/scripts/test_live_wick_rejection_v323.mjs
+          node .github/scripts/test_live_journal_freshness_v324.mjs
 
       - name: Verify no order automation and existing visual engine
         run: |
@@ -397,11 +399,11 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
-          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.2.3-WICK-TEST.apk
+          cp "$APK" ScalpAtlas-LIVE-Alerts-v3.2.4-SAFETY-FIX.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-Alerts-v3.2.3-WICK-TEST
-          path: ScalpAtlas-LIVE-Alerts-v3.2.3-WICK-TEST.apk
+          name: ScalpAtlas-LIVE-Alerts-v3.2.4-SAFETY-FIX
+          path: ScalpAtlas-LIVE-Alerts-v3.2.4-SAFETY-FIX.apk
           if-no-files-found: error
           retention-days: 30
