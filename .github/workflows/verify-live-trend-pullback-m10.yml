@@ -1,0 +1,28 @@
+name: Verify LIVE trend pullback M10 (DEMO only)
+on:
+  push:
+    branches: [fix/live-trend-pullback-m10-20261015]
+    paths:
+      - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
+      - '.github/native-overlay/ScalpOverlayService.kt'
+      - '.github/scripts/test_live_candle_evidence.mjs'
+      - '.github/scripts/test_live_wick_rejection_v323.mjs'
+      - '.github/scripts/test_live_trend_pullback_m10.mjs'
+      - '.github/workflows/verify-live-trend-pullback-m10.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  optical-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Existing optical candle regression
+        run: node .github/scripts/test_live_candle_evidence.mjs
+      - name: Existing wick rejection regression
+        run: node .github/scripts/test_live_wick_rejection_v323.mjs
+      - name: Trend, pullback and M10 regression
+        run: node .github/scripts/test_live_trend_pullback_m10.mjs

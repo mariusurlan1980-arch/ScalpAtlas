@@ -1,0 +1,42 @@
+name: Publish validated Scalp Atlas v3.2.5 DEMO APK
+on:
+  push:
+    branches: [fix/live-trend-pullback-m10-20261015]
+    paths:
+      - '.github/workflows/publish-live-three-setups-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ScalpAtlas-LIVE-Alerts-v3.2.5-TREND-PULLBACK-DEMO
+          run-id: 38781890118
+          github-token: ${{ github.token }}
+          path: apk
+      - name: Check built APK exists (from previously verified release build)
+        run: |
+          set -euo pipefail
+          test -s apk/ScalpAtlas-LIVE-Alerts-v3.2.5-TREND-PULLBACK-DEMO.apk
+          file apk/ScalpAtlas-LIVE-Alerts-v3.2.5-TREND-PULLBACK-DEMO.apk
+          sha256sum apk/ScalpAtlas-LIVE-Alerts-v3.2.5-TREND-PULLBACK-DEMO.apk
+      - name: Publish direct APK prerelease (not ZIP)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="scalp-atlas-live-v3.2.5-three-setups-demo"
+          APK="apk/ScalpAtlas-LIVE-Alerts-v3.2.5-TREND-PULLBACK-DEMO.apk"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "$APK" --repo "$GITHUB_REPOSITORY" \
+              --target b4ca06cf7331bc539cc4f2fb84bf73dcb8ab806a \
+              --title "SCALP ATLAS LIVE 3.2.5 – trei strategii (numai DEMO)" \
+              --notes "APK Motorola arm64, suprapunere LIVE, 3 configuratii experimentale: scalping in tendinta, retragere si reluare, schimbare de directie dupa minim/maxim local. M10 / 10 minute. Captura doar cu acordul Android. Semnalele NU sunt validate pe piata reala; testati exclusiv in DEMO, fara martingale si fara garantii de castig." \
+              --prerelease
+          fi

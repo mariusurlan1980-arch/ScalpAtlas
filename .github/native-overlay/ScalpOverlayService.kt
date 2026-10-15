@@ -1105,11 +1105,19 @@ class ScalpOverlayService : Service() {
     val timeframe = selectedTimeframe
     // Indicatorul nu reprezintă probabilitate statistică verificată.
     val opticalGate = result.optBoolean("opticalCandleGate", false)
-    // Strict fail-closed guard: breakout scores and mixed charts never beep.
+    // DEMO-only: permit confirmed wick rejection OR continuation after a
+    // pullback; never signal from a breakout score alone or a mixed chart.
     val wickGate = result.optBoolean("wickRejectionGate", false)
-    val readableTrend = result.optString("marketRegime", "") == "TENDINTA"
+    val trendGate = result.optBoolean("trendPullbackGate", false)
+    val extremeGate = result.optBoolean("extremeReversalGate", false)
+    val regime = result.optString("marketRegime", "")
+    val readableTrend = regime == "TENDINTA"
+    // Three permitted sources: scalp/continuation, pullback, or confirmed
+    // local minimum/maximum reversal. Never alert without optical candles.
+    val allowedSetup = ((wickGate || trendGate) && readableTrend) ||
+        (extremeGate && regime == "REVERSARE")
     val confirmedSignal = if (quality >= 55 && score >= 70 && opticalGate &&
-        wickGate && readableTrend) rawSignal else "NONE"
+        allowedSetup) rawSignal else "NONE"
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
     val pattern = result.optString("pattern", "—")
@@ -1243,11 +1251,9 @@ class ScalpOverlayService : Service() {
     // SIGNAL LOCK v1.0.23
     // Blocarea direcției urmează fereastra indicativă a semnalului,
     // pentru a evita alerte contradictorii în câteva secunde.
-    val lockMinutes = when {
-      expiry in 5..7 -> expiry
-      expiry > 0 -> expiry.coerceIn(5, 7)
-      else -> 6
-    }
+    // Keep the lock aligned to the selected M10 ten-minute DEMO contract.
+    // A lock prevents opposite notifications; it is not a trade order.
+    val lockMinutes = if (expiry in 5..15) expiry else 10
     // Publish expiry before direction so other callbacks cannot treat the
     // freshly published direction as an expired lock.
     lockedUntil = now + lockMinutes * 60_000L
