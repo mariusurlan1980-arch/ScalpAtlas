@@ -1094,7 +1094,11 @@ class ScalpOverlayService : Service() {
     val timeframe = selectedTimeframe
     // Indicatorul nu reprezintă probabilitate statistică verificată.
     val opticalGate = result.optBoolean("opticalCandleGate", false)
-    val confirmedSignal = if (quality >= 55 && score >= 70 && opticalGate) rawSignal else "NONE"
+    // Strict fail-closed guard: breakout scores and mixed charts never beep.
+    val wickGate = result.optBoolean("wickRejectionGate", false)
+    val readableTrend = result.optString("marketRegime", "") == "TENDINTA"
+    val confirmedSignal = if (quality >= 55 && score >= 70 && opticalGate &&
+        wickGate && readableTrend) rawSignal else "NONE"
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
     val pattern = result.optString("pattern", "—")
