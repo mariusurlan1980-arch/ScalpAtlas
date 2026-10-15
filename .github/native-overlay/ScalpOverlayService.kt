@@ -59,6 +59,9 @@ class ScalpOverlayService : Service() {
     private const val NOTIFICATION_ID = 4816
     private const val MIN_FRAME_INTERVAL_MS = 700L
     private const val ANALYSIS_TIMEOUT_MS = 5000L
+    // A visually correct pattern is useless if the analyzed frame is stale.
+    // Fail closed before any candidate confirmation or audible alert.
+    private const val MAX_ALERT_ANALYSIS_AGE_MS = 3000L
     private const val CONFIRMATION_SPACING_MS = 20000L
     private const val REQUIRED_CONFIRMATIONS = 3
     // If optical evidence disappears, an old candidate must not recover as
@@ -1075,6 +1078,14 @@ class ScalpOverlayService : Service() {
   private fun handleResult(result: JSONObject) {
     val now = System.currentTimeMillis()
     if (result.optString("timeframe", "") != selectedTimeframe) return
+    val analysisAgeMs = now - lastFrameAt
+    if (lastFrameAt <= 0L || analysisAgeMs < 0L ||
+        analysisAgeMs > MAX_ALERT_ANALYSIS_AGE_MS) {
+      resetSignalState()
+      updateOverlay("AȘTEAPTĂ", "Analiză întârziată",
+        "Cadru vechi • fără candidat și fără bip")
+      return
+    }
     // Results coming back after OCR detects a different pair belong to the
     // previous chart; they must never be published as signals on this one.
     if (manualTfConflict || !pairReady(now) || frameMarketEpoch != marketEpoch ||
