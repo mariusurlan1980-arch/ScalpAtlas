@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/live-v327-candle-gate-demo]
     paths:
-      - '.github/workflows/build-live-overlay-one-button-motorola.yml'
+      - '.github/workflows/build-live-v327-demo-candle-gate.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasOneButtonOverlayApp.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
@@ -420,12 +420,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-LIVE-v3.2.6-DIRECT-MOTOROLA-DEMO.apk
+          cp "$APK" ScalpAtlas-LIVE-v3.2.7-DIRECT-MOTOROLA-DEMO.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.6-DIRECT-MOTOROLA-DEMO
-          path: ScalpAtlas-LIVE-v3.2.6-DIRECT-MOTOROLA-DEMO.apk
+          name: ScalpAtlas-LIVE-v3.2.7-DIRECT-MOTOROLA-DEMO
+          path: ScalpAtlas-LIVE-v3.2.7-DIRECT-MOTOROLA-DEMO.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -434,11 +434,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-LIVE-v3.2.6-DIRECT-MOTOROLA-DEMO.apk"
+          FILE="ScalpAtlas-LIVE-v3.2.7-DIRECT-MOTOROLA-DEMO.apk"
           test -s "$FILE"
-          gh release create scalp-atlas-live-v3.2.6-direct-motorola "$FILE" \
+          gh release create scalp-atlas-live-v3.2.7-demo-candle-gate "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS LIVE 3.2.6 • DIRECT pentru Motorola" \
-            --notes "UPDATE de interfata: fara ghid, fara camera, un singur buton SUPRAPUNERE LIVE. Captura Android MediaProjection, 3 strategii optice: scalp trend, retragere si intoarcere dupa minim/maxim. M10, expirare orientativa 10 minute. Nu executa ordine. TESTARE NUMAI DEMO: nu exista performanta WIN validata." \
+            --title "SCALP ATLAS LIVE 3.2.7 • DEMO pentru Motorola" \
+            --notes "TEST DEMO: confirmare doua lumanari inchise aceeasi culoare inainte de bip. Fara ghid, fara camera, un singur buton SUPRAPUNERE LIVE. Captura Android MediaProjection, 3 strategii optice: scalp trend, retragere si intoarcere dupa minim/maxim. M10, expirare orientativa 10 minute. Nu executa ordine. TESTARE NUMAI DEMO: nu exista performanta WIN validata." \
             --prerelease
