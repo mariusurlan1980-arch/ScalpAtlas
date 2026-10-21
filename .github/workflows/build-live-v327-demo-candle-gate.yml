@@ -53,7 +53,10 @@ jobs:
             python3 "$f"
           done
 
-      - name: Apply v3.2.7 two closed candles safety gate\n        run: python3 .github/scripts/patch_live_v327_closed_candles.py\n\n      - name: Restore exact Clean View UI and motor
+      - name: Apply v3.2.7 two closed candles safety gate
+        run: python3 .github/scripts/patch_live_v327_closed_candles.py
+
+      - name: Restore exact Clean View UI and motor
         run: |
           set -e
           cp .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx scalp-atlas-new/LiveAnalysisApp.tsx
