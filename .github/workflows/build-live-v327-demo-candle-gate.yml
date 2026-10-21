@@ -1,0 +1,444 @@
+name: Build SCALP ATLAS LIVE v3.2.7 DEMO candle gate
+
+on:
+  push:
+    branches: [feature/live-v327-candle-gate-demo]
+    paths:
+      - '.github/workflows/build-live-overlay-one-button-motorola.yml'
+      - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
+      - '.github/templates/ScalpAtlasOneButtonOverlayApp.tsx'
+      - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
+      - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
+      - '.github/templates/ScalpAtlasLocalizationV0418.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.native.ts'
+      - '.github/templates/ScalpAtlasOcrAdapterV0416.web.ts'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
+      - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
+      - '.github/native-overlay/**'\n      - '.github/scripts/patch_live_v327_closed_candles.py'
+      - '.github/scripts/test_live_candle_evidence.mjs'
+      - '.github/scripts/test_live_confirmation_freshness.mjs'
+      - '.github/scripts/test_live_wick_rejection_v323.mjs'
+      - '.github/scripts/test_pair_adaptive_live.mjs'
+      - '.github/scripts/test_live_journal_freshness_v324.mjs'
+      - '.github/scripts/test_live_trend_pullback_m10.mjs'
+  workflow_dispatch:
+
+concurrency:
+  group: scalp-atlas-live-v327-demo
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reuse existing overlay source without conflicting legacy patch
+        run: |
+          set -e
+          test -s .github/native-overlay/ScalpOverlayService.kt
+          test -s .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
+          echo "Using current generic broker overlay sources; old Pocket Option-only patch skipped."
+
+      - name: Apply stable Scalp Atlas patches
+        run: |
+          set -e
+          for f in $(ls .github/scripts/patch_scalp_atlas_v03*.py | sort -V); do
+            python3 "$f"
+          done
+
+      - name: Apply v3.2.7 two closed candles safety gate\n        run: python3 .github/scripts/patch_live_v327_closed_candles.py\n\n      - name: Restore exact Clean View UI and motor
+        run: |
+          set -e
+          cp .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx scalp-atlas-new/LiveAnalysisApp.tsx
+          cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
+          cp .github/templates/ScalpAtlasOneButtonOverlayApp.tsx scalp-atlas-new/App.tsx
+          cp .github/templates/ScalpAtlasLocalizationV0418.ts scalp-atlas-new/localization.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.ts scalp-atlas-new/ocrAdapter.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.native.ts scalp-atlas-new/ocrAdapter.native.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.web.ts scalp-atlas-new/ocrAdapter.web.ts
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx scalp-atlas-new/AnalyzerBridge.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx scalp-atlas-new/AnalyzerBridge.web.tsx
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('scalp-atlas-new/app.json')
+          cfg=json.loads(p.read_text(encoding='utf-8'))
+          expo=cfg['expo']
+          expo['name']='SCALP ATLAS LIVE'
+          expo['slug']='scalp-atlas-live'
+          expo['version']='3.2.7'
+          expo['orientation']='default'
+          expo['android']['package']='com.scalpatlas.livealerts'
+          expo['android']['versionCode']=327
+          expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
+          permissions=expo['android'].setdefault('permissions',[])
+          permissions[:]=[v for v in permissions if v!='CAMERA']
+          supported=['ro','en','de','es','fr','it','pt','nl','pl','uk','ru','tr','el','hu','cs','sk','bg','sr','hr','sl','ar','he','zh','ja','ko','hi']
+          plugins=expo.setdefault('plugins',[])
+          # This release analyzes the shared screen, never the camera.
+          plugins[:]=[p for p in plugins if not (p=='expo-camera' or (isinstance(p,list) and p and p[0]=='expo-camera'))]
+          plugins[:]=[p for p in plugins if not (p=='expo-localization' or (isinstance(p,list) and p and p[0]=='expo-localization'))]
+          plugins.append(['expo-localization',{'supportedLocales':{'ios':supported,'android':supported},'supportsRTL':True,'forcesRTL':False}])
+          p.write_text(json.dumps(cfg,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+
+      - name: Update old UI labels without changing design
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/LiveAnalysisApp.tsx')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('PESTE POCKET OPTION','PESTE ORICE BROKER')
+          s=s.replace('Pocket Option','brokerul ales')
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Verify guide-free one-phone entry screen
+        run: |
+          set -e
+          grep -q 'SUPRAPUNERE LIVE' scalp-atlas-new/App.tsx
+          grep -q 'NativeModules.ScalpOverlay.startOverlayMode' scalp-atlas-new/App.tsx
+          ! grep -Eq 'showGuide|Ghid|guideQuick|CameraView' scalp-atlas-new/App.tsx
+          ! grep -q 'LiveAnalysisApp' scalp-atlas-new/App.tsx
+          grep -q "expo-camera" scalp-atlas-new/package.json || true
+
+      - name: Validate new wick-rejection motor without changing UI
+        run: |
+          node .github/scripts/test_live_candle_evidence.mjs
+          node .github/scripts/test_live_confirmation_freshness.mjs
+          node .github/scripts/test_pair_adaptive_live.mjs
+          node .github/scripts/test_live_wick_rejection_v323.mjs
+          node .github/scripts/test_live_trend_pullback_m10.mjs
+          node .github/scripts/test_live_journal_freshness_v324.mjs
+
+      - name: Verify no order automation and existing visual engine
+        run: |
+          set -e
+          grep -q "v1.0.2 CLEAN VIEW" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "t('cameraLive')" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "ScalpAtlasAnalyze" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+          grep -q "isUsableChartImage" .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'GRAFIC 2/3' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'TF AUTO' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'scheduleTimeframeOcr' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'TextRecognition.getClient' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'pendingTfCount >= 2' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'OCR_INTERVAL_MS' .github/native-overlay/ScalpOverlayService.kt
+          python3 - <<'PY'
+          from pathlib import Path
+          code=Path('.github/native-overlay/ScalpOverlayService.kt').read_text(encoding='utf-8')
+          reset=code.split('private fun resetSignalState() {',1)[1].split('\n  }',1)[0]
+          assert 'lockedDir = null' not in reset, 'confirmed SELL/BUY lock must survive capture/OCR reset'
+          assert 'lockedUntil = 0L' not in reset, 'confirmed alert expiry must survive capture/OCR reset'
+          assert 'lockedUntil = now + lockMinutes * 60_000L' in code
+          assert 'if (currentLock != null && now < lockedUntil)' in code
+          assert '"Candidat " + confirmedSignal' in code, 'candidate should be detailed without flickering headline'
+          print('PASS: active BUY/SELL cannot flip during capture/OCR state resets')
+          PY
+          grep -q 'playBip(confirmedSignal)' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q 'isPocketOptionFrame' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -E -q 'placeDemoOrder|AccessibilityService|performGlobalAction|dispatchGesture' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'hasFreshChartMotion' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'activeFrameId' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'result.optLong("frameId", -1L)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'playBip(confirmedSignal)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'frameId,' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+          grep -q 'window.ScalpAtlasAnalyze=function(dataUrl,timeframe,frameId)' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install dependencies
+        working-directory: scalp-atlas-new
+        run: |
+          npm install
+          npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage expo-ocr-kit react-native-webview
+          npm install tesseract.js
+
+      - name: Generate 2.3-second high and distinct BUY and SELL beeps
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import math,struct,wave
+          assets=Path('scalp-atlas-new/assets'); assets.mkdir(parents=True,exist_ok=True)
+          rate=44100; duration=2.3; amp=.36
+          for name,freq in [('buy-alert.wav',1220.0),('sell-alert.wav',980.0)]:
+              frames=bytearray()
+              for i in range(int(rate*duration)):
+                  t=i/rate
+                  fade=min(1.0,t/.025,(duration-t)/.15)
+                  sample=int(32767*amp*max(0.0,fade)*math.sin(2*math.pi*freq*t))
+                  frames+=struct.pack('<h',sample)
+              with wave.open(str(assets/name),'wb') as w:
+                  w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(frames)
+          PY
+
+      - name: Verify both alert durations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import wave
+          for filename in ['buy-alert.wav', 'sell-alert.wav']:
+              p=Path('scalp-atlas-new/assets')/filename
+              with wave.open(str(p), 'rb') as wav:
+                  assert wav.getframerate()==44100, 'bad beep sample rate'
+                  seconds=wav.getnframes()/wav.getframerate()
+                  assert 2.25 <= seconds <= 2.35, f'Wrong beep length {filename}: {seconds}'
+                  print(filename, round(seconds,2), 'seconds')
+          PY
+
+      - name: Generate launcher icon
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq librsvg2-bin
+          rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
+
+      - name: TypeScript check
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
+
+      - name: Test optical candle gate from actual native-embedded analyzer
+        run: |
+          node .github/scripts/test_live_candle_evidence.mjs
+          node .github/scripts/test_live_confirmation_freshness.mjs
+          node .github/scripts/test_pair_adaptive_live.mjs
+          grep -q "candidateDirection:r.clear?r.dir:'NONE'" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+          grep -q 'private val maxObservations = 100' .github/native-overlay/SignalJournal.kt
+          grep -q 'journal.observe(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'pairReady(now)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'frameMarketEpoch != marketEpoch' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'manualTfMismatchCount >= 2' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'if (!tfAutomatic \&\& manualTfConflict)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'contains("OTC", ignoreCase = true)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'PROFILURI PE PERECHE SI TIMEFRAME' .github/native-overlay/SignalJournal.kt
+          grep -q 'marketRegime,' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+          grep -q 'onBeep(now: Long, direction: String, market: String)' .github/native-overlay/LiveTestMonitor.kt
+          test -s .github/native-overlay/LiveTestMonitor.kt
+          grep -q 'liveTest.begin(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'liveTest.tick(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'setKeepScreenForTest(true)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'setKeepScreenForTest(liveTest.isActive())' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'setKeepScreenForTest(false)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'fun isActive(): Boolean = active != null' .github/native-overlay/LiveTestMonitor.kt
+          grep -q 'liveTest.onClassifier(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'liveTest.onBeep(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'testStatusText' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'Test-LIVE-sesiuni.json' .github/native-overlay/SignalJournal.kt
+          grep -q '30L \* 60_000L' .github/native-overlay/LiveTestMonitor.kt
+          ! grep -E -q 'AccessibilityService|dispatchGesture|placeDemoOrder' .github/native-overlay/LiveTestMonitor.kt
+          grep -q 'opticalCandleGate' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+          grep -q 'opticalCandleGate' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'maskSelfOverlay' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'lastCapturedImageAt' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'lastAnalysisResultAt' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'ANALIZĂ LIVE' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'handler.postDelayed(this, 550L)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'private const val ALERT_FRESH_MS = 30_000L' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'lockedAt = now' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'msSinceBeep < ALERT_FRESH_MS' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'NU este semnal nou de intrare' .github/native-overlay/ScalpOverlayService.kt
+          test -s .github/native-overlay/SignalJournal.kt
+          grep -q 'journal.record(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'journal.followUp(' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'journal.share()' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'outcome", "NEVERIFICAT"' .github/native-overlay/SignalJournal.kt
+          ! grep -E -q 'executeTrade|placeDemoOrder|dispatchGesture' .github/native-overlay/SignalJournal.kt
+          grep -q 'val columns = 88' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'val rows = 72' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'lastVisualChangeAt <= 35_000L' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q 'Imagine neschimbată peste 12s' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'Gravity.TOP or Gravity.START' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'lastRenderedCounterAt >= 6500L' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q 'M10 • fără semnal clar • Scor' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'floatArrayOf(0.55f, 0.83f, 0.89f)' .github/native-overlay/ScalpOverlayService.kt
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+
+
+      - name: Add ML Kit OCR Android dependency
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/android/app/build.gradle')
+          s=p.read_text(encoding='utf-8')
+          dependency="    implementation 'com.google.mlkit:text-recognition:16.0.1'\n"
+          if 'com.google.mlkit:text-recognition:' not in s:
+              marker='dependencies {'
+              if marker not in s:
+                  raise SystemExit('dependencies block not found in app/build.gradle')
+              s=s.replace(marker, marker+'\n'+dependency, 1)
+              p.write_text(s,encoding='utf-8')
+          PY
+          grep -q "com.google.mlkit:text-recognition:16.0.1" scalp-atlas-new/android/app/build.gradle
+
+      - name: Inject Android live overlay and screen stream
+        run: |
+          set -e
+          JAVA_DIR="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts"
+          mkdir -p "$JAVA_DIR"
+          cp .github/native-overlay/ScalpOverlayPackage.kt "$JAVA_DIR/ScalpOverlayPackage.kt"
+          cp .github/native-overlay/ScalpOverlayModule.kt "$JAVA_DIR/ScalpOverlayModule.kt"
+          cp .github/native-overlay/ScalpOverlayService.kt "$JAVA_DIR/ScalpOverlayService.kt"
+          cp .github/native-overlay/SignalJournal.kt "$JAVA_DIR/SignalJournal.kt"
+          cp .github/native-overlay/LiveTestMonitor.kt "$JAVA_DIR/LiveTestMonitor.kt"
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt; do
+            sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
+          done
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          roots=list(Path('scalp-atlas-new/android/app/src/main/java').rglob('MainApplication.kt'))
+          if not roots:
+              raise SystemExit('MainApplication.kt not found')
+          p=roots[0]
+          s=p.read_text(encoding='utf-8')
+          if 'ScalpOverlayPackage()' not in s:
+              needle='PackageList(this).packages.apply {'
+              if needle not in s:
+                  raise SystemExit('PackageList apply block not found')
+              s=s.replace(needle, needle+'\n        add(ScalpOverlayPackage())', 1)
+          p.write_text(s,encoding='utf-8')
+
+          m=Path('scalp-atlas-new/android/app/src/main/AndroidManifest.xml')
+          s=m.read_text(encoding='utf-8')
+          perms=[
+              '<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
+              '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+              '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />',
+          ]
+          marker='<application'
+          for perm in perms:
+              if perm not in s:
+                  s=s.replace(marker, perm+'\n  '+marker, 1)
+          service='<service android:name=".ScalpOverlayService" android:exported="false" android:foregroundServiceType="mediaProjection" />'
+          if service not in s:
+              s=s.replace('</application>', '    '+service+'\n  </application>', 1)
+          journal_provider=(
+              '<provider android:name="androidx.core.content.FileProvider" '
+              'android:authorities="${applicationId}.journalfiles" '
+              'android:exported="false" android:grantUriPermissions="true">'
+              '<meta-data android:name="android.support.FILE_PROVIDER_PATHS" '
+              'android:resource="@xml/scalp_journal_paths" />'
+              '</provider>'
+          )
+          if 'android:authorities="${applicationId}.journalfiles"' not in s:
+              s=s.replace('</application>', '    '+journal_provider+'\n  </application>', 1)
+          m.write_text(s,encoding='utf-8')
+          PY
+
+          mkdir -p scalp-atlas-new/android/app/src/main/res/xml
+          cat > scalp-atlas-new/android/app/src/main/res/xml/scalp_journal_paths.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths xmlns:android="http://schemas.android.com/apk/res/android">
+            <cache-path name="journal_shares" path="signal_journal_exports/" />
+          </paths>
+          XML
+          test -s scalp-atlas-new/android/app/src/main/res/xml/scalp_journal_paths.xml
+
+          mkdir -p scalp-atlas-new/android/app/src/main/res/raw
+          cp scalp-atlas-new/assets/buy-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
+          cp scalp-atlas-new/assets/sell-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_sell_bip.wav
+
+          rm -rf /tmp/scalp-engine
+          mkdir -p /tmp/scalp-engine
+          (
+            cd scalp-atlas-new
+            npx tsc analysisEngine.ts atlas.ts --ignoreConfig --target ES2020 --module commonjs --skipLibCheck --esModuleInterop --outDir /tmp/scalp-engine --noEmitOnError false || true
+          )
+          test -s /tmp/scalp-engine/analysisEngine.js
+          mkdir -p scalp-atlas-new/android/app/src/main/assets
+          node - <<'NODE'
+          const fs=require('fs');
+          const engine=require('/tmp/scalp-engine/analysisEngine.js');
+          if(!engine.ANALYSIS_ENGINE_HTML) throw new Error('ANALYSIS_ENGINE_HTML missing');
+          fs.writeFileSync('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html',engine.ANALYSIS_ENGINE_HTML);
+          NODE
+
+          grep -q "ScalpOverlayPackage()" "$(find scalp-atlas-new/android/app/src/main/java -name MainApplication.kt | head -1)"
+          grep -q "SYSTEM_ALERT_WINDOW" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          grep -q "ScalpOverlayService" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          test -s scalp-atlas-new/android/app/src/main/assets/analysis_engine.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html')
+          s=p.read_text(encoding='utf-8')
+          if '<\\/script>' in s:
+              raise SystemExit('escaped closing script still present')
+          if '</script></body></html>' not in s:
+              raise SystemExit('valid closing script missing')
+          PY
+          test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
+          test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_sell_bip.wav
+
+      - name: Build standalone release APK
+        working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Verify APK, analyzer, signature, and app identity
+        run: |
+          set -e
+          APK="scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -l "$APK" | grep -E "assets/(index\\.android\\.bundle|.*\\.bundle)"
+          unzip -l "$APK" | grep -F "assets/analysis_engine.html"
+          grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
+          if unzip -Z1 "$APK" | grep -E '^lib/(x86|x86_64|armeabi-v7a)/'; then
+            echo "Unexpected non-arm64 native binaries in Motorola APK" >&2
+            exit 1
+          fi
+          unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
+          test "$(stat -c %s "$APK")" -lt 95000000
+          cp "$APK" ScalpAtlas-LIVE-v3.2.6-DIRECT-MOTOROLA-DEMO.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-LIVE-v3.2.6-DIRECT-MOTOROLA-DEMO
+          path: ScalpAtlas-LIVE-v3.2.6-DIRECT-MOTOROLA-DEMO.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish direct Android APK (no ZIP)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FILE="ScalpAtlas-LIVE-v3.2.6-DIRECT-MOTOROLA-DEMO.apk"
+          test -s "$FILE"
+          gh release create scalp-atlas-live-v3.2.6-direct-motorola "$FILE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "SCALP ATLAS LIVE 3.2.6 • DIRECT pentru Motorola" \
+            --notes "UPDATE de interfata: fara ghid, fara camera, un singur buton SUPRAPUNERE LIVE. Captura Android MediaProjection, 3 strategii optice: scalp trend, retragere si intoarcere dupa minim/maxim. M10, expirare orientativa 10 minute. Nu executa ordine. TESTARE NUMAI DEMO: nu exista performanta WIN validata." \
+            --prerelease
