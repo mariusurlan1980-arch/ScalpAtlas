@@ -149,6 +149,8 @@ class ScalpOverlayService : Service() {
   @Volatile private var manualTfConflict = false
   private val ocrRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
   @Volatile private var chartZone = 1
+  @Volatile private var bellEnabled = true
+  private var bellControl: TextView? = null
   private var tfControl: TextView? = null
   private var chartControl: TextView? = null
 
@@ -309,7 +311,20 @@ class ScalpOverlayService : Service() {
       setOnClickListener { stopSelf() }
     }
 
+    bellControl = TextView(this).apply {
+      text = "🔔 ON"
+      setTextColor(Color.rgb(255, 201, 74))
+      textSize = 14f
+      gravity = Gravity.CENTER
+      setPadding(dp(6), dp(4), dp(8), dp(4))
+      setOnClickListener {
+        bellEnabled = !bellEnabled
+        text = if (bellEnabled) "🔔 ON" else "🔕 OFF"
+        setTextColor(if (bellEnabled) Color.rgb(255, 201, 74) else Color.LTGRAY)
+      }
+    }
     header.addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    header.addView(bellControl)
     header.addView(close)
 
     signalText = TextView(this).apply {
@@ -1302,7 +1317,9 @@ class ScalpOverlayService : Service() {
   }
 
   private fun playBip(direction: String) {
+    if (!bellEnabled) return
     mainHandler.post {
+      if (!bellEnabled) return@post
       try {
         val player = MediaPlayer.create(this, if (direction == "BUY") R.raw.scalp_buy_bip else R.raw.scalp_sell_bip)
         player?.setVolume(1f, 1f)
