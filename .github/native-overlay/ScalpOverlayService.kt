@@ -66,7 +66,7 @@ class ScalpOverlayService : Service() {
     private const val REQUIRED_CONFIRMATIONS = 3
     // If optical evidence disappears, an old candidate must not recover as
     // if it had been continuously confirmed for the past minute.
-    private const val CANDIDATE_EVIDENCE_GRACE_MS = 5_000L
+    private const val CANDIDATE_EVIDENCE_GRACE_MS = 25_000L
     private const val CANDIDATE_MAX_AGE_MS = 70_000L
     // A direction's 5-7 minute lock is NOT a 5-7 minute window for NEW entries.
     private const val ALERT_FRESH_MS = 30_000L
