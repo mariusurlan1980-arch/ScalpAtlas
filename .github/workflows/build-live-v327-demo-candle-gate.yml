@@ -266,8 +266,8 @@ jobs:
           grep -q 'handler.postDelayed(this, 550L)' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'private const val ALERT_FRESH_MS = 30_000L' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'lockedAt = now' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'msSinceBeep < ALERT_FRESH_MS' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'NU este semnal nou de intrare' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'Semnal emis la BIP • afișare rămasă' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'Semnal anterior, NU intrare nouă' .github/native-overlay/ScalpOverlayService.kt
           test -s .github/native-overlay/SignalJournal.kt
           grep -q 'journal.record(' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'journal.followUp(' .github/native-overlay/ScalpOverlayService.kt
