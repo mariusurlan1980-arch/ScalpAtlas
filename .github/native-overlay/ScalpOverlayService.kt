@@ -1177,28 +1177,13 @@ class ScalpOverlayService : Service() {
     val currentLock = lockedDir
     if (currentLock != null && now < lockedUntil) {
       val seconds = max(0L, (lockedUntil - now) / 1000L)
-      val msSinceBeep = if (lockedAt > 0L) now - lockedAt else Long.MAX_VALUE
-      // Keep BUY/SELL visible just long enough to read the fresh BIP.
-      // Never depict an old 5-7 minute direction lock as a new trade entry.
-      // If the optical engine confidently reverses, invalidate immediately.
-      val alertStillFresh =
-        msSinceBeep >= 0L &&
-        msSinceBeep < ALERT_FRESH_MS &&
-        confirmedSignal != if (currentLock == "BUY") "SELL" else "BUY"
-      if (alertStillFresh) {
-        updateOverlay(
-          currentLock,
-          "BIP emis • " + formatSeconds((ALERT_FRESH_MS - msSinceBeep) / 1000L) +
-            " pentru vizualizare",
-          "Semnal recent, NU garanție • " + timeframe
-        )
-      } else {
-        updateOverlay(
-          "AȘTEAPTĂ",
-          currentLock + " anterior • NU este semnal nou de intrare",
-          "Protecție fără alerte opuse • " + formatSeconds(seconds) + " rămase"
-        )
-      }
+      // Show the confirmed direction for the full five-minute display window.
+      // The countdown is NOT a fresh entry invitation after the original BIP.
+      updateOverlay(
+        currentLock,
+        "Semnal emis la BIP • afișare rămasă " + formatSeconds(seconds),
+        "Semnal anterior, NU intrare nouă • " + timeframe
+      )
       return
     }
 
@@ -1277,7 +1262,7 @@ class ScalpOverlayService : Service() {
     // pentru a evita alerte contradictorii în câteva secunde.
     // Keep the lock aligned to the selected M10 ten-minute DEMO contract.
     // A lock prevents opposite notifications; it is not a trade order.
-    val lockMinutes = if (expiry in 5..15) expiry else 10
+    val lockMinutes = 5 // fixed five-minute display and direction lock
     // Publish expiry before direction so other callbacks cannot treat the
     // freshly published direction as an expired lock.
     lockedUntil = now + lockMinutes * 60_000L
