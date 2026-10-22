@@ -447,9 +447,11 @@ jobs:
           set -euo pipefail
           FILE="ScalpAtlas-LIVE-v3.2.7-DIRECT-MOTOROLA-DEMO.apk"
           test -s "$FILE"
-          gh release create scalp-atlas-live-v3.2.7-demo-candle-gate "$FILE" \
+          # Unique tag per commit: never overwrite or confuse an older installed APK.
+          TAG="scalp-atlas-live-v3.2.7-demo-${GITHUB_SHA:0:12}"
+          gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS LIVE 3.2.7 • DEMO pentru Motorola" \
-            --notes "TEST DEMO: confirmare doua lumanari inchise aceeasi culoare inainte de bip. Fara ghid, fara camera, un singur buton SUPRAPUNERE LIVE. Captura Android MediaProjection, 3 strategii optice: scalp trend, retragere si intoarcere dupa minim/maxim. M10, expirare orientativa 10 minute. Nu executa ordine. TESTARE NUMAI DEMO: nu exista performanta WIN validata." \
+            --title "SCALP ATLAS LIVE 3.2.7 • DEMO Motorola • ${GITHUB_SHA:0:12}" \
+            --notes "APK generat din commit $GITHUB_SHA. Doar testare DEMO. Semnalele nu garanteaza profit. Verificati compatibilitatea semnaturii si versionCode inainte de instalare peste aplicatia existenta." \
             --prerelease
