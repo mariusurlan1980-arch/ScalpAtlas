@@ -671,10 +671,19 @@ class ScalpOverlayService : Service() {
     }
     ocrRecognizer.process(InputImage.fromBitmap(copy, 0))
       .addOnSuccessListener { result ->
-        val pattern = Regex("""(?i)^\s*(M5|M10|M15|5M|10M|15M)(?:\s|$|[^A-Z0-9])""")
+        // Read the broker label from the upper chart or the right-hand chart
+        // axis. Pocket Option can put "M10" after other text in an OCR line.
+        // Exclude the bottom trading controls and our floating overlay so an
+        // expiry duration or "TF AUTO M10" cannot confirm a timeframe.
+        val pattern = Regex("""(?i)(?<![A-Z0-9])(?:M\s*(5|10|15)|(5|10|15)\s*M)(?![A-Z0-9])""")
         val values = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
-          val raw = pattern.find(line.text.trim())?.groupValues?.get(1)?.uppercase() ?: return@mapNotNull null
-          if (raw.startsWith("M")) raw else "M" + raw.dropLast(1)
+          val bounds = line.boundingBox ?: return@mapNotNull null
+          val centerX = bounds.centerX().toFloat() / copy.width
+          val centerY = bounds.centerY().toFloat() / copy.height
+          if (centerY > 0.73f || (centerY > 0.25f && centerX < 0.55f)) return@mapNotNull null
+          val match = pattern.find(line.text) ?: return@mapNotNull null
+          val minutes = match.groupValues[1].ifEmpty { match.groupValues[2] }
+          "M" + minutes
         }.distinct()
 
         val observedAt = System.currentTimeMillis()
