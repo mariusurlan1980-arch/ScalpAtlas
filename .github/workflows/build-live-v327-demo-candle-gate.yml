@@ -20,6 +20,7 @@ on:
       - '.github/scripts/patch_live_v327_closed_candles.py'
       - '.github/scripts/verify_live_v327_gate.py'
       - '.github/scripts/patch_live_v327_bell_toggle.py'
+      - '.github/scripts/patch_live_v328_geometry.py'
       - '.github/scripts/test_live_candle_evidence.mjs'
       - '.github/scripts/test_live_confirmation_freshness.mjs'
       - '.github/scripts/test_live_wick_rejection_v323.mjs'
@@ -61,6 +62,7 @@ jobs:
           python3 .github/scripts/patch_live_v327_closed_candles.py
           python3 .github/scripts/verify_live_v327_gate.py
           python3 .github/scripts/patch_live_v327_bell_toggle.py
+          python3 .github/scripts/patch_live_v328_geometry.py
 
       - name: Restore exact Clean View UI and motor
         run: |
