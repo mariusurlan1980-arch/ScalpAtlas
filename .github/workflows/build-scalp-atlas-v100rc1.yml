@@ -236,6 +236,19 @@ jobs:
           zip -r ../../ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST-WEB.zip .
           cd ../..
 
+      - name: Give SHOCK DEMO its own Android application ID
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('scalp-atlas-new/app.json')
+          cfg=json.loads(path.read_text(encoding='utf-8'))
+          cfg.setdefault('expo',{}).setdefault('android',{})['package']='com.scalpatlas.shockdemo'
+          cfg['expo']['name']='Scalp Atlas SHOCK DEMO'
+          path.write_text(json.dumps(cfg,ensure_ascii=False,indent=2)+'\\n',encoding='utf-8')
+          print('Android test package:',cfg['expo']['android']['package'])
+          PY
+
       - name: Generate Android project
         working-directory: scalp-atlas-new
         env:
