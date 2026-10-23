@@ -6,7 +6,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#000}canvas{display:none}</style></head>
 <body><canvas id="analysisCanvas"></canvas><script>
 (function(){
-  const ENGINE_VERSION='0.2.5-cross-platform';
+  const ENGINE_VERSION='shock-test-0.1';
   const ATLAS=${atlasJson};
   const canvas=document.getElementById('analysisCanvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -351,13 +351,41 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return lines;
   }
 
+  // SHOCK test: track the same visible live candle across successive screenshots.
+  // Screen coordinates are only comparable while chart framing stays stable.
+  const shockTracks={};
+  function shockFromFrames(curve,tf){
+    const a=curve.anchor,now=Date.now();
+    if(!a||curve.quality<.35||curve.spanCoverage<.26)return {clear:false,reason:'Grafic neclar pentru ȘOC'};
+    const key=String(tf||'M10'),prior=shockTracks[key];
+    const y=a.y/curve.h,x=a.x/curve.w,scale=a.span/curve.h;
+    if(!prior||now-prior.time>45000||Math.abs(x-prior.x)>.025||Math.abs(scale-prior.scale)>.12){
+      shockTracks[key]={time:now,x,scale,start:y,min:y,max:y,phase:'TRACK',alerted:false};
+      return {clear:false,reason:'ȘOC: urmăresc lumânarea LIVE'};
+    }
+    prior.time=now;
+    prior.min=Math.min(prior.min,y);
+    prior.max=Math.max(prior.max,y);
+    const move=prior.max-prior.min;
+    // y decreases when price rises. Require a meaningful movement then rebound.
+    const threshold=.014;
+    if(move<threshold)return {clear:false,reason:'ȘOC: mișcare insuficientă'};
+    const buyRecovery=(prior.max-y)/move;
+    const sellRecovery=(y-prior.min)/move;
+    const dir=prior.max>prior.start+.008&&buyRecovery>=.65?'BUY':
+      prior.min<prior.start-.008&&sellRecovery>=.65?'SELL':null;
+    if(!dir||prior.alerted)return {clear:false,reason:'ȘOC: aștept revenirea'};
+    prior.alerted=true;
+    return {clear:true,dir,atlas:'ȘOC LIVE',score:.65,reason:'ȘOC și revenire observate în cadre succesive'};
+  }
+
   function run(dataUrl,timeframe){
     const img=new Image();
     img.onload=function(){
       try{
         const curve=buildPriceCurve(img);
         if(!curve){send({type:'ERROR',message:'Imaginea nu a putut fi citită.'});return;}
-        const r=classify(curve),anchor=curve.anchor;
+        const r=shockFromFrames(curve,timeframe),anchor=curve.anchor;
         const duration=r.clear?directionDurationFor(timeframe,r,curve):null;
         send({
           type:'RESULT',
