@@ -359,11 +359,12 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     if(!a||curve.quality<.35||curve.spanCoverage<.26){shockTracks[String(tf||'M10')]=null;return {clear:false,reason:'ȘOC: citire insuficientă (calitate '+Math.round((curve.quality||0)*100)+'%, acoperire '+Math.round((curve.spanCoverage||0)*100)+'%)'};}
     const key=String(tf||'M10'),prior=shockTracks[key];
     const y=a.y/curve.h,x=a.x/curve.w,scale=a.span/curve.h;
-    if(!prior||now-prior.time>45000||Math.abs(x-prior.x)>.025||Math.abs(scale-prior.scale)>.12){
+    if(!prior||now-prior.time>45000||Math.abs(x-prior.x)>.07||Math.abs(scale-prior.scale)>.12){
       shockTracks[key]={time:now,x,scale,start:y,min:y,max:y,phase:'TRACK',alerted:false};
       return {clear:false,reason:'ȘOC: urmăresc lumânarea LIVE'};
     }
     prior.time=now;
+    prior.x=x;
     prior.min=Math.min(prior.min,y);
     prior.max=Math.max(prior.max,y);
     const move=prior.max-prior.min;
@@ -374,7 +375,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     const sellRecovery=(y-prior.min)/move;
     const dir=prior.max>prior.start+.008&&buyRecovery>=.65?'BUY':
       prior.min<prior.start-.008&&sellRecovery>=.65?'SELL':null;
-    if(!dir||prior.alerted)return {clear:false,reason:'ȘOC: aștept revenirea'};
+    if(!dir||prior.alerted)return {clear:false,reason:prior.alerted?'ȘOC: alertă deja emisă pentru această lumânare':'ȘOC: aștept revenirea'};
     prior.alerted=true;
     return {clear:true,dir,atlas:'ȘOC LIVE',score:.65,reason:'ȘOC și revenire observate în cadre succesive'};
   }
