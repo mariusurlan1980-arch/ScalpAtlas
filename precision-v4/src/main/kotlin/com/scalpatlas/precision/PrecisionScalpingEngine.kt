@@ -21,10 +21,13 @@ class PrecisionScalpingEngine {
         fun wait(reason: String) = Decision(Direction.WAIT, reason)
         if (s.timeframeMinutes !in setOf(5, 10, 15)) return wait("TIMEFRAME_UNKNOWN")
         if (!s.imageReadable) return wait("IMAGE_UNREADABLE")
+        if (s.symbol.isBlank()) return wait("SYMBOL_UNKNOWN")
         if (s.candles.size < 2) return wait("INSUFFICIENT_CANDLES")
         val last = s.candles.takeLast(2)
         if (last.any { !it.isClosed }) return wait("CANDLE_STILL_OPEN")
-        if (last[0].closeTimeMs >= last[1].closeTimeMs) return wait("INVALID_CANDLE_TIMESTAMPS")
+        if (last[0].closeTimeMs <= 0L || last[0].closeTimeMs >= last[1].closeTimeMs) return wait("INVALID_CANDLE_TIMESTAMPS")
+        val intervalMs = s.timeframeMinutes * 60_000L
+        if (last[1].closeTimeMs - last[0].closeTimeMs != intervalMs) return wait("CANDLE_INTERVAL_MISMATCH")
         val direction = when {
             last.all { it.color == CandleColor.GREEN } -> Direction.BUY
             last.all { it.color == CandleColor.RED } -> Direction.SELL
