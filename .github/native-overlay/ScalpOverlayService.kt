@@ -1138,8 +1138,7 @@ class ScalpOverlayService : Service() {
     val readableTrend = regime == "TENDINTA"
     // Three permitted sources: scalp/continuation, pullback, or confirmed
     // local minimum/maximum reversal. Never alert without optical candles.
-    val allowedSetup = ((wickGate || trendGate) && readableTrend) ||
-        (extremeGate && regime == "REVERSARE")
+    val allowedSetup = wickGate && readableTrend
     val confirmedSignal = if (quality >= 55 && score >= 70 && opticalGate &&
         allowedSetup) rawSignal else "NONE"
     // Show the actual rejection gates from the LIVE analyzer instead of
