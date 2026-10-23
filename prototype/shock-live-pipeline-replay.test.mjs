@@ -11,6 +11,6 @@ assert.deepEqual(run([100,98,100,102,101.6,101.2]).alerts.map(x=>x.side),['SELL'
 assert.equal(run([100,102,100,98,97,96]).alerts.length,0);
 assert.equal(run([100,102,100,98,98.4,98.8,99,99.5]).alerts.length,1);
 const a=run([100,102,100,98,98.4,98.8]);
-assert.equal(a.pipeline.ingest({instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'1',price:100,timestamp:100200},102000).state,'WAIT');
-assert.equal(a.pipeline.ingest({instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'1',price:100,timestamp:105000},110000).state,'WAIT');
+assert.equal(a.pipeline.ingest({broker:'Pocket Option',marketMode:'OTC',instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'1',price:100,timestamp:100200},102000).state,'WAIT');
+assert.equal(a.pipeline.ingest({broker:'Pocket Option',marketMode:'OTC',instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'1',price:100,timestamp:105000},110000).state,'WAIT');
 console.log('SHOCK LIVE BUY SELL pipeline replay tests passed');
