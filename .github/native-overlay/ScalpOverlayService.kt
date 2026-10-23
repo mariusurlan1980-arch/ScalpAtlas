@@ -1142,6 +1142,16 @@ class ScalpOverlayService : Service() {
         (extremeGate && regime == "REVERSARE")
     val confirmedSignal = if (quality >= 55 && score >= 70 && opticalGate &&
         allowedSetup) rawSignal else "NONE"
+    // Show the actual rejection gates from the LIVE analyzer instead of
+    // a generic waiting state. This never bypasses any entry condition.
+    val rejectionDetails = mutableListOf<String>()
+    if (quality < 55) rejectionDetails.add("imagine " + quality + "/55")
+    if (score < 70) rejectionDetails.add("scor " + score + "/70")
+    if (!opticalGate) rejectionDetails.add("lumânări neconfirmate")
+    if (!allowedSetup) {
+      rejectionDetails.add("trend/retragere/extreme neconfirmate")
+    }
+    val rejectionText = rejectionDetails.joinToString(" • ")
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
     val pattern = result.optString("pattern", "—")
@@ -1224,7 +1234,7 @@ class ScalpOverlayService : Service() {
       candidateStartedAt = 0L
       updateOverlay(
         "AȘTEAPTĂ",
-        if (reason.isNotBlank()) reason else "Analiza graficului este neconcludentă",
+        if (rejectionText.isNotBlank()) rejectionText else if (reason.isNotBlank()) reason else "Analiza graficului este neconcludentă",
         timeframe + " • scor orientativ " + score +
           " • lumânări recunoscute " + opticalCount
       )
