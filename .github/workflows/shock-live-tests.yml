@@ -18,3 +18,4 @@ jobs:
         run: |
           node prototype/shock-live-detector.test.mjs
           node prototype/shock-live-pipeline.test.mjs
+          node prototype/shock-live-pipeline-replay.test.mjs
