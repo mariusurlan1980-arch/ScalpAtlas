@@ -510,7 +510,7 @@ export default function LiveAnalysisApp() {
         // Markeri legacy pentru verificarea workflow-ului: nextCount < 2 ; nextCount === 2
         const nowMs = Date.now();
         const currentTf = timeframeRef.current;
-        const requiredConfirmations = currentTf === 'M10' ? 3 : 2;
+        const requiredConfirmations = 2; // SHOCK TEST: remove 3-step M10 delay; retain two-frame confirmation
         const activeLock = signalLockRef.current;
         const m10LockActive = currentTf === 'M10' && !!activeLock.dir && nowMs < activeLock.until;
 
@@ -550,7 +550,7 @@ export default function LiveAnalysisApp() {
                 // M10: cele 3 confirmări nu pot fi obținute din scanări rapide.
                 // Confirmarea 2/3 este permisă abia după 60 secunde,
                 // iar 3/3 abia după încă 60 secunde (minimum ~2 minute total).
-                const M10_CONFIRMATION_STEP_MS = 60_000;
+                const M10_CONFIRMATION_STEP_MS = 1_000; // test-only: frames must be temporally distinct
                 nextCount = candidate.count;
                 nextStepAt = candidate.lastStepAt || nowMs;
                 if (
