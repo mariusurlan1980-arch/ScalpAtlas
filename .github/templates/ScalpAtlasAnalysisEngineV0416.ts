@@ -356,7 +356,7 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
   const shockTracks={};
   function shockFromFrames(curve,tf){
     const a=curve.anchor,now=Date.now();
-    if(!a||curve.quality<.35||curve.spanCoverage<.26)return {clear:false,reason:'Grafic neclar pentru ȘOC'};
+    if(!a||curve.quality<.35||curve.spanCoverage<.26){shockTracks[String(tf||'M10')]=null;return {clear:false,reason:'ȘOC: citire insuficientă (calitate '+Math.round((curve.quality||0)*100)+'%, acoperire '+Math.round((curve.spanCoverage||0)*100)+'%)'};}
     const key=String(tf||'M10'),prior=shockTracks[key];
     const y=a.y/curve.h,x=a.x/curve.w,scale=a.span/curve.h;
     if(!prior||now-prior.time>45000||Math.abs(x-prior.x)>.025||Math.abs(scale-prior.scale)>.12){
