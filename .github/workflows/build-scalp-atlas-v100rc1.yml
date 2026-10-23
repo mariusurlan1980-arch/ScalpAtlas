@@ -2,9 +2,11 @@ name: Build SCALP ATLAS 1.0.0 RC1
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/shock-only-engine-20261023]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
+      - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
+      - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -59,9 +61,9 @@ jobs:
           expo = cfg['expo']
           expo['name'] = 'SCALP ATLAS'
           expo['slug'] = 'scalp-atlas'
-          expo['version'] = '1.0.24'
+          expo['version'] = '1.0.25'
           expo['android']['package'] = 'com.scalpatlas.app'
-          expo['android']['versionCode'] = 124
+          expo['android']['versionCode'] = 125
           expo['ios']['bundleIdentifier'] = 'com.scalpatlas.app'
           expo['ios']['supportsTablet'] = True
           expo['orientation'] = 'default'
@@ -231,7 +233,7 @@ jobs:
       - name: Package Web build
         run: |
           cd scalp-atlas-new/dist
-          zip -r ../../ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET-WEB.zip .
+          zip -r ../../ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST-WEB.zip .
           cd ../..
 
       - name: Generate Android project
@@ -249,25 +251,26 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET
+          name: ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST
           path: |
-            ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET.apk
-            ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET-WEB.zip
+            ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST.apk
+            ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST-WEB.zip
           if-no-files-found: error
 
       - name: Publish APK release
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete scalp-atlas-v1.0.24 --cleanup-tag --yes || true
           gh release create scalp-atlas-1.0.0-rc1 \
-            ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET.apk \
-            ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET-WEB.zip \
+            ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST.apk \
+            ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST-WEB.zip \
             --target "$GITHUB_SHA" \
             --title "SCALP ATLAS v1.0.24 AUTO TF + PAIR RESET" \
             --notes "Scalp Atlas 1.0.0 RC1 este versiunea candidat final cu funcțiile înghețate: Camera Live, 70 de modele, Chart Guard, confirmare 2/2, Bip 1, durata estimată a direcției, istoric, statistici, jurnal și 26 de limbi cu AUTO + selector manual. Android și Web sunt construite în acest workflow; iOS se validează separat pe simulator înainte de promovarea la versiunea finală."
