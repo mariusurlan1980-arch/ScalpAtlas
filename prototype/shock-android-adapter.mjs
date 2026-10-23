@@ -6,6 +6,7 @@ import {ShockLivePipeline} from './shock-live-pipeline.mjs';
 export function createShockLiveAdapter({onAlert,detectorOptions,gateOptions}={}){
  const pipeline=new ShockLivePipeline({onAlert:typeof onAlert==='function'?onAlert:()=>{},detectorOptions,gateOptions});
  return {
+  // Feed verified quotes only; sound callback fires on a detector-confirmed BUY/SELL.
   onQuote(quote, now=Date.now()){return pipeline.ingest(quote,now);},
   reset(){pipeline.detector.reset();pipeline.gate.reset();pipeline.context=null;},
  };
