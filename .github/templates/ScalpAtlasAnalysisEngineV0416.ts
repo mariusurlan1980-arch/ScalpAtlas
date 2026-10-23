@@ -351,6 +351,46 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
     return lines;
   }
 
+  // SHOCK LIVE: compare the newest visible candle across consecutive camera frames.
+  // This visual estimate is deliberately conservative; no valid anchor => WAIT.
+  let shockTrack=null;
+  function visualShock(curve,timeframe){
+    const a=curve&&curve.anchor;
+    const now=Date.now();
+    if(!a||curve.quality<0.6||!Number.isFinite(a.x)||!Number.isFinite(a.lo)||!Number.isFinite(a.hi)){
+      shockTrack=null;return null;
+    }
+    const x=a.x/curve.w,y=(a.lo+a.hi)/(2*curve.h);
+    const tf=TF_MIN[timeframe]||0;
+    if(!tf){shockTrack=null;return null;}
+    const candle=Math.floor(now/(tf*60000));
+    const context=timeframe+'|'+candle;
+    if(!shockTrack||shockTrack.context!==context||Math.abs(x-shockTrack.x)>.035||now-shockTrack.at>6000){
+      shockTrack={context,x,at:now,start:y,high:y,low:y,mode:null,extreme:y,confirm:0,fired:false,last:y};return null;
+    }
+    const s=shockTrack;s.at=now;s.x=x;
+    if(s.fired)return null;
+    // In image coordinates smaller y means a higher price.
+    const threshold=.012,rebound=.004;
+    if(!s.mode){
+      if(s.high< s.start-.004 && y-s.high>=threshold)s.mode='BUY';
+      else if(s.low>s.start+.004 && s.low-y>=threshold)s.mode='SELL';
+      s.extreme=y;s.confirm=0;
+    }else if(s.mode==='BUY'){
+      if(y>s.extreme){s.extreme=y;s.confirm=0;}
+      else if(y<s.last-.001)s.confirm++;
+      else s.confirm=0;
+      if(s.confirm>=2&&s.extreme-y>=rebound){s.fired=true;return 'BUY';}
+    }else{
+      if(y<s.extreme){s.extreme=y;s.confirm=0;}
+      else if(y>s.last+.001)s.confirm++;
+      else s.confirm=0;
+      if(s.confirm>=2&&y-s.extreme>=rebound){s.fired=true;return 'SELL';}
+    }
+    s.high=Math.min(s.high,y);s.low=Math.max(s.low,y);s.last=y;
+    return null;
+  }
+
   function run(dataUrl,timeframe){
     const img=new Image();
     img.onload=function(){
@@ -358,19 +398,20 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         const curve=buildPriceCurve(img);
         if(!curve){send({type:'ERROR',message:'Imaginea nu a putut fi citită.'});return;}
         const r=classify(curve),anchor=curve.anchor;
+        const shock=visualShock(curve,timeframe);
         const duration=r.clear?directionDurationFor(timeframe,r,curve):null;
         send({
           type:'RESULT',
           result:{
-            signal:r.clear?r.dir:'NONE',
-            pattern:r.atlas,
-            probability:Math.round(r.score*100),
-            expiry:r.clear?expiryFor(timeframe,r.score):null,
+            signal:shock||'NONE',
+            pattern:shock?'SHOCK LIVE':'AȘTEAPTĂ ȘOC',
+            probability:shock?Math.round(curve.quality*100):0,
+            expiry:null,
             directionMin:duration?duration.min:null,
             directionMax:duration?duration.max:null,
             trendStrength:duration?Math.round(duration.trendStrength*100):null,
             volatility:duration?Math.round(duration.volatility*100):null,
-            reason:r.reason||'',
+            reason:shock?'ȘOC LIVE vizual confirmat':'Așteaptă retragere și revenire în aceeași lumânare',
             atlasCount:ATLAS.length,
             anchorX:anchor?anchor.x/curve.w:null,
             anchorY:anchor?((anchor.lo+anchor.hi)/2)/curve.h:null,
