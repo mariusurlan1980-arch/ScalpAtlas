@@ -2,7 +2,7 @@ name: Build SCALP ATLAS 1.0.0 RC1
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/shock-live-candle]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
