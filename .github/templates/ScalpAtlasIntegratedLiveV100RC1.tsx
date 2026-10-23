@@ -511,7 +511,7 @@ export default function LiveAnalysisApp() {
         // Markeri legacy pentru verificarea workflow-ului: nextCount < 2 ; nextCount === 2
         const nowMs = Date.now();
         const currentTf = timeframeRef.current;
-        const requiredConfirmations = 2; // SHOCK TEST: remove 3-step M10 delay; retain two-frame confirmation
+        const requiredConfirmations = rawResult.pattern === 'ȘOC LIVE' ? 1 : 2; // a confirmed one-frame SHOCK event must not be lost
         const activeLock = signalLockRef.current;
         const m10LockActive = currentTf === 'M10' && !!activeLock.dir && nowMs < activeLock.until;
 
