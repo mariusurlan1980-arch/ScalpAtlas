@@ -1,8 +1,8 @@
-name: Build SCALP ATLAS LIVE v3.2.7 DEMO candle gate
+name: Build SCALP ATLAS shock-only DEMO experimental
 
 on:
   push:
-    branches: [feature/live-v327-candle-gate-demo]
+    branches: [feature/spike-recovery-only-demo-20261023]
     paths:
       - '.github/workflows/build-live-v327-demo-candle-gate.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -17,6 +17,7 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
+      - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
       - '.github/scripts/patch_live_v327_closed_candles.py'
       - '.github/scripts/verify_live_v327_gate.py'
       - '.github/scripts/patch_live_v327_bell_toggle.py'
@@ -47,6 +48,7 @@ jobs:
         run: |
           set -e
           test -s .github/native-overlay/ScalpOverlayService.kt
+          test -s .github/native-overlay/LiveShockTracker.kt
           test -s .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           echo "Using current generic broker overlay sources; old Pocket Option-only patch skipped."
 
@@ -316,7 +318,8 @@ jobs:
           cp .github/native-overlay/ScalpOverlayService.kt "$JAVA_DIR/ScalpOverlayService.kt"
           cp .github/native-overlay/SignalJournal.kt "$JAVA_DIR/SignalJournal.kt"
           cp .github/native-overlay/LiveTestMonitor.kt "$JAVA_DIR/LiveTestMonitor.kt"
-          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt; do
+          cp .github/native-overlay/LiveShockTracker.kt "$JAVA_DIR/LiveShockTracker.kt"
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt LiveShockTracker.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
 
