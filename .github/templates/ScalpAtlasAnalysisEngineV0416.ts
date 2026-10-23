@@ -739,20 +739,21 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
           wick.dir===trendDir?wick:null;
         const chosenTrend=trendSetup&&context.regime==='TENDINTA'&&
           trendSetup.dir===trendDir?trendSetup:null;
-        const setup=chosenExtreme||chosenWick||chosenTrend;
-        const marketRegime=chosenExtreme?'REVERSARE':context.regime;
+        // Single-strategy DEMO: trend-aligned wick rejection only.
+        const setup=chosenWick;
+        const marketRegime=context.regime;
         const setupOk=!!setup&&supportedTf&&
           (marketRegime==='TENDINTA'||marketRegime==='REVERSARE')&&
           curve.quality>=.55;
         const r={clear:setupOk,dir:setupOk?setup.dir:'NONE',
-          atlas:setupOk?setup.pattern:'Așteaptă trend, retragere sau extrem local',
+          atlas:setupOk?setup.pattern:'Așteaptă respingere cu fitil în direcția trendului',
           // Optical reliability score only; not calibrated probability of WIN.
           score:setupOk?Math.min(.83,.70+curve.quality*.10+
             Math.min(.035,Math.abs(context.micro)*.12)):.20,
           reason:setupOk?'':!supportedTf?'Interval nevalidat: folosește M5/M10/M15'
             :context.regime==='NECITIBIL'?'Lumânările sau graficul nu pot fi citite'
             :context.regime==='AGITAT'?'Piață prea agitată: fără bip'
-            :'Fără confirmare de trend, retragere sau minim/maxim',
+            :'Fără respingere cu fitil confirmată în direcția trendului',
           volatility:context.volatility,quality:curve.quality,
           trendStrength:Math.min(1,Math.abs(context.full||0)/.28),
           recentStrength:Math.min(1,Math.abs(context.recent||0)/.35),
