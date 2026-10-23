@@ -510,7 +510,7 @@ export default function LiveAnalysisApp() {
         // Markeri legacy pentru verificarea workflow-ului: nextCount < 2 ; nextCount === 2
         const nowMs = Date.now();
         const currentTf = timeframeRef.current;
-        const requiredConfirmations = currentTf === 'M10' ? 3 : 2;
+        const requiredConfirmations = rawResult.pattern === 'SHOCK LIVE' ? 1 : (currentTf === 'M10' ? 3 : 2);
         const activeLock = signalLockRef.current;
         const m10LockActive = currentTf === 'M10' && !!activeLock.dir && nowMs < activeLock.until;
 
