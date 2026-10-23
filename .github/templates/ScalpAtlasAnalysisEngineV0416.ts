@@ -740,20 +740,22 @@ export const ANALYSIS_ENGINE_HTML = `<!doctype html>
         const chosenTrend=trendSetup&&context.regime==='TENDINTA'&&
           trendSetup.dir===trendDir?trendSetup:null;
         // Single-strategy DEMO: trend-aligned wick rejection only.
-        const setup=chosenWick;
+        // Shock-only mode: screenshot wick shape cannot establish an intrabar shock.
+        // Never claim a live shock from a static frame.
+        const setup=null;
         const marketRegime=context.regime;
         const setupOk=!!setup&&supportedTf&&
           (marketRegime==='TENDINTA'||marketRegime==='REVERSARE')&&
           curve.quality>=.55;
         const r={clear:setupOk,dir:setupOk?setup.dir:'NONE',
-          atlas:setupOk?setup.pattern:'Așteaptă respingere cu fitil în direcția trendului',
+          atlas:setupOk?setup.pattern:'Așteaptă șoc intralumânare măsurat în timp real',
           // Optical reliability score only; not calibrated probability of WIN.
           score:setupOk?Math.min(.83,.70+curve.quality*.10+
             Math.min(.035,Math.abs(context.micro)*.12)):.20,
           reason:setupOk?'':!supportedTf?'Interval nevalidat: folosește M5/M10/M15'
             :context.regime==='NECITIBIL'?'Lumânările sau graficul nu pot fi citite'
             :context.regime==='AGITAT'?'Piață prea agitată: fără bip'
-            :'Fără respingere cu fitil confirmată în direcția trendului',
+            :'Șocul rapid nu poate fi confirmat dintr-o singură captură',
           volatility:context.volatility,quality:curve.quality,
           trendStrength:Math.min(1,Math.abs(context.full||0)/.28),
           recentStrength:Math.min(1,Math.abs(context.recent||0)/.35),
