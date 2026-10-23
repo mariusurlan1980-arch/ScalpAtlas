@@ -9,8 +9,9 @@ export class ShockLivePipeline {
   this.context=null;
  }
  ingest(sample,now=Date.now()){
-  const context=sample && typeof sample.instrument==='string' && typeof sample.timeframe==='string' ? sample.instrument+'|'+sample.timeframe : null;
+  const context=sample && typeof sample.instrument==='string' && typeof sample.timeframe==='string' ? [sample.broker||'',sample.marketMode||'',sample.instrument,sample.timeframe].join('|') : null;
   if(context!==this.context){this.context=context;this.detector.reset();this.gate.reset();}
+  if(!sample || !['OTC','FOREX'].includes(sample.marketMode) || typeof sample.broker!=='string' || !sample.broker.trim() || (sample.marketMode==='OTC' && !/\bOTC\b/i.test(sample.instrument))){this.detector.reset();this.gate.reset();return {state:'WAIT',reason:'unverified_market_context'};}
   const valid=this.gate.accept(sample,now);
   if(!valid){this.detector.reset();return {state:'WAIT',reason:'invalid_or_stale_quote'};}
   const signal=this.detector.update(valid);
