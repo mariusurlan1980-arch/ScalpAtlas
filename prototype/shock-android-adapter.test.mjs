@@ -6,7 +6,7 @@ const prices=[100,102,100,98,98.4,98.8,99];
 prices.forEach((price,i)=>adapter.onQuote({instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'c1',price,timestamp:100000+i*200}));
 // Old data should not beep, and invalid data should reset the candidate.
 assert.deepEqual(beeps,[],'stale test quotes should not generate alerts');
-const now=Date.now()+5000;
-prices.forEach((price,i)=>adapter.onQuote({instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'c2',price,timestamp:now-1200+i*200}));
+const now=Date.now();
+prices.forEach((price,i)=>adapter.onQuote({instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'c2',price,timestamp:now+i*200},now+i*200));
 assert.deepEqual(beeps,['BUY']);
 console.log('Android adapter callback test passed');
