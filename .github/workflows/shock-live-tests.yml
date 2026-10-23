@@ -15,4 +15,6 @@ jobs:
         with:
           node-version: '22'
       - name: Run synthetic intrabar replay
-        run: node prototype/shock-live-detector.test.mjs
+        run: |
+          node prototype/shock-live-detector.test.mjs
+          node prototype/shock-live-pipeline.test.mjs
