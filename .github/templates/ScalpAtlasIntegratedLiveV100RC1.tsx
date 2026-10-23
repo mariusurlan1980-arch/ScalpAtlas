@@ -368,9 +368,8 @@ export default function LiveAnalysisApp() {
       if (!currentFrameIsChart) {
         // OCR can miss M5 on a valid chart. Do not erase the last confirmed
         // timeframe on a single missed frame; never emit signals without chart evidence.
-        timeframeRef.current = timeframeRef.current;
         marketRef.current = null;
-        setDetectedTimeframe(null);
+        // Keep the last visible timeframe label for diagnosis; block signals on invalid frames.
         signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
         signalLockRef.current = { dir: null, until: 0 };
         setDirectionRemainingSeconds(0);
