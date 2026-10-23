@@ -366,9 +366,10 @@ export default function LiveAnalysisApp() {
       // v0.4.12 — GARDĂ GRAFIC.
       // Nu permitem motorului să transforme o scenă obișnuită din cameră într-un semnal de tranzacționare.
       if (!currentFrameIsChart) {
-        timeframeRef.current = null;
+        // OCR can miss M5 on a valid chart. Do not erase the last confirmed
+        // timeframe on a single missed frame; never emit signals without chart evidence.
         marketRef.current = null;
-        setDetectedTimeframe(null);
+        // Keep the last visible timeframe label for diagnosis; block signals on invalid frames.
         signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
         signalLockRef.current = { dir: null, until: 0 };
         setDirectionRemainingSeconds(0);
@@ -510,7 +511,7 @@ export default function LiveAnalysisApp() {
         // Markeri legacy pentru verificarea workflow-ului: nextCount < 2 ; nextCount === 2
         const nowMs = Date.now();
         const currentTf = timeframeRef.current;
-        const requiredConfirmations = currentTf === 'M10' ? 3 : 2;
+        const requiredConfirmations = rawResult.pattern === 'ȘOC LIVE' ? 1 : 2; // a confirmed one-frame SHOCK event must not be lost
         const activeLock = signalLockRef.current;
         const m10LockActive = currentTf === 'M10' && !!activeLock.dir && nowMs < activeLock.until;
 
@@ -550,7 +551,7 @@ export default function LiveAnalysisApp() {
                 // M10: cele 3 confirmări nu pot fi obținute din scanări rapide.
                 // Confirmarea 2/3 este permisă abia după 60 secunde,
                 // iar 3/3 abia după încă 60 secunde (minimum ~2 minute total).
-                const M10_CONFIRMATION_STEP_MS = 60_000;
+                const M10_CONFIRMATION_STEP_MS = 1_000; // test-only: frames must be temporally distinct
                 nextCount = candidate.count;
                 nextStepAt = candidate.lastStepAt || nowMs;
                 if (
@@ -614,7 +615,7 @@ export default function LiveAnalysisApp() {
         const isWait = result.state === 'WAIT' || (result.signal === 'NONE' && !!result.bias);
         if (isWait) {
           const candidateCount = signalCandidateRef.current.dir === result.bias ? signalCandidateRef.current.count : 0;
-          const requiredConfirmations = timeframeRef.current === 'M10' ? 3 : 2;
+          const requiredConfirmations = 2;
           const suffix = candidateCount > 0 && candidateCount < requiredConfirmations ? ` • ${candidateCount}/${requiredConfirmations}` : '';
           setMessage(`${t('wait')}${result.bias ? ' ' + result.bias : ''}${suffix}`);
         } else if (result.signal === 'BUY' || result.signal === 'SELL') {
