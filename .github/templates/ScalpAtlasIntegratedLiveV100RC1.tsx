@@ -366,7 +366,9 @@ export default function LiveAnalysisApp() {
       // v0.4.12 — GARDĂ GRAFIC.
       // Nu permitem motorului să transforme o scenă obișnuită din cameră într-un semnal de tranzacționare.
       if (!currentFrameIsChart) {
-        timeframeRef.current = null;
+        // OCR can miss M5 on a valid chart. Do not erase the last confirmed
+        // timeframe on a single missed frame; never emit signals without chart evidence.
+        timeframeRef.current = timeframeRef.current;
         marketRef.current = null;
         setDetectedTimeframe(null);
         signalCandidateRef.current = { dir: null, count: 0, lastStepAt: 0 };
@@ -614,7 +616,7 @@ export default function LiveAnalysisApp() {
         const isWait = result.state === 'WAIT' || (result.signal === 'NONE' && !!result.bias);
         if (isWait) {
           const candidateCount = signalCandidateRef.current.dir === result.bias ? signalCandidateRef.current.count : 0;
-          const requiredConfirmations = timeframeRef.current === 'M10' ? 3 : 2;
+          const requiredConfirmations = 2;
           const suffix = candidateCount > 0 && candidateCount < requiredConfirmations ? ` • ${candidateCount}/${requiredConfirmations}` : '';
           setMessage(`${t('wait')}${result.bias ? ' ' + result.bias : ''}${suffix}`);
         } else if (result.signal === 'BUY' || result.signal === 'SELL') {
