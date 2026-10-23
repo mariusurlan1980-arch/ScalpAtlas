@@ -124,13 +124,12 @@ jobs:
           ! grep -q 'LiveAnalysisApp' scalp-atlas-new/App.tsx
           grep -q "expo-camera" scalp-atlas-new/package.json || true
 
-      - name: Validate new wick-rejection motor without changing UI
+      - name: Validate shock-only mode without obsolete wick/trend expectations
         run: |
-          node .github/scripts/test_live_candle_evidence.mjs
-          node .github/scripts/test_live_confirmation_freshness.mjs
-          node .github/scripts/test_pair_adaptive_live.mjs
-          node .github/scripts/test_live_wick_rejection_v323.mjs
-          node .github/scripts/test_live_trend_pullback_m10.mjs
+          set -e
+          grep -q 'const setup=null;' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
+          grep -q 'val allowedSetup = wickGate && readableTrend' .github/native-overlay/ScalpOverlayService.kt
+          test -s .github/native-overlay/LiveShockTracker.kt
           node .github/scripts/test_live_journal_freshness_v324.mjs
 
       - name: Verify no order automation and existing visual engine
@@ -229,11 +228,10 @@ jobs:
         working-directory: scalp-atlas-new
         run: npx tsc --noEmit
 
-      - name: Test optical candle gate from actual native-embedded analyzer
+      - name: Check native analyzer integration without obsolete signal tests
         run: |
-          node .github/scripts/test_live_candle_evidence.mjs
-          node .github/scripts/test_live_confirmation_freshness.mjs
-          node .github/scripts/test_pair_adaptive_live.mjs
+          set -e
+          grep -q 'const setup=null;' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q "candidateDirection:r.clear?r.dir:'NONE'" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
           grep -q 'private val maxObservations = 100' .github/native-overlay/SignalJournal.kt
           grep -q 'journal.observe(' .github/native-overlay/ScalpOverlayService.kt
