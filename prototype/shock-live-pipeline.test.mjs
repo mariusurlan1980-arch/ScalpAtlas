@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {ShockLivePipeline} from './shock-live-pipeline.mjs';
+const alerts=[];
+const p=new ShockLivePipeline({detectorOptions:{minPullbackFraction:.01,minReboundFraction:.003,minPullbackMs:100,maxPullbackMs:5000,minConfirmTicks:2},onAlert:a=>alerts.push(a)});
+const t=100000;
+const prices=[100,102,100,98,98.4,98.8,99,99.5];
+const states=prices.map((price,i)=>p.ingest({broker:'Pocket Option',marketMode:'OTC',instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'1',price,timestamp:t+i*200},t+i*200));
+assert.equal(alerts.length,1);
+assert.equal(alerts[0].side,'BUY');
+assert.equal(states.filter(s=>s.state==='SIGNAL').length,1);
+assert.equal(p.ingest({broker:'Pocket Option',marketMode:'OTC',instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'1',price:100,timestamp:t+100},t+2000).state,'WAIT');
+const q=new ShockLivePipeline();
+assert.equal(q.ingest({broker:'Pocket Option',marketMode:'OTC',instrument:'EUR/TRY OTC',timeframe:'M5',candleId:'1',price:100,timestamp:0},10000).state,'WAIT');
+console.log('SHOCK LIVE pipeline tests passed');

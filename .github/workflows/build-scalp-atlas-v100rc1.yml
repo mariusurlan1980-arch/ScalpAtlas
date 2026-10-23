@@ -2,7 +2,7 @@ name: Build SCALP ATLAS 1.0.0 RC1
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/shock-live-candle]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
@@ -264,10 +264,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.24 --cleanup-tag --yes || true
-          gh release create scalp-atlas-1.0.0-rc1 \
+          # Unique release per workflow run avoids the existing RC1 tag collision.
+          RELEASE_TAG="scalp-atlas-shock-live-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$RELEASE_TAG" \
             ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET.apk \
             ScalpAtlas-v1.0.24-AUTO-TF-PAIR-RESET-WEB.zip \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.24 AUTO TF + PAIR RESET" \
-            --notes "Scalp Atlas 1.0.0 RC1 este versiunea candidat final cu funcțiile înghețate: Camera Live, 70 de modele, Chart Guard, confirmare 2/2, Bip 1, durata estimată a direcției, istoric, statistici, jurnal și 26 de limbi cu AUTO + selector manual. Android și Web sunt construite în acest workflow; iOS se validează separat pe simulator înainte de promovarea la versiunea finală."
+            --title "SCALP ATLAS SHOCK LIVE test build ${GITHUB_RUN_NUMBER}" \
+            --notes "Versiune de TEST DEMO pentru motorul vizual SHOCK LIVE. Nu reprezintă semnale garantate. APK-ul se testează pe dispozitiv înainte de promovare."
