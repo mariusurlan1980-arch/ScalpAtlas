@@ -14,7 +14,7 @@ data class MarketSnapshot(
     val pullbackConfirmed: Boolean,
     val impulseConfirmed: Boolean
 )
-data class Decision(val direction: Direction, val reason: String, val signalKey: String? = null)
+data class Decision(val direction: Direction, val reason: String, val signalKey: String? = null, val diagnostics: List<String> = emptyList())
 
 class PrecisionScalpingEngine {
     fun evaluate(s: MarketSnapshot): Decision {
@@ -30,10 +30,12 @@ class PrecisionScalpingEngine {
             last.all { it.color == CandleColor.RED } -> Direction.SELL
             else -> return wait("TWO_CANDLES_NOT_ALIGNED")
         }
-        if (s.trend != direction) return wait("TREND_NOT_ALIGNED")
-        if (!s.structureConfirmed) return wait("STRUCTURE_UNCONFIRMED")
-        if (!s.pullbackConfirmed) return wait("PULLBACK_UNCONFIRMED")
-        if (!s.impulseConfirmed) return wait("IMPULSE_UNCONFIRMED")
+        val failures = mutableListOf<String>()
+        if (s.trend != direction) failures.add("TREND_NOT_ALIGNED")
+        if (!s.structureConfirmed) failures.add("STRUCTURE_UNCONFIRMED")
+        if (!s.pullbackConfirmed) failures.add("PULLBACK_UNCONFIRMED")
+        if (!s.impulseConfirmed) failures.add("IMPULSE_UNCONFIRMED")
+        if (failures.isNotEmpty()) return Decision(Direction.WAIT, failures.first(), diagnostics = failures)
         val key = listOf(s.symbol.trim().uppercase(), s.timeframeMinutes, last[1].closeTimeMs, direction).joinToString(":")
         return Decision(direction, "CONFIRMED", key)
     }
