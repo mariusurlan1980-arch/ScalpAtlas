@@ -275,15 +275,15 @@ jobs:
             ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST-WEB.zip
           if-no-files-found: error
 
-      - name: Publish APK release
-        if: github.ref == 'refs/heads/main'
+      - name: Publish SHOCK DEMO APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.24 --cleanup-tag --yes || true
-          gh release create scalp-atlas-1.0.0-rc1 \
+          set -e
+          TAG="scalp-atlas-shock-demo-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$TAG" \
             ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST.apk \
             ScalpAtlas-v1.0.25-SHOCK-DEMO-TEST-WEB.zip \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.24 AUTO TF + PAIR RESET" \
-            --notes "Scalp Atlas 1.0.0 RC1 este versiunea candidat final cu funcțiile înghețate: Camera Live, 70 de modele, Chart Guard, confirmare 2/2, Bip 1, durata estimată a direcției, istoric, statistici, jurnal și 26 de limbi cu AUTO + selector manual. Android și Web sunt construite în acest workflow; iOS se validează separat pe simulator înainte de promovarea la versiunea finală."
+            --title "Scalp Atlas SHOCK DEMO #${GITHUB_RUN_NUMBER}" \
+            --notes "APK experimental pentru testare DEMO. Motor SHOCK vizual, fără garanția semnalelor. Instalare separată de aplicația principală."
