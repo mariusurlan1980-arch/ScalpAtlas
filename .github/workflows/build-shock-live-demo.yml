@@ -12,6 +12,7 @@ on:
       - 'scalp-atlas-new/plugins/withShockScreenCapturePermissions.js'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
+      - '.github/templates/ScalpAtlasShockOnlyApp.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
       - '.github/templates/ScalpAtlasLocalizationV0418.ts'
       - '.github/templates/ScalpAtlasOcrAdapterV0416.ts'
@@ -113,50 +114,12 @@ jobs:
           cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
-      - name: Verify multilingual LIVE, cross-platform adapters and atlas
+      - name: Replace legacy entry screen with SHOCK-only interface
         run: |
-          set -e
-          grep -q "LiveAnalysisApp" scalp-atlas-new/App.tsx
-          grep -q "t('cameraLive')" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "animateShutter={false}" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "recognizeText" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "detectChartEvidence" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "analysis.state === 'INVALID'" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "trendLines.map(renderScalpLine)" scalp-atlas-new/LiveAnalysisApp.tsx
-          # Legacy code is gated and cannot generate alerts.
-
-          grep -q "playConfirmedAlert" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "directionRemainingSeconds" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "scalpAtlas.live.guide.v0418.count" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "useAppLocalization" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "showLanguagePicker" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "LANGUAGE_NAMES" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "setLanguage('auto')" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "LANGUAGE_OVERRIDE_KEY" scalp-atlas-new/localization.ts
-          grep -q "extraTranslations" scalp-atlas-new/localization.ts
-          grep -q "statsDisclaimer" scalp-atlas-new/localization.ts
-          grep -q "localizeReason" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "t('amountPlaceholder')" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "t('estimateHint')" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "scalpAtlas.live.guide.v0418.count" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "languageCode.toUpperCase" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "SUPPORTED_LANGUAGES" scalp-atlas-new/localization.ts
-          grep -q '"ro"' scalp-atlas-new/localization.ts
-          grep -q '"ar"' scalp-atlas-new/localization.ts
-          grep -q '"zh"' scalp-atlas-new/localization.ts
-          grep -q '"hi"' scalp-atlas-new/localization.ts
-          grep -q "AnalyzerBridge" scalp-atlas-new/LiveAnalysisApp.tsx
-          grep -q "createWorker" scalp-atlas-new/ocrAdapter.web.ts
-          grep -q "expo-ocr-kit" scalp-atlas-new/ocrAdapter.ts
-          grep -q "AnalyzerBridge.native" scalp-atlas-new/AnalyzerBridge.tsx
-          grep -q '"total": "TOTAL"' scalp-atlas-new/localization.ts
-          grep -q "expo-ocr-kit" scalp-atlas-new/ocrAdapter.native.ts
-          grep -q "react-native-webview" scalp-atlas-new/AnalyzerBridge.native.tsx
-          grep -q "iframe" scalp-atlas-new/AnalyzerBridge.web.tsx
-          grep -q "parent.postMessage" scalp-atlas-new/analysisEngine.ts
-          grep -q "directionDurationFor" scalp-atlas-new/analysisEngine.ts
-          grep -q "SCALP_ATLAS_COUNT !== 70" scalp-atlas-new/atlas.ts
-          grep -q "com.scalpatlas.app" scalp-atlas-new/app.json
+          cp .github/templates/ScalpAtlasShockOnlyApp.tsx scalp-atlas-new/App.tsx
+          grep -q 'PORNEȘTE SUPRAPUNEREA' scalp-atlas-new/App.tsx
+          grep -q 'NativeModules.ScalpOverlay' scalp-atlas-new/App.tsx
+          if grep -q '70 modele' scalp-atlas-new/App.tsx; then exit 1; fi
 
       - name: Node 22
         uses: actions/setup-node@v4
