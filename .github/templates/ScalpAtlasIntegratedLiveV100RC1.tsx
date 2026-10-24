@@ -14,6 +14,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { recognizeText } from './ocrAdapter';
+import { ShockLiveRing } from './ShockLiveRing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AnalyzerBridge, type AnalyzerBridgeHandle, type AnalyzerMessageEvent } from './AnalyzerBridge';
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES, type SupportedLanguage, useAppLocalization } from './localization';
@@ -897,33 +898,10 @@ export default function LiveAnalysisApp() {
                   <Text style={styles.frameLabel}>{locked ? t('frameFixed') : t('frameHere')}</Text>
                 </View>
 
-                {confirmationBadgeStyle && (
-                  <View
-                    pointerEvents="none"
-                    style={[
-                      styles.confirmationBadge,
-                      confirmationBadgeStyle,
-                      analysis?.bias === 'BUY'
-                        ? styles.confirmationBuy
-                        : analysis?.bias === 'SELL'
-                          ? styles.confirmationSell
-                          : styles.confirmationNeutral,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.confirmationText,
-                        analysis?.bias === 'BUY'
-                          ? styles.buy
-                          : analysis?.bias === 'SELL'
-                            ? styles.sell
-                            : styles.wait,
-                      ]}
-                    >
-                      {`ȘOC LIVE • ${shockIntensityPercent === null ? '—' : `${shockIntensityPercent}%`}`}
-                    </Text>
-                  </View>
-                )}
+                {/* SHOCK ring stays unarmed until verified live OHLC is connected. */}
+                <View pointerEvents="none" style={{alignSelf:'center', marginTop:14}}>
+                  <ShockLiveRing status={null} />
+                </View>
                 <View style={styles.overlayTop}>
                   <Text style={styles.overlayText}>
                     {live ? t('monitoring') : locked ? t('readyLive') : t('positionCamera')}
