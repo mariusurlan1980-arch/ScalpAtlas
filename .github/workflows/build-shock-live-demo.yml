@@ -22,6 +22,8 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/workflows/build-shock-live-demo.yml'
+      - '.github/scripts/test_shock_detector_live.mjs'
+      - 'scalp-atlas-new/shockOnlyDetector.ts'
   workflow_dispatch:
 
 permissions:
@@ -139,6 +141,9 @@ jobs:
         run: |
           npx expo install expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage
           npm install tesseract.js
+
+      - name: Test SHOCK chronological candle detector
+        run: node .github/scripts/test_shock_detector_live.mjs
 
       - name: Generate selected Bip 1 alert for BUY and SELL
         run: |
