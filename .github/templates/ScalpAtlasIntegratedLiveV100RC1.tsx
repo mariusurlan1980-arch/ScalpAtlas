@@ -579,7 +579,7 @@ export default function LiveAnalysisApp() {
                 expiry: null,
                 directionMin: null,
                 directionMax: null,
-                reason: `${t('confirmation')} ${nextCount}/${requiredConfirmations} • ${dir}`,
+                reason: `${t('wait')} • ${dir}`,
               };
             } else if (nextCount === requiredConfirmations) {
               // Bip 1 exact o singură dată la tranziția spre semnal confirmat.
@@ -615,7 +615,7 @@ export default function LiveAnalysisApp() {
         if (isWait) {
           const candidateCount = signalCandidateRef.current.dir === result.bias ? signalCandidateRef.current.count : 0;
           const requiredConfirmations = timeframeRef.current === 'M10' ? 3 : 2;
-          const suffix = candidateCount > 0 && candidateCount < requiredConfirmations ? ` • ${candidateCount}/${requiredConfirmations}` : '';
+          const suffix = ''; // Hide legacy confirmation counters from user-facing status.
           setMessage(`${t('wait')}${result.bias ? ' ' + result.bias : ''}${suffix}`);
         } else if (result.signal === 'BUY' || result.signal === 'SELL') {
           setMessage(`${result.signal} CONFIRMAT • ${result.pattern} • ${result.probability}%`);
@@ -1015,7 +1015,7 @@ export default function LiveAnalysisApp() {
                   <Text style={styles.reason}>{message}</Text>
                 )}
                 <Text style={styles.status}>
-                  {t('camera')}: {cameraReady ? t('ready') : t('initializing')} • {t('engine')}: {engineReady ? t('ready') : t('initializing')} • TF: {detectedTimeframe || 'AUTO'} • ~2 sec • 2/2 • BIP ON
+                  {t('camera')}: {cameraReady ? t('ready') : t('initializing')} • {t('engine')}: {engineReady ? t('ready') : t('initializing')} • TF: {detectedTimeframe || 'AUTO'} • ~2 sec • BIP ON
                 </Text>
               </View>
 
