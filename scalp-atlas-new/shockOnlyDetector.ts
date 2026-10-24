@@ -8,6 +8,7 @@ export type ShockObservation = {
   close: number; timeframeMinutes: 5 | 10 | 15; sourceConfirmed: boolean;
 };
 export type ShockSignal = { direction: ShockDirection; candleId: string; expiryMinutes: 10; reason: 'SHOCK_RECOVERY' };
+export type ShockLiveStatus = { intensityPercent: number; phase: 'OBSERVING' | 'DROPPING' | 'RISING' | 'RECOVERING_BUY' | 'RECOVERING_SELL'; signal: ShockSignal | null };
 export type ShockSettings = { minimumRangeFraction: number; recoveryFraction: number; minAgeMs: number };
 export const DEFAULT_SHOCK_SETTINGS: ShockSettings = {
   minimumRangeFraction: 0.001, recoveryFraction: 0.60, minAgeMs: 2000
@@ -21,10 +22,14 @@ export class ShockOnlyDetector {
   private contextKey = '';
   constructor(private settings: ShockSettings = DEFAULT_SHOCK_SETTINGS) {}
   observe(o: ShockObservation): ShockSignal | null {
+    return this.observeLive(o).signal;
+  }
+  observeLive(o: ShockObservation): ShockLiveStatus {
+    const idle = (): ShockLiveStatus => ({intensityPercent:0,phase:'OBSERVING',signal:null});
     if (!o.sourceConfirmed || !Number.isFinite(o.close) || o.close <= 0 ||
         ![o.open,o.high,o.low].every(Number.isFinite) ||
         o.high < Math.max(o.open,o.close) || o.low > Math.min(o.open,o.close) ||
-        o.high < o.low || !o.marketId.trim()) return null;
+        o.high < o.low || !o.marketId.trim()) return idle();
     const key = `${o.marketId}|${o.timeframeMinutes}|${o.candleId}`;
     const p = this.previous;
     if (!p || this.contextKey !== key) {
@@ -32,9 +37,9 @@ export class ShockOnlyDetector {
       this.previous = o;
       this.candleFirstSeenAt = o.timestampMs;
       this.lowFirst = false; this.highFirst = false;
-      return null;
+      return idle();
     }
-    if (o.timestampMs <= p.timestampMs || o.high < p.high || o.low > p.low) return null;
+    if (o.timestampMs <= p.timestampMs || o.high < p.high || o.low > p.low) return idle();
     const threshold = o.close * this.settings.minimumRangeFraction;
     const range = o.high - o.low;
     // Must actually observe a new extreme before its reversal; no retrospective wick signal.
@@ -42,12 +47,21 @@ export class ShockOnlyDetector {
     if (o.high > p.high && o.close >= o.open) this.highFirst = true;
     const age = o.timestampMs - this.candleFirstSeenAt;
     this.previous = o;
-    if (range < threshold || age < this.settings.minAgeMs || this.emitted.has(key)) return null;
+    // Live percentage is a candle-recovery metric, NOT a win probability.
+    const buyRecovery = range > 0 ? Math.max(0,Math.min(100,Math.round(100*(o.close-o.low)/range))) : 0;
+    const sellRecovery = range > 0 ? Math.max(0,Math.min(100,Math.round(100*(o.high-o.close)/range))) : 0;
+    const phase = this.lowFirst && o.close > o.open ? 'RECOVERING_BUY' :
+      this.highFirst && o.close < o.open ? 'RECOVERING_SELL' :
+      this.lowFirst ? 'DROPPING' : this.highFirst ? 'RISING' : 'OBSERVING';
+    const intensityPercent = phase === 'RECOVERING_BUY' ? buyRecovery : phase === 'RECOVERING_SELL' ? sellRecovery : 0;
+    const status: ShockLiveStatus = {intensityPercent,phase,signal:null};
+    if (range < threshold || age < this.settings.minAgeMs || this.emitted.has(key)) return status;
     const buy = this.lowFirst && o.close > o.open && (o.close-o.low)/range >= this.settings.recoveryFraction;
     const sell = this.highFirst && o.close < o.open && (o.high-o.close)/range >= this.settings.recoveryFraction;
-    if (buy === sell) return null;
+    if (buy === sell) return status;
     this.emitted.add(key);
-    return {direction:buy?'BUY':'SELL',candleId:o.candleId,expiryMinutes:10,reason:'SHOCK_RECOVERY'};
+    status.signal = {direction:buy?'BUY':'SELL',candleId:o.candleId,expiryMinutes:10,reason:'SHOCK_RECOVERY'};
+    return status;
   }
   reset() { this.previous=null; this.contextKey=''; this.candleFirstSeenAt=0; this.lowFirst=false; this.highFirst=false; this.emitted.clear(); }
 }
