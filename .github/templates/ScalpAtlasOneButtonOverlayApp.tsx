@@ -18,7 +18,7 @@ type Session = 'OFF' | 'STARTING' | 'ON';
 
 export default function App() {
   const [session, setSession] = useState<Session>('OFF');
-  const [status, setStatus] = useState('Pregătit pentru capturare LIVE');
+  const [status, setStatus] = useState('Pregătit pentru capturare. Semnalele ȘOC necesită validarea datelor live.');
   const busy = useRef(false);
 
   async function toggleOverlay() {
@@ -68,7 +68,7 @@ export default function App() {
             <Text style={[styles.brand, styles.brandViolet]}>ALP </Text>
             <Text style={[styles.brand, styles.brandPink]}>ATLAS</Text>
           </View>
-          <Text style={styles.subtitle}>LIVE • ORICE BROKER</Text>
+          <Text style={styles.subtitle}>ȘOC • SUPRAPUNERE LIVE</Text>
         </View>
 
         <View style={styles.center}>
@@ -77,10 +77,10 @@ export default function App() {
             <Text style={styles.pillText}>{active ? 'LIVE' : session === 'STARTING' ? 'PORNIRE' : 'OPRIT'}</Text>
           </View>
 
-          <Text style={styles.timeframe}>M10</Text>
-          <Text style={styles.expiry}>DURATĂ TRADE • 10 MINUTE</Text>
-          <Text style={styles.direction}>BUY / SELL</Text>
-          <Text style={styles.muted}>Trend · Retragere · Minime / Maxime</Text>
+          <Text style={styles.timeframe}>ȘOC</Text>
+          <Text style={styles.expiry}>TIMEFRAME AUTOMAT</Text>
+          <Text style={styles.direction}>—</Text>
+          <Text style={styles.muted}>O lumânare · Retragere bruscă · Revenire</Text>
 
           <Pressable
             accessibilityRole="button"
@@ -100,7 +100,7 @@ export default function App() {
 
         <View style={styles.footer}>
           <Text style={styles.footText}>UN SINGUR TELEFON • CAPTURĂ ECRAN</Text>
-          <Text style={styles.footNote}>BUY/SELL apar pe fereastra suprapusă. Tu decizi manual pe DEMO.</Text>
+          <Text style={styles.footNote}>Fereastra se suprapune peste broker. Nu presupune că semnalele sunt valide.</Text>
           <Text style={styles.footWarning}>Motor experimental. Nu tranzacționa bani reali pe semnale neverificate.</Text>
         </View>
       </View>
