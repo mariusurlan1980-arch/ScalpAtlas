@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import ts from '../../scalp-atlas-new/node_modules/typescript/lib/typescript.js';
+
+const src=fs.readFileSync('scalp-atlas-new/shockOnlyDetector.ts','utf8');
+const js=ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+const exports={};
+vm.runInNewContext(js,{exports,Set,Number,Math,String});
+const {ShockOnlyDetector}=exports;
+const base={candleId:'1761000000000',marketId:'EUR/USD OTC',timestampMs:10000,open:1.1,high:1.1,low:1.1,close:1.1,timeframeMinutes:5,sourceConfirmed:true};
+const d=new ShockOnlyDetector({minimumRangeFraction:0.0001,recoveryFraction:0.6,minAgeMs:1000});
+assert.equal(d.observe({...base,sourceConfirmed:false}),null,'unverified OHLC must never signal');
+assert.equal(d.observe({...base,timeframeMinutes:1}),null,'unsupported timeframe must never signal');
+assert.equal(d.observe({...base}),null,'initial candle snapshot must never signal');
+assert.equal(d.observe({...base,timestampMs:11000,low:1.099,close:1.0991}),null,'drop alone must never signal');
+const result=d.observe({...base,timestampMs:13000,low:1.099,high:1.101,close:1.1007});
+assert.equal(result?.direction,'BUY','observed sharp drop followed by recovery should produce BUY');
+assert.equal(d.observe({...base,timestampMs:14000,low:1.099,high:1.101,close:1.1008}),null,'only one signal per candle');
+const e=new ShockOnlyDetector();
+assert.equal(e.observe({...base}),null);
+assert.equal(e.observe({...base,timestampMs:11000,low:1.099,close:1.0991,sourceConfirmed:false}),null);
+assert.equal(e.observe({...base,timestampMs:13000,low:1.099,high:1.101,close:1.1007}),null,'cannot infer unobserved intrabar extreme');
+console.log('PASS SHOCK: verified chronological candle required; no duplicate or invented signal');
