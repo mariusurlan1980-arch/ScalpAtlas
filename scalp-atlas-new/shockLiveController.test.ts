@@ -19,3 +19,12 @@ controller.ingest({...base,observedAtMs:613000,low:99,close:99.2});
 const repeated=controller.ingest({...base,observedAtMs:615000,low:99,high:100.2,close:100.1});
 assert(repeated.signal===null,'same candle must not re-alert after OCR interruption');
 assert(alerts.length===1,'no duplicate BIP after lost frame');
+
+const continuityAlerts:string[]=[];
+const continuity=new ShockLiveController(direction=>continuityAlerts.push(direction));
+continuity.ingest(base);
+continuity.ingest({...base,observedAtMs:603000,low:99,close:99.2});
+continuity.ingest({...base,observedAtMs:604000,ohlcVerified:false});
+const resumed=continuity.ingest({...base,observedAtMs:605000,low:99,high:100.2,close:100.1});
+assert(resumed.signal?.direction==='BUY','shock recovery survives one unreadable frame before signal');
+assert(continuityAlerts.length===1,'one BIP after interrupted shock');
