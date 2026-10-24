@@ -21,7 +21,11 @@ export function toShockObservation(sample: ChartCandleSample): ShockObservation 
       (low as number)>Math.min(open as number,close as number) ||
       (high as number)<(low as number)) return null;
   const duration=(timeframeMinutes as number)*60000;
-  if ((observedAtMs as number)-(candleStartMs as number)>=duration) return null;
+  // A candle must begin on its actual timeframe boundary. This prevents
+  // camera frames from being grouped under an arbitrary or shifting candle ID.
+  if ((candleStartMs as number) % duration !== 0 ||
+      (observedAtMs as number)-(candleStartMs as number)>=duration ||
+      (low as number)<=0) return null;
   return {
     marketId:marketId.trim(), timeframeMinutes:timeframeMinutes as 5|10|15,
     candleId:String(candleStartMs),timestampMs:observedAtMs as number,
