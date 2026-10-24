@@ -275,10 +275,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view scalp-atlas-shock-live-demo-v1.0.26 >/dev/null 2>&1; then
-            echo 'Existing 1.0.26 release preserved; this build only uploads a workflow artifact.'
-            exit 0
-          fi
+          # Keep the already-published demo release unchanged. A new build is
+          # downloadable from the Actions artifact and is not a new public release.
+          echo 'APK build completed; workflow artifact uploaded. Existing release preserved.'
+          exit 0
           gh release create scalp-atlas-shock-live-demo-v1.0.26 \
             ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO.apk \
             ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO-WEB.zip \
