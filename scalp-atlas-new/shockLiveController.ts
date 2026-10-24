@@ -16,7 +16,8 @@ export class ShockLiveController {
   ingest(sample: ChartCandleSample): ShockLiveStatus {
     const observation = toShockObservation(sample);
     if (!observation) {
-      this.reset();
+      // A temporary unreadable frame must not erase the forming-candle history.
+      // Only a verified market/timeframe change or explicit stop resets the detector.
       return {intensityPercent:0,phase:'OBSERVING',signal:null};
     }
     const context = observation.marketId+'|'+observation.timeframeMinutes;
