@@ -10,7 +10,7 @@ export function ShockLiveRing({status}: {status: ShockLiveStatus | null}) {
   const active=Math.round(pct*0.6);
   const phase=status?.phase ?? 'OBSERVING';
   const label=status?.signal?.direction ?? (phase==='RECOVERING_BUY'?'BUY':phase==='RECOVERING_SELL'?'SELL':'ȘOC LIVE');
-  const color=label==='SELL'?'#ff4b4b':'#38e879';
+  const color=label==='SELL'?'#ff4b4b':label==='BUY'?'#38e879':'#748493';
   return (
     <View style={styles.root} accessibilityLabel={`ȘOC LIVE: ${pct}% revenire lumânare; ${label}`}>
       {Array.from({length:60},(_,i)=>(
@@ -21,7 +21,7 @@ export function ShockLiveRing({status}: {status: ShockLiveStatus | null}) {
       <View style={styles.center} pointerEvents="none">
         <Text style={styles.title}>ȘOC LIVE</Text>
         <Text style={[styles.percent,{color}]}>{status ? `${pct}%` : '—'}</Text>
-        <Text style={styles.subtitle}>{label==='ȘOC LIVE'?'REVENIRE':label}</Text>
+        <Text style={styles.subtitle}>{label==='ȘOC LIVE'?'AȘTEAPTĂ':label}</Text>
       </View>
     </View>
   );
