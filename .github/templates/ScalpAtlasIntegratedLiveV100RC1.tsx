@@ -152,6 +152,8 @@ export default function LiveAnalysisApp() {
   const [detectedTimeframe, setDetectedTimeframe] = useState<string | null>(null);
   const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 });
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  // Placeholder until independently verified OHLC samples are connected; never use legacy probability.
+  const [shockIntensityPercent] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [directionRemainingSeconds, setDirectionRemainingSeconds] = useState(0);
@@ -918,7 +920,7 @@ export default function LiveAnalysisApp() {
                             : styles.wait,
                       ]}
                     >
-                      {`ȘOC LIVE • —`}
+                      {`ȘOC LIVE • ${shockIntensityPercent === null ? '—' : `${shockIntensityPercent}%`}`}
                     </Text>
                   </View>
                 )}
