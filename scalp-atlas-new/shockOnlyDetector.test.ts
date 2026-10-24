@@ -16,3 +16,14 @@ const sell=detector.observe({...base,candleId:'sell',timestampMs:6300,high:101,l
 assert(sell?.direction==='SELL','sell reversal');
 
 assert(detector.observe({...base,marketId:'GBPUSD',candleId:'sell',timestampMs:7000,high:100,low:100,close:100})===null,'market change must reset');
+
+const live = new ShockOnlyDetector({minimumRangeFraction:0.0001,recoveryFraction:0.6,minAgeMs:1000});
+const initial=live.observeLive({...base,candleId:'live',timestampMs:10000,high:100,low:100,close:100});
+assert(initial.intensityPercent===0 && initial.signal===null,'initial live percentage');
+live.observeLive({...base,candleId:'live',timestampMs:11000,high:100,low:99,close:99.2});
+const recovery=live.observeLive({...base,candleId:'live',timestampMs:12300,high:100.2,low:99,close:100.1});
+assert(recovery.phase==='RECOVERING_BUY','live buy phase');
+assert(recovery.intensityPercent>0 && recovery.intensityPercent<=100,'live recovery percent bounded');
+assert(recovery.signal?.direction==='BUY','live signal');
+const duplicate=live.observeLive({...base,candleId:'live',timestampMs:13500,high:100.3,low:99,close:100.2});
+assert(duplicate.signal===null,'only one live alert per candle');
