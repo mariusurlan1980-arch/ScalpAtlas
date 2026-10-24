@@ -77,23 +77,16 @@ jobs:
           supported_locales = ['ro','en','de','es','fr','it','pt','nl','pl','uk','ru','tr','el','hu','cs','sk','bg','sr','hr','sl','ar','he','zh','ja','ko','hi']
 
           permissions = expo['android'].setdefault('permissions', [])
-          if 'CAMERA' not in permissions:
-              permissions.append('CAMERA')
+          permissions[:] = [p for p in permissions if p != 'CAMERA']
 
           plugins = expo.setdefault('plugins', [])
           if './plugins/withShockScreenCapturePermissions' not in plugins:
               plugins.append('./plugins/withShockScreenCapturePermissions')
-          has_camera = any(
-              p == 'expo-camera' or (isinstance(p, list) and p and p[0] == 'expo-camera')
-              for p in plugins
-          )
-          if not has_camera:
-              plugins.append([
-                  'expo-camera',
-                  {
-                      'cameraPermission': 'SCALP ATLAS folosește camera pentru analiza CAMERA LIVE a graficului de pe al doilea dispozitiv.'
-                  }
-              ])
+          # SHOCK uses Android screen capture; the physical camera is not required.
+          plugins[:] = [p for p in plugins if not (
+              p == 'expo-camera' or
+              (isinstance(p, list) and p and p[0] == 'expo-camera')
+          )]
 
           plugins[:] = [
               p for p in plugins
@@ -144,7 +137,7 @@ jobs:
       - name: Install cross-platform LIVE dependencies
         working-directory: scalp-atlas-new
         run: |
-          npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage
+          npx expo install expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage
           npm install tesseract.js
 
       - name: Generate selected Bip 1 alert for BUY and SELL
