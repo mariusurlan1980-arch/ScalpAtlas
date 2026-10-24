@@ -500,6 +500,12 @@ export default function LiveAnalysisApp() {
       }
 
       if (payload.type === 'RESULT') {
+        // SHOCK-only safety: legacy atlas results are NOT verified same-candle OHLC.
+        // Never turn them into BUY/SELL or BIP until the verified candle provider is wired.
+        setAnalysis(null);
+        setMessage('ȘOC LIVE: în așteptarea datelor OHLC verificate');
+        return;
+
         const rawResult = payload.result as AnalysisResult;
         let result: AnalysisResult = timeframeRef.current
           ? rawResult
@@ -863,16 +869,15 @@ export default function LiveAnalysisApp() {
                 <View style={styles.guideCard}>
                   <View style={styles.guideHeader}>
                     <View>
-                      <Text style={styles.guideTitle}>{t('quickStart')}</Text>
-                      <Text style={styles.guideSub}>{t('quickSub')}{guideAppearance > 0 ? ` • ${guideAppearance}/3` : ''}</Text>
+                      <Text style={styles.guideTitle}>ȘOC LIVE — O SINGURĂ LUMÂNARE</Text>
+                      <Text style={styles.guideSub}>Fără 70 modele, fără schimbare de trend, fără confirmări 2/2 sau 3/3.</Text>
                     </View>
-                    <Text style={styles.guideVersion}>v1.0.2 CLEAN VIEW</Text>
                   </View>
-                  <View style={styles.guideStep}><Text style={styles.guideStepNo}>1</Text><Text style={styles.guideStepText}>{t('step1')}</Text></View>
-                  <View style={styles.guideStep}><Text style={styles.guideStepNo}>2</Text><Text style={styles.guideStepText}>{t('step2')}</Text></View>
-                  <View style={styles.guideStep}><Text style={styles.guideStepNo}>3</Text><Text style={styles.guideStepText}>{t('step3')}</Text></View>
+                  <View style={styles.guideStep}><Text style={styles.guideStepNo}>1</Text><Text style={styles.guideStepText}>Camera urmărește graficul de pe al doilea dispozitiv.</Text></View>
+                  <View style={styles.guideStep}><Text style={styles.guideStepNo}>2</Text><Text style={styles.guideStepText}>ȘOC BUY: lumânarea verde cade brusc, apoi revine în sus. ȘOC SELL: lumânarea roșie urcă brusc, apoi revine în jos.</Text></View>
+                  <View style={styles.guideStep}><Text style={styles.guideStepNo}>3</Text><Text style={styles.guideStepText}>BIP doar după verificarea mișcării aceleiași lumânări. Citirea OHLC LIVE este încă în dezvoltare; nu tranzacționa pe semnale vechi.</Text></View>
                   <Pressable style={styles.guideButton} onPress={dismissGuide}>
-                    <Text style={styles.guideButtonText}>{t('understood')}</Text>
+                    <Text style={styles.guideButtonText}>AM ÎNȚELES</Text>
                   </Pressable>
                 </View>
               )}
