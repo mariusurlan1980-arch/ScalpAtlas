@@ -1,0 +1,16 @@
+import {ShockLiveController} from './shockLiveController';
+import type {ChartCandleSample} from './shockChartAdapter';
+const alerts:string[]=[];
+const controller=new ShockLiveController(direction=>alerts.push(direction));
+const base:ChartCandleSample={marketId:'EUR/USD',timeframeMinutes:10,candleStartMs:600000,observedAtMs:601000,open:100,high:100,low:100,close:100,chartVerified:true,ohlcVerified:true};
+const assert=(value:boolean,message:string)=>{if(!value)throw new Error(message);};
+assert(controller.ingest(base).signal===null,'initial no alert');
+assert(controller.ingest({...base,observedAtMs:603000,low:99,close:99.2}).signal===null,'drop no alert');
+const signal=controller.ingest({...base,observedAtMs:605000,low:99,high:100.2,close:100.1});
+assert(signal.signal?.direction==='BUY','buy signal after recovery');
+assert(signal.intensityPercent>0,'live intensity');
+controller.ingest({...base,observedAtMs:607000,low:99,high:100.3,close:100.2});
+assert(alerts.length===1,'exactly one BIP callback per candle');
+controller.ingest({...base,observedAtMs:609000,ohlcVerified:false});
+assert(alerts.length===1,'unverified frame never beeps');
+assert(controller.ingest({...base,observedAtMs:611000}).signal===null,'reset after lost verification');
