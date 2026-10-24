@@ -9,6 +9,7 @@ import {toShockObservation, type ChartCandleSample} from './shockChartAdapter';
 export class ShockLiveController {
   private detector = new ShockOnlyDetector();
   private lastContext: string | null = null;
+  private lastCandleId: string | null = null;
   // Retain BIP deduplication even if one OCR/camera frame is unreadable.
   private alertedCandles = new Set<string>();
   constructor(private onConfirmedAlert: (direction: ShockDirection) => void) {}
@@ -23,6 +24,9 @@ export class ShockLiveController {
       this.detector.reset();
       this.lastContext = context;
     }
+    // The first observation of a new candle establishes its baseline.
+    // Keep deduplication across invalid camera frames but reset after a genuine candle change.
+    this.lastCandleId=observation.candleId;
     const status=this.detector.observeLive(observation);
     if (status.signal) {
       const alertKey=context+'|'+status.signal.candleId;
@@ -37,5 +41,5 @@ export class ShockLiveController {
     }
     return status;
   }
-  reset() {this.detector.reset();this.lastContext=null;}
+  reset() {this.detector.reset();this.lastContext=null;this.lastCandleId=null;}
 }
