@@ -1,4 +1,4 @@
-name: Build SHOCK LIVE isolated DEMO APK
+name: Build SHOCK LIVE Android main-package test APK
 
 on:
   push:
@@ -65,9 +65,9 @@ jobs:
           expo = cfg['expo']
           expo['name'] = 'SCALP ATLAS'
           expo['slug'] = 'scalp-atlas'
-          expo['version'] = '1.0.26'
-          expo['android']['package'] = 'com.scalpatlas.shockdemo'
-          expo['android']['versionCode'] = 126
+          expo['version'] = '3.2.8'
+          expo['android']['package'] = 'com.scalpatlas.app'
+          expo['android']['versionCode'] = 328
           expo['ios']['bundleIdentifier'] = 'com.scalpatlas.app'
           expo['ios']['supportsTablet'] = True
           expo['orientation'] = 'default'
@@ -244,7 +244,7 @@ jobs:
       - name: Package Web build
         run: |
           cd scalp-atlas-new/dist
-          zip -r ../../ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO-WEB.zip .
+          zip -r ../../ScalpAtlas-v3.2.8-SHOCK-MAIN-PACKAGE-TEST-WEB.zip .
           cd ../..
 
       - name: Generate Android project
@@ -315,15 +315,15 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-v3.2.8-SHOCK-MAIN-PACKAGE-TEST.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO
+          name: ScalpAtlas-v3.2.8-SHOCK-MAIN-PACKAGE-TEST
           path: |
-            ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO.apk
-            ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO-WEB.zip
+            ScalpAtlas-v3.2.8-SHOCK-MAIN-PACKAGE-TEST.apk
+            ScalpAtlas-v3.2.8-SHOCK-MAIN-PACKAGE-TEST-WEB.zip
           if-no-files-found: error
 
       - name: Confirm isolated DEMO artifact
