@@ -14,8 +14,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { recognizeText } from './ocrAdapter';
-import { ShockLiveRing } from './ShockLiveRing';
-import { ShockLiveCandle } from './ShockLiveCandle';
+import { ShockCompactOverlay } from './ShockCompactOverlay';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AnalyzerBridge, type AnalyzerBridgeHandle, type AnalyzerMessageEvent } from './AnalyzerBridge';
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES, type SupportedLanguage, useAppLocalization } from './localization';
@@ -905,9 +904,8 @@ export default function LiveAnalysisApp() {
                 </View>
 
                 {/* SHOCK ring stays unarmed until verified live OHLC is connected. */}
-                <View pointerEvents="none" style={{alignSelf:'center', marginTop:14, flexDirection:'row', alignItems:'center'}}>
-                  <ShockLiveRing status={null} />
-                  <ShockLiveCandle sample={null} />
+                <View pointerEvents="none" style={{alignSelf:'center', marginTop:14}}>
+                  <ShockCompactOverlay sample={null} status={null} candleSide="left" />
                 </View>
                 <View style={styles.overlayTop}>
                   <Text style={styles.overlayText}>
