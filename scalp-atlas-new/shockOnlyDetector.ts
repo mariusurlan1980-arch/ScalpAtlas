@@ -39,12 +39,15 @@ export class ShockOnlyDetector {
       this.lowFirst = false; this.highFirst = false;
       return idle();
     }
-    if (o.timestampMs <= p.timestampMs || o.high < p.high || o.low > p.low) return idle();
+    if (o.timestampMs <= p.timestampMs || o.high < p.high || o.low > p.low || o.open !== p.open) return idle();
     const threshold = o.close * this.settings.minimumRangeFraction;
+    const prevRange = p.high - p.low;
+    const prevLowRecovery = prevRange > 0 ? (p.close-p.low)/prevRange : 0;
+    const prevHighRecovery = prevRange > 0 ? (p.high-p.close)/prevRange : 0;
     const range = o.high - o.low;
     // Must actually observe a new extreme before its reversal; no retrospective wick signal.
-    if (o.low < p.low && o.close <= o.open) this.lowFirst = true;
-    if (o.high > p.high && o.close >= o.open) this.highFirst = true;
+    if (o.low < p.low && o.close < o.open && (o.close-o.low) <= (o.open-o.low)*0.5) this.lowFirst = true;
+    if (o.high > p.high && o.close > o.open && (o.high-o.close) <= (o.high-o.open)*0.5) this.highFirst = true;
     const age = o.timestampMs - this.candleFirstSeenAt;
     this.previous = o;
     // Live percentage is a candle-recovery metric, NOT a win probability.
@@ -56,8 +59,8 @@ export class ShockOnlyDetector {
     const intensityPercent = phase === 'RECOVERING_BUY' ? buyRecovery : phase === 'RECOVERING_SELL' ? sellRecovery : 0;
     const status: ShockLiveStatus = {intensityPercent,phase,signal:null};
     if (range < threshold || age < this.settings.minAgeMs || this.emitted.has(key)) return status;
-    const buy = this.lowFirst && o.close > o.open && (o.close-o.low)/range >= this.settings.recoveryFraction;
-    const sell = this.highFirst && o.close < o.open && (o.high-o.close)/range >= this.settings.recoveryFraction;
+    const buy = this.lowFirst && o.close > o.open && (o.close-o.low)/range >= this.settings.recoveryFraction && buyRecovery/100 > prevLowRecovery;
+    const sell = this.highFirst && o.close < o.open && (o.high-o.close)/range >= this.settings.recoveryFraction && sellRecovery/100 > prevHighRecovery;
     if (buy === sell) return status;
     this.emitted.add(key);
     status.signal = {direction:buy?'BUY':'SELL',candleId:o.candleId,expiryMinutes:10,reason:'SHOCK_RECOVERY'};
