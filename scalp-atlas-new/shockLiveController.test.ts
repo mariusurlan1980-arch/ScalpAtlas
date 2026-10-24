@@ -14,3 +14,8 @@ assert(alerts.length===1,'exactly one BIP callback per candle');
 controller.ingest({...base,observedAtMs:609000,ohlcVerified:false});
 assert(alerts.length===1,'unverified frame never beeps');
 assert(controller.ingest({...base,observedAtMs:611000}).signal===null,'reset after lost verification');
+
+controller.ingest({...base,observedAtMs:613000,low:99,close:99.2});
+const repeated=controller.ingest({...base,observedAtMs:615000,low:99,high:100.2,close:100.1});
+assert(repeated.signal===null,'same candle must not re-alert after OCR interruption');
+assert(alerts.length===1,'no duplicate BIP after lost frame');
