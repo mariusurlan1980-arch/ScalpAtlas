@@ -7,6 +7,7 @@ on:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
       - 'scalp-atlas-new/ShockLiveCandle.tsx'
       - 'scalp-atlas-new/ShockLiveRing.tsx'
+      - 'scalp-atlas-new/plugins/withShockScreenCapturePermissions.js'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -77,6 +78,8 @@ jobs:
               permissions.append('CAMERA')
 
           plugins = expo.setdefault('plugins', [])
+          if './plugins/withShockScreenCapturePermissions' not in plugins:
+              plugins.append('./plugins/withShockScreenCapturePermissions')
           has_camera = any(
               p == 'expo-camera' or (isinstance(p, list) and p and p[0] == 'expo-camera')
               for p in plugins
