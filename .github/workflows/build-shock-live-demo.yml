@@ -263,7 +263,7 @@ jobs:
           apps=list(root.rglob('MainApplication.kt'))
           if len(apps)!=1: raise SystemExit('Expected one MainApplication.kt')
           app=apps[0]
-          pkg=re.search(r'^package\\s+([\\w.]+)',app.read_text(),re.M)
+          pkg=re.search(r'^package\s+([\w.]+)',app.read_text(),re.M)
           if not pkg: raise SystemExit('No Kotlin package')
           package=pkg.group(1)
           dst=root.joinpath(*package.split('.'))
@@ -271,20 +271,20 @@ jobs:
           for name in ('ScalpOverlayService.kt','ScalpOverlayModule.kt','ScalpOverlayPackage.kt'):
               source=Path('.github/native-overlay')/name
               code=source.read_text(encoding='utf-8')
-              code=re.sub(r'^package\\s+[\\w.]+', 'package '+package,code,count=1,flags=re.M)
+              code=re.sub(r'^package\s+[\w.]+', 'package '+package,code,count=1,flags=re.M)
               (dst/name).write_text(code,encoding='utf-8')
           code=app.read_text(encoding='utf-8')
           needle='PackageList(this).packages.apply {'
           if needle not in code: raise SystemExit('Cannot register native package')
-          code=code.replace(needle,needle+'\\n        add(ScalpOverlayPackage())',1)
+          code=code.replace(needle,needle+'\n        add(ScalpOverlayPackage())',1)
           app.write_text(code,encoding='utf-8')
           manifest=Path('scalp-atlas-new/android/app/src/main/AndroidManifest.xml')
           xml=manifest.read_text(encoding='utf-8')
           for perm in ('SYSTEM_ALERT_WINDOW','FOREGROUND_SERVICE','FOREGROUND_SERVICE_MEDIA_PROJECTION'):
               entry='<uses-permission android:name="android.permission.'+perm+'" />'
-              if entry not in xml: xml=xml.replace('<application',entry+'\\n  <application',1)
+              if entry not in xml: xml=xml.replace('<application',entry+'\n  <application',1)
           service='<service android:name=".ScalpOverlayService" android:exported="false" android:foregroundServiceType="mediaProjection" />'
-          if service not in xml: xml=xml.replace('</application>',service+'\\n  </application>',1)
+          if service not in xml: xml=xml.replace('</application>',service+'\n  </application>',1)
           manifest.write_text(xml,encoding='utf-8')
           PY
           python3 - <<'PY'
@@ -292,7 +292,7 @@ jobs:
           p=Path('scalp-atlas-new/android/app/build.gradle')
           s=p.read_text()
           if 'com.google.mlkit:text-recognition:' not in s:
-              s=s.replace('dependencies {',"dependencies {\\n    implementation 'com.google.mlkit:text-recognition:16.0.1'",1)
+              s=s.replace('dependencies {',"dependencies {\n    implementation 'com.google.mlkit:text-recognition:16.0.1'",1)
           p.write_text(s)
           PY
           mkdir -p scalp-atlas-new/android/app/src/main/res/raw
