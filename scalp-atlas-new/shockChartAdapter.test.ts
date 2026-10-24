@@ -7,3 +7,6 @@ assert(toShockObservation({...base,chartVerified:false})===null,'non-chart rejec
 assert(toShockObservation({...base,timeframeMinutes:30})===null,'unsupported TF rejected');
 assert(toShockObservation({...base,observedAtMs:1200000})===null,'closed candle rejected');
 assert(toShockObservation({...base,low:102})===null,'invalid candle rejected');
+
+assert(toShockObservation({...base,candleStartMs:600001})===null,'misaligned candle start rejected');
+assert(toShockObservation({...base,low:0})===null,'nonpositive low rejected');
