@@ -8,6 +8,7 @@ on:
       - 'scalp-atlas-new/ShockLiveCandle.tsx'
       - 'scalp-atlas-new/ShockLiveRing.tsx'
       - 'scalp-atlas-new/ShockCompactOverlay.tsx'
+      - '.github/native-overlay/**'
       - 'scalp-atlas-new/plugins/withShockScreenCapturePermissions.js'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
@@ -251,6 +252,59 @@ jobs:
         env:
           CI: '1'
         run: npx expo prebuild --platform android --clean
+
+      - name: Install native SHOCK overlay and screen-capture service
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('scalp-atlas-new/android/app/src/main/java')
+          apps=list(root.rglob('MainApplication.kt'))
+          if len(apps)!=1: raise SystemExit('Expected one MainApplication.kt')
+          app=apps[0]
+          pkg=re.search(r'^package\\s+([\\w.]+)',app.read_text(),re.M)
+          if not pkg: raise SystemExit('No Kotlin package')
+          package=pkg.group(1)
+          dst=root.joinpath(*package.split('.'))
+          dst.mkdir(parents=True,exist_ok=True)
+          for name in ('ScalpOverlayService.kt','ScalpOverlayModule.kt','ScalpOverlayPackage.kt'):
+              source=Path('.github/native-overlay')/name
+              code=source.read_text(encoding='utf-8')
+              code=re.sub(r'^package\\s+[\\w.]+', 'package '+package,code,count=1,flags=re.M)
+              (dst/name).write_text(code,encoding='utf-8')
+          code=app.read_text(encoding='utf-8')
+          needle='PackageList(this).packages.apply {'
+          if needle not in code: raise SystemExit('Cannot register native package')
+          code=code.replace(needle,needle+'\\n        add(ScalpOverlayPackage())',1)
+          app.write_text(code,encoding='utf-8')
+          manifest=Path('scalp-atlas-new/android/app/src/main/AndroidManifest.xml')
+          xml=manifest.read_text(encoding='utf-8')
+          for perm in ('SYSTEM_ALERT_WINDOW','FOREGROUND_SERVICE','FOREGROUND_SERVICE_MEDIA_PROJECTION'):
+              entry='<uses-permission android:name="android.permission.'+perm+'" />'
+              if entry not in xml: xml=xml.replace('<application',entry+'\\n  <application',1)
+          service='<service android:name=".ScalpOverlayService" android:exported="false" android:foregroundServiceType="mediaProjection" />'
+          if service not in xml: xml=xml.replace('</application>',service+'\\n  </application>',1)
+          manifest.write_text(xml,encoding='utf-8')
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/android/app/build.gradle')
+          s=p.read_text()
+          if 'com.google.mlkit:text-recognition:' not in s:
+              s=s.replace('dependencies {',"dependencies {\\n    implementation 'com.google.mlkit:text-recognition:16.0.1'",1)
+          p.write_text(s)
+          PY
+          mkdir -p scalp-atlas-new/android/app/src/main/res/raw
+          cp scalp-atlas-new/assets/buy-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_bip.wav
+          mkdir -p /tmp/scalp-engine scalp-atlas-new/android/app/src/main/assets
+          (cd scalp-atlas-new && npx tsc analysisEngine.ts atlas.ts --ignoreConfig --target ES2020 --module commonjs --skipLibCheck --esModuleInterop --outDir /tmp/scalp-engine --noEmitOnError false) || true
+          node - <<'NODE'
+          const fs=require('fs');
+          const engine=require('/tmp/scalp-engine/analysisEngine.js');
+          if (!engine.ANALYSIS_ENGINE_HTML) throw Error('Missing analyzer HTML');
+          fs.writeFileSync('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html',engine.ANALYSIS_ENGINE_HTML);
+          NODE
 
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
