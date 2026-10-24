@@ -9,6 +9,8 @@ import {toShockObservation, type ChartCandleSample} from './shockChartAdapter';
 export class ShockLiveController {
   private detector = new ShockOnlyDetector();
   private lastContext: string | null = null;
+  // Retain BIP deduplication even if one OCR/camera frame is unreadable.
+  private alertedCandles = new Set<string>();
   constructor(private onConfirmedAlert: (direction: ShockDirection) => void) {}
   ingest(sample: ChartCandleSample): ShockLiveStatus {
     const observation = toShockObservation(sample);
@@ -22,7 +24,17 @@ export class ShockLiveController {
       this.lastContext = context;
     }
     const status=this.detector.observeLive(observation);
-    if (status.signal) this.onConfirmedAlert(status.signal.direction);
+    if (status.signal) {
+      const alertKey=context+'|'+status.signal.candleId;
+      if (this.alertedCandles.has(alertKey)) {
+        status.signal=null;
+      } else {
+        this.alertedCandles.add(alertKey);
+        // Bound memory while preserving deduplication across short capture gaps.
+        if (this.alertedCandles.size>256) this.alertedCandles.delete(this.alertedCandles.values().next().value as string);
+        this.onConfirmedAlert(status.signal.direction);
+      }
+    }
     return status;
   }
   reset() {this.detector.reset();this.lastContext=null;}
