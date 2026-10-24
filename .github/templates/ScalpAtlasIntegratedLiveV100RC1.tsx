@@ -918,7 +918,7 @@ export default function LiveAnalysisApp() {
                             : styles.wait,
                       ]}
                     >
-                      {analysis?.bias ? `${t('confirmation')} ${analysis.bias}` : t('confirmation')}
+                      {`ȘOC LIVE • —`}
                     </Text>
                   </View>
                 )}
