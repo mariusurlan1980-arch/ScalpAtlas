@@ -1,0 +1,29 @@
+name: Verify SHOCK-only engine
+
+on:
+  push:
+    branches: [feature/shock-only-live]
+    paths:
+      - 'scalp-atlas-new/shock*.ts'
+      - '.github/workflows/verify-shock-engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated TypeScript test runner
+        run: npm install --no-save --no-package-lock --prefix /tmp/scalp-shock-tests tsx@4
+      - name: Verify SHOCK detector
+        run: /tmp/scalp-shock-tests/node_modules/.bin/tsx scalp-atlas-new/shockOnlyDetector.test.ts
+      - name: Verify strict chart adapter
+        run: /tmp/scalp-shock-tests/node_modules/.bin/tsx scalp-atlas-new/shockChartAdapter.test.ts
+      - name: Verify live controller and one alert
+        run: /tmp/scalp-shock-tests/node_modules/.bin/tsx scalp-atlas-new/shockLiveController.test.ts
