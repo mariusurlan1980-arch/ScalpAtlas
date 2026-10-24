@@ -156,7 +156,7 @@ jobs:
           grep -q "parent.postMessage" scalp-atlas-new/analysisEngine.ts
           grep -q "directionDurationFor" scalp-atlas-new/analysisEngine.ts
           grep -q "SCALP_ATLAS_COUNT !== 70" scalp-atlas-new/atlas.ts
-          grep -q "com.scalpatlas.shockdemo" scalp-atlas-new/app.json
+          grep -q "com.scalpatlas.app" scalp-atlas-new/app.json
 
       - name: Node 22
         uses: actions/setup-node@v4
