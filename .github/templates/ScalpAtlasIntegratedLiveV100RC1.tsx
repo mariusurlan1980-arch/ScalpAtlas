@@ -550,7 +550,7 @@ export default function LiveAnalysisApp() {
           }
 
           if (rawResult.signal === 'BUY' || rawResult.signal === 'SELL') {
-            const dir = rawResult.signal;
+            const dir: 'BUY' | 'SELL' = rawResult.signal as 'BUY' | 'SELL';
             const candidate = signalCandidateRef.current;
             let nextCount = 1;
             let nextStepAt = nowMs;
