@@ -115,7 +115,7 @@ class ScalpOverlayService : Service() {
         if (resultCode != 0 && data != null) {
           startProjection(resultCode, data)
         } else {
-          updateOverlay("AȘTEAPTĂ", "M10 • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
+          updateOverlay("AȘTEAPTĂ", "Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
         }
       }
     }
@@ -218,14 +218,14 @@ class ScalpOverlayService : Service() {
       setOnClickListener { stopSelf() }
     }
     val bell = TextView(this).apply {
-      text = "♬"
+      text = "🔔"
       textSize = 21f
       gravity = Gravity.CENTER
       setTextColor(Color.rgb(56, 232, 121))
       contentDescription = "Sunet ȘOC activ. Atinge pentru dezactivare."
       setOnClickListener {
         bellEnabled = !bellEnabled
-        text = if (bellEnabled) "♬" else "♬̸"
+        text = if (bellEnabled) "🔔" else "🔕"
         setTextColor(if (bellEnabled) Color.rgb(56, 232, 121) else Color.GRAY)
         contentDescription = if (bellEnabled) "Sunet ȘOC activ" else "Sunet ȘOC dezactivat"
       }
@@ -289,11 +289,11 @@ class ScalpOverlayService : Service() {
             if (analyzerReady) {
               updateOverlay(
                 "AȘTEAPTĂ",
-                "M10 • motor ACTIV",
+                "Captură activă",
                 "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
               )
             } else {
-              updateOverlay("AȘTEAPTĂ", "M10 • HTML încărcat", "Verific motorul...")
+              updateOverlay("AȘTEAPTĂ", "Motor încărcat", "Verific motorul...")
               view?.evaluateJavascript(
                 "window.ScalpAtlasPing && window.ScalpAtlasPing();",
                 null
@@ -336,7 +336,7 @@ class ScalpOverlayService : Service() {
             errorCount += 1
             updateOverlay(
               "AȘTEAPTĂ",
-              "M10 • cadru respins",
+              "Cadru respins",
               payload.optString("message", "Analiză indisponibilă") +
                 " • Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
             )
@@ -439,7 +439,7 @@ class ScalpOverlayService : Service() {
     )
 
     startFramePolling(width, height)
-    updateOverlay("AȘTEAPTĂ", "M10 • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
+    updateOverlay("AȘTEAPTĂ", "Flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
   }
 
   private fun startFramePolling(width: Int, height: Int) {
@@ -454,7 +454,7 @@ class ScalpOverlayService : Service() {
         if (lastFrameAt > 0L && now - lastFrameAt > 2500L) {
           updateOverlay(
             "AȘTEAPTĂ",
-            "M10 • FLUX ÎNGHEȚAT",
+            "FLUX ÎNGHEȚAT",
             "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount + " • repornește SUPRAPUNERE"
           )
         }
@@ -506,7 +506,7 @@ class ScalpOverlayService : Service() {
         pocketDetected = true
         updateOverlay(
           "AȘTEAPTĂ",
-          "POCKET OPTION DETECTAT • M10",
+          "POCKET OPTION DETECTAT",
           "Analiză activă"
         )
       }
@@ -573,7 +573,9 @@ class ScalpOverlayService : Service() {
   }
 
   private fun playBip() {
+    if (!bellEnabled) return
     mainHandler.post {
+      if (!bellEnabled) return@post
       try {
         val player = MediaPlayer.create(this, R.raw.scalp_bip)
         player?.setOnCompletionListener { it.release() }
