@@ -1,5 +1,6 @@
 /** Scalp Atlas SHOCK ONLY candidate engine. Requires time-series OHLC from the SAME forming candle.
  * A static screenshot cannot establish the order of wick formation and recovery.
+ * This detects a SHOCK inside ONE forming candle, not a trend reversal.
  * DEMO only until measured forward testing. No profit guarantee.
  */
 export type ShockDirection = 'BUY' | 'SELL';
