@@ -17,6 +17,7 @@ export class ShockOnlyDetector {
   private lowFirst = false;
   private highFirst = false;
   private emitted = new Set<string>();
+  private candleFirstSeenAt = 0;
   constructor(private settings: ShockSettings = DEFAULT_SHOCK_SETTINGS) {}
   observe(o: ShockObservation): ShockSignal | null {
     if (!o.sourceConfirmed || !Number.isFinite(o.close) || o.close <= 0 ||
@@ -26,6 +27,7 @@ export class ShockOnlyDetector {
     const p = this.previous;
     if (!p || p.candleId !== o.candleId) {
       this.previous = o;
+      this.candleFirstSeenAt = o.timestampMs;
       this.lowFirst = false; this.highFirst = false;
       return null;
     }
@@ -35,7 +37,7 @@ export class ShockOnlyDetector {
     // Must actually observe a new extreme before its reversal; no retrospective wick signal.
     if (o.low < p.low && o.close <= o.open) this.lowFirst = true;
     if (o.high > p.high && o.close >= o.open) this.highFirst = true;
-    const age = o.timestampMs - p.timestampMs;
+    const age = o.timestampMs - this.candleFirstSeenAt;
     this.previous = o;
     if (range < threshold || age < this.settings.minAgeMs || this.emitted.has(o.candleId)) return null;
     const buy = this.lowFirst && o.close > o.open && (o.close-o.low)/range >= this.settings.recoveryFraction;
@@ -44,5 +46,5 @@ export class ShockOnlyDetector {
     this.emitted.add(o.candleId);
     return {direction:buy?'BUY':'SELL',candleId:o.candleId,expiryMinutes:10,reason:'SHOCK_RECOVERY'};
   }
-  reset() { this.previous=null; this.lowFirst=false; this.highFirst=false; this.emitted.clear(); }
+  reset() { this.previous=null; this.candleFirstSeenAt=0; this.lowFirst=false; this.highFirst=false; this.emitted.clear(); }
 }
