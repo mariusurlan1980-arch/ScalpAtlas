@@ -165,91 +165,81 @@ class ScalpOverlayService : Service() {
       setStroke(dp(1), strokeColor)
     }
 
+  // SHOCK compact native overlay. No BUY/SELL until verified same-candle OHLC.
   private fun createOverlay() {
     val root = LinearLayout(this).apply {
-      orientation = LinearLayout.VERTICAL
-      setPadding(dp(12), dp(10), dp(12), dp(10))
-      background = rounded(Color.rgb(7, 16, 30), Color.rgb(40, 211, 151))
-      elevation = dp(10).toFloat()
-    }
-
-    val header = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER_VERTICAL
+      setPadding(dp(8), dp(8), dp(8), dp(8))
+      background = rounded(Color.rgb(7, 16, 30), Color.rgb(44, 70, 82))
+      elevation = dp(8).toFloat()
     }
-
-    val title = TextView(this).apply {
-      text = "SCALP ATLAS • M10"
-      setTextColor(Color.rgb(70, 220, 235))
-      textSize = 13f
+    val candle = TextView(this).apply {
+      text = "│\n█\n│"
+      gravity = Gravity.CENTER
+      textSize = 22f
+      setLineSpacing(-dp(8).toFloat(), 1f)
+      setTextColor(Color.rgb(150, 164, 178))
+      contentDescription = "Lumânare în așteptarea datelor verificate"
+    }
+    root.addView(candle, LinearLayout.LayoutParams(dp(42), dp(110)))
+    val ring = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      gravity = Gravity.CENTER
+      background = GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        setColor(Color.rgb(9, 22, 30))
+        setStroke(dp(5), Color.rgb(70, 90, 100))
+      }
+    }
+    signalText = TextView(this).apply {
+      text = "—"
+      textSize = 29f
+      gravity = Gravity.CENTER
+      setTextColor(Color.WHITE)
       setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
-
-    val close = TextView(this).apply {
-      text = "  ×  "
-      setTextColor(Color.WHITE)
-      textSize = 20f
+    detailText = TextView(this).apply {
+      text = "ȘOC"
+      textSize = 13f
       gravity = Gravity.CENTER
+      setTextColor(Color.rgb(190, 210, 220))
+    }
+    ring.addView(signalText)
+    ring.addView(detailText)
+    root.addView(ring, LinearLayout.LayoutParams(dp(116), dp(116)))
+    val close = TextView(this).apply {
+      text = "×"
+      textSize = 21f
+      gravity = Gravity.TOP
+      setTextColor(Color.LTGRAY)
       setOnClickListener { stopSelf() }
     }
-
-    header.addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-    header.addView(close)
-
-    signalText = TextView(this).apply {
-      text = "AȘTEAPTĂ"
-      setTextColor(Color.rgb(255, 201, 74))
-      textSize = 24f
-      setTypeface(typeface, android.graphics.Typeface.BOLD)
-      setPadding(0, dp(4), 0, 0)
-    }
-
-    detailText = TextView(this).apply {
-      text = "Flux ecran • pregătire"
-      setTextColor(Color.rgb(210, 222, 238))
-      textSize = 12f
-      setPadding(0, dp(2), 0, 0)
-    }
-
-    modelText = TextView(this).apply {
-      text = "Motor M10 • 3 confirmări"
-      setTextColor(Color.rgb(135, 153, 176))
-      textSize = 10f
-      setPadding(0, dp(2), 0, 0)
-    }
-
-    root.addView(header)
-    root.addView(signalText)
-    root.addView(detailText)
-    root.addView(modelText)
+    root.addView(close, LinearLayout.LayoutParams(dp(26), dp(110)))
+    modelText = null
 
     val params = WindowManager.LayoutParams(
-      dp(215),
-      WindowManager.LayoutParams.WRAP_CONTENT,
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+      dp(206), WindowManager.LayoutParams.WRAP_CONTENT,
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
       else WindowManager.LayoutParams.TYPE_PHONE,
       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
       PixelFormat.TRANSLUCENT
     ).apply {
-      // Ținem overlay-ul sus, în afara zonei de grafic analizate.
       gravity = Gravity.TOP or Gravity.END
-      x = dp(10)
-      y = dp(28)
+      x = dp(8)
+      y = dp(40)
     }
-
     var startX = 0
     var startY = 0
     var touchX = 0f
     var touchY = 0f
-
     root.setOnTouchListener { _, event ->
       when (event.action) {
         MotionEvent.ACTION_DOWN -> {
-          startX = params.x
-          startY = params.y
-          touchX = event.rawX
-          touchY = event.rawY
+          startX = params.x; startY = params.y
+          touchX = event.rawX; touchY = event.rawY
           true
         }
         MotionEvent.ACTION_MOVE -> {
@@ -261,7 +251,6 @@ class ScalpOverlayService : Service() {
         else -> false
       }
     }
-
     overlayView = root
     windowManager.addView(root, params)
   }
@@ -555,105 +544,9 @@ class ScalpOverlayService : Service() {
   }
 
   private fun handleResult(result: JSONObject) {
-    val now = System.currentTimeMillis()
-    val rawSignal = result.optString("signal", "NONE")
-    val score = result.optInt("probability", 0)
-    val expiry = result.optInt("expiry", 0)
-    val directionMax = result.optInt("directionMax", 0)
-    val pattern = result.optString("pattern", "—")
-
-    val currentLock = lockedDir
-    if (currentLock != null && now < lockedUntil) {
-      val seconds = max(0L, (lockedUntil - now) / 1000L)
-      if (rawSignal == currentLock) {
-        updateOverlay(
-          currentLock,
-          "Scor " + score + "% • Expirare " + if (expiry > 0) expiry.toString() + " min" else "—",
-          pattern + " • direcție activă " + formatSeconds(seconds)
-        )
-      } else {
-        updateOverlay(
-          "AȘTEAPTĂ",
-          currentLock + " rămâne activ • " + formatSeconds(seconds),
-          "Semnal opus blocat până la expirarea ferestrei"
-        )
-      }
-      return
-    }
-
-    if (currentLock != null && now >= lockedUntil) {
-      lockedDir = null
-      lockedUntil = 0L
-      candidateDir = null
-      candidateCount = 0
-      candidateLastAt = 0L
-    }
-
-    if (rawSignal != "BUY" && rawSignal != "SELL") {
-      val candidateStillFresh =
-        candidateDir != null &&
-        candidateCount > 0 &&
-        candidateLastAt > 0L &&
-        now - candidateLastAt <= 65000L
-
-      if (candidateStillFresh) {
-        updateOverlay(
-          "AȘTEAPTĂ " + candidateDir,
-          "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • semnalul este reverificat",
-          "M10 • candidat păstrat"
-        )
-        return
-      }
-
-      candidateDir = null
-      candidateCount = 0
-      candidateLastAt = 0L
-      updateOverlay(
-        "AȘTEAPTĂ",
-        "M10 • fără semnal clar • Scor " + score + "%",
-        pattern
-      )
-      return
-    }
-
-    if (candidateDir != rawSignal) {
-      candidateDir = rawSignal
-      candidateCount = 1
-      candidateLastAt = now
-    } else if (now - candidateLastAt >= CONFIRMATION_SPACING_MS) {
-      candidateCount += 1
-      candidateLastAt = now
-    }
-
-    if (candidateCount < REQUIRED_CONFIRMATIONS) {
-      updateOverlay(
-        "AȘTEAPTĂ " + rawSignal,
-        "Confirmare " + candidateCount + "/" + REQUIRED_CONFIRMATIONS + " • Scor " + score + "%",
-        pattern + " • M10"
-      )
-      return
-    }
-
-    // SIGNAL LOCK v1.0.23
-    // Blocarea direcției trebuie să urmeze expirarea recomandată a trade-ului,
-    // nu fereastra mai lungă de direcție. Pe M10 expirarea motorului este 5–7 min.
-    val lockMinutes = when {
-      expiry in 5..7 -> expiry
-      expiry > 0 -> expiry.coerceIn(5, 7)
-      else -> 6
-    }
-    lockedDir = rawSignal
-    lockedUntil = now + lockMinutes * 60_000L
-    candidateDir = null
-    candidateCount = 0
-    candidateLastAt = 0L
-
-    playBip()
-    updateOverlay(
-      rawSignal,
-      "Scor " + score + "% • Expirare " + if (expiry > 0) expiry.toString() + " min" else "—",
-      pattern + " • direcție estimată " + if (directionMax > 0) directionMax.toString() + " min" else "M10"
-    )
+    // The old 70-pattern analyzer is not a verified same-candle SHOCK detector.
+    // Reject all legacy results; never beep or display an invented recovery %.
+    updateOverlay("—", "ȘOC", "Date OHLC neverificate")
   }
 
   private fun formatSeconds(total: Long): String {
@@ -683,16 +576,10 @@ class ScalpOverlayService : Service() {
 
   private fun updateOverlay(signal: String, details: String, model: String) {
     mainHandler.post {
-      signalText?.text = signal
-      signalText?.setTextColor(
-        when {
-          signal.startsWith("BUY") -> Color.rgb(52, 218, 148)
-          signal.startsWith("SELL") -> Color.rgb(255, 88, 96)
-          else -> Color.rgb(255, 201, 74)
-        }
-      )
-      detailText?.text = details
-      modelText?.text = model + " • Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount
+      // Keep compact overlay unarmed until verified live candle data exists.
+      signalText?.text = "—"
+      signalText?.setTextColor(Color.WHITE)
+      detailText?.text = "ȘOC"
     }
   }
 
