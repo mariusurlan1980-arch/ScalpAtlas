@@ -62,6 +62,8 @@ class ScalpOverlayService : Service() {
   private var signalText: TextView? = null
   private var detailText: TextView? = null
   private var modelText: TextView? = null
+  private var bellEnabled = true
+  private var bellText: TextView? = null
 
   private var mediaProjection: MediaProjection? = null
   private var virtualDisplay: VirtualDisplay? = null
@@ -141,7 +143,7 @@ class ScalpOverlayService : Service() {
         "Scalp Atlas suprapunere",
         NotificationManager.IMPORTANCE_LOW
       )
-      channel.description = "Analiză live M10 peste Pocket Option"
+      channel.description = "Suprapunere ȘOC peste Pocket Option"
       getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
   }
@@ -150,7 +152,7 @@ class ScalpOverlayService : Service() {
     NotificationCompat.Builder(this, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.ic_menu_view)
       .setContentTitle("SCALP ATLAS • SUPRAPUNERE LIVE")
-      .setContentText("Analiză M10 în timp real")
+      .setContentText("ȘOC LIVE • verificare grafic")
       .setOngoing(true)
       .setPriority(NotificationCompat.PRIORITY_LOW)
       .build()
@@ -215,11 +217,26 @@ class ScalpOverlayService : Service() {
       setTextColor(Color.LTGRAY)
       setOnClickListener { stopSelf() }
     }
+    val bell = TextView(this).apply {
+      text = "♬"
+      textSize = 21f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(56, 232, 121))
+      contentDescription = "Sunet ȘOC activ. Atinge pentru dezactivare."
+      setOnClickListener {
+        bellEnabled = !bellEnabled
+        text = if (bellEnabled) "♬" else "♬̸"
+        setTextColor(if (bellEnabled) Color.rgb(56, 232, 121) else Color.GRAY)
+        contentDescription = if (bellEnabled) "Sunet ȘOC activ" else "Sunet ȘOC dezactivat"
+      }
+    }
+    bellText = bell
+    root.addView(bell, LinearLayout.LayoutParams(dp(30), dp(110)))
     root.addView(close, LinearLayout.LayoutParams(dp(26), dp(110)))
     modelText = null
 
     val params = WindowManager.LayoutParams(
-      dp(206), WindowManager.LayoutParams.WRAP_CONTENT,
+      dp(240), WindowManager.LayoutParams.WRAP_CONTENT,
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
       else WindowManager.LayoutParams.TYPE_PHONE,
