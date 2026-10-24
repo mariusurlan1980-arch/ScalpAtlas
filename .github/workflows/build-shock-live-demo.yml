@@ -5,6 +5,8 @@ on:
     branches: [feature/shock-only-live]
     paths:
       - '.github/workflows/build-scalp-atlas-v100rc1.yml'
+      - 'scalp-atlas-new/ShockLiveCandle.tsx'
+      - 'scalp-atlas-new/ShockLiveRing.tsx'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
       - '.github/templates/ScalpAtlasAnalysisEngineV0416.ts'
@@ -266,14 +268,13 @@ jobs:
             ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO-WEB.zip
           if-no-files-found: error
 
-      - name: Publish APK release
+      - name: Publish isolated SHOCK DEMO release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete scalp-atlas-v1.0.24 --cleanup-tag --yes || true
-          gh release create scalp-atlas-1.0.0-rc1 \
+          gh release create scalp-atlas-shock-live-demo-v1.0.26 \
             ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO.apk \
             ScalpAtlas-v1.0.26-SHOCK-LIVE-DEMO-WEB.zip \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS v1.0.24 AUTO TF + PAIR RESET" \
-            --notes "Scalp Atlas 1.0.0 RC1 este versiunea candidat final cu funcțiile înghețate: Camera Live, 70 de modele, Chart Guard, confirmare 2/2, Bip 1, durata estimată a direcției, istoric, statistici, jurnal și 26 de limbi cu AUTO + selector manual. Android și Web sunt construite în acest workflow; iOS se validează separat pe simulator înainte de promovarea la versiunea finală."
+            --title "SCALP ATLAS ȘOC LIVE 1.0.26 — DEMO" \
+            --notes "DEMO tehnic: motor ȘOC în aceeași lumânare; afișarea lumânării și cercului așteaptă date OHLC LIVE verificate. Nu emite semnale ȘOC reale până la conectarea sursei. Nu înlocuiește aplicațiile existente și nu este validat pentru tranzacții."
