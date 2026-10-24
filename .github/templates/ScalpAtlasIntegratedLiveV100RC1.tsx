@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  NativeModules,
+  Platform,
   Pressable,
   ScrollView,
   Modal,
@@ -127,6 +129,30 @@ function formatTime(ts: number) {
 export default function LiveAnalysisApp() {
   const { t, languageCode, regionCode, systemLanguage, languageMode, setLanguage } = useAppLocalization();
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [overlayRunning, setOverlayRunning] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
+  const startNativeOverlay = async () => {
+    if (Platform.OS !== 'android' || !NativeModules.ScalpOverlay) {
+      setOverlayMessage('Suprapunerea este disponibilă doar în aplicația Android.');
+      return;
+    }
+    try {
+      const result = await NativeModules.ScalpOverlay.startOverlayMode();
+      if (result === 'OVERLAY_PERMISSION_REQUIRED') {
+        setOverlayMessage('Permite afișarea peste alte aplicații, apoi apasă din nou.');
+      } else {
+        setOverlayRunning(true);
+        setOverlayMessage('Suprapunere ȘOC pornită. Semnalele rămân dezactivate până la verificarea lumânărilor.');
+      }
+    } catch (error) {
+      setOverlayMessage('Capturarea ecranului nu a pornit. Verifică permisiunile Android.');
+    }
+  };
+  const stopNativeOverlay = async () => {
+    try { await NativeModules.ScalpOverlay?.stopOverlayMode(); } catch (_) {}
+    setOverlayRunning(false);
+    setOverlayMessage('Suprapunere oprită.');
+  };
   const cameraRef = useRef<CameraView | null>(null);
   const analyzerRef = useRef<AnalyzerBridgeHandle>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -918,6 +944,20 @@ export default function LiveAnalysisApp() {
                 </View>
               </View>
 
+              {Platform.OS === 'android' && (
+                <View style={{marginVertical: 12, gap: 8}}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={overlayRunning ? stopNativeOverlay : startNativeOverlay}
+                    style={{padding: 16, borderRadius: 14, backgroundColor: overlayRunning ? '#7c2635' : '#126c5a', alignItems: 'center'}}
+                  >
+                    <Text style={{color: 'white', fontWeight: 'bold', fontSize: 17}}>
+                      {overlayRunning ? 'OPREȘTE SUPRAPUNERE ȘOC' : 'PORNEȘTE SUPRAPUNERE ȘOC'}
+                    </Text>
+                  </Pressable>
+                  {!!overlayMessage && <Text style={{color: '#d1e1e7', textAlign: 'center'}}>{overlayMessage}</Text>}
+                </View>
+              )}
               <Pressable
                 onPress={live ? stopLive : startLive}
                 style={[
