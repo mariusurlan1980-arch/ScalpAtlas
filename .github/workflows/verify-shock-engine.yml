@@ -27,3 +27,6 @@ jobs:
         run: /tmp/scalp-shock-tests/node_modules/.bin/tsx scalp-atlas-new/shockChartAdapter.test.ts
       - name: Verify live controller and one alert
         run: /tmp/scalp-shock-tests/node_modules/.bin/tsx scalp-atlas-new/shockLiveController.test.ts
+
+      - name: Verify live candle provider boundary
+        run: /tmp/scalp-shock-tests/node_modules/.bin/tsx scalp-atlas-new/shockCandleProvider.test.ts
