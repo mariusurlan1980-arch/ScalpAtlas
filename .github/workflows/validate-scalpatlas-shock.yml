@@ -7,6 +7,7 @@ on:
     paths:
       - 'scalp-atlas-new/shockDetector.ts'
       - 'scalp-atlas-new/shockLiveSession.ts'
+      - 'scalp-atlas-new/shockLiveSession.test.mjs'
       - 'scalp-atlas-new/shockDetector.test.mjs'
       - 'scalp-atlas-new/ShockSignalPanel.tsx'
       - 'scalp-atlas-new/App.tsx'
@@ -26,7 +27,7 @@ jobs:
           node-version: '22'
       - name: Check SHOCK detection scenarios
         working-directory: scalp-atlas-new
-        run: node --experimental-strip-types --test shockDetector.test.mjs
+        run: node --experimental-strip-types --test shockDetector.test.mjs shockLiveSession.test.mjs
       - name: TypeScript validation
         working-directory: scalp-atlas-new
         run: |
