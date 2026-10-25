@@ -6,6 +6,7 @@ on:
       - feature/scalpatlas-v0327-shock-overlay
     paths:
       - 'scalp-atlas-new/shockDetector.ts'
+      - 'scalp-atlas-new/shockLiveSession.ts'
       - 'scalp-atlas-new/shockDetector.test.mjs'
       - 'scalp-atlas-new/ShockSignalPanel.tsx'
       - 'scalp-atlas-new/App.tsx'
