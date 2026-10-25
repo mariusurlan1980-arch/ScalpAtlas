@@ -9,7 +9,9 @@ export function ShockLiveRing({status}: {status: ShockLiveStatus | null}) {
   const pct=status ? Math.max(0,Math.min(100,Math.round(status.intensityPercent))) : 0;
   const active=Math.round(pct*0.6);
   const phase=status?.phase ?? 'OBSERVING';
-  const label=status?.signal?.direction ?? (phase==='RECOVERING_BUY'?'BUY':phase==='RECOVERING_SELL'?'SELL':'ȘOC LIVE');
+  // A recovering candle is not yet a confirmed trade signal.
+  const label=status?.signal?.direction ?? 'AȘTEAPTĂ';
+  const recoveryDirection=phase==='RECOVERING_BUY'?'BUY':phase==='RECOVERING_SELL'?'SELL':null;
   const color=label==='SELL'?'#ff4b4b':label==='BUY'?'#38e879':'#748493';
   return (
     <View style={styles.root} accessibilityLabel={`ȘOC LIVE: ${pct}% revenire lumânare; ${label}`}>
@@ -21,7 +23,7 @@ export function ShockLiveRing({status}: {status: ShockLiveStatus | null}) {
       <View style={styles.center} pointerEvents="none">
         <Text style={styles.title}>ȘOC LIVE</Text>
         <Text style={[styles.percent,{color}]}>{status ? `${pct}%` : '—'}</Text>
-        <Text style={styles.subtitle}>{label==='ȘOC LIVE'?'AȘTEAPTĂ':label}</Text>
+        <Text style={styles.subtitle}>{label==='AȘTEAPTĂ' && recoveryDirection ? 'REVENIRE' : label}</Text>
       </View>
     </View>
   );
