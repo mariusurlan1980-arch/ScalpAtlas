@@ -184,7 +184,7 @@ class ScalpOverlayService : Service() {
       setTextColor(Color.rgb(150, 164, 178))
       contentDescription = "Lumânare în așteptarea datelor verificate"
     }
-    root.addView(candle, LinearLayout.LayoutParams(dp(42), dp(110)))
+    root.addView(candle, LinearLayout.LayoutParams(dp(54), dp(110)))
     val ring = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
       gravity = Gravity.CENTER
@@ -195,15 +195,15 @@ class ScalpOverlayService : Service() {
       }
     }
     signalText = TextView(this).apply {
-      text = "—"
+      text = "—%"
       textSize = 29f
       gravity = Gravity.CENTER
       setTextColor(Color.WHITE)
       setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
     detailText = TextView(this).apply {
-      text = "ȘOC"
-      textSize = 13f
+      text = "AȘTEAPTĂ"
+      textSize = 12f
       gravity = Gravity.CENTER
       setTextColor(Color.rgb(190, 210, 220))
     }
@@ -236,7 +236,7 @@ class ScalpOverlayService : Service() {
     modelText = null
 
     val params = WindowManager.LayoutParams(
-      dp(240), WindowManager.LayoutParams.WRAP_CONTENT,
+      dp(250), WindowManager.LayoutParams.WRAP_CONTENT,
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
       else WindowManager.LayoutParams.TYPE_PHONE,
@@ -596,9 +596,9 @@ class ScalpOverlayService : Service() {
   private fun updateOverlay(signal: String, details: String, model: String) {
     mainHandler.post {
       // Keep compact overlay unarmed until verified live candle data exists.
-      signalText?.text = "—"
+      signalText?.text = "—%"
       signalText?.setTextColor(Color.WHITE)
-      detailText?.text = "ȘOC"
+      detailText?.text = "AȘTEAPTĂ"
     }
   }
 
