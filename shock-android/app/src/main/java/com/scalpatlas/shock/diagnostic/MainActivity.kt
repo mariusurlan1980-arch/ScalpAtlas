@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.media.projection.MediaProjectionManager
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -21,6 +23,8 @@ class MainActivity : Activity() {
  private var overlay: View? = null
  private var params: WindowManager.LayoutParams? = null
  private var pendingOverlay = false
+ private var captureStatus: TextView? = null
+ private val captureRequestCode = 731
  override fun onCreate(savedInstanceState: Bundle?) {
   super.onCreate(savedInstanceState)
   wm = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -44,6 +48,19 @@ class MainActivity : Activity() {
    text = "Test only. No live chart analysis, BUY/SELL signals, sound or trades."
    textSize = 16f
    setTextColor(Color.LTGRAY)
+  })
+  captureStatus = TextView(this).apply {
+   text = "CAPTURĂ ECRAN: NEAUTORIZATĂ"
+   textSize = 14f
+   setTextColor(Color.LTGRAY)
+  }
+  panel.addView(captureStatus)
+  panel.addView(Button(this).apply {
+   text = "SOLICITĂ CAPTURĂ ECRAN"
+   setOnClickListener {
+    val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+    startActivityForResult(manager.createScreenCaptureIntent(), captureRequestCode)
+   }
   })
   panel.addView(Button(this).apply {
    text = "SHOW WAIT OVERLAY"
@@ -117,6 +134,12 @@ class MainActivity : Activity() {
   overlay?.let { wm.removeView(it) }
   overlay = null
   params = null
+ }
+ override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+  super.onActivityResult(requestCode, resultCode, data)
+  if (requestCode == captureRequestCode) {
+   captureStatus?.text = if (resultCode == RESULT_OK && data != null) "CAPTURĂ: ACORDATĂ · ANALIZA NU ESTE ACTIVĂ" else "CAPTURĂ: REFUZATĂ"
+  }
  }
  override fun onResume() {
   super.onResume()
