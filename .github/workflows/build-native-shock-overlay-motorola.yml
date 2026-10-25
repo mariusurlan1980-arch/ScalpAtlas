@@ -53,12 +53,12 @@ jobs:
           test -s .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           echo "Using current generic broker overlay sources; old Pocket Option-only patch skipped."
 
-      - name: Apply stable Scalp Atlas patches
+      - name: Validate current SHOCK source without legacy UI patches
         run: |
           set -e
-          for f in $(ls .github/scripts/patch_scalp_atlas_v03*.py | sort -V); do
-            python3 "$f"
-          done
+          test -s scalp-atlas-new/shockNativeEngine.ts
+          test -s .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'shockSameCandle' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Apply existing Android compatibility patches
         run: |
