@@ -77,10 +77,10 @@ class MainActivity : Activity() {
    })
   }
   line("SCALPATLAS · SHOCK", Color.WHITE, 15f)
-  line("▂ ▅ ▃ ▇ ▄", Color.rgb(63,198,136), 22f)
+  line("│\n┃\n│", Color.rgb(160,168,178), 22f)
   line("◯  —%   ·   WAIT", Color.LTGRAY, 19f)
   line("♧ ALERTĂ: INACTIVĂ", Color.LTGRAY, 13f)
-  line("FĂRĂ DATE LIVE · FĂRĂ SEMNALE", Color.LTGRAY, 11f)
+  line("O LUMÂNARE · DATE LIVE INDISPONIBILE", Color.LTGRAY, 11f)
   val lp = WindowManager.LayoutParams(
    WindowManager.LayoutParams.WRAP_CONTENT,
    WindowManager.LayoutParams.WRAP_CONTENT,
