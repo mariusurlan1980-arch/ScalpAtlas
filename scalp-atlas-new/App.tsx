@@ -303,28 +303,10 @@ export default function App() {
           signal={analysis?.signal ?? 'NONE'}
           probability={analysis?.probability ?? null}
           live={false}
+          sourceConfirmed={false}
         />
 
-        <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>REZULTAT</Text>
-          {analysis ? (
-            <>
-              <Text style={[
-                styles.signalText,
-                analysis.signal === 'BUY' ? styles.buy : analysis.signal === 'SELL' ? styles.sell : styles.neutral,
-              ]}>
-                {analysis.signal === 'NONE' ? 'FĂRĂ SEMNAL CLAR' : analysis.signal}
-              </Text>
-              <Text style={styles.statusText}>Model: {analysis.pattern || '—'}</Text>
-              <Text style={styles.statusText}>Probabilitate: {analysis.probability}%</Text>
-              <Text style={styles.statusText}>Expirare recomandată: {analysis.expiry ? `${analysis.expiry} min` : '—'}</Text>
-              <Text style={styles.statusSmall}>Calitate captură: {analysis.quality}% • Atlas: {analysis.atlasCount}/70</Text>
-            </>
-          ) : (
-            <Text style={styles.statusText}>{message}</Text>
-          )}
-          <Text style={styles.statusSmall}>Timeframe selectat: {timeframe} • Motor: {engineReady ? 'PREGĂTIT' : 'INIȚIALIZARE'}</Text>
-        </View>
+        <Text style={styles.statusSmall}>{message}</Text>
 
         <Text style={styles.footer}>
           Semnalul este afișat numai când potrivirea depășește pragul intern; altfel aplicația afișează „Fără semnal clar”. Probabilitatea este o estimare structurală, nu o garanție de tranzacționare.
