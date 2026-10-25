@@ -209,6 +209,7 @@ class ScalpOverlayService : Service() {
     windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
     journal = SignalJournal(this)
     liveTest = LiveTestMonitor(this)
+    bellEnabled = getSharedPreferences(bellPrefsName, Context.MODE_PRIVATE).getBoolean(bellPrefsKey, true)
     createNotificationChannel()
     createOverlay()
     createAnalyzer()
@@ -315,7 +316,7 @@ class ScalpOverlayService : Service() {
 
     bellControl = TextView(this).apply {
       text = if (bellEnabled) "🔔" else "🔕"
-      setTextColor(Color.rgb(255, 201, 74))
+      setTextColor(if (bellEnabled) Color.rgb(255, 201, 74) else Color.LTGRAY)
       textSize = 14f
       gravity = Gravity.CENTER
       setPadding(dp(6), dp(4), dp(8), dp(4))
