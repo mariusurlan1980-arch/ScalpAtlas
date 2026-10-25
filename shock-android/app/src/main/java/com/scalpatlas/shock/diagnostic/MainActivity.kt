@@ -20,6 +20,7 @@ class MainActivity : Activity() {
  private lateinit var wm: WindowManager
  private var overlay: View? = null
  private var params: WindowManager.LayoutParams? = null
+ private var pendingOverlay = false
  override fun onCreate(savedInstanceState: Bundle?) {
   super.onCreate(savedInstanceState)
   wm = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -56,6 +57,7 @@ class MainActivity : Activity() {
  }
  private fun showOverlay() {
   if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+   pendingOverlay = true
    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
    return
   }
@@ -103,6 +105,13 @@ class MainActivity : Activity() {
   overlay?.let { wm.removeView(it) }
   overlay = null
   params = null
+ }
+ override fun onResume() {
+  super.onResume()
+  if (pendingOverlay && (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this))) {
+   pendingOverlay = false
+   showOverlay()
+  }
  }
  override fun onDestroy() {
   hideOverlay()
