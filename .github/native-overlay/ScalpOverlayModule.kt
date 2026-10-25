@@ -89,10 +89,10 @@ class ScalpOverlayModule(
 
   @ReactMethod
   fun stopOverlayMode(promise: Promise) {
-    val intent = Intent(reactContext, ScalpOverlayService::class.java).apply {
-      action = ScalpOverlayService.ACTION_STOP
-    }
-    reactContext.startService(intent)
+    // stopService is immediate and works even when Android forbids starting
+    // background services; onDestroy removes the floating window and capture.
+    val intent = Intent(reactContext, ScalpOverlayService::class.java)
+    reactContext.stopService(intent)
     promise.resolve("STOPPED")
   }
 }
