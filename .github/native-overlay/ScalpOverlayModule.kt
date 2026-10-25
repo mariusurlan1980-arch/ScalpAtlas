@@ -87,6 +87,27 @@ class ScalpOverlayModule(
     activity.startActivityForResult(manager.createScreenCaptureIntent(), CAPTURE_REQUEST)
   }
 
+  /**
+   * Expose the ACTUAL installed versionCode to the main screen.
+   * This detects stale APKs and accidentally opened duplicate apps without
+   * writing any version label over the broker chart.
+   */
+  @ReactMethod
+  fun getBuildInfo(promise: Promise) {
+    try {
+      val info = reactContext.packageManager.getPackageInfo(reactContext.packageName, 0)
+      val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        info.longVersionCode
+      } else {
+        @Suppress("DEPRECATION")
+        info.versionCode.toLong()
+      }
+      promise.resolve("BUILD " + versionCode + " · " + reactContext.packageName)
+    } catch (error: Throwable) {
+      promise.reject("BUILD_INFO_ERROR", "Nu pot citi versiunea instalată.", error)
+    }
+  }
+
   @ReactMethod
   fun stopOverlayMode(promise: Promise) {
     // stopService is immediate and works even when Android forbids starting
