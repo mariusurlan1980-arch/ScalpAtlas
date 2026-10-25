@@ -1,4 +1,4 @@
-import { detectCandleShock, type ShockDirection, type ShockSample } from './shockDetector';
+import { detectCandleShock, type ShockDirection, type ShockSample } from './shockDetector.ts';
 
 export type ShockFrame = {
   timeframeMinutes: 5 | 10 | 15;
