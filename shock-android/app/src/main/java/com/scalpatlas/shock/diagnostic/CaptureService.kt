@@ -1,0 +1,68 @@
+package com.scalpatlas.shock.diagnostic
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
+import android.media.ImageReader
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
+import android.os.Build
+import android.os.IBinder
+import android.util.DisplayMetrics
+import android.view.WindowManager
+
+class CaptureService : Service() {
+ private var projection: MediaProjection? = null
+ private var reader: ImageReader? = null
+ private var display: android.hardware.display.VirtualDisplay? = null
+ private val channel = "shock_capture"
+ override fun onBind(intent: Intent?): IBinder? = null
+ override fun onCreate() {
+  super.onCreate()
+  (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(
+   NotificationChannel(channel, "ScalpAtlas screen capture", NotificationManager.IMPORTANCE_LOW)
+  )
+ }
+ override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+  if (intent?.action == "STOP") { stopSelf(); return START_NOT_STICKY }
+  val consent = if (Build.VERSION.SDK_INT >= 33)
+   intent?.getParcelableExtra("consent", Intent::class.java)
+  else @Suppress("DEPRECATION") intent?.getParcelableExtra<Intent>("consent")
+  val resultCode = intent?.getIntExtra("resultCode", 0) ?: 0
+  if (consent == null || resultCode != android.app.Activity.RESULT_OK) {
+   stopSelf(); return START_NOT_STICKY
+  }
+  val notification = Notification.Builder(this, channel)
+   .setContentTitle("ScalpAtlas SHOCK")
+   .setContentText("Captură ecran autorizată · analiza LIVE nu este activă")
+   .setSmallIcon(android.R.drawable.ic_menu_camera)
+   .build()
+  if (Build.VERSION.SDK_INT >= 29)
+   startForeground(21, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+  else startForeground(21, notification)
+  try {
+   val manager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+   projection = manager.getMediaProjection(resultCode, consent)
+   projection?.registerCallback(object : MediaProjection.Callback() {
+    override fun onStop() { stopSelf() }
+   }, null)
+   val metrics = DisplayMetrics()
+   @Suppress("DEPRECATION")
+   (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealMetrics(metrics)
+   reader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
+   display = projection?.createVirtualDisplay("SHOCK capture", metrics.widthPixels, metrics.heightPixels,
+    metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader?.surface, null, null)
+   // No image processing or trading signal is emitted until chart extraction is validated.
+  } catch (_: Exception) { stopSelf() }
+  return START_NOT_STICKY
+ }
+ override fun onDestroy() {
+  display?.release(); reader?.close(); projection?.stop()
+  super.onDestroy()
+ }
+}
