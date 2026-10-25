@@ -60,6 +60,7 @@ class ScalpOverlayService : Service() {
   private lateinit var windowManager: WindowManager
   private var overlayView: View? = null
   private var signalText: TextView? = null
+  private var candleText: TextView? = null
   private var detailText: TextView? = null
   private var modelText: TextView? = null
   private var bellEnabled = true
@@ -185,6 +186,7 @@ class ScalpOverlayService : Service() {
       setTextColor(Color.rgb(150, 164, 178))
       contentDescription = "Lumânare în așteptarea datelor verificate"
     }
+    candleText = candle
     root.addView(candle, LinearLayout.LayoutParams(dp(54), dp(110)))
     val ring = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
@@ -606,6 +608,7 @@ class ScalpOverlayService : Service() {
   private fun updateOverlay(signal: String, details: String, model: String) {
     mainHandler.post {
       // Keep compact overlay unarmed until verified live candle data exists.
+      candleText?.setTextColor(Color.rgb(150, 164, 178))
       signalText?.text = "—%"
       signalText?.setTextColor(Color.WHITE)
       detailText?.text = "AȘTEAPTĂ"
