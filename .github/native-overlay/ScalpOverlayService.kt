@@ -327,7 +327,8 @@ class ScalpOverlayService : Service() {
         setTextColor(if (bellEnabled) Color.rgb(255, 201, 74) else Color.LTGRAY)
       }
     }
-    header.addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    // Approved compact layout: no visible heading; keep spacing for one bell and close control.
+    header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
     header.addView(bellControl)
     header.addView(close)
 
