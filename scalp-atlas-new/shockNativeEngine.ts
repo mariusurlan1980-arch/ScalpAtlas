@@ -8,7 +8,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
   'use strict';
   var canvas=document.getElementById('c');
   var ctx=canvas.getContext('2d',{willReadFrequently:true});
-  var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1;
+  var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1,lastObservedAt=0;
   function send(obj){try{AndroidBridge.postMessage(JSON.stringify(obj));}catch(e){}}
   function reset(){history=[];lastX=-1;}
   function report(frameId,tf,pair,epoch,reason,quality,extra){
@@ -95,6 +95,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         canvas.width=image.width;canvas.height=image.height;
         ctx.drawImage(image,0,0);
         var w=canvas.width,h=canvas.height,now=Date.now(),p=ctx.getImageData(0,0,w,h).data;
+        if(lastObservedAt>0&&now-lastObservedAt>3500)reset();
+        lastObservedAt=now;
         var duration={M5:300000,M10:600000,M15:900000}[tf];
         // The bucket is a safety boundary, not proof of broker candle timing.
         var candleBucket=Math.floor(now/duration);
