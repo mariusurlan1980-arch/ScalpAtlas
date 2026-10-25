@@ -24,6 +24,7 @@ export function toShockObservation(sample: ChartCandleSample): ShockObservation 
   // A candle must begin on its actual timeframe boundary. This prevents
   // camera frames from being grouped under an arbitrary or shifting candle ID.
   if ((candleStartMs as number) % duration !== 0 ||
+      (observedAtMs as number) > Date.now() + 2000 ||
       (observedAtMs as number)-(candleStartMs as number)>=duration ||
       (low as number)<=0) return null;
   return {
