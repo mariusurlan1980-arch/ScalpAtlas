@@ -468,7 +468,7 @@ class ScalpOverlayService : Service() {
     ).apply {
       gravity = Gravity.TOP or Gravity.START
       x = dp(8)
-      y = dp(150) // below the broker's asset picker: OCR must see EUR/USD OTC
+      y = dp(210) // initial position below asset picker; leaves BHD/CNY OTC visible for OCR
     }
 
     // Drag the white card on its background; bell and X remain clickable.
@@ -725,11 +725,21 @@ class ScalpOverlayService : Service() {
         // OTC and ordinary charts using the same currency symbols must NOT
         // share confirmations, locks or per-instrument diagnostics.
         val pairPattern = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b(\s*\(?\s*OTC\s*\)?)?""")
-        val pairs = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
-          val match = pairPattern.find(line.text) ?: return@mapNotNull null
+
+        // Search ONLY the broker's instrument header. Text lower on the chart
+        // can contain older labels/prices and must not select a different asset.
+        // Join adjacent header lines because ML Kit sometimes splits "BHD/CNY"
+        // and "OTC" on the same broker button.
+        val headerLines = result.textBlocks.flatMap { it.lines }.filter { line ->
+          val box = line.boundingBox ?: return@filter false
+          val centerY = box.centerY().toFloat() / copy.height
+          centerY in 0.045f..0.31f
+        }.sortedWith(compareBy({ it.boundingBox?.centerY() ?: 0 }, { it.boundingBox?.left ?: 0 }))
+        val headerText = headerLines.joinToString(" ") { it.text }
+        val pairs = pairPattern.findAll(headerText).map { match ->
           val base = match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase()
           if (match.groupValues[3].contains("OTC", ignoreCase = true)) "$base OTC" else base
-        }.distinct()
+        }.distinct().toList()
         // Require TWO consistent OCR detections. The first different asset
         // immediately invalidates a confirmed pair and old signal candidates.
         if (pairs.size == 1) {
@@ -886,12 +896,20 @@ class ScalpOverlayService : Service() {
   private fun startFramePolling(width: Int, height: Int) {
     val handler = captureHandler ?: return
     val task = object : Runnable {
+      var lastStatusRefreshAt = 0L
       override fun run() {
         if (mediaProjection == null || imageReader == null) return
 
         processLatestImage(imageReader!!, width, height)
 
         val now = System.currentTimeMillis()
+        // A missing frame/OCR result must still be visible as a specific
+        // SCAN diagnostic, not an indefinite unlabeled "SCAN" state.
+        if (now - lastStatusRefreshAt >= 2500L) {
+          lastStatusRefreshAt = now
+          updateOverlay(if (lockedDir != null && now < lockedUntil) lockedDir!! else "AȘTEAPTĂ",
+            "Stare flux LIVE", "Verificare captură și OCR")
+        }
         // A refused signal isn't a frozen Android screen stream.
         if (lastCapturedImageAt > 0L &&
             now - lastCapturedImageAt > 3500L &&
@@ -1390,16 +1408,27 @@ class ScalpOverlayService : Service() {
           })
         }
       }
-      val brokerConnected =
-        lastCapturedImageAt > 0L &&
-        now - lastCapturedImageAt in 0L..3500L &&
+      val streamRecent = lastCapturedImageAt > 0L &&
+        now - lastCapturedImageAt in 0L..3500L
+      val tfReady = !tfAutomatic || (tfVerified &&
+        now - confirmedTfAt in 0L..TF_STALE_MS)
+      val brokerConnected = analyzerReady && streamRecent && tfReady &&
+        pairReady(now) &&
         lastAnalysisResultAt > 0L &&
-        now - lastAnalysisResultAt in 0L..5000L &&
-        pairReady(now) && (!tfAutomatic || (tfVerified && now - confirmedTfAt <= TF_STALE_MS))
-      captureStatusText?.text = if (brokerConnected) "LIVE" else "SCAN"
+        now - lastAnalysisResultAt in 0L..5000L
+      val scanStatus = when {
+        brokerConnected -> "LIVE"
+        !analyzerReady -> "MOTOR?"
+        !streamRecent -> "ECRAN?"
+        !tfReady -> "TF?"
+        !marketVerified || now - latestMarketAt > MARKET_STALE_MS -> "PERECHE?"
+        !pairReady(now) -> "STABIL"
+        else -> "GRAFIC?"
+      }
+      captureStatusText?.text = scanStatus
       captureStatusText?.setTextColor(
-        if (captureStatusText?.text == "LIVE")
-          Color.rgb(0, 137, 75) else Color.rgb(105, 120, 126)
+        if (brokerConnected) Color.rgb(0, 137, 75)
+        else Color.rgb(105, 120, 126)
       )
       // Internal diagnostics remain in journal/monitor, not over broker graph.
       lastRenderedDetails = details
