@@ -91,7 +91,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=331
+          expo['android']['versionCode']=332
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -327,6 +327,9 @@ jobs:
           node .github/scripts/test_shock_broker_capture.mjs
           grep -Fq 'source:' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'JSONObject.quote(pairAtCapture)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'headerLines.joinToString' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'streamRecent -> "ECRAN?"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'brokerConnected -> "LIVE"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'maskSelfOverlay(fullFrame, width, 0)' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Build standalone release APK
