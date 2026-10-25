@@ -288,9 +288,9 @@ class ScalpOverlayService : Service() {
   private fun createOverlay() {
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
-      minimumHeight = dp(155)
+      minimumHeight = dp(142)
       setPadding(dp(12), dp(10), dp(12), dp(10))
-      background = rounded(Color.rgb(7, 16, 30), Color.rgb(40, 211, 151))
+      background = rounded(Color.rgb(244, 245, 247), Color.rgb(210, 214, 220))
       elevation = dp(10).toFloat()
     }
 
@@ -300,8 +300,8 @@ class ScalpOverlayService : Service() {
     }
 
     val title = TextView(this).apply {
-      text = ""
-      setTextColor(Color.rgb(70, 220, 235))
+      text = "Scalp Atlas 3.2.7"
+      setTextColor(Color.rgb(35, 39, 46))
       textSize = 13f
       setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
@@ -328,7 +328,7 @@ class ScalpOverlayService : Service() {
       }
     }
     // Approved compact layout: no visible heading; keep spacing for one bell and close control.
-    header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+    header.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
     header.addView(bellControl)
     header.addView(close)
 
@@ -411,10 +411,32 @@ class ScalpOverlayService : Service() {
     controls.addView(tfControl)
     controls.addView(chartControl)
     root.addView(header)
-    root.addView(controls)
-    root.addView(signalText)
-    root.addView(detailText)
-    root.addView(modelText)
+    val signalRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER_VERTICAL
+      setPadding(0, dp(10), 0, dp(5))
+    }
+    val candle = TextView(this).apply {
+      text = "┃\n█\n┃"
+      textSize = 27f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(24, 171, 100))
+    }
+    signalRow.addView(candle, LinearLayout.LayoutParams(dp(70), dp(100)))
+    signalText?.apply {
+      gravity = Gravity.CENTER
+      textSize = 16f
+      background = GradientDrawable().apply {
+        setColor(Color.TRANSPARENT)
+        cornerRadius = dp(48).toFloat()
+        setStroke(dp(4), Color.rgb(145, 154, 166))
+      }
+    }
+    signalRow.addView(signalText, LinearLayout.LayoutParams(dp(118), dp(96)))
+    root.addView(signalRow)
+    controls.visibility = View.GONE
+    detailText?.visibility = View.GONE
+    modelText?.visibility = View.GONE
 
     // No automatic uploads; tap to export records and screenshots as ZIP.
     journalControl = TextView(this).apply {
@@ -431,6 +453,7 @@ class ScalpOverlayService : Service() {
         }
       }
     }
+    journalControl?.visibility = View.GONE
     root.addView(journalControl)
 
     // Observational test starts automatically when Android screen sharing starts.
@@ -443,10 +466,11 @@ class ScalpOverlayService : Service() {
       ellipsize = TextUtils.TruncateAt.END
       setPadding(0, dp(3), 0, 0)
     }
+    testStatusText?.visibility = View.GONE
     root.addView(testStatusText)
 
     val params = WindowManager.LayoutParams(
-      dp(215),
+      dp(235),
       WindowManager.LayoutParams.WRAP_CONTENT,
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
       else WindowManager.LayoutParams.TYPE_PHONE,
