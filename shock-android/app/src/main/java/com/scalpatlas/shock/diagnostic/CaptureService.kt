@@ -69,6 +69,21 @@ class CaptureService : Service() {
      try {
       if (frame.width > 0 && frame.height > 0 && frame.planes.isNotEmpty()) {
        framesReceived++
+       if (framesReceived % 30L == 1L) {
+        val plane = frame.planes[0]
+        val buffer = plane.buffer
+        val stride = plane.rowStride
+        val pixelStride = plane.pixelStride
+        val x = frame.width / 2
+        val y = frame.height / 2
+        val index = y * stride + x * pixelStride
+        if (pixelStride >= 4 && index >= 0 && index + 2 < buffer.limit()) {
+         val r = buffer.get(index).toInt() and 255
+         val g = buffer.get(index + 1).toInt() and 255
+         val b = buffer.get(index + 2).toInt() and 255
+         Log.d("ScalpAtlasCapture", "Center RGB: $r,$g,$b; no trading signals")
+        }
+       }
        if (framesReceived % 120L == 1L)
         Log.i("ScalpAtlasCapture", "Frames received: $framesReceived; chart analysis disabled")
       }
