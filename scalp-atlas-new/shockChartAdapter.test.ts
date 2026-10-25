@@ -10,3 +10,9 @@ assert(toShockObservation({...base,low:102})===null,'invalid candle rejected');
 
 assert(toShockObservation({...base,candleStartMs:600001})===null,'misaligned candle start rejected');
 assert(toShockObservation({...base,low:0})===null,'nonpositive low rejected');
+
+// A valid OHLC snapshot is still insufficient to establish chronological intrabar movement.
+assert(toShockObservation({...base,ohlcVerified:false,close:100.8})===null,'screen-only estimates cannot arm BIP');
+assert(toShockObservation({...base,observedAtMs:599999})===null,'observation before candle start rejected');
+assert(toShockObservation({...base,high:99})===null,'high below open rejected');
+assert(toShockObservation({...base,close:102})===null,'close above high rejected');
