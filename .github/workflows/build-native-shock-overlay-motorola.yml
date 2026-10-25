@@ -30,6 +30,7 @@ on:
       - '.github/scripts/test_pair_adaptive_live.mjs'
       - '.github/scripts/test_live_journal_freshness_v324.mjs'
       - '.github/scripts/test_live_trend_pullback_m10.mjs'
+      - '.github/scripts/test_shock_broker_capture.mjs'
   workflow_dispatch:
 
 concurrency:
@@ -90,7 +91,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=330
+          expo['android']['versionCode']=331
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -321,6 +322,13 @@ jobs:
           test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
           test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_sell_bip.wav
 
+      - name: Regression test broker screen to same candle SHOCK
+        run: |
+          node .github/scripts/test_shock_broker_capture.mjs
+          grep -Fq 'source:' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'JSONObject.quote(pairAtCapture)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'maskSelfOverlay(fullFrame, width, 0)' .github/native-overlay/ScalpOverlayService.kt
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -354,6 +362,9 @@ jobs:
           ! grep -q 'TF AUTO ▸' "$SERVICE"
           grep -q 'shockOpticalVerified' "$SERVICE"
           grep -q 'shockSameCandle' "$SERVICE"
+          grep -Fq 'brokerPair' "$SERVICE"
+          grep -Fq 'ANDROID_SCREEN_CAPTURE' "$SERVICE"
+          grep -Fq 'JSONObject.quote(pairAtCapture)' "$SERVICE"
           unzip -p "$APK" assets/analysis_engine.html | grep -q 'shockRecovered'
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
