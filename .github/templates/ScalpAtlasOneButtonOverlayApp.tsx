@@ -68,7 +68,7 @@ export default function App() {
             <Text style={[styles.brand, styles.brandViolet]}>ALP </Text>
             <Text style={[styles.brand, styles.brandPink]}>ATLAS</Text>
           </View>
-          <Text style={styles.subtitle}>ȘOC • SUPRAPUNERE LIVE</Text>
+          <Text style={styles.subtitle}>MOTOR ȘOC  /  EDIȚIE DEMO</Text>
         </View>
 
         <View style={styles.center}>
@@ -77,10 +77,10 @@ export default function App() {
             <Text style={styles.pillText}>{active ? 'LIVE' : session === 'STARTING' ? 'PORNIRE' : 'OPRIT'}</Text>
           </View>
 
-          <Text style={styles.timeframe}>ȘOC</Text>
-          <Text style={styles.expiry}>TIMEFRAME AUTOMAT</Text>
-          <Text style={styles.direction}>—</Text>
-          <Text style={styles.muted}>O lumânare · Retragere bruscă · Revenire</Text>
+          <Text style={styles.timeframe}>ȘOC<Text style={styles.accent}>.</Text></Text>
+          <Text style={styles.expiry}>M5  ·  M10  ·  M15  /  AUTO</Text>
+          <Text style={styles.direction}>↗  BUY    ↘  SELL</Text>
+          <Text style={styles.muted}>O SINGURĂ LUMÂNARE</Text><Text style={styles.mutedDetail}>Retragere puternică  →  Revenire</Text>
 
           <Pressable
             accessibilityRole="button"
@@ -92,7 +92,7 @@ export default function App() {
             {session === 'STARTING'
               ? <ActivityIndicator color="#f6fbff" style={styles.spinner} />
               : <View style={[styles.buttonLed, active && styles.buttonLedOn]} />}
-            <Text style={styles.buttonText}>{active ? 'OPREȘTE LIVE' : 'SUPRAPUNERE LIVE'}</Text>
+            <Text style={[styles.buttonText, active && styles.buttonTextOn]}>{active ? 'OPREȘTE LIVE' : 'PORNEȘTE LIVE'}</Text>
           </Pressable>
 
           <Text style={styles.status}>{status}</Text>
@@ -109,36 +109,39 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  root: {flex: 1,backgroundColor:'#070b12'},
-  page: {flex:1,paddingHorizontal:22,justifyContent:'space-between',paddingBottom:20},
-  header: {paddingTop:22,alignItems:'center'},
+  root: {flex:1,backgroundColor:'#080b10'},
+  page: {flex:1,paddingHorizontal:26,justifyContent:'space-between',paddingBottom:26},
+  header: {paddingTop:42,alignItems:'center'},
   titleRow: {flexDirection:'row',justifyContent:'center'},
-  brand: {fontSize:33,fontWeight:'900',letterSpacing:1.3},
-  brandCyan: {color:'#37d9f8'},
-  brandViolet: {color:'#9c77ff'},
-  brandPink: {color:'#e964c8'},
-  subtitle: {color:'#8fa5bd',fontSize:12,fontWeight:'700',letterSpacing:2,marginTop:8},
+  brand: {fontSize:31,fontWeight:'900',letterSpacing:1.1},
+  brandCyan: {color:'#f3f5f8'},
+  brandViolet: {color:'#f3f5f8'},
+  brandPink: {color:'#39e8a3'},
+  subtitle: {color:'#8293a5',fontSize:11,fontWeight:'800',letterSpacing:2.4,marginTop:10},
   center: {alignItems:'center',justifyContent:'center'},
-  pill: {flexDirection:'row',alignItems:'center',marginBottom:26},
-  led: {height:12,width:12,borderRadius:6,backgroundColor:'#ef545a',marginRight:10},
-  ledOn: {backgroundColor:'#43df97'},
-  pillText: {color:'#e6eef8',fontSize:14,fontWeight:'800',letterSpacing:2},
-  timeframe: {fontSize:65,color:'#eef6ff',fontWeight:'900'},
-  expiry: {fontSize:12,color:'#8ea9c1',fontWeight:'800',letterSpacing:1.2,marginTop:2},
-  direction: {fontSize:30,fontWeight:'900',color:'#eff5ff',marginTop:28},
-  muted: {color:'#8b9ab0',fontSize:13,marginTop:7,marginBottom:35},
-  button: {backgroundColor:'#22364d',minHeight:64,borderRadius:16,paddingHorizontal:25,
+  pill: {flexDirection:'row',alignItems:'center',marginBottom:32,backgroundColor:'#151c24',paddingHorizontal:18,paddingVertical:9,borderRadius:28},
+  led: {height:9,width:9,borderRadius:5,backgroundColor:'#e4676b',marginRight:10},
+  ledOn: {backgroundColor:'#39e8a3'},
+  pillText: {color:'#e5edf5',fontSize:12,fontWeight:'900',letterSpacing:2},
+  timeframe: {fontSize:82,color:'#f7f9fb',fontWeight:'900',letterSpacing:2},
+  accent: {color:'#39e8a3'},
+  expiry: {fontSize:12,color:'#90a4b7',fontWeight:'800',letterSpacing:1.5,marginTop:6},
+  direction: {fontSize:22,fontWeight:'900',color:'#dce8f3',marginTop:34,letterSpacing:1},
+  muted: {color:'#e8eff5',fontSize:13,fontWeight:'800',letterSpacing:1.4,marginTop:22},
+  mutedDetail: {color:'#8396a9',fontSize:12,marginTop:10,marginBottom:40},
+  button: {backgroundColor:'#39e8a3',minHeight:70,borderRadius:20,paddingHorizontal:24,
     width:'100%',flexDirection:'row',alignItems:'center',justifyContent:'center'},
-  buttonOn: {backgroundColor:'#183f31'},
-  buttonLed: {width:13,height:13,borderRadius:7,backgroundColor:'#e75b64',marginRight:12},
-  buttonLedOn: {backgroundColor:'#42e99a'},
-  buttonText: {color:'#fff',fontWeight:'900',fontSize:17,letterSpacing:.5},
+  buttonOn: {backgroundColor:'#d94f60'},
+  buttonLed: {width:11,height:11,borderRadius:6,backgroundColor:'#0a1713',marginRight:12},
+  buttonLedOn: {backgroundColor:'#ffffff'},
+  buttonText: {color:'#07140f',fontWeight:'900',fontSize:17,letterSpacing:.8},
+  buttonTextOn: {color:'#ffffff'},
   spinner: {marginRight:12},
   disabled: {opacity:.6},
-  status: {color:'#d9e6f4',fontSize:13,lineHeight:20,textAlign:'center',marginTop:19,
+  status: {color:'#b4c2cf',fontSize:12,lineHeight:19,textAlign:'center',marginTop:23,
     minHeight:60,maxWidth:340},
-  footer: {alignItems:'center',gap:7},
-  footText: {color:'#8fa7be',fontWeight:'800',fontSize:11,letterSpacing:1},
-  footNote: {color:'#7d8b9c',fontSize:11,textAlign:'center',lineHeight:17},
-  footWarning: {color:'#f6ac76',fontSize:10,textAlign:'center',lineHeight:15,marginTop:3},
+  footer: {alignItems:'center',gap:8},
+  footText: {color:'#8b9dae',fontWeight:'800',fontSize:10,letterSpacing:1.2},
+  footNote: {color:'#6f7f8f',fontSize:11,textAlign:'center',lineHeight:17},
+  footWarning: {color:'#e5aa78',fontSize:10,textAlign:'center',lineHeight:15,marginTop:5},
 });
