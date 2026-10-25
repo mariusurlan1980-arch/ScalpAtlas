@@ -1,0 +1,33 @@
+name: Validate ScalpAtlas SHOCK detector
+
+on:
+  push:
+    branches:
+      - feature/scalpatlas-v0327-shock-overlay
+    paths:
+      - 'scalp-atlas-new/shockDetector.ts'
+      - 'scalp-atlas-new/shockDetector.test.mjs'
+      - 'scalp-atlas-new/ShockSignalPanel.tsx'
+      - 'scalp-atlas-new/App.tsx'
+      - '.github/workflows/validate-scalpatlas-shock.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check SHOCK detection scenarios
+        working-directory: scalp-atlas-new
+        run: node --experimental-strip-types --test shockDetector.test.mjs
+      - name: TypeScript validation
+        working-directory: scalp-atlas-new
+        run: |
+          npm install
+          npx tsc --noEmit
