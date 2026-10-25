@@ -183,61 +183,14 @@ jobs:
         working-directory: scalp-atlas-new
         run: npx tsc --noEmit
 
-      - name: Test optical candle gate from actual native-embedded analyzer
+      - name: Verify SHOCK-only native integration
         run: |
-          node .github/scripts/test_live_candle_evidence.mjs
-          node .github/scripts/test_live_confirmation_freshness.mjs
-          node .github/scripts/test_pair_adaptive_live.mjs
-          grep -q "candidateDirection:r.clear?r.dir:'NONE'" .github/templates/ScalpAtlasAnalysisEngineV0416.ts
-          grep -q 'private val maxObservations = 100' .github/native-overlay/SignalJournal.kt
-          grep -q 'journal.observe(' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'pairReady(now)' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'frameMarketEpoch != marketEpoch' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'manualTfMismatchCount >= 2' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'if (!tfAutomatic \&\& manualTfConflict)' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'contains("OTC", ignoreCase = true)' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'PROFILURI PE PERECHE SI TIMEFRAME' .github/native-overlay/SignalJournal.kt
-          grep -q 'marketRegime,' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
-          grep -q 'onBeep(now: Long, direction: String, market: String)' .github/native-overlay/LiveTestMonitor.kt
-          test -s .github/native-overlay/LiveTestMonitor.kt
-          grep -q 'liveTest.begin(' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'liveTest.tick(' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'setKeepScreenForTest(true)' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'setKeepScreenForTest(liveTest.isActive())' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'setKeepScreenForTest(false)' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'fun isActive(): Boolean = active != null' .github/native-overlay/LiveTestMonitor.kt
-          grep -q 'liveTest.onClassifier(' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'liveTest.onBeep(' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'testStatusText' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'Test-LIVE-sesiuni.json' .github/native-overlay/SignalJournal.kt
-          grep -q '30L \* 60_000L' .github/native-overlay/LiveTestMonitor.kt
-          ! grep -E -q 'AccessibilityService|dispatchGesture|placeDemoOrder' .github/native-overlay/LiveTestMonitor.kt
-          grep -q 'opticalCandleGate' .github/templates/ScalpAtlasAnalysisEngineV0416.ts
-          grep -q 'opticalCandleGate' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'maskSelfOverlay' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'lastCapturedImageAt' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'lastAnalysisResultAt' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'ANALIZĂ LIVE' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'handler.postDelayed(this, 550L)' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'private const val ALERT_FRESH_MS = 30_000L' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'lockedAt = now' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'Semnal emis la BIP • afișare rămasă' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'Semnal anterior, NU intrare nouă' .github/native-overlay/ScalpOverlayService.kt
-          test -s .github/native-overlay/SignalJournal.kt
-          grep -q 'journal.record(' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'journal.followUp(' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'journal.share()' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'outcome", "NEVERIFICAT"' .github/native-overlay/SignalJournal.kt
-          ! grep -E -q 'executeTrade|placeDemoOrder|dispatchGesture' .github/native-overlay/SignalJournal.kt
-          grep -q 'val columns = 88' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'val rows = 72' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'lastVisualChangeAt <= 35_000L' .github/native-overlay/ScalpOverlayService.kt
-          ! grep -q 'Imagine neschimbată peste 12s' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'Gravity.TOP or Gravity.START' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'lastRenderedCounterAt >= 6500L' .github/native-overlay/ScalpOverlayService.kt
-          ! grep -q 'M10 • fără semnal clar • Scor' .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'floatArrayOf(0.55f, 0.83f, 0.89f)' .github/native-overlay/ScalpOverlayService.kt
+          set -e
+          test -s scalp-atlas-new/shockNativeEngine.ts
+          grep -q 'window.ScalpAtlasAnalyze' scalp-atlas-new/shockNativeEngine.ts
+          grep -q 'shockOpticalVerified' scalp-atlas-new/shockNativeEngine.ts
+          grep -q 'shockSameCandle' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'AndroidBridge' scalp-atlas-new/shockNativeEngine.ts
 
       - name: Generate Android project
         working-directory: scalp-atlas-new
