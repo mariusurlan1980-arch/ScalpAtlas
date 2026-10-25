@@ -116,6 +116,7 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastAnalysisResultAt = 0L
   @Volatile private var lastFreezeNoticeAt = 0L
   private var lastRenderedSignal = ""
+  @Volatile private var lastShockQuality = 0
   private var lastRenderedDetails = ""
   private var lastRenderedModel = ""
   private var lastRenderedCounterAt = 0L
@@ -184,6 +185,7 @@ class ScalpOverlayService : Service() {
     lockedDir = null
     lockedUntil = 0L
     lockedAt = 0L
+    lastShockQuality = 0
     resetVisualBaseline()
     marketEpoch += 1L
   }
@@ -285,210 +287,174 @@ class ScalpOverlayService : Service() {
       setStroke(dp(1), strokeColor)
     }
 
+  /**
+   * Compact white floating overlay approved from the 3.2.7 reference image.
+   * The percentage denotes optical detection quality, NEVER estimated win odds.
+   * There are no legacy TF, journal or test rows in the visible overlay.
+   */
+  private class ShockCandleView(context: Context) : View(context) {
+    var direction: String = "NONE"
+      set(value) {
+        if (field != value) {
+          field = value
+          invalidate()
+        }
+      }
+
+    override fun onDraw(canvas: Canvas) {
+      super.onDraw(canvas)
+      val tone = when (direction) {
+        "BUY" -> Color.rgb(33, 211, 125)
+        "SELL" -> Color.rgb(226, 72, 85)
+        else -> Color.rgb(171, 182, 193)
+      }
+      val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = tone
+        style = Paint.Style.STROKE
+        strokeWidth = width * 0.055f
+        strokeCap = Paint.Cap.ROUND
+      }
+      val cx = width * 0.5f
+      val top = height * 0.12f
+      val bottom = height * 0.89f
+      canvas.drawLine(cx, top, cx, bottom, p)
+      p.style = Paint.Style.FILL
+      canvas.drawRoundRect(
+        width * 0.29f, height * 0.32f, width * 0.71f, height * 0.70f,
+        width * 0.05f, width * 0.05f, p
+      )
+    }
+  }
+
+  private var candleGraphic: ShockCandleView? = null
+  private var qualityText: TextView? = null
+  private var captureStatusText: TextView? = null
+  private var signalRing: LinearLayout? = null
+
   private fun createOverlay() {
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
-      minimumHeight = dp(142)
-      setPadding(dp(12), dp(10), dp(12), dp(10))
-      background = rounded(Color.rgb(244, 245, 247), Color.rgb(210, 214, 220))
-      elevation = dp(10).toFloat()
+      minimumHeight = dp(186)
+      setPadding(dp(14), dp(12), dp(14), dp(12))
+      background = GradientDrawable().apply {
+        setColor(Color.rgb(249, 250, 250))
+        cornerRadius = dp(20).toFloat()
+        setStroke(dp(1), Color.rgb(232, 237, 237))
+      }
+      elevation = dp(9).toFloat()
     }
 
     val header = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER_VERTICAL
     }
-
     val title = TextView(this).apply {
       text = "Scalp Atlas 3.2.7"
-      setTextColor(Color.rgb(35, 39, 46))
+      setTextColor(Color.rgb(23, 26, 30))
       textSize = 13f
       setTypeface(typeface, android.graphics.Typeface.BOLD)
+      maxLines = 1
     }
+    header.addView(title, LinearLayout.LayoutParams(0, dp(30), 1f))
 
-    val close = TextView(this).apply {
-      text = "  ×  "
-      setTextColor(Color.rgb(45, 49, 56))
-      textSize = 20f
-      gravity = Gravity.CENTER
-      setOnClickListener { stopSelf() }
-    }
-
+    // Exactly one bell, with the existing notification-sound preference.
     bellControl = TextView(this).apply {
       text = if (bellEnabled) "🔔" else "🔕"
-      setTextColor(if (bellEnabled) Color.rgb(255, 201, 74) else Color.LTGRAY)
-      textSize = 14f
+      textSize = 19f
       gravity = Gravity.CENTER
-      setPadding(dp(6), dp(4), dp(8), dp(4))
+      contentDescription = "Activează sau dezactivează bipul"
+      setPadding(dp(7), 0, dp(2), 0)
       setOnClickListener {
         bellEnabled = !bellEnabled
-        getSharedPreferences(bellPrefsName, Context.MODE_PRIVATE).edit().putBoolean(bellPrefsKey, bellEnabled).apply()
+        getSharedPreferences(bellPrefsName, Context.MODE_PRIVATE)
+          .edit().putBoolean(bellPrefsKey, bellEnabled).apply()
         text = if (bellEnabled) "🔔" else "🔕"
-        setTextColor(if (bellEnabled) Color.rgb(255, 201, 74) else Color.LTGRAY)
       }
     }
-    // Approved compact layout: no visible heading; keep spacing for one bell and close control.
-    header.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
-    header.addView(bellControl)
-    header.addView(close)
+    header.addView(bellControl, LinearLayout.LayoutParams(dp(44), dp(33)))
+    root.addView(header)
 
-    signalText = TextView(this).apply {
-      text = "—"
-      setTextColor(Color.rgb(110, 117, 128))
-      textSize = 22f
-      maxLines = 1
-      ellipsize = TextUtils.TruncateAt.END
+    val body = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER_VERTICAL
+      setPadding(0, dp(8), 0, dp(3))
+    }
+    val candleColumn = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      gravity = Gravity.CENTER
+    }
+    candleGraphic = ShockCandleView(this).also {
+      candleColumn.addView(it, LinearLayout.LayoutParams(dp(74), dp(98)))
+    }
+    captureStatusText = TextView(this).apply {
+      text = "PAUZĂ"
+      setTextColor(Color.rgb(91, 108, 116))
+      textSize = 13f
+      gravity = Gravity.CENTER
       setTypeface(typeface, android.graphics.Typeface.BOLD)
       setPadding(0, dp(4), 0, 0)
     }
+    candleColumn.addView(captureStatusText)
+    body.addView(candleColumn, LinearLayout.LayoutParams(0, dp(133), 0.8f))
 
-    detailText = TextView(this).apply {
-      text = "Flux ecran • pregătire"
-      setTextColor(Color.rgb(210, 222, 238))
-      textSize = 12f
-      minLines = 2
-      maxLines = 2
-      ellipsize = TextUtils.TruncateAt.END
-      setPadding(0, dp(2), 0, 0)
-    }
-
-    modelText = TextView(this).apply {
-      text = "ALERTE NUMAI • 3 confirmări"
-      setTextColor(Color.rgb(135, 153, 176))
-      textSize = 10f
-      minLines = 2
-      maxLines = 2
-      ellipsize = TextUtils.TruncateAt.END
-      setPadding(0, dp(2), 0, 0)
-    }
-
-    val controls = LinearLayout(this).apply {
-      orientation = LinearLayout.HORIZONTAL
-      gravity = Gravity.CENTER_VERTICAL
-    }
-    tfControl = TextView(this).apply {
-      text = "TF AUTO ▸"
-      setTextColor(Color.rgb(70, 220, 235))
-      textSize = 12f
-      setPadding(0, dp(5), dp(18), dp(3))
-      setOnClickListener {
-        // Automatic by default. Manual fallback if broker hides timeframe text.
-        val modes = arrayOf("AUTO", "M5", "M10", "M15")
-        val current = if (tfAutomatic) "AUTO" else selectedTimeframe
-        val next = modes[(modes.indexOf(current) + 1) % modes.size]
-        tfAutomatic = next == "AUTO"
-        tfVerified = !tfAutomatic
-        pendingTf = null
-        pendingTfCount = 0
-        confirmedTfAt = 0L
-        manualTfMismatchCount = 0
-        manualTfMismatchAt = 0L
-        manualTfConflict = false
-        if (!tfAutomatic) selectedTimeframe = next
-        text = "TF " + next + " ▸"
-        clearOnInstrumentChange()
-        marketStableAt = System.currentTimeMillis()
-        updateOverlay(
-          "AȘTEAPTĂ",
-          if (tfAutomatic) "AUTO • caut intervalul brokerului" else "Manual " + selectedTimeframe,
-          if (tfAutomatic) "Bip oprit până la identificarea M5/M10/M15" else "Verifică intervalul de pe grafic"
-        )
-      }
-    }
-    chartControl = TextView(this).apply {
-      text = "GRAFIC 2/3 ▸"
-      setTextColor(Color.rgb(210, 222, 238))
-      textSize = 12f
-      setPadding(0, dp(5), 0, dp(3))
-      setOnClickListener {
-        chartZone = (chartZone + 1) % 3
-        text = "GRAFIC " + (chartZone + 1) + "/3 ▸"
-        resetSignalState()
-        resetVisualBaseline()
-        updateOverlay("AȘTEAPTĂ", "Zonă grafic " + (chartZone + 1) + "/3", "Verifică dacă zona include lumânările")
-      }
-    }
-    controls.addView(tfControl)
-    controls.addView(chartControl)
-    root.addView(header)
-    val signalRow = LinearLayout(this).apply {
-      orientation = LinearLayout.HORIZONTAL
-      gravity = Gravity.CENTER_VERTICAL
-      setPadding(0, dp(10), 0, dp(5))
-    }
-    val candle = TextView(this).apply {
-      text = "┃\n█\n┃"
-      textSize = 27f
+    signalRing = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
       gravity = Gravity.CENTER
-      setTextColor(Color.rgb(24, 171, 100))
-    }
-    signalRow.addView(candle, LinearLayout.LayoutParams(dp(70), dp(100)))
-    signalText?.apply {
-      gravity = Gravity.CENTER
-      textSize = 16f
       background = GradientDrawable().apply {
         setColor(Color.TRANSPARENT)
-        cornerRadius = dp(48).toFloat()
-        setStroke(dp(4), Color.rgb(145, 154, 166))
+        cornerRadius = dp(85).toFloat()
+        setStroke(dp(5), Color.rgb(221, 233, 229))
       }
     }
-    signalRow.addView(signalText, LinearLayout.LayoutParams(dp(118), dp(96)))
-    root.addView(signalRow)
-    controls.visibility = View.GONE
-    detailText?.visibility = View.GONE
-    modelText?.visibility = View.GONE
-
-    // No automatic uploads; tap to export records and screenshots as ZIP.
-    journalControl = TextView(this).apply {
-      text = "JURNAL ${journal.size()} ▸"
-      setTextColor(Color.rgb(115, 205, 212))
-      textSize = 11f
-      setPadding(0, dp(6), 0, dp(1))
-      setOnClickListener {
-        try {
-          journal.share()
-        } catch (error: Throwable) {
-          updateOverlay("AȘTEAPTĂ", "Jurnalul nu a putut fi trimis",
-            error.message ?: "Export indisponibil")
-        }
-      }
+    qualityText = TextView(this).apply {
+      text = "—%"
+      setTextColor(Color.rgb(105, 120, 126))
+      textSize = 31f
+      gravity = Gravity.CENTER
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
-    journalControl?.visibility = View.GONE
-    root.addView(journalControl)
-
-    // Observational test starts automatically when Android screen sharing starts.
-    // This row does not change the user's usual BUY/SELL display or audio.
-    testStatusText = TextView(this).apply {
-      text = "TEST LIVE • pornește cu suprapunerea"
-      setTextColor(Color.rgb(112, 214, 163))
-      textSize = 10.5f
-      maxLines = 1
-      ellipsize = TextUtils.TruncateAt.END
+    signalText = TextView(this).apply {
+      text = "—"
+      setTextColor(Color.rgb(105, 120, 126))
+      textSize = 20f
+      gravity = Gravity.CENTER
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
       setPadding(0, dp(3), 0, 0)
     }
-    testStatusText?.visibility = View.GONE
-    root.addView(testStatusText)
+    signalRing?.addView(qualityText)
+    signalRing?.addView(signalText)
+    body.addView(signalRing, LinearLayout.LayoutParams(dp(142), dp(142)))
+    root.addView(body)
+
+    val note = TextView(this).apply {
+      text = "CALITATE DETECȚIE · NU PROBABILITATE WIN"
+      setTextColor(Color.rgb(105, 111, 117))
+      textSize = 9f
+      gravity = Gravity.CENTER
+      maxLines = 1
+      setPadding(0, dp(8), 0, 0)
+    }
+    root.addView(note)
 
     val params = WindowManager.LayoutParams(
-      dp(235),
+      dp(308),
       WindowManager.LayoutParams.WRAP_CONTENT,
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
       else WindowManager.LayoutParams.TYPE_PHONE,
       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
       PixelFormat.TRANSLUCENT
     ).apply {
-      // Prefer left edge so the latest candles beside right price axis stay visible.
       gravity = Gravity.TOP or Gravity.START
       x = dp(8)
-      y = dp(28)
+      y = dp(36)
     }
 
     var startX = 0
     var startY = 0
     var touchX = 0f
     var touchY = 0f
-
     root.setOnTouchListener { _, event ->
       when (event.action) {
         MotionEvent.ACTION_DOWN -> {
@@ -507,7 +473,6 @@ class ScalpOverlayService : Service() {
         else -> false
       }
     }
-
     overlayView = root
     overlayWindowParams = params
     windowManager.addView(root, params)
@@ -1294,6 +1259,7 @@ class ScalpOverlayService : Service() {
     lockedUntil = now + lockMinutes * 60_000L
     lockedAt = now
     lockedDir = confirmedSignal
+    lastShockQuality = quality // optical quality, not probability of winning
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
@@ -1353,50 +1319,50 @@ class ScalpOverlayService : Service() {
     mainHandler.post {
       val now = System.currentTimeMillis()
       val signalChanged = signal != lastRenderedSignal
-      val detailsChanged = details != lastRenderedDetails
-      val reasonChanged = model != lastRenderedModel
-      val countersDue = now - lastRenderedCounterAt >= 6500L
-
-      // Do not repaint the floating panel for every JPEG analysis / frame count.
       if (signalChanged) {
         lastRenderedSignal = signal
-        signalText?.text = when (signal) {
-          "BUY" -> "↑ BUY"
-          "SELL" -> "↓ SELL"
+        val green = signal == "BUY"
+        val red = signal == "SELL"
+        val color = when {
+          green -> Color.rgb(0, 137, 75)
+          red -> Color.rgb(192, 50, 64)
+          else -> Color.rgb(105, 120, 126)
+        }
+        candleGraphic?.direction = when {
+          green -> "BUY"
+          red -> "SELL"
+          else -> "NONE"
+        }
+        signalText?.text = when {
+          green -> "↑ BUY"
+          red -> "↓ SELL"
           else -> "—"
         }
-        signalText?.background = rounded(
-          Color.rgb(244, 245, 247),
-          when (signal) {
-            "BUY" -> Color.rgb(52, 178, 118)
-            "SELL" -> Color.rgb(220, 72, 82)
-            else -> Color.rgb(175, 182, 192)
-          }
-        )
-        signalText?.setTextColor(
-          when (signal) {
-            "BUY" -> Color.rgb(52, 218, 148)
-            "SELL" -> Color.rgb(255, 88, 96)
-            else -> Color.rgb(110, 117, 128)
-          }
-        )
-      }
-      if (detailsChanged) {
-        lastRenderedDetails = details
-        detailText?.text = details
-      }
-      if (reasonChanged || countersDue) {
-        lastRenderedModel = model
-        if (countersDue) lastRenderedCounterAt = now
-        val streamState = when {
-          lastAnalysisResultAt > 0L && now - lastAnalysisResultAt <= 5000L -> "ANALIZĂ LIVE"
-          lastCapturedImageAt > 0L && now - lastCapturedImageAt <= 3500L -> "CAPTURĂ LIVE"
-          else -> "FĂRĂ FLUX"
+        signalText?.setTextColor(color)
+        qualityText?.text = if ((green || red) && lastShockQuality >= 55)
+          lastShockQuality.toString() + "%" else "—%"
+        qualityText?.setTextColor(color)
+        signalRing?.background = GradientDrawable().apply {
+          setColor(Color.TRANSPARENT)
+          cornerRadius = dp(85).toFloat()
+          setStroke(dp(5), when {
+            green -> Color.rgb(211, 243, 227)
+            red -> Color.rgb(249, 217, 221)
+            else -> Color.rgb(221, 233, 229)
+          })
         }
-        modelText?.text = streamState + " • " + model +
-          " • Cadre " + frameCount + " • Rez " + resultCount +
-          " • Erori " + errorCount
       }
+      captureStatusText?.text = if (
+        lastCapturedImageAt > 0L &&
+        now - lastCapturedImageAt in 0L..3500L
+      ) "LIVE" else "PAUZĂ"
+      captureStatusText?.setTextColor(
+        if (captureStatusText?.text == "LIVE")
+          Color.rgb(0, 137, 75) else Color.rgb(105, 120, 126)
+      )
+      // Internal diagnostics remain in journal/monitor, not over broker graph.
+      lastRenderedDetails = details
+      lastRenderedModel = model
     }
   }
 
