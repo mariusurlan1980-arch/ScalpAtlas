@@ -60,10 +60,11 @@ jobs:
           test -s .github/native-overlay/ScalpOverlayService.kt
           grep -q 'shockSameCandle' .github/native-overlay/ScalpOverlayService.kt
 
-      - name: Apply existing Android compatibility patches
+      - name: Preserve already-integrated Android overlay
         run: |
-          python3 .github/scripts/patch_live_v327_bell_toggle.py
-          python3 .github/scripts/patch_live_v328_geometry.py
+          set -e
+          test -s .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'bellEnabled' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Restore exact Clean View UI and motor
         run: |
