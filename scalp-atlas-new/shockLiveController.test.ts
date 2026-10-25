@@ -26,5 +26,5 @@ continuity.ingest(base);
 continuity.ingest({...base,observedAtMs:603000,low:99,close:99.2});
 continuity.ingest({...base,observedAtMs:604000,ohlcVerified:false});
 const resumed=continuity.ingest({...base,observedAtMs:605000,low:99,high:100.2,close:100.1});
-assert(resumed.signal?.direction==='BUY','shock recovery survives one unreadable frame before signal');
-assert(continuityAlerts.length===1,'one BIP after interrupted shock');
+assert(resumed.signal===null,'unverified gap invalidates shock recovery sequence');
+assert(continuityAlerts.length===0,'no BIP after interrupted shock');
