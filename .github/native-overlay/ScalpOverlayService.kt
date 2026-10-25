@@ -63,12 +63,12 @@ class ScalpOverlayService : Service() {
     // A visually correct pattern is useless if the analyzed frame is stale.
     // Fail closed before any candidate confirmation or audible alert.
     private const val MAX_ALERT_ANALYSIS_AGE_MS = 3000L
-    private const val CONFIRMATION_SPACING_MS = 20000L
-    private const val REQUIRED_CONFIRMATIONS = 3
+    private const val CONFIRMATION_SPACING_MS = 1500L
+    private const val REQUIRED_CONFIRMATIONS = 2
     // If optical evidence disappears, an old candidate must not recover as
     // if it had been continuously confirmed for the past minute.
-    private const val CANDIDATE_EVIDENCE_GRACE_MS = 25_000L
-    private const val CANDIDATE_MAX_AGE_MS = 70_000L
+    private const val CANDIDATE_EVIDENCE_GRACE_MS = 6_000L
+    private const val CANDIDATE_MAX_AGE_MS = 15_000L
     // A direction's 5-7 minute lock is NOT a 5-7 minute window for NEW entries.
     private const val ALERT_FRESH_MS = 30_000L
     private const val OCR_INTERVAL_MS = 3000L
@@ -468,7 +468,7 @@ class ScalpOverlayService : Service() {
     ).apply {
       gravity = Gravity.TOP or Gravity.START
       x = dp(8)
-      y = dp(36)
+      y = dp(150) // below the broker's asset picker: OCR must see EUR/USD OTC
     }
 
     // Drag the white card on its background; bell and X remain clickable.
@@ -985,8 +985,11 @@ class ScalpOverlayService : Service() {
       val raw = Bitmap.createBitmap(bitmapWidth, height, Bitmap.Config.ARGB_8888)
       raw.copyPixelsFromBuffer(buffer)
 
-      val fullFrame = Bitmap.createBitmap(raw, 0, 0, width, height)
+      var fullFrame = Bitmap.createBitmap(raw, 0, 0, width, height)
       if (fullFrame !== raw) raw.recycle()
+      // MediaProjection captures the floating panel as well as the broker.
+      // Never let our BUY/SELL colors/text contaminate OCR or candle evidence.
+      fullFrame = maskSelfOverlay(fullFrame, width, 0)
 
       // OCR reads the BROKER SCREEN, not the reduced chart crop.
       // No signal is permitted in AUTO until timeframe is confirmed.
@@ -1033,13 +1036,12 @@ class ScalpOverlayService : Service() {
         return
       }
 
-      // User-selectable ROI for different broker layouts; no clicks on broker.
-      val zone = chartZone
+      // Single automatic visible chart region. Exclude the trading buttons
+      // beneath Pocket Option candles; the hidden old GRAFIC 1/2/3 switch
+      // no longer controls the region. Other brokers must pass optical gates.
       val portrait = height >= width
-      val topFraction = if (portrait) floatArrayOf(0.07f, 0.16f, 0.28f)[zone]
-        else floatArrayOf(0.03f, 0.08f, 0.17f)[zone]
-      val bottomFraction = if (portrait) floatArrayOf(0.55f, 0.83f, 0.89f)[zone]
-        else floatArrayOf(0.72f, 0.88f, 0.96f)[zone]
+      val topFraction = if (portrait) 0.17f else 0.06f
+      val bottomFraction = if (portrait) 0.73f else 0.90f
       val cropTop = (height * topFraction).roundToInt().coerceIn(0, height - 2)
       val cropBottom = (height * bottomFraction).roundToInt().coerceIn(cropTop + 1, height)
       val chartHeight = max(1, cropBottom - cropTop)
@@ -1089,8 +1091,10 @@ class ScalpOverlayService : Service() {
       frameCount += 1
       val frameId = frameCount
       val tfAtCapture = selectedTimeframe
-      frameMarket = currentPair(now)
-      frameMarketEpoch = marketEpoch
+      val pairAtCapture = currentPair(now)
+      val epochAtCapture = marketEpoch
+      frameMarket = pairAtCapture
+      frameMarketEpoch = epochAtCapture
       activeFrameId = frameId
       analysisBusy = true
       analysisStartedAt = now
@@ -1101,7 +1105,8 @@ class ScalpOverlayService : Service() {
           val quotedUrl = JSONObject.quote(dataUrl)
           analyzerWebView?.evaluateJavascript(
             "window.ScalpAtlasAnalyze && window.ScalpAtlasAnalyze(" + quotedUrl + "," +
-              JSONObject.quote(tfAtCapture) + "," + frameId + ");",
+              JSONObject.quote(tfAtCapture) + "," + frameId + "," +
+              JSONObject.quote(pairAtCapture) + "," + epochAtCapture + ");",
             null
           )
         }
@@ -1141,9 +1146,18 @@ class ScalpOverlayService : Service() {
       resetSignalState()
       return
     }
-    // SHOCK-only contract: the LIVE analyzer must explicitly report a verified
-    // single forming-candle retracement AND recovery. Legacy model signals
-    // are not accepted as SHOCK evidence. Fail closed until wired to pixels.
+    // LIVE broker screen is the sole source: require result provenance,
+    // confirmed instrument and epoch from the SAME captured frame.
+    if (result.optString("source") != "ANDROID_SCREEN_CAPTURE" ||
+        result.optString("brokerPair") != frameMarket ||
+        result.optLong("marketEpoch", -1L) != frameMarketEpoch) {
+      resetSignalState()
+      updateOverlay("AȘTEAPTĂ", "Flux neconfirmat",
+        "Pereche sau cadru schimbat • fără bip")
+      return
+    }
+    // SHOCK-only contract: a single forming-candle retracement and recovery
+    // must be evidenced by multiple captured pixels, not a predicted candle.
     val rawSignal = result.optString("shockDirection", "NONE")
     val score = 0 // no unvalidated probability displayed
     val quality = result.optInt("quality", 0)
@@ -1376,10 +1390,13 @@ class ScalpOverlayService : Service() {
           })
         }
       }
-      captureStatusText?.text = if (
+      val brokerConnected =
         lastCapturedImageAt > 0L &&
-        now - lastCapturedImageAt in 0L..3500L
-      ) "LIVE" else "PAUZĂ"
+        now - lastCapturedImageAt in 0L..3500L &&
+        lastAnalysisResultAt > 0L &&
+        now - lastAnalysisResultAt in 0L..5000L &&
+        pairReady(now) && (!tfAutomatic || (tfVerified && now - confirmedTfAt <= TF_STALE_MS))
+      captureStatusText?.text = if (brokerConnected) "LIVE" else "SCAN"
       captureStatusText?.setTextColor(
         if (captureStatusText?.text == "LIVE")
           Color.rgb(0, 137, 75) else Color.rgb(105, 120, 126)
