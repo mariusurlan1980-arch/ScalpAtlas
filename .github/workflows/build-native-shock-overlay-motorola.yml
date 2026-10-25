@@ -90,7 +90,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=328
+          expo['android']['versionCode']=329
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -335,9 +335,12 @@ jobs:
           # Fail the build if the native overlay still exposes legacy controls.
           SERVICE="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt"
           grep -q 'Scalp Atlas 3.2.7' "$SERVICE"
-          grep -q 'controls.visibility = View.GONE' "$SERVICE"
-          grep -q 'journalControl?.visibility = View.GONE' "$SERVICE"
-          grep -q 'testStatusText?.visibility = View.GONE' "$SERVICE"
+          grep -q 'class ShockCandleView' "$SERVICE"
+          grep -q 'signalRing' "$SERVICE"
+          grep -q 'CALITATE DETECȚIE' "$SERVICE"
+          grep -q 'lastShockQuality = quality' "$SERVICE"
+          ! grep -q 'GRAFIC 2/3' "$SERVICE"
+          ! grep -q 'TF AUTO ▸' "$SERVICE"
           grep -q 'shockOpticalVerified' "$SERVICE"
           grep -q 'shockSameCandle' "$SERVICE"
           unzip -p "$APK" assets/analysis_engine.html | grep -q 'shockRecovered'
