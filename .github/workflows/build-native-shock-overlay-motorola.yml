@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/build-native-shock-overlay-motorola.yml'
       - 'scalp-atlas-new/shockDetector.ts'
+      - 'scalp-atlas-new/shockNativeEngine.ts'
       - 'scalp-atlas-new/analysisEngine.ts'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasOneButtonOverlayApp.tsx'
@@ -333,15 +334,15 @@ jobs:
           mkdir -p /tmp/scalp-engine
           (
             cd scalp-atlas-new
-            npx tsc analysisEngine.ts atlas.ts --ignoreConfig --target ES2020 --module commonjs --skipLibCheck --esModuleInterop --outDir /tmp/scalp-engine --noEmitOnError false || true
+            npx tsc shockNativeEngine.ts --ignoreConfig --target ES2020 --module commonjs --skipLibCheck --esModuleInterop --outDir /tmp/scalp-engine --noEmitOnError false || true
           )
           test -s /tmp/scalp-engine/analysisEngine.js
           mkdir -p scalp-atlas-new/android/app/src/main/assets
           node - <<'NODE'
           const fs=require('fs');
-          const engine=require('/tmp/scalp-engine/analysisEngine.js');
-          if(!engine.ANALYSIS_ENGINE_HTML) throw new Error('ANALYSIS_ENGINE_HTML missing');
-          fs.writeFileSync('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html',engine.ANALYSIS_ENGINE_HTML);
+          const engine=require('/tmp/scalp-engine/shockNativeEngine.js');
+          if(!engine.SHOCK_NATIVE_HTML) throw new Error('SHOCK_NATIVE_HTML missing');
+          fs.writeFileSync('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html',engine.SHOCK_NATIVE_HTML);
           NODE
 
           grep -q "ScalpOverlayPackage()" "$(find scalp-atlas-new/android/app/src/main/java -name MainApplication.kt | head -1)"
