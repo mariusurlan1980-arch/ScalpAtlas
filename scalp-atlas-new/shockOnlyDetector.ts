@@ -8,7 +8,7 @@ export type ShockObservation = {
   candleId: string; marketId: string; timestampMs: number; open: number; high: number; low: number;
   close: number; timeframeMinutes: 5 | 10 | 15; sourceConfirmed: boolean;
 };
-export type ShockSignal = { direction: ShockDirection; candleId: string; expiryMinutes: 10; reason: 'SHOCK_RECOVERY' };
+export type ShockSignal = { direction: ShockDirection; candleId: string; expiryMinutes: 5; reason: 'SHOCK_RECOVERY' };
 export type ShockLiveStatus = { intensityPercent: number; phase: 'OBSERVING' | 'DROPPING' | 'RISING' | 'RECOVERING_BUY' | 'RECOVERING_SELL'; signal: ShockSignal | null };
 export type ShockSettings = { minimumRangeFraction: number; recoveryFraction: number; minAgeMs: number };
 export const DEFAULT_SHOCK_SETTINGS: ShockSettings = {
@@ -45,6 +45,15 @@ export class ShockOnlyDetector {
       return idle();
     }
     if (o.timestampMs <= p.timestampMs || o.high < p.high || o.low > p.low || o.open !== p.open) return idle();
+    // A capture gap can conceal the order of the low/high and the rebound.
+    // Restart observation instead of carrying an unverified SHOCK sequence forward.
+    if (o.timestampMs - p.timestampMs > 5000) {
+      this.previous = o;
+      this.lowFirst = false;
+      this.highFirst = false;
+      this.candleFirstSeenAt = o.timestampMs;
+      return idle();
+    }
     const threshold = o.close * this.settings.minimumRangeFraction;
     const prevRange = p.high - p.low;
     const prevLowRecovery = prevRange > 0 ? (p.close-p.low)/prevRange : 0;
@@ -69,7 +78,7 @@ export class ShockOnlyDetector {
     const sell = this.highFirst && o.close < o.open && (o.high-o.close)/range >= this.settings.recoveryFraction && sellRecovery/100 > prevHighRecovery;
     if (buy === sell) return status;
     this.emitted.add(key);
-    status.signal = {direction:buy?'BUY':'SELL',candleId:o.candleId,expiryMinutes:10,reason:'SHOCK_RECOVERY'};
+    status.signal = {direction:buy?'BUY':'SELL',candleId:o.candleId,expiryMinutes:5,reason:'SHOCK_RECOVERY'};
     return status;
   }
   reset() { this.previous=null; this.contextKey=''; this.candleFirstSeenAt=0; this.lowFirst=false; this.highFirst=false; this.lastTimestampMs=0; this.emitted.clear(); }
