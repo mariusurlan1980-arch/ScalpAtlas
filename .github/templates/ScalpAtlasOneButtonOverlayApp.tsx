@@ -68,7 +68,7 @@ export default function App() {
             <Text style={[styles.brand, styles.brandViolet]}>ALP </Text>
             <Text style={[styles.brand, styles.brandPink]}>ATLAS</Text>
           </View>
-          <Text style={styles.subtitle}>MOTOR ȘOC  /  EDIȚIE DEMO</Text>
+          <Text style={styles.subtitle}>ȘOC  /  SUPRAPUNERE LIVE</Text>
         </View>
 
         <View style={styles.center}>
