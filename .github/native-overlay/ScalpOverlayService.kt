@@ -308,7 +308,7 @@ class ScalpOverlayService : Service() {
 
     val close = TextView(this).apply {
       text = "  ×  "
-      setTextColor(Color.WHITE)
+      setTextColor(Color.rgb(45, 49, 56))
       textSize = 20f
       gravity = Gravity.CENTER
       setOnClickListener { stopSelf() }
@@ -333,9 +333,9 @@ class ScalpOverlayService : Service() {
     header.addView(close)
 
     signalText = TextView(this).apply {
-      text = "AȘTEAPTĂ"
-      setTextColor(Color.rgb(255, 201, 74))
-      textSize = 24f
+      text = "—"
+      setTextColor(Color.rgb(110, 117, 128))
+      textSize = 22f
       maxLines = 1
       ellipsize = TextUtils.TruncateAt.END
       setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -1373,12 +1373,24 @@ class ScalpOverlayService : Service() {
       // Do not repaint the floating panel for every JPEG analysis / frame count.
       if (signalChanged) {
         lastRenderedSignal = signal
-        signalText?.text = signal
+        signalText?.text = when (signal) {
+          "BUY" -> "↑ BUY"
+          "SELL" -> "↓ SELL"
+          else -> "—"
+        }
+        signalText?.background = rounded(
+          Color.rgb(244, 245, 247),
+          when (signal) {
+            "BUY" -> Color.rgb(52, 178, 118)
+            "SELL" -> Color.rgb(220, 72, 82)
+            else -> Color.rgb(175, 182, 192)
+          }
+        )
         signalText?.setTextColor(
           when (signal) {
             "BUY" -> Color.rgb(52, 218, 148)
             "SELL" -> Color.rgb(255, 88, 96)
-            else -> Color.rgb(255, 201, 74)
+            else -> Color.rgb(110, 117, 128)
           }
         )
       }
