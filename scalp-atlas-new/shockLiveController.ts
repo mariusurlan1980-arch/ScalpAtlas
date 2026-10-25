@@ -10,17 +10,25 @@ export class ShockLiveController {
   private detector = new ShockOnlyDetector();
   private lastContext: string | null = null;
   private lastCandleId: string | null = null;
+  private lastAcceptedAtMs: number | null = null;
   // Retain BIP deduplication even if one OCR/camera frame is unreadable.
   private alertedCandles = new Set<string>();
   constructor(private onConfirmedAlert: (direction: ShockDirection) => void) {}
   ingest(sample: ChartCandleSample): ShockLiveStatus {
     const observation = toShockObservation(sample);
     if (!observation) {
-      // A temporary unreadable frame must not erase the forming-candle history.
-      // Only a verified market/timeframe change or explicit stop resets the detector.
+      // Fail closed on lost verification. Otherwise an unseen reversal could
+      // be mistaken for an observed same-candle SHOCK after capture resumes.
+      this.detector.reset();
+      this.lastAcceptedAtMs = null;
       return {intensityPercent:0,phase:'OBSERVING',signal:null};
     }
     const context = observation.marketId+'|'+observation.timeframeMinutes;
+    if (this.lastAcceptedAtMs !== null &&
+        (observation.timestampMs <= this.lastAcceptedAtMs || observation.timestampMs - this.lastAcceptedAtMs > 5000)) {
+      this.detector.reset();
+    }
+    this.lastAcceptedAtMs = observation.timestampMs;
     if (this.lastContext !== context) {
       this.detector.reset();
       this.lastContext = context;
@@ -42,5 +50,5 @@ export class ShockLiveController {
     }
     return status;
   }
-  reset() {this.detector.reset();this.lastContext=null;this.lastCandleId=null;}
+  reset() {this.detector.reset();this.lastContext=null;this.lastCandleId=null;this.lastAcceptedAtMs=null;}
 }
