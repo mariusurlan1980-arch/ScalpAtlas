@@ -4,7 +4,9 @@ on:
   push:
     branches: [feature/scalpatlas-v0327-shock-overlay]
     paths:
-      - '.github/workflows/build-live-v327-demo-candle-gate.yml'
+      - '.github/workflows/build-native-shock-overlay-motorola.yml'
+      - 'scalp-atlas-new/shockDetector.ts'
+      - 'scalp-atlas-new/analysisEngine.ts'
       - '.github/templates/ScalpAtlasIntegratedAppV042.tsx'
       - '.github/templates/ScalpAtlasOneButtonOverlayApp.tsx'
       - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
@@ -66,7 +68,6 @@ jobs:
         run: |
           set -e
           cp .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx scalp-atlas-new/LiveAnalysisApp.tsx
-          cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
           cp .github/templates/ScalpAtlasOneButtonOverlayApp.tsx scalp-atlas-new/App.tsx
           cp .github/templates/ScalpAtlasLocalizationV0418.ts scalp-atlas-new/localization.ts
           cp .github/templates/ScalpAtlasOcrAdapterV0416.ts scalp-atlas-new/ocrAdapter.ts
