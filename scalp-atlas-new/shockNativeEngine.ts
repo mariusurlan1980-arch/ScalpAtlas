@@ -7,7 +7,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
 (function(){
   var canvas=document.getElementById('c'),ctx=canvas.getContext('2d',{willReadFrequently:true});
   var history=[],lastPair='',lastTf='',lastX=-1;
-  function send(obj){try{ScalpAtlasNative.postMessage(JSON.stringify(obj));}catch(e){}}
+  function send(obj){try{AndroidBridge.postMessage(JSON.stringify(obj));}catch(e){}}
   function wait(frameId,tf,reason,quality){send({type:'RESULT',result:{frameId:frameId,timeframe:tf,signal:'NONE',shockDirection:'NONE',quality:quality||0,shockOpticalVerified:false,reason:reason}});}
   window.ScalpAtlasAnalyze=function(url,tf,frameId){
     var image=new Image();
