@@ -64,6 +64,8 @@ class ScalpOverlayService : Service() {
   private var detailText: TextView? = null
   private var modelText: TextView? = null
   private var bellEnabled = true
+  private val bellPrefsName = "scalp_shock_overlay"
+  private val bellPrefsKey = "bell_enabled"
   private var bellText: TextView? = null
 
   private var mediaProjection: MediaProjection? = null
@@ -94,6 +96,7 @@ class ScalpOverlayService : Service() {
   override fun onCreate() {
     super.onCreate()
     windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    bellEnabled = getSharedPreferences(bellPrefsName, Context.MODE_PRIVATE).getBoolean(bellPrefsKey, true)
     createNotificationChannel()
     createOverlay()
     createAnalyzer()
@@ -221,13 +224,14 @@ class ScalpOverlayService : Service() {
       setOnClickListener { stopSelf() }
     }
     val bell = TextView(this).apply {
-      text = "🔔"
+      text = if (bellEnabled) "🔔" else "🔕"
       textSize = 21f
       gravity = Gravity.CENTER
-      setTextColor(Color.rgb(56, 232, 121))
-      contentDescription = "Sunet ȘOC activ. Atinge pentru dezactivare."
+      setTextColor(if (bellEnabled) Color.rgb(56, 232, 121) else Color.GRAY)
+      contentDescription = if (bellEnabled) "Sunet ȘOC activ. Atinge pentru dezactivare." else "Sunet ȘOC dezactivat. Atinge pentru activare."
       setOnClickListener {
         bellEnabled = !bellEnabled
+        getSharedPreferences(bellPrefsName, Context.MODE_PRIVATE).edit().putBoolean(bellPrefsKey, bellEnabled).apply()
         text = if (bellEnabled) "🔔" else "🔕"
         setTextColor(if (bellEnabled) Color.rgb(56, 232, 121) else Color.GRAY)
         contentDescription = if (bellEnabled) "Sunet ȘOC activ" else "Sunet ȘOC dezactivat"
