@@ -138,7 +138,12 @@ class MainActivity : Activity() {
  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
   super.onActivityResult(requestCode, resultCode, data)
   if (requestCode == captureRequestCode) {
-   captureStatus?.text = if (resultCode == RESULT_OK && data != null) "CAPTURĂ: ACORDATĂ · ANALIZA NU ESTE ACTIVĂ" else "CAPTURĂ: REFUZATĂ"
+   if (resultCode == RESULT_OK && data != null) {
+    val serviceIntent = Intent(this, CaptureService::class.java)
+     .putExtra("resultCode", resultCode).putExtra("consent", data)
+    startForegroundService(serviceIntent)
+    captureStatus?.text = "CAPTURĂ PORNITĂ · ANALIZA NU ESTE ACTIVĂ"
+   } else captureStatus?.text = "CAPTURĂ: REFUZATĂ"
   }
  }
  override fun onResume() {
