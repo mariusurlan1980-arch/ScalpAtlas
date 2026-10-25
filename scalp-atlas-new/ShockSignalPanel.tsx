@@ -28,9 +28,9 @@ export default function ShockSignalPanel({ signal, probability, live, onBellPres
         <Text style={styles.title}>Scalp Atlas 3.2.7</Text>
         {onBellPress ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Setări alertă sonoră" onPress={onBellPress}>
-            <Text style={styles.bell}>♧</Text>
+            <Text style={styles.bell}>🔔</Text>
           </Pressable>
-        ) : <Text style={styles.bell}>♧</Text>}
+        ) : <Text style={styles.bell}>🔔</Text>}
       </View>
       <View style={styles.left}>
         <View style={styles.wick} />
