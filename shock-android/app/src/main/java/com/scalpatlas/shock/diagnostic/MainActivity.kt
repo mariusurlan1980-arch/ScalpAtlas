@@ -35,17 +35,17 @@ class MainActivity : Activity() {
    setBackgroundColor(Color.rgb(20,25,32))
   }
   panel.addView(TextView(this).apply {
-   text = "SCALPATLAS SHOCK"
+   text = "SCALPATLAS SHOCK · 0.9"
    textSize = 24f
    setTextColor(Color.WHITE)
   })
   panel.addView(TextView(this).apply {
-   text = "OVERLAY TEST — WAIT"
+   text = "SHOCK · STARE REALĂ: WAIT"
    textSize = 19f
    setTextColor(Color.LTGRAY)
   })
   panel.addView(TextView(this).apply {
-   text = "Test only. No live chart analysis, BUY/SELL signals, sound or trades."
+   text = "Captura poate fi pornită, dar detectarea lumânării și semnalele nu sunt încă disponibile."
    textSize = 16f
    setTextColor(Color.LTGRAY)
   })
@@ -63,11 +63,11 @@ class MainActivity : Activity() {
    }
   })
   panel.addView(Button(this).apply {
-   text = "SHOW WAIT OVERLAY"
+   text = "AFIȘEAZĂ SUPRAPUNEREA"
    setOnClickListener { showOverlay() }
   })
   panel.addView(Button(this).apply {
-   text = "HIDE OVERLAY"
+   text = "ÎNCHIDE SUPRAPUNEREA"
    setOnClickListener { hideOverlay() }
   })
   setContentView(panel)
