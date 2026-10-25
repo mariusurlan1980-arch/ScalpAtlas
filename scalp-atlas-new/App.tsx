@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { ANALYSIS_ENGINE_HTML } from './analysisEngine';
 import { SCALP_ATLAS_COUNT } from './atlas';
+import ShockSignalPanel from './ShockSignalPanel';
 
 type SelectedImage = {
   uri: string;
@@ -297,6 +298,12 @@ export default function App() {
         </Pressable>
 
         <Text style={styles.timeframeWarning}>Verifică: timeframe-ul selectat trebuie să fie identic cu cel din fotografie.</Text>
+
+        <ShockSignalPanel
+          signal={analysis?.signal ?? 'NONE'}
+          probability={analysis?.probability ?? null}
+          live={false}
+        />
 
         <View style={styles.statusCard}>
           <Text style={styles.statusTitle}>REZULTAT</Text>
