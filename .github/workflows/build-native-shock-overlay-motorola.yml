@@ -91,7 +91,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=332
+          expo['android']['versionCode']=333
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -120,6 +120,8 @@ jobs:
           set -e
           grep -q 'SUPRAPUNERE LIVE' scalp-atlas-new/App.tsx
           grep -q 'NativeModules.ScalpOverlay.startOverlayMode' scalp-atlas-new/App.tsx
+          grep -Fq 'NativeModules.ScalpOverlay.getBuildInfo' scalp-atlas-new/App.tsx
+          grep -Fq '{installedBuild}' scalp-atlas-new/App.tsx
           ! grep -Eq 'showGuide|Ghid|guideQuick|CameraView' scalp-atlas-new/App.tsx
           ! grep -q 'LiveAnalysisApp' scalp-atlas-new/App.tsx
           grep -q "expo-camera" scalp-atlas-new/package.json || true
@@ -357,6 +359,7 @@ jobs:
           grep -q 'PendingIntent.getService' "$SERVICE"
           grep -Fq 'setOnClickListener { stopSelf() }' "$SERVICE"
           grep -q 'reactContext.stopService(intent)' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
+          grep -Fq 'fun getBuildInfo' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
           grep -q 'class ShockCandleView' "$SERVICE"
           grep -q 'signalRing' "$SERVICE"
           grep -q 'CALITATE DETECȚIE' "$SERVICE"
