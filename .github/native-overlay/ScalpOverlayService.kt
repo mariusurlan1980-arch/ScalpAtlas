@@ -1152,40 +1152,27 @@ class ScalpOverlayService : Service() {
       resetSignalState()
       return
     }
-    val rawSignal = result.optString("signal", "NONE")
-    val score = result.optInt("probability", 0)
+    // SHOCK-only contract: the LIVE analyzer must explicitly report a verified
+    // single forming-candle retracement AND recovery. Legacy model signals
+    // are not accepted as SHOCK evidence. Fail closed until wired to pixels.
+    val rawSignal = result.optString("shockDirection", "NONE")
+    val score = 0 // no unvalidated probability displayed
     val quality = result.optInt("quality", 0)
     val timeframe = selectedTimeframe
-    // Indicatorul nu reprezintă probabilitate statistică verificată.
-    val opticalGate = result.optBoolean("opticalCandleGate", false)
-    // DEMO-only: permit confirmed wick rejection OR continuation after a
-    // pullback; never signal from a breakout score alone or a mixed chart.
-    val wickGate = result.optBoolean("wickRejectionGate", false)
-    val trendGate = result.optBoolean("trendPullbackGate", false)
-    val extremeGate = result.optBoolean("extremeReversalGate", false)
-    val regime = result.optString("marketRegime", "")
-    val readableTrend = regime == "TENDINTA"
-    // Three permitted sources: scalp/continuation, pullback, or confirmed
-    // local minimum/maximum reversal. Never alert without optical candles.
-    val allowedSetup = ((wickGate || trendGate) && readableTrend) ||
-        (extremeGate && regime == "REVERSARE")
-    val confirmedSignal = if (quality >= 55 && score >= 70 && opticalGate &&
-        allowedSetup) rawSignal else "NONE"
-    // Show the actual rejection gates from the LIVE analyzer instead of
-    // a generic waiting state. This never bypasses any entry condition.
-    val rejectionDetails = mutableListOf<String>()
-    if (quality < 55) rejectionDetails.add("imagine " + quality + "/55")
-    if (score < 70) rejectionDetails.add("scor " + score + "/70")
-    if (!opticalGate) rejectionDetails.add("lumânări neconfirmate")
-    if (!allowedSetup) {
-      rejectionDetails.add("trend/retragere/extreme neconfirmate")
-    }
-    val rejectionText = rejectionDetails.joinToString(" • ")
+    val opticalGate = result.optBoolean("shockOpticalVerified", false)
+    val shockSameCandle = result.optBoolean("shockSameCandle", false)
+    val shockRetraced = result.optBoolean("shockRetraced", false)
+    val shockRecovered = result.optBoolean("shockRecovered", false)
+    val shockFrameFresh = result.optLong("shockFrameId", -1L) == result.optLong("frameId", -2L)
+    val confirmedSignal = if (quality >= 55 && opticalGate && shockSameCandle &&
+        shockRetraced && shockRecovered && shockFrameFresh &&
+        (rawSignal == "BUY" || rawSignal == "SELL")) rawSignal else "NONE"
+    val rejectionText = "ȘOC neconfirmat optic pe aceeași lumânare"
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
-    val pattern = result.optString("pattern", "—")
+    val pattern = "ȘOC • o lumânare"
     val reason = result.optString("reason", "")
-    val opticalCount = result.optInt("opticalCandleCount", 0)
+    val opticalCount = if (opticalGate) 1 else 0
 
     try {
       liveTest.onClassifier(
