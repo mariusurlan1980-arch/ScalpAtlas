@@ -62,13 +62,25 @@ class MainActivity : Activity() {
    return
   }
   if (overlay != null) return
-  val box = TextView(this).apply {
-   text = "SHOCK  ·  WAIT\nNO LIVE DATA"
-   textSize = 15f
-   setTextColor(Color.WHITE)
-   setPadding(25,18,25,18)
+  val box = LinearLayout(this).apply {
+   orientation = LinearLayout.VERTICAL
+   gravity = Gravity.CENTER
+   setPadding(26,18,26,18)
    setBackgroundColor(Color.rgb(25,33,41))
   }
+  fun line(value: String, color: Int, size: Float) {
+   box.addView(TextView(this).apply {
+    text = value
+    textSize = size
+    setTextColor(color)
+    gravity = Gravity.CENTER
+   })
+  }
+  line("SCALPATLAS · SHOCK", Color.WHITE, 15f)
+  line("▂ ▅ ▃ ▇ ▄", Color.rgb(63,198,136), 22f)
+  line("◯  —%   ·   WAIT", Color.LTGRAY, 19f)
+  line("♧ ALERTĂ: INACTIVĂ", Color.LTGRAY, 13f)
+  line("FĂRĂ DATE LIVE · FĂRĂ SEMNALE", Color.LTGRAY, 11f)
   val lp = WindowManager.LayoutParams(
    WindowManager.LayoutParams.WRAP_CONTENT,
    WindowManager.LayoutParams.WRAP_CONTENT,
