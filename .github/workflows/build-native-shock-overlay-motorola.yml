@@ -345,7 +345,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ScalpAtlas-LIVE-v3.2.7-DIRECT-MOTOROLA-DEMO
-          path: ScalpAtlas-LIVE-v3.2.7-DIRECT-MOTOROLA-DEMO.apk
+          path: ScalpAtlas-NATIVE-OVERLAY-SHOCK-INTEGRATION-TEST.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -354,7 +354,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-LIVE-v3.2.7-DIRECT-MOTOROLA-DEMO.apk"
+          FILE="ScalpAtlas-NATIVE-OVERLAY-SHOCK-INTEGRATION-TEST.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-shock-integration-test-${GITHUB_SHA:0:12}"
