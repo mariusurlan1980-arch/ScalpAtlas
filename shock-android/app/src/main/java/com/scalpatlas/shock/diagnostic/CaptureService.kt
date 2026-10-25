@@ -13,6 +13,9 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.HandlerThread
+import android.util.Log
 import android.util.DisplayMetrics
 import android.view.WindowManager
 
@@ -21,6 +24,8 @@ class CaptureService : Service() {
  private var reader: ImageReader? = null
  private var display: android.hardware.display.VirtualDisplay? = null
  private val channel = "shock_capture"
+ private var captureThread: HandlerThread? = null
+ private var framesReceived = 0L
  override fun onBind(intent: Intent?): IBinder? = null
  override fun onCreate() {
   super.onCreate()
@@ -55,6 +60,21 @@ class CaptureService : Service() {
    @Suppress("DEPRECATION")
    (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealMetrics(metrics)
    reader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
+   captureThread = HandlerThread("shock-frame-reader").also { it.start() }
+   reader?.setOnImageAvailableListener({ imageReader ->
+    val frame = try { imageReader.acquireLatestImage() } catch (e: Exception) {
+     Log.w("ScalpAtlasCapture", "Frame unavailable", e); null
+    }
+    if (frame != null) {
+     try {
+      if (frame.width > 0 && frame.height > 0 && frame.planes.isNotEmpty()) {
+       framesReceived++
+       if (framesReceived % 120L == 1L)
+        Log.i("ScalpAtlasCapture", "Frames received: $framesReceived; chart analysis disabled")
+      }
+     } finally { frame.close() }
+    }
+   }, Handler(captureThread!!.looper))
    display = projection?.createVirtualDisplay("SHOCK capture", metrics.widthPixels, metrics.heightPixels,
     metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader?.surface, null, null)
    // No image processing or trading signal is emitted until chart extraction is validated.
@@ -62,7 +82,9 @@ class CaptureService : Service() {
   return START_NOT_STICKY
  }
  override fun onDestroy() {
+  reader?.setOnImageAvailableListener(null, null)
   display?.release(); reader?.close(); projection?.stop()
+  captureThread?.quitSafely()
   super.onDestroy()
  }
 }
