@@ -150,6 +150,8 @@ class ScalpOverlayService : Service() {
   private val ocrRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
   @Volatile private var chartZone = 1
   @Volatile private var bellEnabled = true
+  private val bellPrefsName = "scalp_atlas_327"
+  private val bellPrefsKey = "bell_enabled"
   private var bellControl: TextView? = null
   private var tfControl: TextView? = null
   private var chartControl: TextView? = null
@@ -297,7 +299,7 @@ class ScalpOverlayService : Service() {
     }
 
     val title = TextView(this).apply {
-      text = "SCALP ATLAS • LIVE"
+      text = ""
       setTextColor(Color.rgb(70, 220, 235))
       textSize = 13f
       setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -312,14 +314,15 @@ class ScalpOverlayService : Service() {
     }
 
     bellControl = TextView(this).apply {
-      text = "🔔 ON"
+      text = if (bellEnabled) "🔔" else "🔕"
       setTextColor(Color.rgb(255, 201, 74))
       textSize = 14f
       gravity = Gravity.CENTER
       setPadding(dp(6), dp(4), dp(8), dp(4))
       setOnClickListener {
         bellEnabled = !bellEnabled
-        text = if (bellEnabled) "🔔 ON" else "🔕 OFF"
+        getSharedPreferences(bellPrefsName, Context.MODE_PRIVATE).edit().putBoolean(bellPrefsKey, bellEnabled).apply()
+        text = if (bellEnabled) "🔔" else "🔕"
         setTextColor(if (bellEnabled) Color.rgb(255, 201, 74) else Color.LTGRAY)
       }
     }
