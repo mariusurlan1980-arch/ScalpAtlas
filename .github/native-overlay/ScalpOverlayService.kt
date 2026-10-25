@@ -1,6 +1,7 @@
 package com.scalpatlas.app
 
 import android.app.Notification
+import android.app.PendingIntent
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -242,6 +243,13 @@ class ScalpOverlayService : Service() {
     return START_NOT_STICKY
   }
 
+  // Swiping the ScalpAtlas task away explicitly closes its floating window.
+  // Merely switching to the broker does not remove the app task or interrupt LIVE.
+  override fun onTaskRemoved(rootIntent: Intent?) {
+    stopSelf()
+    super.onTaskRemoved(rootIntent)
+  }
+
   override fun onBind(intent: Intent?): IBinder? = null
 
   private fun startForegroundCompat(notification: Notification) {
@@ -268,14 +276,23 @@ class ScalpOverlayService : Service() {
     }
   }
 
-  private fun buildNotification(): Notification =
-    NotificationCompat.Builder(this, CHANNEL_ID)
+  private fun buildNotification(): Notification {
+    val stopIntent = Intent(this, ScalpOverlayService::class.java).apply {
+      action = ACTION_STOP
+    }
+    val stopPendingIntent = PendingIntent.getService(
+      this, 4827, stopIntent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    return NotificationCompat.Builder(this, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.ic_menu_view)
-      .setContentTitle("SCALP ATLAS • SUPRAPUNERE LIVE")
-      .setContentText("Alerte BUY/SELL fără executare ordine")
+      .setContentTitle("SCALP ATLAS • LIVE")
+      .setContentText("Captură activă • apasă Oprește LIVE pentru a închide suprapunerea")
+      .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Oprește LIVE", stopPendingIntent)
       .setOngoing(true)
       .setPriority(NotificationCompat.PRIORITY_LOW)
       .build()
+  }
 
   private fun dp(value: Int): Int =
     (value * resources.displayMetrics.density).roundToInt()
@@ -334,36 +351,37 @@ class ScalpOverlayService : Service() {
   private fun createOverlay() {
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
-      minimumHeight = dp(186)
-      setPadding(dp(14), dp(12), dp(14), dp(12))
+      setPadding(dp(9), dp(6), dp(9), dp(8))
       background = GradientDrawable().apply {
         setColor(Color.rgb(249, 250, 250))
-        cornerRadius = dp(20).toFloat()
+        cornerRadius = dp(18).toFloat()
         setStroke(dp(1), Color.rgb(232, 237, 237))
       }
-      elevation = dp(9).toFloat()
+      elevation = dp(7).toFloat()
     }
 
+    // No ScalpAtlas title. A visible close button ensures LIVE is never trapped
+    // over the broker. The bell is the ONLY sound control.
     val header = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER_VERTICAL
     }
-    val title = TextView(this).apply {
-      text = "Scalp Atlas 3.2.7"
-      setTextColor(Color.rgb(23, 26, 30))
-      textSize = 13f
-      setTypeface(typeface, android.graphics.Typeface.BOLD)
-      maxLines = 1
+    val close = TextView(this).apply {
+      text = "×"
+      textSize = 21f
+      setTextColor(Color.rgb(95, 108, 113))
+      gravity = Gravity.CENTER
+      contentDescription = "Închide suprapunerea și oprește LIVE"
+      setOnClickListener { stopSelf() }
     }
-    header.addView(title, LinearLayout.LayoutParams(0, dp(30), 1f))
-
-    // Exactly one bell, with the existing notification-sound preference.
+    header.addView(close, LinearLayout.LayoutParams(dp(34), dp(28)))
+    val headerGap = View(this)
+    header.addView(headerGap, LinearLayout.LayoutParams(0, dp(1), 1f))
     bellControl = TextView(this).apply {
       text = if (bellEnabled) "🔔" else "🔕"
-      textSize = 19f
+      textSize = 17f
       gravity = Gravity.CENTER
       contentDescription = "Activează sau dezactivează bipul"
-      setPadding(dp(7), 0, dp(2), 0)
       setOnClickListener {
         bellEnabled = !bellEnabled
         getSharedPreferences(bellPrefsName, Context.MODE_PRIVATE)
@@ -371,73 +389,75 @@ class ScalpOverlayService : Service() {
         text = if (bellEnabled) "🔔" else "🔕"
       }
     }
-    header.addView(bellControl, LinearLayout.LayoutParams(dp(44), dp(33)))
+    header.addView(bellControl, LinearLayout.LayoutParams(dp(35), dp(28)))
     root.addView(header)
 
     val body = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
-      gravity = Gravity.CENTER_VERTICAL
-      setPadding(0, dp(8), 0, dp(3))
+      gravity = Gravity.CENTER
+      setPadding(0, dp(3), 0, dp(2))
     }
     val candleColumn = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
       gravity = Gravity.CENTER
     }
     candleGraphic = ShockCandleView(this).also {
-      candleColumn.addView(it, LinearLayout.LayoutParams(dp(74), dp(98)))
+      candleColumn.addView(it, LinearLayout.LayoutParams(dp(53), dp(72)))
     }
     captureStatusText = TextView(this).apply {
       text = "PAUZĂ"
       setTextColor(Color.rgb(91, 108, 116))
-      textSize = 13f
+      textSize = 12f
       gravity = Gravity.CENTER
       setTypeface(typeface, android.graphics.Typeface.BOLD)
-      setPadding(0, dp(4), 0, 0)
+      setPadding(0, dp(3), 0, 0)
     }
     candleColumn.addView(captureStatusText)
-    body.addView(candleColumn, LinearLayout.LayoutParams(0, dp(133), 0.8f))
+    body.addView(candleColumn, LinearLayout.LayoutParams(dp(79), dp(106)))
+    val spacing = View(this)
+    body.addView(spacing, LinearLayout.LayoutParams(dp(7), dp(1)))
 
     signalRing = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
       gravity = Gravity.CENTER
       background = GradientDrawable().apply {
         setColor(Color.TRANSPARENT)
-        cornerRadius = dp(85).toFloat()
-        setStroke(dp(5), Color.rgb(221, 233, 229))
+        cornerRadius = dp(60).toFloat()
+        setStroke(dp(4), Color.rgb(221, 233, 229))
       }
     }
     qualityText = TextView(this).apply {
       text = "—%"
       setTextColor(Color.rgb(105, 120, 126))
-      textSize = 31f
+      textSize = 25f
       gravity = Gravity.CENTER
       setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
     signalText = TextView(this).apply {
       text = "—"
       setTextColor(Color.rgb(105, 120, 126))
-      textSize = 20f
+      textSize = 16f
       gravity = Gravity.CENTER
       setTypeface(typeface, android.graphics.Typeface.BOLD)
-      setPadding(0, dp(3), 0, 0)
+      setPadding(0, dp(2), 0, 0)
     }
     signalRing?.addView(qualityText)
     signalRing?.addView(signalText)
-    body.addView(signalRing, LinearLayout.LayoutParams(dp(142), dp(142)))
+    body.addView(signalRing, LinearLayout.LayoutParams(dp(109), dp(109)))
     root.addView(body)
 
     val note = TextView(this).apply {
       text = "CALITATE DETECȚIE · NU PROBABILITATE WIN"
       setTextColor(Color.rgb(105, 111, 117))
-      textSize = 9f
+      textSize = 8f
       gravity = Gravity.CENTER
       maxLines = 1
-      setPadding(0, dp(8), 0, 0)
+      setPadding(0, dp(4), 0, 0)
     }
     root.addView(note)
 
     val params = WindowManager.LayoutParams(
-      dp(308),
+      dp(224),
       WindowManager.LayoutParams.WRAP_CONTENT,
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -451,6 +471,7 @@ class ScalpOverlayService : Service() {
       y = dp(36)
     }
 
+    // Drag the white card on its background; bell and X remain clickable.
     var startX = 0
     var startY = 0
     var touchX = 0f
@@ -465,8 +486,11 @@ class ScalpOverlayService : Service() {
           true
         }
         MotionEvent.ACTION_MOVE -> {
-          params.x = startX + (event.rawX - touchX).toInt()
-          params.y = startY + (event.rawY - touchY).toInt()
+          val metrics = resources.displayMetrics
+          params.x = (startX + (event.rawX - touchX).toInt())
+            .coerceIn(0, (metrics.widthPixels - dp(224)).coerceAtLeast(0))
+          params.y = (startY + (event.rawY - touchY).toInt())
+            .coerceIn(0, (metrics.heightPixels - dp(165)).coerceAtLeast(0))
           overlayView?.let { windowManager.updateViewLayout(it, params) }
           true
         }
@@ -1344,8 +1368,8 @@ class ScalpOverlayService : Service() {
         qualityText?.setTextColor(color)
         signalRing?.background = GradientDrawable().apply {
           setColor(Color.TRANSPARENT)
-          cornerRadius = dp(85).toFloat()
-          setStroke(dp(5), when {
+          cornerRadius = dp(60).toFloat()
+          setStroke(dp(4), when {
             green -> Color.rgb(211, 243, 227)
             red -> Color.rgb(249, 217, 221)
             else -> Color.rgb(221, 233, 229)
