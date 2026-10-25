@@ -86,6 +86,7 @@ class ScalpOverlayService : Service() {
   private var lockedDir: String? = null
   private var lockedUntil = 0L
   private var pocketDetected = false
+  @Volatile private var lastValidChartFrameAt = 0L
 
   private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -495,6 +496,7 @@ class ScalpOverlayService : Service() {
           candidateCount = 0
           candidateLastAt = 0L
         }
+        lastValidChartFrameAt = 0L
         fullFrame.recycle()
         updateOverlay(
           "AȘTEAPTĂ",
@@ -511,6 +513,7 @@ class ScalpOverlayService : Service() {
         )
       }
 
+      lastValidChartFrameAt = now
       // POCKET OPTION CHART CROP v1.0.16:
       // Motorul primește doar zona centrală a graficului, nu antetul, butoanele,
       // soldul sau fereastra Scalp Atlas. În portret păstrăm aproximativ 16–72%
@@ -561,6 +564,13 @@ class ScalpOverlayService : Service() {
   }
 
   private fun handleResult(result: JSONObject) {
+    // Do not accept asynchronous analysis results after the screen source has
+    // disappeared or the latest confirmed broker frame is stale.
+    if (!pocketDetected || lastValidChartFrameAt == 0L ||
+        System.currentTimeMillis() - lastValidChartFrameAt > 3000L) {
+      updateOverlay("—", "AȘTEAPTĂ", "Cadru vechi sau broker nedetectat")
+      return
+    }
     // The old 70-pattern analyzer is not a verified same-candle SHOCK detector.
     // Reject all legacy results; never beep or display an invented recovery %.
     updateOverlay("—", "ȘOC", "Date OHLC neverificate")
