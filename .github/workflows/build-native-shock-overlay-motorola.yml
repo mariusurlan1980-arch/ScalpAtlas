@@ -90,7 +90,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=329
+          expo['android']['versionCode']=330
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -132,7 +132,9 @@ jobs:
       - name: Verify Android overlay source
         run: |
           test -s .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'Scalp Atlas 3.2.7' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'dp(224)' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'Închide suprapunerea și oprește LIVE' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -q 'text = "Scalp Atlas 3.2.7"' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Install dependencies
         working-directory: scalp-atlas-new
@@ -334,7 +336,13 @@ jobs:
           grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
           # Fail the build if the native overlay still exposes legacy controls.
           SERVICE="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt"
-          grep -q 'Scalp Atlas 3.2.7' "$SERVICE"
+          ! grep -q 'text = "Scalp Atlas 3.2.7"' "$SERVICE"
+          grep -q 'dp(224)' "$SERVICE"
+          grep -q 'override fun onTaskRemoved' "$SERVICE"
+          grep -q 'stopSelf()' "$SERVICE"
+          grep -q 'PendingIntent.getService' "$SERVICE"
+          grep -q 'onClickListener { stopSelf() }' "$SERVICE"
+          grep -q 'reactContext.stopService(intent)' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
           grep -q 'class ShockCandleView' "$SERVICE"
           grep -q 'signalRing' "$SERVICE"
           grep -q 'CALITATE DETECȚIE' "$SERVICE"
