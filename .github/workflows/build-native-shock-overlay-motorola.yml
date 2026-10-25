@@ -135,6 +135,9 @@ jobs:
           grep -q 'dp(224)' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'Închide suprapunerea și oprește LIVE' .github/native-overlay/ScalpOverlayService.kt
           ! grep -q 'text = "Scalp Atlas 3.2.7"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'setOnClickListener { stopSelf() }' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'reactContext.stopService(intent)' .github/native-overlay/ScalpOverlayModule.kt
+          grep -Fq 'PendingIntent.getService' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Install dependencies
         working-directory: scalp-atlas-new
@@ -341,7 +344,7 @@ jobs:
           grep -q 'override fun onTaskRemoved' "$SERVICE"
           grep -q 'stopSelf()' "$SERVICE"
           grep -q 'PendingIntent.getService' "$SERVICE"
-          grep -q 'onClickListener { stopSelf() }' "$SERVICE"
+          grep -Fq 'setOnClickListener { stopSelf() }' "$SERVICE"
           grep -q 'reactContext.stopService(intent)' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
           grep -q 'class ShockCandleView' "$SERVICE"
           grep -q 'signalRing' "$SERVICE"
