@@ -8,6 +8,7 @@ type Props = {
   probability: number | null;
   live: boolean;
   onBellPress?: () => void;
+  sourceConfirmed?: boolean;
 };
 
 /**
@@ -15,9 +16,10 @@ type Props = {
  * This component is presentation only: it never claims a screenshot is live,
  * never calculates a trading probability, and never emits a trading alert.
  */
-export default function ShockSignalPanel({ signal, probability, live, onBellPress }: Props) {
-  const active = signal !== 'NONE';
-  const color = signal === 'BUY' ? '#1ed981' : signal === 'SELL' ? '#ff5364' : '#9ba6b8';
+export default function ShockSignalPanel({ signal, probability, live, onBellPress, sourceConfirmed = false }: Props) {
+  const active = sourceConfirmed && live && signal !== 'NONE';
+  const displayedSignal: Signal = active ? signal : 'NONE';
+  const color = displayedSignal === 'BUY' ? '#1ed981' : displayedSignal === 'SELL' ? '#ff5364' : '#9ba6b8';
   const score = active && probability != null && Number.isFinite(probability)
     ? Math.max(0, Math.min(100, Math.round(probability)))
     : null;
@@ -36,17 +38,17 @@ export default function ShockSignalPanel({ signal, probability, live, onBellPres
         <View style={styles.wick} />
         <View style={[styles.candle, { backgroundColor: color }]} />
         <Text style={[styles.live, { color: live ? '#1ed981' : '#9ba6b8' }]}>
-          {live ? 'LIVE' : 'CAPTURĂ'}
+          {live && sourceConfirmed ? 'LIVE' : 'NECONFIRMAT'}
         </Text>
       </View>
       <View style={[styles.circle, { borderColor: active ? color : '#344053' }]}>
         <Text style={[styles.percent, { color }]}>{score === null ? '—' : score + '%'}</Text>
         <Text style={[styles.direction, { color }]}>
-          {signal === 'BUY' ? '↑ BUY' : signal === 'SELL' ? '↓ SELL' : 'AȘTEAPTĂ'}
+          {displayedSignal === 'BUY' ? '↑ BUY' : displayedSignal === 'SELL' ? '↓ SELL' : 'AȘTEAPTĂ'}
         </Text>
       </View>
       <Text style={styles.note}>
-        {live ? 'Semnalul necesită validarea fluxului LIVE' : 'Analiză din fotografie, nu supraveghere LIVE'}
+        {live && sourceConfirmed ? 'Date LIVE confirmate' : 'Fără flux LIVE confirmat — fără semnal de tranzacționare'}
       </Text>
     </View>
   );
