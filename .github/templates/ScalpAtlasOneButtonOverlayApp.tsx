@@ -1,7 +1,7 @@
 // One-phone LIVE overlay entry point (Android 14 / Motorola G24).
 // No camera, tutorial carousel, second-phone steps or broker automation.
 // Native MediaProjection permission is requested at every Android session.
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   NativeModules,
@@ -20,6 +20,23 @@ export default function App() {
   const [session, setSession] = useState<Session>('OFF');
   const [status, setStatus] = useState('Pregătit pentru capturare. Semnalele ȘOC necesită validarea datelor live.');
   const busy = useRef(false);
+  const [installedBuild, setInstalledBuild] = useState('Se verifică versiunea instalată…');
+
+  useEffect(() => {
+    let alive = true;
+    if (Platform.OS !== 'android' || !NativeModules.ScalpOverlay?.getBuildInfo) {
+      setInstalledBuild('Compilare Android neidentificată');
+      return () => { alive = false; };
+    }
+    NativeModules.ScalpOverlay.getBuildInfo()
+      .then((value: unknown) => {
+        if (alive) setInstalledBuild(String(value));
+      })
+      .catch(() => {
+        if (alive) setInstalledBuild('Compilare Android neidentificată');
+      });
+    return () => { alive = false; };
+  }, []);
 
   async function toggleOverlay() {
     if (busy.current) return;
@@ -100,6 +117,7 @@ export default function App() {
 
         <View style={styles.footer}>
           <Text style={styles.footText}>UN SINGUR TELEFON • CAPTURĂ ECRAN</Text>
+          <Text style={styles.buildInfo}>{installedBuild}</Text>
           <Text style={styles.footNote}>Fereastra se suprapune peste broker. Nu presupune că semnalele sunt valide.</Text>
           <Text style={styles.footWarning}>Motor experimental. Nu tranzacționa bani reali pe semnale neverificate.</Text>
         </View>
@@ -142,6 +160,7 @@ const styles = StyleSheet.create({
     minHeight:60,maxWidth:340},
   footer: {alignItems:'center',gap:8},
   footText: {color:'#8b9dae',fontWeight:'800',fontSize:10,letterSpacing:1.2},
+  buildInfo: {color:'#39e8a3',fontWeight:'700',fontSize:11,textAlign:'center',marginTop:8},
   footNote: {color:'#6f7f8f',fontSize:11,textAlign:'center',lineHeight:17},
   footWarning: {color:'#e5aa78',fontSize:10,textAlign:'center',lineHeight:15,marginTop:5},
 });
