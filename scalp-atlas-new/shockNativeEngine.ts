@@ -114,9 +114,17 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // that old candle for a fresh one, and do not invent optical evidence.
         // Keep the already observed same-candle history for at most 2.5 s.
         // Never emit a signal while the active candle is not visible.
-        if(!candle || (lastX>=0 && candle.x<lastX-tolerance)){
+        if(!candle){
+          // Blank or unreadable plot: clear ALL history. Never recover an
+          // old BUY/SELL after a full loss of optical evidence.
+          reset();
+          return report(frameId,tf,pair,epoch,'Grafic necitibil sau lumânări absente',0);
+        }
+        if(lastX>=0 && candle.x<lastX-tolerance){
+          // A previously visible older candle took the rightmost position.
+          // Ignore it briefly without treating it as a new live observation.
           if(!lastValidCandleAt||now-lastValidCandleAt>2500)reset();
-          return report(frameId,tf,pair,epoch,'Lumânare activă prea subțire sau ascunsă',0);
+          return report(frameId,tf,pair,epoch,'Lumânare activă temporar prea subțire',0);
         }
         if(lastX>=0&&Math.abs(candle.x-lastX)>tolerance){
           reset(); // rightward candle change or chart scroll
