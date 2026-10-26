@@ -575,7 +575,7 @@ class ScalpOverlayService : Service() {
       marginEnd = dp(4)
     })
     captureStatusText?.setPadding(0, 0, 0, 0)
-    liveStatusRow.addView(captureStatusText)
+    captureStatusText?.let { liveStatusRow.addView(it) }
     candleColumn.addView(liveStatusRow)
     body.addView(candleColumn, LinearLayout.LayoutParams(dp(79), dp(106)))
     val spacing = View(this)
