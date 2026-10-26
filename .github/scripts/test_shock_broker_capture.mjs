@@ -80,12 +80,15 @@ function assertQuiet(result){
 }
 for(let i=0;i<8;i++)assertQuiet(analyze(140,'BUY'));
 let buy;
-for(const close of [140,146,155,169,155,140,136]){
+for(const close of [110,128,181,219,211,172,159]){
   buy=analyze(close,'BUY');
 }
 assert.equal(buy.shockDirection,'BUY','Green candle down retracement + recovery must be recognized');
 assert.equal(buy.shockSameCandle,true);
 assert.ok(buy.quality>=55);
+assert.ok(buy.shockRetracementPercent>=90 && buy.shockRetracementPercent<=100,'BUY % is a candle retracement');
+assert.ok(buy.shockRecoveryPercent>=40,'BUY shock must rebound');
+assert.ok(buy.shockDropDurationMs<=5000,'BUY must occur in <= 5 sec');
 assert.equal(buy.expiry,5);
 // Different asset has identical-looking pixels but must not inherit history.
 assertQuiet(analyze(136,'BUY','GBP/USD OTC',3));
@@ -93,9 +96,11 @@ assertQuiet(analyze(136,'BUY','GBP/USD OTC',4)); // same pair, new epoch
 assertQuiet(analyze(136,'BUY','GBP/USD OTC',4,'M10')); // interval changed
 // Synthetic red upward retracement and downward recovery.
 let sell;
-for(const close of [229,226,211,190,209,233,239])sell=analyze(close,'SELL','GBP/USD OTC',5,'M5');
+for(const close of [280,262,215,174,181,220,235])sell=analyze(close,'SELL','GBP/USD OTC',5,'M5');
 assert.equal(sell.shockDirection,'SELL','Red candle upward retracement + recovery must be recognized');
 assert.equal(sell.shockOpticalVerified,true);
+assert.ok(sell.shockRetracementPercent>=90 && sell.shockRecoveryPercent>=40);
+assert.ok(sell.shockDropDurationMs<=5000);
 // Loss of optical pixels disables alerts. This also drops old history.
 current=new Uint8ClampedArray(width*height*4);
 now+=1000;
@@ -110,7 +115,17 @@ assert.equal(bottom.observedCandleDirection,'BUY');
 assert.ok(bottom.observedCandleX>390);
 assert.ok(bottom.opticalQuality>0 && bottom.opticalQuality<=99);
 assert.equal(bottom.shockDirection,'NONE','Color and optical percentage are NOT a trade signal');
-for(const close of [212,214,228,244,230,211,208])
+for(const close of [110,128,181,219,211,172,159])
   bottom=analyze(close,'BUY','AUD/NZD OTC',40,'M10',120);
 assert.equal(bottom.shockDirection,'BUY','Latest low M10 candle shock detected');
-console.log('PASS: native analyzer BUY/SELL; bottom M10 candle optical quality; stale context and blank frame rejection');
+assert.ok(bottom.shockRetracementPercent>=90);
+assert.ok(bottom.shockRecoveryPercent>=40);
+// A gradual reduction across >5 sec must NOT be confused with a sudden shock.
+for(let n=0;n<13;n++){
+  const gradual=analyze(110+n*8,'BUY','SLOW/TEST OTC',44,'M10');
+  assert.equal(gradual.shockDirection,'NONE','Slow descent was incorrectly treated as a shock');
+}
+// The circle may display image-derived retracement, NEVER OCR-fill quality.
+const plain=analyze(140,'BUY','NO-SHOCK OTC',45,'M10');
+assert.ok(!plain.shockRetracementPercent,'No fabricated SHOCK percentage');
+console.log('PASS: BUY/SELL 90% candle retracement in 5 sec, >=40% recovery, no slow false alert');
