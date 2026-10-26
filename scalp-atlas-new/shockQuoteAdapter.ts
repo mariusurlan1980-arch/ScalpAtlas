@@ -60,6 +60,35 @@ export class ShockQuoteAdapter {
     return first !== 'FLAT' && first === second ? first : 'FLAT';
   }
 
+  /**
+   * Seed ONLY two successive, completed 5/10/15 minute candles from the same
+   * read-only provider. No seed from a forming candle or other market.
+   */
+  seedClosedCandles(
+    marketId: string,
+    tf: 5 | 10 | 15,
+    bars: Array<{startMs:number;open:number;high:number;low:number;close:number}>
+  ): boolean {
+    if (this.market !== marketId || this.tf !== tf || !this.candle) return false;
+    const width = tf * 60_000;
+    const sorted = [...bars].sort((a,b)=>a.startMs-b.startMs);
+    if (sorted.length < 2) return false;
+    const [a,b] = sorted.slice(-2);
+    const valid = (c: typeof a) =>
+      [c.startMs,c.open,c.high,c.low,c.close].every(Number.isFinite) &&
+      c.startMs%width===0 && c.open>0 && c.close>0 && c.low>0 &&
+      c.high>=Math.max(c.open,c.close) && c.low<=Math.min(c.open,c.close);
+    if (!valid(a) || !valid(b) || a.startMs + width !== b.startMs ||
+        b.startMs + width !== this.candle.start) return false;
+    this.closed = [a,b].map(c=>({
+      id:`${marketId}:${tf}:${c.startMs}`,start:c.startMs,
+      firstAt:c.startMs,lastAt:c.startMs+width-1,
+      open:c.open,high:c.high,low:c.low,close:c.close,
+    }));
+    this.detector.reset();
+    return true;
+  }
+
   ingest(tick: QuoteTick): QuoteUpdate {
     if (!tick.sourceConfirmed || !tick.marketId || !Number.isFinite(tick.price) || tick.price <= 0 ||
         !Number.isSafeInteger(tick.timestampMs) || tick.timestampMs < 0 ||
@@ -72,7 +101,10 @@ export class ShockQuoteAdapter {
       this.market = tick.marketId;
       this.tf = tick.timeframeMinutes;
     }
-    if (tick.timestampMs <= this.previousTickMs) {
+    if (tick.timestampMs === this.previousTickMs) {
+      return this.result(null, null, 'TICK_ACEEASI_SECUNDA');
+    }
+    if (tick.timestampMs < this.previousTickMs) {
       this.reset();
       return this.result(null, null, 'TIMESTAMP_NECRONOLOGIC');
     }
