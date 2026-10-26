@@ -8,9 +8,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
   'use strict';
   var canvas=document.getElementById('c');
   var ctx=canvas.getContext('2d',{willReadFrequently:true});
-  var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1,lastObservedAt=0;
+  var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1,lastObservedAt=0,lastValidCandleAt=0;
   function send(obj){try{AndroidBridge.postMessage(JSON.stringify(obj));}catch(e){}}
-  function reset(){history=[];lastX=-1;}
+  function reset(){history=[];lastX=-1;lastValidCandleAt=0;}
   function report(frameId,tf,pair,epoch,reason,quality,extra){
     var result={frameId:frameId,timeframe:tf,brokerPair:pair,marketEpoch:epoch,
       source:'ANDROID_SCREEN_CAPTURE',shockDirection:'NONE',signal:'NONE',
@@ -108,12 +108,21 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var size=w+'x'+h;
         if(key!==lastKey||size!==lastSize){reset();lastKey=key;lastSize=size;}
         var candle=findCandle(p,w,h);
-        if(!candle){reset();return report(frameId,tf,pair,epoch,'Nu disting o lumânare activă de grafic',0);}
         var tolerance=Math.max(7,w*.017);
+        // On a fast recovery the live body can briefly become a thin doji.
+        // The finder may then see an OLD candle to its left. Do not mistake
+        // that old candle for a fresh one, and do not invent optical evidence.
+        // Keep the already observed same-candle history for at most 2.5 s.
+        // Never emit a signal while the active candle is not visible.
+        if(!candle || (lastX>=0 && candle.x<lastX-tolerance)){
+          if(!lastValidCandleAt||now-lastValidCandleAt>2500)reset();
+          return report(frameId,tf,pair,epoch,'Lumânare activă prea subțire sau ascunsă',0);
+        }
         if(lastX>=0&&Math.abs(candle.x-lastX)>tolerance){
-          reset(); // visible candle changed or chart scrolled
+          reset(); // rightward candle change or chart scroll
         }
         lastX=candle.x;
+        lastValidCandleAt=now;
         var opticalInfo={candleDetected:true,observedCandleDirection:candle.dir,
           observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality};
         history=history.filter(function(o){return now-o.t<=90000&&o.t<=now;});

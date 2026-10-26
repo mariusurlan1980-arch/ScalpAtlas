@@ -333,7 +333,7 @@ jobs:
           grep -Fq 'JSONObject.quote(pairAtCapture)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'headerLines.joinToString' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'streamRecent -> "ECRAN?"' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'brokerConnected -> "LIVE"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'candleConnected -> "LIVE"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'maskSelfOverlay(fullFrame, width, 0)' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Build standalone release APK
