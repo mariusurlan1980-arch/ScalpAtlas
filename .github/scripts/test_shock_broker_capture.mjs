@@ -30,11 +30,17 @@ function candle(p,x,open,close,dir){
   paintRect(p,x,Math.min(open,close),x+8,Math.max(open,close),color);
   paintRect(p,x+4,Math.min(open,close)-8,x+4,Math.max(open,close)+8,color);
 }
-function screen(close,dir='BUY',verticalShift=0){
+function screen(close,dir='BUY',verticalShift=0,stickyWick=false){
   const p=new Uint8ClampedArray(width*height*4);
   for(let i=0;i<p.length;i+=4){p[i]=12;p[i+1]=18;p[i+2]=29;p[i+3]=255;}
   candle(p,322,195,164,'BUY');candle(p,353,150,197,'SELL');
-  candle(p,391,(dir==='BUY'?230:165)+verticalShift,close+verticalShift,dir);
+  const open=(dir==='BUY'?230:165)+verticalShift;
+  candle(p,391,open,close+verticalShift,dir);
+  if(stickyWick){
+    // Simulated wick that visibly remains after the candle recovers.
+    const tip=dir==='BUY'?Math.min(Math.floor(height*.955),open+60):Math.max(Math.floor(height*.06),open-60);
+    paintRect(p,395,Math.min(open,tip),395,Math.max(open,tip),colors[dir]);
+  }
   return p;
 }
 const ctx={
@@ -61,8 +67,8 @@ vm.runInNewContext(match[1],{
 }, {timeout:5000});
 assert.ok(results.some(r=>r.type==='READY'), 'Live WebView analyzer not ready');
 
-function analyze(close,dir='BUY',pair='EUR/USD OTC',epoch=2,tf='M5',verticalShift=0){
-  current=screen(close,dir,verticalShift);
+function analyze(close,dir='BUY',pair='EUR/USD OTC',epoch=2,tf='M5',verticalShift=0,stickyWick=false){
+  current=screen(close,dir,verticalShift,stickyWick);
   now+=1000;
   const id=++frameId;
   hostWindow.ScalpAtlasAnalyze('synthetic-jpeg',tf,id,pair,epoch);
@@ -81,14 +87,15 @@ function assertQuiet(result){
 for(let i=0;i<8;i++)assertQuiet(analyze(140,'BUY'));
 let buy;
 for(const close of [110,128,181,219,211,172,159]){
-  buy=analyze(close,'BUY');
+  buy=analyze(close,'BUY','EUR/USD OTC',2,'M5',0,close===172||close===159);
 }
 assert.equal(buy.shockDirection,'BUY','Green candle down retracement + recovery must be recognized');
 assert.equal(buy.shockSameCandle,true);
 assert.ok(buy.quality>=55);
-assert.ok(buy.shockRetracementPercent>=90 && buy.shockRetracementPercent<=100,'BUY % is a candle retracement');
+assert.ok(buy.shockRetracementPercent>=70 && buy.shockRetracementPercent<=100,'BUY % is measured candle retreat');
+assert.ok(buy.shockWickPercent>=35,'BUY must have visible lower wick');
 assert.ok(buy.shockRecoveryPercent>=40,'BUY shock must rebound');
-assert.ok(buy.shockDropDurationMs<=5000,'BUY must occur in <= 5 sec');
+assert.ok(buy.shockDropDurationMs<=10000,'BUY must occur in <= 10 sec');
 assert.equal(buy.expiry,5);
 // Different asset has identical-looking pixels but must not inherit history.
 assertQuiet(analyze(136,'BUY','GBP/USD OTC',3));
@@ -96,11 +103,13 @@ assertQuiet(analyze(136,'BUY','GBP/USD OTC',4)); // same pair, new epoch
 assertQuiet(analyze(136,'BUY','GBP/USD OTC',4,'M10')); // interval changed
 // Synthetic red upward retracement and downward recovery.
 let sell;
-for(const close of [280,262,215,174,181,220,235])sell=analyze(close,'SELL','GBP/USD OTC',5,'M5');
+for(const close of [280,262,215,174,181,220,235])
+  sell=analyze(close,'SELL','GBP/USD OTC',5,'M5',0,close===220||close===235);
 assert.equal(sell.shockDirection,'SELL','Red candle upward retracement + recovery must be recognized');
 assert.equal(sell.shockOpticalVerified,true);
-assert.ok(sell.shockRetracementPercent>=90 && sell.shockRecoveryPercent>=40);
-assert.ok(sell.shockDropDurationMs<=5000);
+assert.ok(sell.shockRetracementPercent>=70 && sell.shockRecoveryPercent>=40);
+assert.ok(sell.shockDropDurationMs<=10000);
+assert.ok(sell.shockWickPercent>=35,'SELL must have upper wick');
 // Loss of optical pixels disables alerts. This also drops old history.
 current=new Uint8ClampedArray(width*height*4);
 now+=1000;
@@ -116,9 +125,9 @@ assert.ok(bottom.observedCandleX>390);
 assert.ok(bottom.opticalQuality>0 && bottom.opticalQuality<=99);
 assert.equal(bottom.shockDirection,'NONE','Color and optical percentage are NOT a trade signal');
 for(const close of [110,128,181,219,211,172,159])
-  bottom=analyze(close,'BUY','AUD/NZD OTC',40,'M10',120);
+  bottom=analyze(close,'BUY','AUD/NZD OTC',40,'M10',120,close===172||close===159);
 assert.equal(bottom.shockDirection,'BUY','Latest low M10 candle shock detected');
-assert.ok(bottom.shockRetracementPercent>=90);
+assert.ok(bottom.shockRetracementPercent>=70);
 assert.ok(bottom.shockRecoveryPercent>=40);
 // A gradual reduction across >5 sec must NOT be confused with a sudden shock.
 for(let n=0;n<13;n++){
@@ -128,4 +137,14 @@ for(let n=0;n<13;n++){
 // The circle may display image-derived retracement, NEVER OCR-fill quality.
 const plain=analyze(140,'BUY','NO-SHOCK OTC',45,'M10');
 assert.ok(!plain.shockRetracementPercent,'No fabricated SHOCK percentage');
-console.log('PASS: BUY/SELL 90% candle retracement in 5 sec, >=40% recovery, no slow false alert');
+// A long wick by itself, without a rapid down/up sequence, must stay silent.
+for(let n=0;n<8;n++){
+  const wickOnly=analyze(144,'BUY','WICK-ONLY OTC',47,'M10',0,true);
+  assertQuiet(wickOnly);
+}
+// A real retreat / recovery without a wick must stay silent.
+let noWick;
+for(const close of [110,128,181,219,211,172,159])
+  noWick=analyze(close,'BUY','NO-WICK OTC',50,'M10',0,false);
+assertQuiet(noWick);
+console.log('PASS: BUY/SELL wick-confirmed 70% retreat <=10s, >=40% recovery; stale and wick-only quiet');
