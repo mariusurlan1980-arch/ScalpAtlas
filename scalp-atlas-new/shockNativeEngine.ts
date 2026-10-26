@@ -74,15 +74,28 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       }
       if(count>=rowSupport){bodyRows.push(yy);fillPixels+=count;}
     }
-    if(bodyRows.length<7)return null;
+    if(bodyRows.length<5)return null;
     var top=bodyRows[0],bottom=bodyRows[bodyRows.length-1];
     if(bottom-top>h*.35)return null; // large colored panels are not candles
     var close=candle.dir==='BUY'?top:bottom;
+    // Observe the narrow center wick outside the filled candle body.
+    // Do not fabricate a wick from unobserved highs or lows.
+    var centerX=Math.round((candle.start+candle.end)/2);
+    var wickMin=top,wickMax=bottom;
+    for(var wy=minY;wy<maxY;wy++){
+      var supported=false;
+      for(var wx=Math.max(candle.start,centerX-1);wx<=Math.min(candle.end,centerX+1);wx++){
+        if(isColor(p,(wy*w+wx)*4)===candle.dir){supported=true;break;}
+      }
+      if(supported){wickMin=Math.min(wickMin,wy);wickMax=Math.max(wickMax,wy);}
+    }
+    var wickPixels=candle.dir==='BUY'?Math.max(0,wickMax-bottom):Math.max(0,top-wickMin);
+    var wickPercent=Math.min(100,Math.round(100*wickPixels/Math.max(1,bottom-top)));
     // Optical color-fill percentage, NEVER a trade win probability.
     var opticalQuality=Math.max(1,Math.min(99,
       Math.round(100*fillPixels/(width*bodyRows.length))));
     return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,
-      width:width,bodyHeight:bottom-top,opticalQuality:opticalQuality};
+      width:width,bodyHeight:bottom-top,wickPixels:wickPixels,wickPercent:wickPercent,opticalQuality:opticalQuality};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
     pair=typeof pair==='string'?pair:'';
@@ -133,8 +146,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         lastValidCandleAt=now;
         var opticalInfo={candleDetected:true,observedCandleDirection:candle.dir,
           observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality};
-        history=history.filter(function(o){return now-o.t<=14000&&o.t<=now;});
-        history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x,bodyHeight:candle.bodyHeight});
+        history=history.filter(function(o){return now-o.t<=24000&&o.t<=now;});
+        history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x,bodyHeight:candle.bodyHeight,wickPixels:candle.wickPixels});
         if(history.length>100)history.shift();
         // A shock is a temporal sequence inside ONE continuously tracked
         // candle, not a single JPEG or a guess from candle color alone.
@@ -142,8 +155,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // retracement: opposed movement / body BEFORE the shock, in pixels.
         // It is NOT visual OCR quality, model confidence or a WIN forecast.
         var latest=history[history.length-1];
-        var minBody=Math.max(12,h*.045);
-        var minMove=Math.max(7,h*.026);
+        var minBody=Math.max(10,h*.035); // still require a measurable pre-shock candle
+        var minMove=Math.max(7,h*.018);
+        // DEMO variant, not a guarantee: 70% drop in <=10 sec, 40% recovery.
+        var minShockFraction=.70,maxDropMs=10000,minRecoveryFraction=.40;
         var displayedDepth=0,confirmed=false,dir='NONE';
         var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
         for(var i=0;i<history.length-1;i++){
@@ -151,18 +166,21 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           if(start.dir!==candle.dir||start.bodyHeight<minBody)continue;
           for(var j=i+1;j<history.length;j++){
             var bottom=history[j],fallMs=bottom.t-start.t;
-            if(fallMs>5000)break; // slower than 5 seconds is NOT a SHOCK
+            if(fallMs>maxDropMs)break; // slow movement is not a rapid shock
             if(fallMs<300||bottom.dir!==candle.dir)continue;
             var drop=candle.dir==='BUY'?bottom.y-start.y:start.y-bottom.y;
             if(drop<minMove)continue;
             var fraction=drop/start.bodyHeight;
             var percent=Math.min(100,Math.max(0,Math.round(100*fraction)));
             displayedDepth=Math.max(displayedDepth,percent);
-            if(fraction<.90||j>=history.length-1)continue;
+            if(fraction<minShockFraction||j>=history.length-2)continue;
             var reboundMs=latest.t-bottom.t;
             if(reboundMs<300||reboundMs>5000)continue;
             var recovery=candle.dir==='BUY'?bottom.y-latest.y:latest.y-bottom.y;
-            if(recovery/drop<.40)continue;
+            if(recovery/drop<minRecoveryFraction)continue;
+            // Visible LONG wick must remain on the SAME recovered candle.
+            // At least 35% of the body before the rapid retreat.
+            if(latest.wickPixels<start.bodyHeight*.35)continue;
             // Both ends must be the same live candle, detected in its
             // original direction after the recovery, not the opposite candle.
             confirmed=true;
@@ -186,6 +204,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             shockRetracementPercent:confirmed?confirmedDepth:displayedDepth,
             shockRecoveryPercent:confirmed?confirmedRebound:0,
             shockDropDurationMs:confirmed?confirmedDuration:0,
+            shockWickPercent:candle.wickPercent,
+            shockWickPixels:candle.wickPixels,
+            shockMaxWindowMs:maxDropMs,
+            shockThresholdPercent:Math.round(minShockFraction*100),
             shockCandleX:Math.round(candle.x),expiry:5,
             candleDetected:true,observedCandleDirection:candle.dir,
             observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality
