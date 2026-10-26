@@ -4,6 +4,7 @@ import EventSource from 'react-native-sse';
 import * as SecureStore from 'expo-secure-store';
 import { useAudioPlayer } from 'expo-audio';
 import { ShockQuoteAdapter } from './shockQuoteAdapter';
+import { ShockPulseRing } from './ShockPulseRing';
 import type { ShockObservation, ShockSignal, ShockStatus } from './shockOnlyDetector';
 import { normalizeCompletedOTCCandles, validateLiveTick } from './shockOTCFeed';
 
@@ -23,6 +24,9 @@ export default function ShockLiveDataApp() {
   const [candle,setCandle]=useState<ShockObservation|null>(null);
   const [status,setStatus]=useState<ShockStatus>({phase:'WAIT',shockDepthPercent:0,reboundPercent:0,wickPercent:0,direction:null,elapsedMs:null});
   const [lastSignal,setLastSignal]=useState<ShockSignal|null>(null);
+  const [ringSignal,setRingSignal]=useState<{direction:'BUY'|'SELL';candleId:string;untilMs:number}|null>(null);
+  const ringSignalRef=useRef<{direction:'BUY'|'SELL';candleId:string;untilMs:number}|null>(null);
+  const clearRing=()=>{ringSignalRef.current=null;setRingSignal(null);};
   const [lastQuoteAt,setLastQuoteAt]=useState<number|null>(null);
   const adapter=useRef(new ShockQuoteAdapter());
   const stream=useRef<EventSource<StreamEvent>|null>(null);
@@ -35,9 +39,11 @@ export default function ShockLiveDataApp() {
   useEffect(()=>()=>{active.current=false;stream.current?.removeAllEventListeners();stream.current?.close();},[]);
   useEffect(()=>{
     const interval=setInterval(()=>{
+      if(ringSignalRef.current && Date.now()>=ringSignalRef.current.untilMs) clearRing();
       if(active.current && lastQuoteAt && Date.now()-lastQuoteAt>5000){
         adapter.current.reset();
         setConnected(false);
+        clearRing();
         setStatus(adapter.current.getStatus());
         setMessage('FLUX ÎNTÂRZIAT — BIP oprit. Verifică rețeaua și reconectează.');
       }
@@ -46,6 +52,7 @@ export default function ShockLiveDataApp() {
   },[lastQuoteAt]);
 
   const stop=()=>{
+    clearRing();
     active.current=false;
     stream.current?.removeAllEventListeners();
     stream.current?.close();
@@ -97,7 +104,7 @@ export default function ShockLiveDataApp() {
         } catch { subscribed=false; }
         setConnected(subscribed);
         setConnecting(false);
-        if(!subscribed) setMessage('Instrumentul nu este inclus în flux. BIP oprit.');
+        if(!subscribed){clearRing();setMessage('Instrumentul nu este inclus în flux. BIP oprit.');}
         else setMessage('Flux terț conectat • test DEMO • așteaptă confirmarea trendului.');
       });
       sse.addEventListener('tick',e=>{
@@ -106,18 +113,28 @@ export default function ShockLiveDataApp() {
         try { payload=JSON.parse(e.data||''); }
         catch { setMessage('Mesaj de preț invalid. BIP oprit.');return; }
         const parsed=validateLiveTick(payload,market,Date.now(),tf);
-        if(!parsed.ok) {adapter.current.reset();setMessage(`Fără semnal: ${parsed.reason}`);return;}
+        if(!parsed.ok) {adapter.current.reset();clearRing();setMessage(`Fără semnal: ${parsed.reason}`);return;}
         const result=adapter.current.ingest(parsed.tick);
         if(!seeded){
           seeded=true;
           adapter.current.seedClosedCandles(market,tf,history);
         }
         if(result.reason==='TICK_ACEEASI_SECUNDA') return;
+        if(ringSignalRef.current && result.observation?.candleId!==ringSignalRef.current.candleId) clearRing();
+        if(!result.sourceReady) clearRing();
         tickRef.current=parsed.tick.timestampMs;
         setLastQuoteAt(Date.now());
         setCandle(result.observation);
         setStatus(adapter.current.getStatus());
         if(result.signal && !closed.current && result.sourceReady){
+          const candleMs=tf*60_000;
+          const candleEndMs=Math.floor(parsed.tick.timestampMs/candleMs)*candleMs+candleMs;
+          const untilMs=Math.min(Date.now()+result.signal.expiryMinutes*60_000,candleEndMs);
+          if(untilMs>Date.now()){
+            const next={direction:result.signal.direction,candleId:result.signal.candleId,untilMs};
+            ringSignalRef.current=next;
+            setRingSignal(next);
+          }
           setLastSignal(result.signal);
           setMessage(`${result.signal.direction} • ȘOC ${result.signal.shockDepthPercent}% • revenire confirmată • numai DEMO`);
           playOnce(result.signal.direction);
@@ -128,28 +145,33 @@ export default function ShockLiveDataApp() {
         }
       });
       sse.addEventListener('closed',()=>{
+        clearRing();
         closed.current=true;
         adapter.current.reset();
         setStatus(adapter.current.getStatus());
         setMessage('Instrument închis pentru tranzacționare. BIP dezactivat.');
       });
       sse.addEventListener('dropped',()=>{
+        clearRing();
         adapter.current.reset();
         setConnected(false);
         setMessage('Instrument indisponibil în flux. BIP dezactivat.');
       });
       sse.addEventListener('replaced',()=>{
+        clearRing();
         adapter.current.reset();
         setConnected(false);
         setMessage('Flux înlocuit de altă conexiune. BIP dezactivat.');
       });
       sse.addEventListener('error',()=>{
+        clearRing();
         adapter.current.reset();
         setConnected(false);
         setConnecting(false);
         setMessage('Eroare flux: verifică planul OTCharts (gratuit nu include live). BIP dezactivat.');
       });
     } catch(error) {
+      clearRing();
       active.current=false;
       setConnecting(false);
       setConnected(false);
@@ -191,6 +213,13 @@ export default function ShockLiveDataApp() {
             <Text style={styles.label}>LUMÂNARE DIN COTAȚII • M{tf}</Text>
             <Text style={{color:connected?'#36de88':'#f2b758'}}>{connected?'CONECTAT':'NECONECTAT'}</Text>
           </View>
+          <View style={styles.ringWrap}>
+            <ShockPulseRing
+              signal={connected && ringSignal?ringSignal.direction:'NONE'}
+              intensityPercent={candle?status.shockDepthPercent:null}
+            />
+            <Text style={styles.ringHint}>BUY verde • SELL roșu • puls 1/sec • fără BIP repetat</Text>
+          </View>
           <View style={styles.candleBox}>
             {shape && candle?
               <View style={styles.candleStage}>
@@ -219,6 +248,7 @@ const styles=StyleSheet.create({
  row:{flexDirection:'row',gap:10},rowBetween:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
  tf:{flex:1,backgroundColor:'#172739',borderRadius:8,padding:10,alignItems:'center'},tfActive:{backgroundColor:'#155e48'},
  tfText:{color:'#fff',fontWeight:'800'},button:{backgroundColor:'#1268ae',padding:16,borderRadius:8,alignItems:'center'},stop:{backgroundColor:'#933d43'},buttonText:{color:'#fff',fontWeight:'900'},
+ ringWrap:{alignItems:'center',paddingVertical:9,gap:8},ringHint:{color:'#8291A5',fontSize:11,textAlign:'center'},
  candleBox:{height:240,alignItems:'center',justifyContent:'center',backgroundColor:'#091321',borderRadius:10},
  candleStage:{width:100,height:220,position:'relative'},wick:{position:'absolute',width:3,left:49},bodyCandle:{position:'absolute',width:32,left:34,borderRadius:2},
  empty:{color:'#8394a9',paddingHorizontal:20,textAlign:'center'},metric:{color:'#e5f3ff',fontSize:23,fontWeight:'800'},
