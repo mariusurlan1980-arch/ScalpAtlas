@@ -1,0 +1,33 @@
+name: Verify SHOCK 338 percent of forming candle
+on:
+  push:
+    branches: [feature/scalpatlas-build338-candle-shock-percent]
+    paths:
+      - 'scalp-atlas-new/shockNativeEngine.ts'
+      - '.github/scripts/test_shock_broker_capture.mjs'
+      - '.github/workflows/test-shock-percent338.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract screen analyzer for offline test
+        run: |
+          mkdir -p scalp-atlas-new/android/app/src/main/assets
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('scalp-atlas-new/shockNativeEngine.ts','utf8');
+          const m=s.match(/export const SHOCK_NATIVE_HTML = `([\s\S]*?)`;/);
+          if(!m)throw Error('SHOCK native HTML template missing');
+          fs.writeFileSync('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html',m[1]);
+          NODE
+      - name: Verify BUY and SELL SHOCK retracement from candle frames
+        run: node .github/scripts/test_shock_broker_capture.mjs
