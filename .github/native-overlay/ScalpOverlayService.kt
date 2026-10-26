@@ -124,6 +124,10 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastFreezeNoticeAt = 0L
   private var lastRenderedSignal = ""
   @Volatile private var lastShockQuality = 0
+  // Only measured live-candle shock RETRACEMENT is displayed as percentage.
+  @Volatile private var observedShockPercent = 0
+  @Volatile private var observedShockAt = 0L
+  @Volatile private var lastConfirmedShockPercent = 0
   @Volatile private var observedCandleDirection = "NONE"
   @Volatile private var observedOpticalQuality = 0
   @Volatile private var observedCandleAt = 0L
@@ -180,6 +184,8 @@ class ScalpOverlayService : Service() {
    * Only handleResult() may expire the confirmed lock after lockedUntil.
    */
   private fun resetSignalState() {
+    observedShockPercent = 0
+    observedShockAt = 0L
     observedCandleDirection = "NONE"
     observedOpticalQuality = 0
     observedCandleAt = 0L
@@ -204,6 +210,7 @@ class ScalpOverlayService : Service() {
     lockedUntil = 0L
     lockedAt = 0L
     lastShockQuality = 0
+    lastConfirmedShockPercent = 0
     resetVisualBaseline()
     marketEpoch += 1L
   }
@@ -323,7 +330,8 @@ class ScalpOverlayService : Service() {
 
   /**
    * Compact white floating overlay approved from the 3.2.7 reference image.
-   * The percentage denotes optical detection quality, NEVER estimated win odds.
+   * Percentage is measured SHOCK RETRACEMENT of the forming candle,
+   * NEVER optical detection quality or estimated WIN probability.
    * There are no legacy TF, journal or test rows in the visible overlay.
    */
   private class ShockCandleView(context: Context) : View(context) {
@@ -541,7 +549,7 @@ class ScalpOverlayService : Service() {
     root.addView(body)
 
     val note = TextView(this).apply {
-      text = "CALITATE DETECȚIE · NU PROBABILITATE WIN"
+      text = "ȘOC = RETRAGERE LUMÂNARE • NU WIN"
       setTextColor(Color.rgb(105, 111, 117))
       textSize = 8f
       gravity = Gravity.CENTER
@@ -1320,8 +1328,21 @@ class ScalpOverlayService : Service() {
     val shockRetraced = result.optBoolean("shockRetraced", false)
     val shockRecovered = result.optBoolean("shockRecovered", false)
     val shockFrameFresh = result.optLong("shockFrameId", -1L) == result.optLong("frameId", -2L)
+    val shockBodyPercent = result.optInt("shockRetracementPercent", 0).coerceIn(0, 100)
+    val shockReboundPercent = result.optInt("shockRecoveryPercent", 0).coerceIn(0, 100)
+    val shockDropDurationMs = result.optLong("shockDropDurationMs", -1L)
+    if (detected && (observed == "BUY" || observed == "SELL") && shockBodyPercent > 0) {
+      observedShockPercent = shockBodyPercent
+      observedShockAt = now
+    } else {
+      observedShockPercent = 0
+      observedShockAt = 0L
+    }
+    // Both processors require >=90% retracement within <=5s and >=40% rebound.
     val confirmedSignal = if (quality >= 55 && opticalGate && shockSameCandle &&
         shockRetraced && shockRecovered && shockFrameFresh &&
+        shockBodyPercent >= 90 && shockReboundPercent >= 40 &&
+        shockDropDurationMs in 300L..5000L &&
         (rawSignal == "BUY" || rawSignal == "SELL")) rawSignal else "NONE"
     val rejectionText = "ȘOC neconfirmat optic pe aceeași lumânare"
     val expiry = result.optInt("expiry", 0)
@@ -1373,6 +1394,7 @@ class ScalpOverlayService : Service() {
       lockedDir = null
       lockedUntil = 0L
       lockedAt = 0L
+      lastConfirmedShockPercent = 0
       candidateDir = null
       candidateCount = 0
       candidateLastAt = 0L
@@ -1450,7 +1472,8 @@ class ScalpOverlayService : Service() {
     lockedUntil = now + lockMinutes * 60_000L
     lockedAt = now
     lockedDir = confirmedSignal
-    lastShockQuality = quality // optical quality, not probability of winning
+    lastShockQuality = quality // Internal optical quality, NOT displayed as shock %
+    lastConfirmedShockPercent = shockBodyPercent // Physical retracement
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
@@ -1529,13 +1552,6 @@ class ScalpOverlayService : Service() {
       // Repaint the miniature and optical percentage for EVERY live result.
       // The arrow still shows BUY/SELL only after a confirmed SHOCK beep.
       candleGraphic?.direction = visualDirection
-      val opticalPercent = when {
-        (green || red) && lastShockQuality >= 55 -> lastShockQuality
-        opticalFresh -> observedOpticalQuality
-        else -> 0
-      }
-      qualityText?.text = if (opticalPercent > 0) opticalPercent.toString() + "%" else "—%"
-      qualityText?.setTextColor(visualTone)
       if (signalChanged) {
         signalText?.text = when {
           green -> "↑ BUY"
@@ -1560,6 +1576,16 @@ class ScalpOverlayService : Service() {
         if (brokerConnected && (green || red) && lockedDir == signal &&
             now < lockedUntil) signal else "NONE"
       )
+      val percentFromCandle = when {
+        brokerConnected && (green || red) &&
+          lockedDir == signal && now < lockedUntil &&
+          lastConfirmedShockPercent >= 90 -> lastConfirmedShockPercent
+        brokerConnected && observedShockAt > 0L &&
+          now - observedShockAt in 0L..3000L -> observedShockPercent
+        else -> 0
+      }
+      qualityText?.text = if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%"
+      qualityText?.setTextColor(visualTone)
       val candleConnected = brokerConnected && opticalFresh
       val scanStatus = when {
         candleConnected -> "LIVE"
