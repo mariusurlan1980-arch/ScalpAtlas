@@ -29,7 +29,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
   // Find actual filled candle bodies. A wick or an isolated colored pixel
   // cannot be used as a close price, and bottom BUY/SELL buttons are excluded.
   function findCandle(p,w,h){
-    var minY=Math.floor(h*.055),maxY=Math.floor(h*.74);
+    // Cropped chart excludes broker buttons; latest M10 candle can be low.
+    var minY=Math.floor(h*.055),maxY=Math.floor(h*.96);
     var minX=Math.floor(w*.40),maxX=Math.floor(w*.91);
     var columns=[];
     for(var x=minX;x<maxX;x++){
@@ -65,20 +66,23 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     var candle=viable[viable.length-1];
     var width=candle.end-candle.start+1;
     var rowSupport=Math.max(2,Math.floor(width*.5));
-    var bodyRows=[];
+    var bodyRows=[],fillPixels=0;
     for(var yy=minY;yy<maxY;yy++){
       var count=0;
       for(var xx=candle.start;xx<=candle.end;xx++){
         if(isColor(p,(yy*w+xx)*4)===candle.dir)count++;
       }
-      if(count>=rowSupport)bodyRows.push(yy);
+      if(count>=rowSupport){bodyRows.push(yy);fillPixels+=count;}
     }
     if(bodyRows.length<7)return null;
     var top=bodyRows[0],bottom=bodyRows[bodyRows.length-1];
     if(bottom-top>h*.35)return null; // large colored panels are not candles
     var close=candle.dir==='BUY'?top:bottom;
+    // Optical color-fill percentage, NEVER a trade win probability.
+    var opticalQuality=Math.max(1,Math.min(99,
+      Math.round(100*fillPixels/(width*bodyRows.length))));
     return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,
-      width:width,bodyHeight:bottom-top};
+      width:width,bodyHeight:bottom-top,opticalQuality:opticalQuality};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
     pair=typeof pair==='string'?pair:'';
@@ -110,13 +114,15 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           reset(); // visible candle changed or chart scrolled
         }
         lastX=candle.x;
+        var opticalInfo={candleDetected:true,observedCandleDirection:candle.dir,
+          observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality};
         history=history.filter(function(o){return now-o.t<=90000&&o.t<=now;});
         history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x});
         if(history.length>100)history.shift();
         // A shock is a temporal sequence inside ONE continuously tracked
         // candle, not a single JPEG or a guess from candle color alone.
         if(history.length<6||now-history[0].t<4500){
-          return report(frameId,tf,pair,epoch,'Colectez mișcarea aceleiași lumânări',0);
+          return report(frameId,tf,pair,epoch,'Colectez mișcarea aceleiași lumânări',0,opticalInfo);
         }
         var first=history[0].y,last=history[history.length-1].y;
         var threshold=Math.max(7,h*.026);
@@ -140,7 +146,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             signal:dir,shockDirection:dir,candidateDirection:dir,
             shockOpticalVerified:confirmed,shockSameCandle:confirmed,
             shockRetraced:confirmed,shockRecovered:confirmed,
-            shockCandleX:Math.round(candle.x),expiry:5
+            shockCandleX:Math.round(candle.x),expiry:5,
+            candleDetected:true,observedCandleDirection:candle.dir,
+            observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality
           });
       } catch(e){
         reset();send({type:'ERROR',frameId:frameId,message:String(e)});

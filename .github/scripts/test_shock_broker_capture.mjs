@@ -30,11 +30,11 @@ function candle(p,x,open,close,dir){
   paintRect(p,x,Math.min(open,close),x+8,Math.max(open,close),color);
   paintRect(p,x+4,Math.min(open,close)-8,x+4,Math.max(open,close)+8,color);
 }
-function screen(close,dir='BUY'){
+function screen(close,dir='BUY',verticalShift=0){
   const p=new Uint8ClampedArray(width*height*4);
   for(let i=0;i<p.length;i+=4){p[i]=12;p[i+1]=18;p[i+2]=29;p[i+3]=255;}
   candle(p,322,195,164,'BUY');candle(p,353,150,197,'SELL');
-  candle(p,391,dir==='BUY'?230:165,close,dir);
+  candle(p,391,(dir==='BUY'?230:165)+verticalShift,close+verticalShift,dir);
   return p;
 }
 const ctx={
@@ -61,8 +61,8 @@ vm.runInNewContext(match[1],{
 }, {timeout:5000});
 assert.ok(results.some(r=>r.type==='READY'), 'Live WebView analyzer not ready');
 
-function analyze(close,dir='BUY',pair='EUR/USD OTC',epoch=2,tf='M5'){
-  current=screen(close,dir);
+function analyze(close,dir='BUY',pair='EUR/USD OTC',epoch=2,tf='M5',verticalShift=0){
+  current=screen(close,dir,verticalShift);
   now+=1000;
   const id=++frameId;
   hostWindow.ScalpAtlasAnalyze('synthetic-jpeg',tf,id,pair,epoch);
@@ -102,4 +102,15 @@ now+=1000;
 hostWindow.ScalpAtlasAnalyze('blank','M5',++frameId,'GBP/USD OTC',5);
 assertQuiet(results.at(-1).result);
 assertQuiet(analyze(239,'SELL','GBP/USD OTC',5,'M5'));
-console.log('PASS: Android broker-frame bridge; BUY/SELL same candle; stale context and blank-frame rejection');
+// The actual user's M10 chart placed the last candle below 74% of crop.
+let bottom;
+for(let i=0;i<8;i++) bottom=analyze(212,'BUY','AUD/NZD OTC',40,'M10',120);
+assert.equal(bottom.candleDetected,true);
+assert.equal(bottom.observedCandleDirection,'BUY');
+assert.ok(bottom.observedCandleX>390);
+assert.ok(bottom.opticalQuality>0 && bottom.opticalQuality<=99);
+assert.equal(bottom.shockDirection,'NONE','Color and optical percentage are NOT a trade signal');
+for(const close of [212,214,228,244,230,211,208])
+  bottom=analyze(close,'BUY','AUD/NZD OTC',40,'M10',120);
+assert.equal(bottom.shockDirection,'BUY','Latest low M10 candle shock detected');
+console.log('PASS: native analyzer BUY/SELL; bottom M10 candle optical quality; stale context and blank frame rejection');

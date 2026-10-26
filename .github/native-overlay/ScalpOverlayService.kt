@@ -120,6 +120,9 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastFreezeNoticeAt = 0L
   private var lastRenderedSignal = ""
   @Volatile private var lastShockQuality = 0
+  @Volatile private var observedCandleDirection = "NONE"
+  @Volatile private var observedOpticalQuality = 0
+  @Volatile private var observedCandleAt = 0L
   private var lastRenderedDetails = ""
   private var lastRenderedModel = ""
   private var lastRenderedCounterAt = 0L
@@ -173,6 +176,9 @@ class ScalpOverlayService : Service() {
    * Only handleResult() may expire the confirmed lock after lockedUntil.
    */
   private fun resetSignalState() {
+    observedCandleDirection = "NONE"
+    observedOpticalQuality = 0
+    observedCandleAt = 0L
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
@@ -1214,6 +1220,19 @@ class ScalpOverlayService : Service() {
     val rawSignal = result.optString("shockDirection", "NONE")
     val score = 0 // no unvalidated probability displayed
     val quality = result.optInt("quality", 0)
+    // Optical recognition is NOT a BUY/SELL signal. Show it in the miniature.
+    val observed = result.optString("observedCandleDirection", "NONE")
+    val detected = result.optBoolean("candleDetected", false)
+    val opticalQuality = result.optInt("opticalQuality", 0).coerceIn(0, 99)
+    if (detected && opticalQuality > 0 && (observed == "BUY" || observed == "SELL")) {
+      observedCandleDirection = observed
+      observedOpticalQuality = opticalQuality
+      observedCandleAt = now
+    } else {
+      observedCandleDirection = "NONE"
+      observedOpticalQuality = 0
+      observedCandleAt = 0L
+    }
     val timeframe = selectedTimeframe
     val opticalGate = result.optBoolean("shockOpticalVerified", false)
     val shockSameCandle = result.optBoolean("shockSameCandle", false)
@@ -1410,29 +1429,41 @@ class ScalpOverlayService : Service() {
     mainHandler.post {
       val now = System.currentTimeMillis()
       val signalChanged = signal != lastRenderedSignal
+      lastRenderedSignal = signal
+      val green = signal == "BUY"
+      val red = signal == "SELL"
+      val opticalFresh = observedCandleAt > 0L &&
+        now - observedCandleAt in 0L..5000L && observedOpticalQuality > 0
+      val visualDirection = when {
+        green -> "BUY"
+        red -> "SELL"
+        opticalFresh -> observedCandleDirection
+        else -> "NONE"
+      }
+      val visualTone = when (visualDirection) {
+        "BUY" -> Color.rgb(0, 137, 75)
+        "SELL" -> Color.rgb(192, 50, 64)
+        else -> Color.rgb(105, 120, 126)
+      }
+      // Repaint the miniature and optical percentage for EVERY live result.
+      // The arrow still shows BUY/SELL only after a confirmed SHOCK beep.
+      candleGraphic?.direction = visualDirection
+      val opticalPercent = when {
+        (green || red) && lastShockQuality >= 55 -> lastShockQuality
+        opticalFresh -> observedOpticalQuality
+        else -> 0
+      }
+      qualityText?.text = if (opticalPercent > 0) opticalPercent.toString() + "%" else "—%"
+      qualityText?.setTextColor(visualTone)
       if (signalChanged) {
-        lastRenderedSignal = signal
-        val green = signal == "BUY"
-        val red = signal == "SELL"
-        val color = when {
-          green -> Color.rgb(0, 137, 75)
-          red -> Color.rgb(192, 50, 64)
-          else -> Color.rgb(105, 120, 126)
-        }
-        candleGraphic?.direction = when {
-          green -> "BUY"
-          red -> "SELL"
-          else -> "NONE"
-        }
         signalText?.text = when {
           green -> "↑ BUY"
           red -> "↓ SELL"
           else -> "—"
         }
-        signalText?.setTextColor(color)
-        qualityText?.text = if ((green || red) && lastShockQuality >= 55)
-          lastShockQuality.toString() + "%" else "—%"
-        qualityText?.setTextColor(color)
+        signalText?.setTextColor(
+          if (green || red) visualTone else Color.rgb(105, 120, 126)
+        )
         signalRing?.background = GradientDrawable().apply {
           setColor(Color.TRANSPARENT)
           cornerRadius = dp(60).toFloat()
@@ -1451,8 +1482,10 @@ class ScalpOverlayService : Service() {
         pairReady(now) &&
         lastAnalysisResultAt > 0L &&
         now - lastAnalysisResultAt in 0L..5000L
+      val candleConnected = brokerConnected && opticalFresh
       val scanStatus = when {
-        brokerConnected -> "LIVE"
+        candleConnected -> "LIVE"
+        brokerConnected -> "LUMÂNARE?"
         !analyzerReady -> "MOTOR?"
         !streamRecent -> "ECRAN?"
         !tfReady -> "TF?"
@@ -1475,6 +1508,7 @@ class ScalpOverlayService : Service() {
           "STABIL" -> "Stabilizare: " +
             max(0L, (MARKET_SETTLE_MS - (now - marketStableAt) + 999L) / 1000L) + " s"
           "GRAFIC?" -> "Pereche și TF confirmate; aștept analiza graficului"
+          "LUMÂNARE?" -> "Cadre primite, dar nu detectez lumânarea activă"
           else -> "Flux activ; semnal numai după ȘOC confirmat"
         }
         try {
@@ -1487,6 +1521,8 @@ class ScalpOverlayService : Service() {
             .putLong("frames", frameCount)
             .putLong("results", resultCount)
             .putLong("errors", errorCount)
+            .putInt("opticalQuality", if (opticalFresh) observedOpticalQuality else 0)
+            .putString("candleDirection", if (opticalFresh) observedCandleDirection else "NONE")
             .putLong("updatedAt", now)
             .apply()
         } catch (_: Throwable) {
