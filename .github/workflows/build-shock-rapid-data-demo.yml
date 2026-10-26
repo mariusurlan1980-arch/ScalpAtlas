@@ -30,9 +30,9 @@ jobs:
           expo=d['expo']
           expo['name']='ScalpAtlas ȘOC DEMO'
           expo['slug']='scalpatlas-shock-data-demo'
-          expo['version']='0.4.0'
+          expo['version']='0.4.1'
           expo['android']['package']='com.scalpatlas.shockdemo'
-          expo['android']['versionCode']=1
+          expo['android']['versionCode']=2
           expo['orientation']='portrait'
           expo['plugins']=[p for p in expo.get('plugins',[]) if (p if isinstance(p,str) else p[0]) not in ['expo-camera','expo-localization','expo-image-picker']]
           f.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
@@ -87,20 +87,20 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-SOC-RAPID-90-DATA-DEMO.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-SOC-RAPID-90-PULSE-DEMO.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-SOC-RAPID-90-DATA-DEMO
-          path: ScalpAtlas-SOC-RAPID-90-DATA-DEMO.apk
+          name: ScalpAtlas-SOC-RAPID-90-PULSE-DEMO
+          path: ScalpAtlas-SOC-RAPID-90-PULSE-DEMO.apk
           if-no-files-found: error
       - name: Publish clearly labeled test APK as prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create shock-rapid-90-data-demo-20261026 \
-            ScalpAtlas-SOC-RAPID-90-DATA-DEMO.apk \
+          gh release create shock-rapid-90-pulse-demo-20261026 \
+            ScalpAtlas-SOC-RAPID-90-PULSE-DEMO.apk \
             --target "$GITHUB_SHA" \
-            --title "ScalpAtlas ȘOC RAPID: read-only data DEMO" \
-            --notes "Standalone TEST APK. Uses independent OTC quote provider OTCharts with a user-owned key and streaming entitlement. Not a Pocket Option official API; not an Android overlay; does not auto-trade. No BIP without fresh quotes and confirmed trend. Install separately from the existing ScalpAtlas app. No prices or trade success are guaranteed." \
+            --title "ScalpAtlas ȘOC RAPID: BUY/SELL pulse DEMO" \
+            --notes "Standalone TEST APK with 1-second GREEN BUY / RED SELL ring pulses; static gray for NONE. Audio is unchanged in this test. Uses independent OTC quote provider OTCharts with a user-owned key and streaming entitlement. Not a Pocket Option official API; not an Android overlay; does not auto-trade. No BIP without fresh quotes and confirmed trend. Install separately from the existing ScalpAtlas app. No prices or trade success are guaranteed." \
             --prerelease
