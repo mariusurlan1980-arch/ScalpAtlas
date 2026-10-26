@@ -1,0 +1,38 @@
+name: Test SHOCK RAPID 90 DEMO
+on:
+  push:
+    branches:
+      - experiment/soc-rapid-5s-90-demo
+    paths:
+      - 'scalp-atlas-new/shockOnlyDetector.ts'
+      - 'scalp-atlas-new/shockOnlyDetector.test.ts'
+      - 'scalp-atlas-new/shockQuoteAdapter.ts'
+      - 'scalp-atlas-new/shockQuoteAdapter.test.ts'
+      - '.github/workflows/test-shock-rapid-demo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile isolated shock engine
+        run: |
+          cd scalp-atlas-new
+          npx --yes --package typescript@5.8.3 tsc \
+            --strict --target ES2020 --module commonjs --skipLibCheck \
+            --lib ES2020,DOM --outDir /tmp/shock-build \
+            shockOnlyDetector.ts shockQuoteAdapter.ts \
+            shockOnlyDetector.test.ts shockQuoteAdapter.test.ts
+      - name: Run detector regressions
+        run: |
+          node /tmp/shock-build/shockOnlyDetector.test.js
+          node /tmp/shock-build/shockQuoteAdapter.test.js
