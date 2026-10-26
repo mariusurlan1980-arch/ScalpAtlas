@@ -86,6 +86,9 @@ for(const close of [140,146,155,169,155,140,136]){
 assert.equal(buy.shockDirection,'BUY','Green candle down retracement + recovery must be recognized');
 assert.equal(buy.shockSameCandle,true);
 assert.ok(buy.quality>=55);
+assert.ok(buy.shockStrength>=75,'confirmed shock must cross 75-point threshold');
+assert.ok(buy.observedBodyPx>0,'live body geometry must be captured');
+assert.ok(buy.observedCloseFraction>=0 && buy.observedCloseFraction<=1);
 assert.equal(buy.expiry,5);
 // Different asset has identical-looking pixels but must not inherit history.
 assertQuiet(analyze(136,'BUY','GBP/USD OTC',3));
@@ -96,6 +99,7 @@ let sell;
 for(const close of [229,226,211,190,209,233,239])sell=analyze(close,'SELL','GBP/USD OTC',5,'M5');
 assert.equal(sell.shockDirection,'SELL','Red candle upward retracement + recovery must be recognized');
 assert.equal(sell.shockOpticalVerified,true);
+assert.ok(sell.shockStrength>=75,'confirmed SELL must cross 75-point threshold');
 // Loss of optical pixels disables alerts. This also drops old history.
 current=new Uint8ClampedArray(width*height*4);
 now+=1000;
@@ -110,6 +114,10 @@ assert.equal(bottom.observedCandleDirection,'BUY');
 assert.ok(bottom.observedCandleX>390);
 assert.ok(bottom.opticalQuality>0 && bottom.opticalQuality<=99);
 assert.equal(bottom.shockDirection,'NONE','Color and optical percentage are NOT a trade signal');
+assert.ok(bottom.shockStrength<75,'high optical quality is NOT a trade strength score');
+assert.ok(bottom.observedBodyPx>0);
+assert.ok(bottom.observedUpperWickPx>=0);
+assert.ok(bottom.observedLowerWickPx>=0);
 for(const close of [212,214,228,244,230,211,208])
   bottom=analyze(close,'BUY','AUD/NZD OTC',40,'M10',120);
 assert.equal(bottom.shockDirection,'BUY','Latest low M10 candle shock detected');

@@ -123,6 +123,12 @@ class ScalpOverlayService : Service() {
   @Volatile private var observedCandleDirection = "NONE"
   @Volatile private var observedOpticalQuality = 0
   @Volatile private var observedCandleAt = 0L
+  @Volatile private var observedShockStrength = 0
+  @Volatile private var lastConfirmedShockStrength = 0
+  @Volatile private var observedBodyPixels = 8
+  @Volatile private var observedUpperWickPixels = 4
+  @Volatile private var observedLowerWickPixels = 4
+  @Volatile private var observedClosePosition = 0.5f
   private var lastRenderedDetails = ""
   private var lastRenderedModel = ""
   private var lastRenderedCounterAt = 0L
@@ -179,6 +185,7 @@ class ScalpOverlayService : Service() {
     observedCandleDirection = "NONE"
     observedOpticalQuality = 0
     observedCandleAt = 0L
+    observedShockStrength = 0
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
@@ -200,6 +207,7 @@ class ScalpOverlayService : Service() {
     lockedUntil = 0L
     lockedAt = 0L
     lastShockQuality = 0
+    lastConfirmedShockStrength = 0
     resetVisualBaseline()
     marketEpoch += 1L
   }
@@ -325,11 +333,27 @@ class ScalpOverlayService : Service() {
   private class ShockCandleView(context: Context) : View(context) {
     var direction: String = "NONE"
       set(value) {
-        if (field != value) {
-          field = value
-          invalidate()
-        }
+        if (field != value) { field = value; invalidate() }
       }
+    private var bodyPixels = 12
+    private var upperPixels = 5
+    private var lowerPixels = 5
+    private var closePosition = 0.5f
+
+    fun updateLiveGeometry(body: Int, upper: Int, lower: Int, close: Float) {
+      val newBody = body.coerceIn(1, 180)
+      val newUpper = upper.coerceIn(0, 180)
+      val newLower = lower.coerceIn(0, 180)
+      val newClose = close.coerceIn(0f, 1f)
+      if (newBody != bodyPixels || newUpper != upperPixels ||
+          newLower != lowerPixels || newClose != closePosition) {
+        bodyPixels = newBody
+        upperPixels = newUpper
+        lowerPixels = newLower
+        closePosition = newClose
+        invalidate() // Called when a NEW frame has different candle geometry.
+      }
+    }
 
     override fun onDraw(canvas: Canvas) {
       super.onDraw(canvas)
@@ -338,26 +362,39 @@ class ScalpOverlayService : Service() {
         "SELL" -> Color.rgb(226, 72, 85)
         else -> Color.rgb(171, 182, 193)
       }
-      val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = tone
-        style = Paint.Style.STROKE
-        strokeWidth = width * 0.055f
-        strokeCap = Paint.Cap.ROUND
+      val total = (bodyPixels + upperPixels + lowerPixels).toFloat()
+      val scale = minOf(1.7f, height * .78f / max(34f, total))
+      var bodyH = (bodyPixels * scale).coerceIn(height * .12f, height * .65f)
+      var upperH = (upperPixels * scale).coerceAtMost(height * .24f)
+      var lowerH = (lowerPixels * scale).coerceAtMost(height * .24f)
+      val occupied = bodyH + upperH + lowerH
+      if (occupied > height * .84f) {
+        val ratio = height * .84f / occupied
+        bodyH *= ratio; upperH *= ratio; lowerH *= ratio
       }
-      val cx = width * 0.5f
-      val top = height * 0.12f
-      val bottom = height * 0.89f
-      canvas.drawLine(cx, top, cx, bottom, p)
-      p.style = Paint.Style.FILL
+      val bodyCenter = (height * (.5f + (closePosition - .5f) * .2f))
+        .coerceIn(height * .35f, height * .65f)
+      val bodyTop = bodyCenter - bodyH / 2f
+      val bodyBottom = bodyCenter + bodyH / 2f
+      val midX = width * .5f
+      val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = tone
+        strokeCap = Paint.Cap.ROUND
+        strokeWidth = max(2f, width * .055f)
+      }
+      paint.style = Paint.Style.STROKE
+      canvas.drawLine(midX, bodyTop - upperH, midX, bodyBottom + lowerH, paint)
+      paint.style = Paint.Style.FILL
       canvas.drawRoundRect(
-        width * 0.29f, height * 0.32f, width * 0.71f, height * 0.70f,
-        width * 0.05f, width * 0.05f, p
+        width * .29f, bodyTop, width * .71f, bodyBottom,
+        width * .035f, width * .035f, paint
       )
     }
   }
 
   private var candleGraphic: ShockCandleView? = null
   private var qualityText: TextView? = null
+  private var opticalQualityText: TextView? = null
   private var captureStatusText: TextView? = null
   private var signalRing: LinearLayout? = null
 
@@ -439,8 +476,15 @@ class ScalpOverlayService : Service() {
         setStroke(dp(4), Color.rgb(221, 233, 229))
       }
     }
+    val shockHeading = TextView(this).apply {
+      text = "ȘOC"
+      textSize = 11f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(92, 107, 111))
+    }
+    signalRing?.addView(shockHeading)
     qualityText = TextView(this).apply {
-      text = "—%"
+      text = "0%"
       setTextColor(Color.rgb(105, 120, 126))
       textSize = 25f
       gravity = Gravity.CENTER
@@ -456,11 +500,18 @@ class ScalpOverlayService : Service() {
     }
     signalRing?.addView(qualityText)
     signalRing?.addView(signalText)
+    opticalQualityText = TextView(this).apply {
+      text = "OPT —%"
+      textSize = 10f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(105, 120, 126))
+    }
+    signalRing?.addView(opticalQualityText)
     body.addView(signalRing, LinearLayout.LayoutParams(dp(109), dp(109)))
     root.addView(body)
 
     val note = TextView(this).apply {
-      text = "CALITATE DETECȚIE · NU PROBABILITATE WIN"
+      text = "ȘOC = INTENSITATE · NU PROBABILITATE WIN"
       setTextColor(Color.rgb(105, 111, 117))
       textSize = 8f
       gravity = Gravity.CENTER
@@ -1224,14 +1275,22 @@ class ScalpOverlayService : Service() {
     val observed = result.optString("observedCandleDirection", "NONE")
     val detected = result.optBoolean("candleDetected", false)
     val opticalQuality = result.optInt("opticalQuality", 0).coerceIn(0, 99)
+    val shockStrength = result.optInt("shockStrength", 0).coerceIn(0, 99)
     if (detected && opticalQuality > 0 && (observed == "BUY" || observed == "SELL")) {
       observedCandleDirection = observed
       observedOpticalQuality = opticalQuality
       observedCandleAt = now
+      observedShockStrength = shockStrength
+      observedBodyPixels = result.optInt("observedBodyPx", 8).coerceIn(1, 180)
+      observedUpperWickPixels = result.optInt("observedUpperWickPx", 4).coerceIn(0, 180)
+      observedLowerWickPixels = result.optInt("observedLowerWickPx", 4).coerceIn(0, 180)
+      observedClosePosition = result.optDouble("observedCloseFraction", 0.5)
+        .toFloat().coerceIn(0f, 1f)
     } else {
       observedCandleDirection = "NONE"
       observedOpticalQuality = 0
       observedCandleAt = 0L
+      observedShockStrength = 0
     }
     val timeframe = selectedTimeframe
     val opticalGate = result.optBoolean("shockOpticalVerified", false)
@@ -1239,7 +1298,8 @@ class ScalpOverlayService : Service() {
     val shockRetraced = result.optBoolean("shockRetraced", false)
     val shockRecovered = result.optBoolean("shockRecovered", false)
     val shockFrameFresh = result.optLong("shockFrameId", -1L) == result.optLong("frameId", -2L)
-    val confirmedSignal = if (quality >= 55 && opticalGate && shockSameCandle &&
+    val confirmedSignal = if (shockStrength >= 75 &&
+        quality >= 55 && opticalGate && shockSameCandle &&
         shockRetraced && shockRecovered && shockFrameFresh &&
         (rawSignal == "BUY" || rawSignal == "SELL")) rawSignal else "NONE"
     val rejectionText = "ȘOC neconfirmat optic pe aceeași lumânare"
@@ -1369,7 +1429,8 @@ class ScalpOverlayService : Service() {
     lockedUntil = now + lockMinutes * 60_000L
     lockedAt = now
     lockedDir = confirmedSignal
-    lastShockQuality = quality // optical quality, not probability of winning
+    lastShockQuality = quality // validated visual evidence, not probability
+    lastConfirmedShockStrength = shockStrength // measured SHOCK strength, never win odds
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
@@ -1448,13 +1509,24 @@ class ScalpOverlayService : Service() {
       // Repaint the miniature and optical percentage for EVERY live result.
       // The arrow still shows BUY/SELL only after a confirmed SHOCK beep.
       candleGraphic?.direction = visualDirection
-      val opticalPercent = when {
-        (green || red) && lastShockQuality >= 55 -> lastShockQuality
-        opticalFresh -> observedOpticalQuality
+      if (opticalFresh) {
+        candleGraphic?.updateLiveGeometry(
+          observedBodyPixels, observedUpperWickPixels,
+          observedLowerWickPixels, observedClosePosition
+        )
+      }
+      // Primary value = measured shock strength, NOT optical recognition.
+      // Optical recognition is shown separately as OPT.
+      val lockedSignal = lockedDir != null && now < lockedUntil
+      val shockPercent = when {
+        lockedSignal -> lastConfirmedShockStrength
+        opticalFresh -> observedShockStrength
         else -> 0
       }
-      qualityText?.text = if (opticalPercent > 0) opticalPercent.toString() + "%" else "—%"
-      qualityText?.setTextColor(visualTone)
+      qualityText?.text = shockPercent.toString() + "%"
+      qualityText?.setTextColor(if (lockedSignal) visualTone else Color.rgb(105, 120, 126))
+      opticalQualityText?.text = if (opticalFresh) "OPT " + observedOpticalQuality + "%"
+        else "OPT —%"
       if (signalChanged) {
         signalText?.text = when {
           green -> "↑ BUY"
@@ -1522,6 +1594,7 @@ class ScalpOverlayService : Service() {
             .putLong("results", resultCount)
             .putLong("errors", errorCount)
             .putInt("opticalQuality", if (opticalFresh) observedOpticalQuality else 0)
+            .putInt("shockStrength", if (opticalFresh) observedShockStrength else 0)
             .putString("candleDirection", if (opticalFresh) observedCandleDirection else "NONE")
             .putLong("updatedAt", now)
             .apply()

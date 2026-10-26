@@ -77,12 +77,24 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     if(bodyRows.length<7)return null;
     var top=bodyRows[0],bottom=bodyRows[bodyRows.length-1];
     if(bottom-top>h*.35)return null; // large colored panels are not candles
+    // Read the narrow wick near the recognized BODY center, not another bar.
+    var wickTop=top,wickBottom=bottom;
+    var centerX=Math.round((candle.start+candle.end)/2);
+    for(var wy=minY;wy<maxY;wy++){
+      var matchWick=false;
+      for(var wx=Math.max(0,centerX-1);wx<=Math.min(w-1,centerX+1);wx++){
+        if(isColor(p,(wy*w+wx)*4)===candle.dir){matchWick=true;break;}
+      }
+      if(matchWick){wickTop=Math.min(wickTop,wy);wickBottom=Math.max(wickBottom,wy);}
+    }
     var close=candle.dir==='BUY'?top:bottom;
     // Optical color-fill percentage, NEVER a trade win probability.
     var opticalQuality=Math.max(1,Math.min(99,
       Math.round(100*fillPixels/(width*bodyRows.length))));
     return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,
-      width:width,bodyHeight:bottom-top,opticalQuality:opticalQuality};
+      width:width,bodyHeight:bottom-top,opticalQuality:opticalQuality,
+      bodyTop:top,bodyBottom:bottom,wickTop:wickTop,wickBottom:wickBottom,
+      closeFraction:Math.max(0,Math.min(1,close/h))};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
     pair=typeof pair==='string'?pair:'';
@@ -132,7 +144,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         lastX=candle.x;
         lastValidCandleAt=now;
         var opticalInfo={candleDetected:true,observedCandleDirection:candle.dir,
-          observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality};
+          observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality,
+          observedBodyPx:Math.max(1,candle.bodyBottom-candle.bodyTop),
+          observedUpperWickPx:Math.max(0,candle.bodyTop-candle.wickTop),
+          observedLowerWickPx:Math.max(0,candle.wickBottom-candle.bodyBottom),
+          observedCloseFraction:candle.closeFraction,shockStrength:0};
         history=history.filter(function(o){return now-o.t<=90000&&o.t<=now;});
         history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x});
         if(history.length>100)history.shift();
@@ -154,6 +170,16 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var sell=candle.dir==='SELL'&&minIdx>=2&&minIdx<enoughAfter&&
           first-min>=threshold&&last-min>=threshold*.8;
         var confirmed=buy||sell,dir=buy?'BUY':sell?'SELL':'NONE';
+        // A measured SHOCK STRENGTH score, NOT win odds. Until both
+        // retraction AND recovery are verified the score stays below 75.
+        var pullback=candle.dir==='BUY'?Math.max(0,max-first):Math.max(0,first-min);
+        var recovery=candle.dir==='BUY'?Math.max(0,max-last):Math.max(0,last-min);
+        var shockStrength=confirmed?
+          Math.min(99,Math.round(75+30*Math.max(0,
+            Math.min(pullback,recovery)/threshold-1))):
+          Math.min(74,Math.round(35*Math.min(1,pullback/threshold)+
+            39*Math.min(1,recovery/threshold)));
+        opticalInfo.shockStrength=shockStrength;
         // Optical image-quality indicator, never a win probability.
         var evidence=confirmed?(buy?Math.min(max-first,max-last):Math.min(first-min,last-min)):0;
         var quality=confirmed?Math.min(88,Math.max(60,Math.round(60+(evidence/threshold-1)*8))):0;
@@ -165,7 +191,12 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             shockRetraced:confirmed,shockRecovered:confirmed,
             shockCandleX:Math.round(candle.x),expiry:5,
             candleDetected:true,observedCandleDirection:candle.dir,
-            observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality
+            observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality,
+            observedBodyPx:opticalInfo.observedBodyPx,
+            observedUpperWickPx:opticalInfo.observedUpperWickPx,
+            observedLowerWickPx:opticalInfo.observedLowerWickPx,
+            observedCloseFraction:opticalInfo.observedCloseFraction,
+            shockStrength:shockStrength
           });
       } catch(e){
         reset();send({type:'ERROR',frameId:frameId,message:String(e)});
