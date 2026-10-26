@@ -127,6 +127,10 @@ class ScalpOverlayService : Service() {
   @Volatile private var frameCount = 0L
   @Volatile private var resultCount = 0L
   @Volatile private var errorCount = 0L
+  // Lightweight LIVE heartbeat for the MAIN app screen only; no screenshots
+  // or personal broker information are persisted as diagnostic data.
+  private var lastDiagnosticWriteAt = 0L
+  private var lastDiagnosticStage = ""
 
   private var candidateDir: String? = null
   private var candidateCount = 0
@@ -1425,6 +1429,36 @@ class ScalpOverlayService : Service() {
         !pairReady(now) -> "STABIL"
         else -> "GRAFIC?"
       }
+      // Show the precise gate holding back LIVE on the main screen, without
+      // making the floating panel larger or weakening any signal gate.
+      if (now - lastDiagnosticWriteAt >= 2_000L || scanStatus != lastDiagnosticStage) {
+        lastDiagnosticWriteAt = now
+        lastDiagnosticStage = scanStatus
+        val diagnosticReason = when (scanStatus) {
+          "MOTOR?" -> "Motorul de analiză nu este pregătit"
+          "ECRAN?" -> "Android nu trimite imagini recente"
+          "TF?" -> "Intervalul M5/M10/M15 nu este confirmat"
+          "PERECHE?" -> "Perechea nu este confirmată"
+          "STABIL" -> "Aștept stabilizarea instrumentului"
+          "GRAFIC?" -> "Nu există rezultat recent din analiza graficului"
+          else -> "Flux activ; semnal numai după ȘOC confirmat"
+        }
+        try {
+          getSharedPreferences("scalp_atlas_live_diagnostics", Context.MODE_PRIVATE)
+            .edit()
+            .putString("stage", scanStatus)
+            .putString("reason", diagnosticReason)
+            .putString("pair", currentPair(now))
+            .putString("timeframe", if (tfAutomatic && !tfVerified) "AUTO ?" else selectedTimeframe)
+            .putLong("frames", frameCount)
+            .putLong("results", resultCount)
+            .putLong("errors", errorCount)
+            .putLong("updatedAt", now)
+            .apply()
+        } catch (_: Throwable) {
+          // Diagnostics must never interrupt screen capture or SHOCK signals.
+        }
+      }
       captureStatusText?.text = scanStatus
       captureStatusText?.setTextColor(
         if (brokerConnected) Color.rgb(0, 137, 75)
@@ -1437,6 +1471,14 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    try {
+      getSharedPreferences("scalp_atlas_live_diagnostics", Context.MODE_PRIVATE)
+        .edit()
+        .putString("stage", "OPRIT")
+        .putString("reason", "Captura ecranului este oprită")
+        .putLong("updatedAt", System.currentTimeMillis())
+        .apply()
+    } catch (_: Throwable) {}
     setKeepScreenForTest(false)
     try {
       liveTest.end(System.currentTimeMillis(), frameCount, resultCount, errorCount, false)

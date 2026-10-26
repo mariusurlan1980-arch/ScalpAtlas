@@ -21,6 +21,7 @@ export default function App() {
   const [status, setStatus] = useState('Pregătit pentru capturare. Semnalele ȘOC necesită validarea datelor live.');
   const busy = useRef(false);
   const [installedBuild, setInstalledBuild] = useState('Se verifică versiunea instalată…');
+  const [liveDiagnostics, setLiveDiagnostics] = useState('FLUX OPRIT · pornește LIVE pentru diagnostic');
 
   useEffect(() => {
     let alive = true;
@@ -36,6 +37,24 @@ export default function App() {
         if (alive) setInstalledBuild('Compilare Android neidentificată');
       });
     return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const native = Platform.OS === 'android' ? NativeModules.ScalpOverlay : null;
+    if (!native?.getLiveDiagnostics) return () => { alive = false; };
+    let requesting = false;
+    const refresh = () => {
+      if (requesting) return;
+      requesting = true;
+      native.getLiveDiagnostics()
+        .then((value: unknown) => { if (alive) setLiveDiagnostics(String(value)); })
+        .catch(() => { if (alive) setLiveDiagnostics('Diagnostic LIVE indisponibil'); })
+        .finally(() => { requesting = false; });
+    };
+    refresh();
+    const interval = setInterval(refresh, 2500);
+    return () => { alive = false; clearInterval(interval); };
   }, []);
 
   async function toggleOverlay() {
@@ -118,6 +137,7 @@ export default function App() {
         <View style={styles.footer}>
           <Text style={styles.footText}>UN SINGUR TELEFON • CAPTURĂ ECRAN</Text>
           <Text style={styles.buildInfo}>{installedBuild}</Text>
+          <Text style={styles.liveDiagnostics}>{liveDiagnostics}</Text>
           <Text style={styles.footNote}>Fereastra se suprapune peste broker. Nu presupune că semnalele sunt valide.</Text>
           <Text style={styles.footWarning}>Motor experimental. Nu tranzacționa bani reali pe semnale neverificate.</Text>
         </View>
@@ -161,6 +181,7 @@ const styles = StyleSheet.create({
   footer: {alignItems:'center',gap:8},
   footText: {color:'#8b9dae',fontWeight:'800',fontSize:10,letterSpacing:1.2},
   buildInfo: {color:'#39e8a3',fontWeight:'700',fontSize:11,textAlign:'center',marginTop:8},
+  liveDiagnostics: {color:'#c5d3df',fontSize:10,textAlign:'center',lineHeight:15,maxWidth:350},
   footNote: {color:'#6f7f8f',fontSize:11,textAlign:'center',lineHeight:17},
   footWarning: {color:'#e5aa78',fontSize:10,textAlign:'center',lineHeight:15,marginTop:5},
 });

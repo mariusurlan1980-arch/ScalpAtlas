@@ -108,6 +108,40 @@ class ScalpOverlayModule(
     }
   }
 
+  /**
+   * Read only non-sensitive LIVE counters and gating status. The user can
+   * inspect why SCAN is blocked on the home screen; no image is exported.
+   */
+  @ReactMethod
+  fun getLiveDiagnostics(promise: Promise) {
+    try {
+      val prefs = reactContext.getSharedPreferences(
+        "scalp_atlas_live_diagnostics", Context.MODE_PRIVATE
+      )
+      val now = System.currentTimeMillis()
+      val updatedAt = prefs.getLong("updatedAt", 0L)
+      val fresh = updatedAt > 0L && updatedAt <= now && now - updatedAt <= 8_000L
+      val stage = if (fresh) prefs.getString("stage", "OPRIT") ?: "OPRIT" else "OPRIT"
+      if (stage == "OPRIT") {
+        promise.resolve("FLUX OPRIT · pornește LIVE pentru diagnostic")
+      } else {
+        val tf = prefs.getString("timeframe", "AUTO ?") ?: "AUTO ?"
+        val pair = prefs.getString("pair", "NEIDENTIFICAT") ?: "NEIDENTIFICAT"
+        val reason = prefs.getString("reason", "În verificare") ?: "În verificare"
+        val frames = prefs.getLong("frames", 0L)
+        val results = prefs.getLong("results", 0L)
+        val errors = prefs.getLong("errors", 0L)
+        promise.resolve(
+          "FLUX " + stage + " · TF " + tf + " · " + pair + "\n" +
+            "Cadre " + frames + " · Analize " + results + " · Erori " + errors +
+            "\n" + reason
+        )
+      }
+    } catch (error: Throwable) {
+      promise.reject("LIVE_DIAGNOSTICS_ERROR", "Nu pot citi starea LIVE.", error)
+    }
+  }
+
   @ReactMethod
   fun stopOverlayMode(promise: Promise) {
     // stopService is immediate and works even when Android forbids starting
