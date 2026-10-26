@@ -93,11 +93,13 @@ class ScalpOverlayService : Service() {
   @Volatile private var latestMarket = "NEIDENTIFICAT"
   @Volatile private var latestMarketAt = 0L
   @Volatile private var marketVerified = false
+  @Volatile private var marketLabelAmbiguous = false
   @Volatile private var marketStableAt = 0L
   @Volatile private var marketEpoch = 0L
   private var pendingMarket: String? = null
   private var pendingMarketCount = 0
   private var pendingMarketAt = 0L
+  private var pendingMarketSince = 0L
   @Volatile private var frameMarketEpoch = -1L
   @Volatile private var frameMarket = "NEIDENTIFICAT"
   @Volatile private var latestChartJpegBytes: ByteArray? = null
@@ -186,6 +188,7 @@ class ScalpOverlayService : Service() {
    * This is distinct from transient timeframe OCR failures.
    */
   private fun clearOnInstrumentChange() {
+    marketLabelAmbiguous = false
     resetSignalState()
     lockedDir = null
     lockedUntil = 0L
@@ -200,7 +203,7 @@ class ScalpOverlayService : Service() {
       latestMarket else "NEIDENTIFICAT"
 
   private fun pairReady(now: Long): Boolean =
-    marketVerified &&
+    marketVerified && !marketLabelAmbiguous &&
       now - latestMarketAt <= MARKET_STALE_MS &&
       now - marketStableAt >= MARKET_SETTLE_MS
 
@@ -740,28 +743,50 @@ class ScalpOverlayService : Service() {
           centerY in 0.045f..0.31f
         }.sortedWith(compareBy({ it.boundingBox?.centerY() ?: 0 }, { it.boundingBox?.left ?: 0 }))
         val headerText = headerLines.joinToString(" ") { it.text }
+        // OCR may separate the OTC label or print it as "O T C".
+        val otcPattern = Regex("""(?i)(?<![A-Z0-9])O\s*T\s*C(?![A-Z0-9])""")
         val pairs = pairPattern.findAll(headerText).map { match ->
           val base = match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase()
-          if (match.groupValues[3].contains("OTC", ignoreCase = true)) "$base OTC" else base
+          val nearby = headerText.substring(match.range.last + 1).take(32)
+          val otc = match.groupValues[3].contains("OTC", ignoreCase = true) ||
+            otcPattern.containsMatchIn(nearby)
+          if (otc) "$base OTC" else base
         }.distinct().toList()
         // Require TWO consistent OCR detections. The first different asset
         // immediately invalidates a confirmed pair and old signal candidates.
         if (pairs.size == 1) {
           val foundPair = pairs[0]
+          val sameBase = foundPair.removeSuffix(" OTC") == latestMarket.removeSuffix(" OTC")
+          val ambiguousMode = marketVerified && sameBase && foundPair != latestMarket
           if (foundPair != latestMarket && marketVerified) {
-            marketVerified = false
-            clearOnInstrumentChange()
-            updateOverlay("AȘTEAPTĂ", "Pereche schimbată • verific " + foundPair,
-              "BUY/SELL anterior anulat • aștept identificarea perechii")
+            if (ambiguousMode) {
+              // Never send an alert on uncertain OTC/standard mode.
+              // Do not restart marketStableAt for a single missing OCR suffix.
+              marketLabelAmbiguous = true
+              resetSignalState()
+              updateOverlay("AȘTEAPTĂ", "Verific OTC / standard",
+                "Etichetă OCR neclară • fără bip")
+            } else {
+              marketVerified = false
+              clearOnInstrumentChange()
+              updateOverlay("AȘTEAPTĂ", "Pereche schimbată • verific " + foundPair,
+                "BUY/SELL anterior anulat • aștept identificarea perechii")
+            }
+          } else if (foundPair == latestMarket) {
+            marketLabelAmbiguous = false
           }
           if (pendingMarket != foundPair || observedAt - pendingMarketAt > 9_000L) {
             pendingMarket = foundPair
             pendingMarketCount = 1
+            pendingMarketSince = observedAt
           } else {
             pendingMarketCount += 1
           }
           pendingMarketAt = observedAt
-          if (pendingMarketCount >= MARKET_OCR_CONFIRMATIONS) {
+          // Four coherent observations for an OTC/standard mode change.
+          val modeSwitchReady = !ambiguousMode ||
+            (pendingMarketCount >= 4 && observedAt - pendingMarketSince >= 9_000L)
+          if (pendingMarketCount >= MARKET_OCR_CONFIRMATIONS && modeSwitchReady) {
             if (!marketVerified || latestMarket != foundPair) {
               latestMarket = foundPair
               marketVerified = true
@@ -774,6 +799,7 @@ class ScalpOverlayService : Service() {
           }
         } else if (marketVerified && observedAt - latestMarketAt > MARKET_STALE_MS) {
           marketVerified = false
+          marketLabelAmbiguous = false
           pendingMarket = null
           pendingMarketCount = 0
           resetSignalState()
@@ -822,7 +848,8 @@ class ScalpOverlayService : Service() {
             pendingTfCount += 1
             pendingTfAt = observedAt
             if (pendingTfCount >= 2 && tfAutomatic) {
-              val changed = !tfVerified || selectedTimeframe != found
+              val changed = selectedTimeframe != found
+              val recovered = !tfVerified
               selectedTimeframe = found
               tfVerified = true
               confirmedTfAt = observedAt
@@ -831,7 +858,11 @@ class ScalpOverlayService : Service() {
                 clearOnInstrumentChange()
                 marketStableAt = observedAt
                 updateOverlay("AȘTEAPTĂ", "AUTO • " + found + " confirmat",
-                  "Timeframe citit din ecran • analiza poate începe")
+                  "Schimbare reală de interval • reiau stabilizarea")
+              } else if (recovered) {
+                // Reconfirmation of the SAME M10 does not reset settlement.
+                updateOverlay("AȘTEAPTĂ", "AUTO • " + found + " reconfirmat",
+                  "Păstrez stabilizarea perechii")
               }
             }
           }
@@ -1425,6 +1456,7 @@ class ScalpOverlayService : Service() {
         !analyzerReady -> "MOTOR?"
         !streamRecent -> "ECRAN?"
         !tfReady -> "TF?"
+        marketLabelAmbiguous -> "ETICHETĂ?"
         !marketVerified || now - latestMarketAt > MARKET_STALE_MS -> "PERECHE?"
         !pairReady(now) -> "STABIL"
         else -> "GRAFIC?"
@@ -1439,8 +1471,10 @@ class ScalpOverlayService : Service() {
           "ECRAN?" -> "Android nu trimite imagini recente"
           "TF?" -> "Intervalul M5/M10/M15 nu este confirmat"
           "PERECHE?" -> "Perechea nu este confirmată"
-          "STABIL" -> "Aștept stabilizarea instrumentului"
-          "GRAFIC?" -> "Nu există rezultat recent din analiza graficului"
+          "ETICHETĂ?" -> "Nu disting sigur OTC de standard; fără bip"
+          "STABIL" -> "Stabilizare: " +
+            max(0L, (MARKET_SETTLE_MS - (now - marketStableAt) + 999L) / 1000L) + " s"
+          "GRAFIC?" -> "Pereche și TF confirmate; aștept analiza graficului"
           else -> "Flux activ; semnal numai după ȘOC confirmat"
         }
         try {
