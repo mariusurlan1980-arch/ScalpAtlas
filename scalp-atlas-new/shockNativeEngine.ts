@@ -1,7 +1,7 @@
 /**
  * Android MediaProjection → JPEG frame → same-candle optical SHOCK analyzer.
  * No broker credentials, network intercept, or order execution.
- * Unsupported charts fail closed; confidence is image quality, not win odds.
+ * Unsupported charts fail closed; SHOCK percentage measures candle retracement only.
  */
 export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewport" content="width=device-width"></head><body><canvas id="c" style="display:none"></canvas><script>
 (function(){
@@ -133,36 +133,59 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         lastValidCandleAt=now;
         var opticalInfo={candleDetected:true,observedCandleDirection:candle.dir,
           observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality};
-        history=history.filter(function(o){return now-o.t<=90000&&o.t<=now;});
-        history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x});
+        history=history.filter(function(o){return now-o.t<=14000&&o.t<=now;});
+        history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x,bodyHeight:candle.bodyHeight});
         if(history.length>100)history.shift();
         // A shock is a temporal sequence inside ONE continuously tracked
         // candle, not a single JPEG or a guess from candle color alone.
-        if(history.length<6||now-history[0].t<4500){
-          return report(frameId,tf,pair,epoch,'Colectez mișcarea aceleiași lumânări',0,opticalInfo);
+        // The ONLY percentage exposed to the overlay is physical candle
+        // retracement: opposed movement / body BEFORE the shock, in pixels.
+        // It is NOT visual OCR quality, model confidence or a WIN forecast.
+        var latest=history[history.length-1];
+        var minBody=Math.max(12,h*.045);
+        var minMove=Math.max(7,h*.026);
+        var displayedDepth=0,confirmed=false,dir='NONE';
+        var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
+        for(var i=0;i<history.length-1;i++){
+          var start=history[i];
+          if(start.dir!==candle.dir||start.bodyHeight<minBody)continue;
+          for(var j=i+1;j<history.length;j++){
+            var bottom=history[j],fallMs=bottom.t-start.t;
+            if(fallMs>5000)break; // slower than 5 seconds is NOT a SHOCK
+            if(fallMs<300||bottom.dir!==candle.dir)continue;
+            var drop=candle.dir==='BUY'?bottom.y-start.y:start.y-bottom.y;
+            if(drop<minMove)continue;
+            var fraction=drop/start.bodyHeight;
+            var percent=Math.min(100,Math.max(0,Math.round(100*fraction)));
+            displayedDepth=Math.max(displayedDepth,percent);
+            if(fraction<.90||j>=history.length-1)continue;
+            var reboundMs=latest.t-bottom.t;
+            if(reboundMs<300||reboundMs>5000)continue;
+            var recovery=candle.dir==='BUY'?bottom.y-latest.y:latest.y-bottom.y;
+            if(recovery/drop<.40)continue;
+            // Both ends must be the same live candle, detected in its
+            // original direction after the recovery, not the opposite candle.
+            confirmed=true;
+            if(percent>=confirmedDepth){
+              confirmedDepth=percent;
+              confirmedRebound=Math.min(100,Math.round(100*recovery/drop));
+              confirmedDuration=fallMs;
+              dir=candle.dir;
+            }
+          }
         }
-        var first=history[0].y,last=history[history.length-1].y;
-        var threshold=Math.max(7,h*.026);
-        var max=first,min=first,maxIdx=0,minIdx=0;
-        history.forEach(function(o,i){
-          if(o.y>max){max=o.y;maxIdx=i;}
-          if(o.y<min){min=o.y;minIdx=i;}
-        });
-        var enoughAfter=history.length-2;
-        var buy=candle.dir==='BUY'&&maxIdx>=2&&maxIdx<enoughAfter&&
-          max-first>=threshold&&max-last>=threshold*.8;
-        var sell=candle.dir==='SELL'&&minIdx>=2&&minIdx<enoughAfter&&
-          first-min>=threshold&&last-min>=threshold*.8;
-        var confirmed=buy||sell,dir=buy?'BUY':sell?'SELL':'NONE';
-        // Optical image-quality indicator, never a win probability.
-        var evidence=confirmed?(buy?Math.min(max-first,max-last):Math.min(first-min,last-min)):0;
-        var quality=confirmed?Math.min(88,Math.max(60,Math.round(60+(evidence/threshold-1)*8))):0;
+        var quality=confirmed?75:0; // internal optical gate only
         report(frameId,tf,pair,epoch,
-          confirmed?'Retragere si recuperare in aceeasi lumânare LIVE':'Aștept revenirea in aceeasi lumânare',
+          confirmed?'ȘOC rapid si revenire masurata in aceeasi lumânare':'Aștept retragere rapida și revenire',
           quality,{
-            signal:dir,shockDirection:dir,candidateDirection:dir,
+            signal:confirmed?dir:'NONE',shockDirection:confirmed?dir:'NONE',
+            candidateDirection:confirmed?dir:'NONE',
             shockOpticalVerified:confirmed,shockSameCandle:confirmed,
             shockRetraced:confirmed,shockRecovered:confirmed,
+            // All percentages below refer to the observed forming candle.
+            shockRetracementPercent:confirmed?confirmedDepth:displayedDepth,
+            shockRecoveryPercent:confirmed?confirmedRebound:0,
+            shockDropDurationMs:confirmed?confirmedDuration:0,
             shockCandleX:Math.round(candle.x),expiry:5,
             candleDetected:true,observedCandleDirection:candle.dir,
             observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality
