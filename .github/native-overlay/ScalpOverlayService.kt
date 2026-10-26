@@ -128,6 +128,8 @@ class ScalpOverlayService : Service() {
   @Volatile private var observedShockPercent = 0
   @Volatile private var observedShockAt = 0L
   @Volatile private var lastConfirmedShockPercent = 0
+  @Volatile private var observedWickPercent = 0
+  @Volatile private var observedWickAt = 0L
   @Volatile private var observedCandleDirection = "NONE"
   @Volatile private var observedOpticalQuality = 0
   @Volatile private var observedCandleAt = 0L
@@ -186,6 +188,8 @@ class ScalpOverlayService : Service() {
   private fun resetSignalState() {
     observedShockPercent = 0
     observedShockAt = 0L
+    observedWickPercent = 0
+    observedWickAt = 0L
     observedCandleDirection = "NONE"
     observedOpticalQuality = 0
     observedCandleAt = 0L
@@ -450,6 +454,39 @@ class ScalpOverlayService : Service() {
 
   private var candleGraphic: ShockCandleView? = null
   private var qualityText: TextView? = null
+  private var wickText: TextView? = null
+  private var signalBlinkAnimator: ValueAnimator? = null
+  private var signalBlinkDirection = "NONE"
+  private fun stopSignalBlink() {
+    signalBlinkAnimator?.cancel()
+    signalBlinkAnimator = null
+    signalBlinkDirection = "NONE"
+    signalText?.alpha = 1f
+  }
+  private fun setSignalBlink(direction: String) {
+    val next = if (direction == "BUY" || direction == "SELL") direction else "NONE"
+    if (next == signalBlinkDirection) return
+    stopSignalBlink()
+    if (next == "NONE") return
+    signalBlinkDirection = next
+    // Full visible -> dim -> visible cycle = 1500ms.
+    signalBlinkAnimator = ValueAnimator.ofFloat(1f, 0.08f, 1f).apply {
+      duration = 1500L
+      repeatCount = ValueAnimator.INFINITE
+      interpolator = LinearInterpolator()
+      addUpdateListener { animator ->
+        val now = System.currentTimeMillis()
+        val safe = signalBlinkDirection == next && lockedDir == next &&
+          now < lockedUntil && analyzerReady &&
+          lastCapturedImageAt > 0L && now-lastCapturedImageAt in 0L..3500L &&
+          pairReady(now) && !manualTfConflict &&
+          (!tfAutomatic || (tfVerified && now-confirmedTfAt in 0L..TF_STALE_MS))
+        if (!safe) stopSignalBlink()
+        else signalText?.alpha = animator.animatedValue as Float
+      }
+      start()
+    }
+  }
   private var captureStatusText: TextView? = null
   private var liveCameraDot: View? = null
   private var liveCameraAnimator: ValueAnimator? = null
@@ -475,9 +512,9 @@ class ScalpOverlayService : Service() {
     liveCameraDotActive = true
     liveCameraDot?.apply {
       visibility = View.VISIBLE
-      alpha = 0.35f
+      alpha = 0.55f
     }
-    liveCameraAnimator = ValueAnimator.ofFloat(0.35f, 1f, 0.35f).apply {
+    liveCameraAnimator = ValueAnimator.ofFloat(0.55f, 0.95f, 0.55f).apply {
       duration = 1000L  // one full pulse per second
       repeatCount = ValueAnimator.INFINITE
       interpolator = LinearInterpolator()
@@ -566,12 +603,12 @@ class ScalpOverlayService : Service() {
     liveCameraDot = View(this).apply {
       background = GradientDrawable().apply {
         shape = GradientDrawable.OVAL
-        setColor(Color.rgb(235, 49, 65)) // red camera-recording indicator
+        setColor(Color.rgb(223, 120, 91)) // warmer, less piercing coral camera dot
       }
       visibility = View.GONE
       contentDescription = "Indicator captură LIVE activă"
     }
-    liveStatusRow.addView(liveCameraDot, LinearLayout.LayoutParams(dp(7), dp(7)).apply {
+    liveStatusRow.addView(liveCameraDot, LinearLayout.LayoutParams(dp(10), dp(10)).apply {
       marginEnd = dp(4)
     })
     captureStatusText?.setPadding(0, 0, 0, 0)
@@ -602,8 +639,16 @@ class ScalpOverlayService : Service() {
       setTypeface(typeface, android.graphics.Typeface.BOLD)
       setPadding(0, dp(2), 0, 0)
     }
+    wickText = TextView(this).apply {
+      text = "FITIL —%"
+      setTextColor(Color.rgb(105, 120, 126))
+      textSize = 10f
+      gravity = Gravity.CENTER
+      maxLines = 1
+    }
     signalRing?.addView(qualityText)
     signalRing?.addView(signalText)
+    signalRing?.addView(wickText)
     body.addView(signalRing, LinearLayout.LayoutParams(dp(109), dp(109)))
     root.addView(body)
 
@@ -1390,6 +1435,14 @@ class ScalpOverlayService : Service() {
     val shockBodyPercent = result.optInt("shockRetracementPercent", 0).coerceIn(0, 100)
     val shockReboundPercent = result.optInt("shockRecoveryPercent", 0).coerceIn(0, 100)
     val shockDropDurationMs = result.optLong("shockDropDurationMs", -1L)
+    val wickMeasured = result.optInt("shockWickPercent", 0).coerceIn(0, 100)
+    if (detected && (observed == "BUY" || observed == "SELL")) {
+      observedWickPercent = wickMeasured
+      observedWickAt = now
+    } else {
+      observedWickPercent = 0
+      observedWickAt = 0L
+    }
     if (detected && (observed == "BUY" || observed == "SELL") && shockBodyPercent > 0) {
       observedShockPercent = shockBodyPercent
       observedShockAt = now
@@ -1397,11 +1450,12 @@ class ScalpOverlayService : Service() {
       observedShockPercent = 0
       observedShockAt = 0L
     }
-    // Both processors require >=90% retracement within <=5s and >=40% rebound.
+    // DEMO gate: 70% physical retracement in <=10s, >=40% rebound,
+    // and a visible long wick on the SAME recovered candle (JS verified).
     val confirmedSignal = if (quality >= 55 && opticalGate && shockSameCandle &&
         shockRetraced && shockRecovered && shockFrameFresh &&
-        shockBodyPercent >= 90 && shockReboundPercent >= 40 &&
-        shockDropDurationMs in 300L..5000L &&
+        shockBodyPercent >= 70 && shockReboundPercent >= 40 &&
+        wickMeasured >= 1 && shockDropDurationMs in 300L..10000L &&
         (rawSignal == "BUY" || rawSignal == "SELL")) rawSignal else "NONE"
     val rejectionText = "ȘOC neconfirmat optic pe aceeași lumânare"
     val expiry = result.optInt("expiry", 0)
@@ -1631,20 +1685,23 @@ class ScalpOverlayService : Service() {
         now - lastAnalysisResultAt in 0L..5000L
       // A new BUY/SELL is displayed on the first confirmed analysis callback.
       // Animation is gated by a real, unexpired signal lock, never OCR colors.
-      setPulseRing(
-        if (brokerConnected && (green || red) && lockedDir == signal &&
-            now < lockedUntil) signal else "NONE"
-      )
+      val activeSignal = if (brokerConnected && (green || red) &&
+          lockedDir == signal && now < lockedUntil) signal else "NONE"
+      setPulseRing(activeSignal)
+      setSignalBlink(activeSignal)
       val percentFromCandle = when {
         brokerConnected && (green || red) &&
           lockedDir == signal && now < lockedUntil &&
-          lastConfirmedShockPercent >= 90 -> lastConfirmedShockPercent
+          lastConfirmedShockPercent >= 70 -> lastConfirmedShockPercent
         brokerConnected && observedShockAt > 0L &&
           now - observedShockAt in 0L..3000L -> observedShockPercent
         else -> 0
       }
       qualityText?.text = if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%"
       qualityText?.setTextColor(visualTone)
+      wickText?.text = if (brokerConnected && observedWickAt > 0L &&
+        now-observedWickAt in 0L..3000L) "FITIL " + observedWickPercent + "%"
+        else "FITIL —%"
       val candleConnected = brokerConnected && opticalFresh
       val scanStatus = when {
         candleConnected -> "LIVE"
@@ -1708,6 +1765,7 @@ class ScalpOverlayService : Service() {
     mainHandler.post {
       stopLiveCameraDot()
       stopPulseRing()
+      stopSignalBlink()
     }
     try {
       getSharedPreferences("scalp_atlas_live_diagnostics", Context.MODE_PRIVATE)
