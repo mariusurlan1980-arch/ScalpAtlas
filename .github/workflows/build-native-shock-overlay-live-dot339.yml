@@ -375,7 +375,7 @@ jobs:
           grep -q 'liveStatusRow.addView(liveCameraDot' "$SERVICE"
           grep -q 'if (!streamFresh) stopLiveCameraDot()' "$SERVICE"
           ! grep -q 'CALITATE DETECȚIE' "$SERVICE"
-          grep -q 'CALITATE DETECȚIE' "$SERVICE"
+          grep -q 'ȘOC = RETRAGERE LUMÂNARE' "$SERVICE"
           grep -q 'lastShockQuality = quality' "$SERVICE"
           ! grep -q 'GRAFIC 2/3' "$SERVICE"
           ! grep -q 'TF AUTO ▸' "$SERVICE"
