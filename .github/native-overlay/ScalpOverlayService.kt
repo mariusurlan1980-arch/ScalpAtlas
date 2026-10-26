@@ -1,5 +1,6 @@
 package com.scalpatlas.app
 
+import android.animation.ValueAnimator
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.NotificationChannel
@@ -12,6 +13,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
+import android.graphics.ColorFilter
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.hardware.display.DisplayManager
@@ -33,6 +35,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.LinearInterpolator
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -45,6 +48,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 @Suppress("DEPRECATION")
@@ -356,6 +360,86 @@ class ScalpOverlayService : Service() {
     }
   }
 
+
+  /**
+   * Pulse only the circle, never the text. 500 ms brighter + 500 ms dimmer.
+   * This is a VISUAL confirmation only; no signals or BIPs are emitted here.
+   */
+  private class ShockPulseDrawable(private val strokePx: Float) : android.graphics.drawable.Drawable() {
+    var direction: String = "NONE"
+      set(value) { if (field != value) { field = value; invalidateSelf() } }
+    var intensity: Float = 0.35f
+      set(value) { field = value.coerceIn(0f, 1f); invalidateSelf() }
+    override fun draw(canvas: Canvas) {
+      val cx = bounds.exactCenterX()
+      val cy = bounds.exactCenterY()
+      val radius = (min(bounds.width(), bounds.height()) * 0.5f - strokePx * 1.6f).coerceAtLeast(1f)
+      val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+      }
+      val tone = when(direction) {
+        "BUY" -> Color.rgb(0, 204, 102)
+        "SELL" -> Color.rgb(235, 52, 72)
+        else -> Color.rgb(221, 233, 229)
+      }
+      paint.color = tone
+      if (direction == "NONE") {
+        paint.strokeWidth = strokePx
+        paint.alpha = 255
+        canvas.drawCircle(cx, cy, radius, paint)
+      } else {
+        // Subtle outer colored halo, never obscures the broker's candles.
+        paint.strokeWidth = strokePx * 2.5f
+        paint.alpha = (20f + 35f * intensity).roundToInt().coerceIn(0, 255)
+        canvas.drawCircle(cx, cy, radius, paint)
+        paint.strokeWidth = strokePx
+        paint.alpha = (89f + 166f * intensity).roundToInt().coerceIn(0, 255)
+        canvas.drawCircle(cx, cy, radius, paint)
+      }
+    }
+    override fun setAlpha(alpha: Int) {}
+    override fun setColorFilter(colorFilter: ColorFilter?) {}
+    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+  }
+
+  private var pulseRingDrawable: ShockPulseDrawable? = null
+  private var pulseRingAnimator: ValueAnimator? = null
+  private var pulseRingDirection = "NONE"
+
+  private fun stopPulseRing() {
+    pulseRingAnimator?.cancel()
+    pulseRingAnimator = null
+    pulseRingDirection = "NONE"
+    pulseRingDrawable?.apply { direction = "NONE"; intensity = 0.35f }
+  }
+
+  private fun setPulseRing(direction: String) {
+    val next = if (direction == "BUY" || direction == "SELL") direction else "NONE"
+    if (pulseRingDirection == next) return
+    stopPulseRing()
+    if (next == "NONE") return
+    pulseRingDirection = next
+    pulseRingDrawable?.direction = next
+    pulseRingAnimator = ValueAnimator.ofFloat(0.35f, 1f, 0.35f).apply {
+      duration = 1000L
+      repeatCount = ValueAnimator.INFINITE
+      interpolator = LinearInterpolator()
+      addUpdateListener { animation ->
+        val now = System.currentTimeMillis()
+        // Strict stop on signal expiry, market change, absent/late capture, or TF loss.
+        val safe = pulseRingDirection == next && lockedDir == next &&
+          now < lockedUntil && analyzerReady &&
+          lastCapturedImageAt > 0L && now - lastCapturedImageAt in 0L..3500L &&
+          pairReady(now) && !manualTfConflict &&
+          (!tfAutomatic || (tfVerified && now - confirmedTfAt in 0L..TF_STALE_MS))
+        if (!safe) stopPulseRing()
+        else pulseRingDrawable?.intensity = animation.animatedValue as Float
+      }
+      start()
+    }
+  }
+
   private var candleGraphic: ShockCandleView? = null
   private var qualityText: TextView? = null
   private var captureStatusText: TextView? = null
@@ -430,14 +514,11 @@ class ScalpOverlayService : Service() {
     val spacing = View(this)
     body.addView(spacing, LinearLayout.LayoutParams(dp(7), dp(1)))
 
+    pulseRingDrawable = ShockPulseDrawable(dp(4).toFloat())
     signalRing = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
       gravity = Gravity.CENTER
-      background = GradientDrawable().apply {
-        setColor(Color.TRANSPARENT)
-        cornerRadius = dp(60).toFloat()
-        setStroke(dp(4), Color.rgb(221, 233, 229))
-      }
+      background = pulseRingDrawable
     }
     qualityText = TextView(this).apply {
       text = "—%"
@@ -1464,15 +1545,6 @@ class ScalpOverlayService : Service() {
         signalText?.setTextColor(
           if (green || red) visualTone else Color.rgb(105, 120, 126)
         )
-        signalRing?.background = GradientDrawable().apply {
-          setColor(Color.TRANSPARENT)
-          cornerRadius = dp(60).toFloat()
-          setStroke(dp(4), when {
-            green -> Color.rgb(211, 243, 227)
-            red -> Color.rgb(249, 217, 221)
-            else -> Color.rgb(221, 233, 229)
-          })
-        }
       }
       val streamRecent = lastCapturedImageAt > 0L &&
         now - lastCapturedImageAt in 0L..3500L
@@ -1482,6 +1554,12 @@ class ScalpOverlayService : Service() {
         pairReady(now) &&
         lastAnalysisResultAt > 0L &&
         now - lastAnalysisResultAt in 0L..5000L
+      // A new BUY/SELL is displayed on the first confirmed analysis callback.
+      // Animation is gated by a real, unexpired signal lock, never OCR colors.
+      setPulseRing(
+        if (brokerConnected && (green || red) && lockedDir == signal &&
+            now < lockedUntil) signal else "NONE"
+      )
       val candleConnected = brokerConnected && opticalFresh
       val scanStatus = when {
         candleConnected -> "LIVE"
@@ -1541,6 +1619,7 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    mainHandler.post { stopPulseRing() }
     try {
       getSharedPreferences("scalp_atlas_live_diagnostics", Context.MODE_PRIVATE)
         .edit()
