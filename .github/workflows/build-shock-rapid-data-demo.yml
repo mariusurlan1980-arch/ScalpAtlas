@@ -1,0 +1,101 @@
+name: Build ScalpAtlas SHOCK RAPID Data DEMO
+on:
+  push:
+    branches: [experiment/soc-rapid-5s-90-demo]
+    paths:
+      - '.github/workflows/build-shock-rapid-data-demo.yml'
+      - 'scalp-atlas-new/ShockLiveDataApp.tsx'
+      - 'scalp-atlas-new/shockOnlyDetector.ts'
+      - 'scalp-atlas-new/shockQuoteAdapter.ts'
+      - 'scalp-atlas-new/shockOTCFeed.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout independent test branch
+        uses: actions/checkout@v4
+      - name: Prepare isolated Android app (does not overwrite stable app)
+        run: |
+          cp scalp-atlas-new/ShockLiveDataApp.tsx scalp-atlas-new/App.tsx
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          f=Path('scalp-atlas-new/app.json')
+          d=json.loads(f.read_text(encoding='utf-8'))
+          expo=d['expo']
+          expo['name']='ScalpAtlas ȘOC DEMO'
+          expo['slug']='scalpatlas-shock-data-demo'
+          expo['version']='0.4.0'
+          expo['android']['package']='com.scalpatlas.shockdemo'
+          expo['android']['versionCode']=1
+          expo['orientation']='portrait'
+          expo['plugins']=[p for p in expo.get('plugins',[]) if (p if isinstance(p,str) else p[0]) not in ['expo-camera','expo-localization','expo-image-picker']]
+          f.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct,math,wave
+          p=Path('scalp-atlas-new/assets/shock-alert.wav')
+          rate=44100;duration=1.4;freq=880;amp=.28
+          frames=bytearray()
+          for i in range(int(rate*duration)):
+              t=i/rate
+              fade=max(0,min(1,t/.01,(duration-t)/.03))
+              frames.extend(struct.pack('<h',int(32767*amp*fade*math.sin(2*math.pi*freq*t))))
+          with wave.open(str(p),'wb') as f:
+              f.setnchannels(1);f.setsampwidth(2);f.setframerate(rate);f.writeframes(frames)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install Expo packages and event-stream parser
+        working-directory: scalp-atlas-new
+        run: |
+          npm install
+          npx expo install expo-audio expo-secure-store
+          npm install react-native-sse@1.2.1
+      - name: Check TypeScript
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit
+      - name: Create Android native project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+      - name: Build APK for testing only
+        working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Collect APK
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-SOC-RAPID-90-DATA-DEMO.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-SOC-RAPID-90-DATA-DEMO
+          path: ScalpAtlas-SOC-RAPID-90-DATA-DEMO.apk
+          if-no-files-found: error
+      - name: Publish clearly labeled test APK as prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create shock-rapid-90-data-demo-20261026 \
+            ScalpAtlas-SOC-RAPID-90-DATA-DEMO.apk \
+            --target "$GITHUB_SHA" \
+            --title "ScalpAtlas ȘOC RAPID: read-only data DEMO" \
+            --notes "Standalone TEST APK. Uses independent OTC quote provider OTCharts with a user-owned key and streaming entitlement. Not a Pocket Option official API; not an Android overlay; does not auto-trade. No BIP without fresh quotes and confirmed trend. Install separately from the existing ScalpAtlas app. No prices or trade success are guaranteed." \
+            --prerelease
