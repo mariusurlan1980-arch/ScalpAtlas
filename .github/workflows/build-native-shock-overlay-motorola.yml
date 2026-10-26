@@ -366,7 +366,9 @@ jobs:
           grep -q 'scalp_atlas_live_diagnostics' "$SERVICE"
           grep -q 'fun getLiveDiagnostics' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
           grep -q 'signalRing' "$SERVICE"
-          grep -q 'CALITATE DETECȚIE' "$SERVICE"
+          grep -q 'ȘOC = INTENSITATE' "$SERVICE"
+          grep -q 'opticalQualityText' "$SERVICE"
+          grep -q 'shockStrength >= 75' "$SERVICE"
           grep -q 'lastShockQuality = quality' "$SERVICE"
           ! grep -q 'GRAFIC 2/3' "$SERVICE"
           ! grep -q 'TF AUTO ▸' "$SERVICE"
