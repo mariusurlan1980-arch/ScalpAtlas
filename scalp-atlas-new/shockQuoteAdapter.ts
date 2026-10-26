@@ -36,6 +36,8 @@ export class ShockQuoteAdapter {
   private previousTickMs = -1;
   private closed: Candle[] = [];
 
+  getStatus(): ShockStatus { return this.detector.getStatus(); }
+
   reset(): void {
     this.market = null;
     this.tf = null;
