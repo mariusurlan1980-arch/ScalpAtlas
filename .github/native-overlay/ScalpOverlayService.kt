@@ -451,7 +451,48 @@ class ScalpOverlayService : Service() {
   private var candleGraphic: ShockCandleView? = null
   private var qualityText: TextView? = null
   private var captureStatusText: TextView? = null
+  private var liveCameraDot: View? = null
+  private var liveCameraAnimator: ValueAnimator? = null
+  private var liveCameraDotActive = false
   private var signalRing: LinearLayout? = null
+
+  // A small red recording-style dot to the LEFT of the existing LIVE label.
+  // Separate from BUY/SELL; this only reflects fresh, verified live capture.
+  private fun stopLiveCameraDot() {
+    liveCameraDotActive = false
+    liveCameraAnimator?.cancel()
+    liveCameraAnimator = null
+    liveCameraDot?.alpha = 1f
+    liveCameraDot?.visibility = View.GONE
+  }
+
+  private fun setLiveCameraDotActive(active: Boolean) {
+    if (!active) {
+      if (liveCameraDotActive) stopLiveCameraDot()
+      return
+    }
+    if (liveCameraDotActive) return
+    liveCameraDotActive = true
+    liveCameraDot?.apply {
+      visibility = View.VISIBLE
+      alpha = 0.35f
+    }
+    liveCameraAnimator = ValueAnimator.ofFloat(0.35f, 1f, 0.35f).apply {
+      duration = 1000L  // one full pulse per second
+      repeatCount = ValueAnimator.INFINITE
+      interpolator = LinearInterpolator()
+      addUpdateListener { animator ->
+        val now = System.currentTimeMillis()
+        // No red "LIVE" camera dot over an old/frozen capture.
+        val streamFresh = analyzerReady && lastCapturedImageAt > 0L &&
+          now - lastCapturedImageAt in 0L..3500L &&
+          lastAnalysisResultAt > 0L && now - lastAnalysisResultAt in 0L..5000L
+        if (!streamFresh) stopLiveCameraDot()
+        else liveCameraDot?.alpha = animator.animatedValue as Float
+      }
+      start()
+    }
+  }
 
   private fun createOverlay() {
     val root = LinearLayout(this).apply {
@@ -517,7 +558,25 @@ class ScalpOverlayService : Service() {
       setTypeface(typeface, android.graphics.Typeface.BOLD)
       setPadding(0, dp(3), 0, 0)
     }
-    candleColumn.addView(captureStatusText)
+    val liveStatusRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      setPadding(0, dp(3), 0, 0)
+    }
+    liveCameraDot = View(this).apply {
+      background = GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        setColor(Color.rgb(235, 49, 65)) // red camera-recording indicator
+      }
+      visibility = View.GONE
+      contentDescription = "Indicator captură LIVE activă"
+    }
+    liveStatusRow.addView(liveCameraDot, LinearLayout.LayoutParams(dp(7), dp(7)).apply {
+      marginEnd = dp(4)
+    })
+    captureStatusText?.setPadding(0, 0, 0, 0)
+    liveStatusRow.addView(captureStatusText)
+    candleColumn.addView(liveStatusRow)
     body.addView(candleColumn, LinearLayout.LayoutParams(dp(79), dp(106)))
     val spacing = View(this)
     body.addView(spacing, LinearLayout.LayoutParams(dp(7), dp(1)))
@@ -1634,6 +1693,7 @@ class ScalpOverlayService : Service() {
         }
       }
       captureStatusText?.text = scanStatus
+      setLiveCameraDotActive(scanStatus == "LIVE")
       captureStatusText?.setTextColor(
         if (brokerConnected) Color.rgb(0, 137, 75)
         else Color.rgb(105, 120, 126)
@@ -1645,7 +1705,10 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
-    mainHandler.post { stopPulseRing() }
+    mainHandler.post {
+      stopLiveCameraDot()
+      stopPulseRing()
+    }
     try {
       getSharedPreferences("scalp_atlas_live_diagnostics", Context.MODE_PRIVATE)
         .edit()
