@@ -12,6 +12,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.PixelFormat
@@ -130,6 +131,10 @@ class ScalpOverlayService : Service() {
   @Volatile private var observedShockDurationMs = 0L
   @Volatile private var lastConfirmedShockDurationMs = 0L
   @Volatile private var observedTrendDirection = "NONE"
+  @Volatile private var observedTrendMeasured = false
+  @Volatile private var observedTrendStrengthPercent = 0
+  @Volatile private var observedTrendPoints = floatArrayOf()
+  @Volatile private var observedTrendAt = 0L
   @Volatile private var lastConfirmedShockPercent = 0
   @Volatile private var observedWickPercent = 0
   @Volatile private var observedWickAt = 0L
@@ -197,6 +202,10 @@ class ScalpOverlayService : Service() {
     observedShockAt = 0L
     observedShockDurationMs = 0L
     observedTrendDirection = "NONE"
+    observedTrendMeasured = false
+    observedTrendStrengthPercent = 0
+    observedTrendPoints = floatArrayOf()
+    observedTrendAt = 0L
     observedWickPercent = 0
     observedWickAt = 0L
     shockBlocker = "AȘTEAPTĂ DATE"
@@ -480,6 +489,68 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  // Variant 3 mini trend: plot observed three CLOSED candle closes.
+  // Without data the graph does NOT simulate a rising/falling direction.
+  private class MiniTrendView(context: Context) : View(context) {
+    private var points = floatArrayOf()
+    private var direction = "NONE"
+    fun showData(values: FloatArray, trend: String) {
+      points = values.copyOf()
+      direction = trend
+      invalidate()
+    }
+    override fun onDraw(canvas: Canvas) {
+      super.onDraw(canvas)
+      val w = width.toFloat()
+      val h = height.toFloat()
+      val guide = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(75, 94, 120)
+        strokeWidth = 1.2f
+      }
+      canvas.drawLine(w * .06f, h * .70f, w * .94f, h * .70f, guide)
+      if (points.size < 3) return
+      val tone = when(direction) {
+        "BUY" -> Color.rgb(35, 212, 116)
+        "SELL" -> Color.rgb(242, 84, 91)
+        else -> Color.rgb(156, 171, 189)
+      }
+      val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = tone
+        style = Paint.Style.STROKE
+        strokeWidth = 2.7f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+      }
+      val plot = Path()
+      points.forEachIndexed { i, v ->
+        val x = w * (.08f + .84f * i / (points.size - 1))
+        val y = h * (.12f + .75f * v.coerceIn(0f,100f) / 100f)
+        if (i==0) plot.moveTo(x,y) else plot.lineTo(x,y)
+      }
+      canvas.drawPath(plot,line)
+      // Finishes with an arrow aligned to the observed last segment.
+      val last=points.last().coerceIn(0f,100f)
+      val penult=points[points.size-2].coerceIn(0f,100f)
+      val endX=w*.92f
+      val endY=h*(.12f+.75f*last/100f)
+      val dx=w*.84f/(points.size-1)
+      val dy=h*.75f*(last-penult)/100f
+      val len=kotlin.math.sqrt(dx*dx+dy*dy).coerceAtLeast(1f)
+      val ux=dx/len
+      val uy=dy/len
+      val wing=6f
+      val arrow=Path().apply {
+        moveTo(endX-ux*wing-uy*wing*.7f,endY-uy*wing+ux*wing*.7f)
+        lineTo(endX,endY)
+        lineTo(endX-ux*wing+uy*wing*.7f,endY-uy*wing-ux*wing*.7f)
+      }
+      canvas.drawPath(arrow,line)
+    }
+  }
+
+  private var trendMiniView: MiniTrendView? = null
+  private var trendPercentLabel: TextView? = null
+  private var trendDirectionLabel: TextView? = null
   private var candleGraphic: ShockCandleView? = null
   private var qualityText: TextView? = null
   private var shockDurationText: TextView? = null
@@ -706,6 +777,43 @@ class ScalpOverlayService : Service() {
     // never clutter the small circle.
     body.addView(signalRing, LinearLayout.LayoutParams(dp(109), dp(109)))
     root.addView(body)
+
+    val trendRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER_VERTICAL
+      setPadding(dp(5), dp(2), dp(5), dp(2))
+      background = rounded(Color.rgb(17, 31, 52), Color.rgb(50, 73, 99))
+    }
+    trendMiniView = MiniTrendView(this).also {
+      trendRow.addView(it, LinearLayout.LayoutParams(dp(95), dp(42)))
+    }
+    val trendColumn = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      gravity = Gravity.CENTER_VERTICAL
+      setPadding(dp(4), 0, 0, 0)
+    }
+    trendColumn.addView(TextView(this).apply {
+      text = "PANTĂ TREND"
+      textSize = 9f
+      setTextColor(Color.rgb(190, 206, 225))
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
+      maxLines = 1
+    })
+    trendPercentLabel = TextView(this).apply {
+      text = "—%"
+      textSize = 17f
+      setTextColor(Color.rgb(190, 206, 225))
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
+      maxLines = 1
+    }.also {trendColumn.addView(it)}
+    trendDirectionLabel = TextView(this).apply {
+      text = "NECONFIRMAT"
+      textSize = 9f
+      setTextColor(Color.rgb(190, 206, 225))
+      maxLines = 1
+    }.also {trendColumn.addView(it)}
+    trendRow.addView(trendColumn, LinearLayout.LayoutParams(0, dp(48), 1f))
+    root.addView(trendRow)
 
     val note = TextView(this).apply {
       text = "ȘOC = RETRAGERE LUMÂNARE • NU WIN"
@@ -1485,6 +1593,21 @@ class ScalpOverlayService : Service() {
       observedCandleAt = 0L
     }
     val timeframe = selectedTimeframe
+    val tPoints = result.optJSONArray("trendVisualPoints")
+    val trendMeasured = result.optBoolean("trendMeasured", false)
+    if (detected && trendMeasured && tPoints != null && tPoints.length() == 3) {
+      observedTrendPoints = FloatArray(3) { i ->
+        tPoints.optDouble(i, 50.0).coerceIn(0.0, 100.0).toFloat()
+      }
+      observedTrendStrengthPercent =
+        result.optInt("trendStrengthPercent", 0).coerceIn(0,100)
+      observedTrendMeasured = true
+      observedTrendAt = now
+    } else {
+      observedTrendMeasured = false
+      observedTrendPoints = floatArrayOf()
+      observedTrendAt = 0L
+    }
     val opticalGate = result.optBoolean("shockOpticalVerified", false)
     val shockSameCandle = result.optBoolean("shockSameCandle", false)
     val shockRetraced = result.optBoolean("shockRetraced", false)
@@ -1756,6 +1879,29 @@ class ScalpOverlayService : Service() {
         pairReady(now) &&
         lastAnalysisResultAt > 0L &&
         now - lastAnalysisResultAt in 0L..5000L
+      val trendFresh = brokerConnected && observedTrendMeasured &&
+        observedTrendAt > 0L && now - observedTrendAt in 0L..3500L
+      val trendDir = if (trendFresh) observedTrendDirection else "NONE"
+      val trendColor = when(trendDir){
+        "BUY" -> Color.rgb(35, 212, 116)
+        "SELL" -> Color.rgb(242, 84, 91)
+        else -> Color.rgb(180, 192, 206)
+      }
+      trendMiniView?.showData(
+        if (trendFresh) observedTrendPoints else floatArrayOf(),
+        trendDir
+      )
+      trendPercentLabel?.text = if(trendFresh)
+        (if(trendDir=="SELL") "−" else if(trendDir=="BUY") "+" else "") +
+          observedTrendStrengthPercent.toString() + "%"
+        else "—%"
+      trendPercentLabel?.setTextColor(trendColor)
+      trendDirectionLabel?.text = if(!trendFresh) "NECONFIRMAT"
+        else when(trendDir){
+          "BUY" -> "ASCENDENT"
+          "SELL" -> "DESCENDENT"
+          else -> "LATERAL"
+        }
       // A new BUY/SELL is displayed on the first confirmed analysis callback.
       // Animation is gated by a real, unexpired signal lock, never OCR colors.
       val activeSignal = if (brokerConnected && (green || red) &&
