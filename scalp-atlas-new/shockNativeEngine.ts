@@ -99,7 +99,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     // A trend must be measured independently of the LIVE candle's color.
     // Previous three FILLED candle bodies are read in chronological order.
     // If any is missing or the slope is unclear, no trade trend is assumed.
-    var previous=viable.slice(-4,-1),trend='NONE',pastCloses=[];
+    var previous=viable.slice(-7,-1),trend='NONE',pastCloses=[];
+    var trendStrengthPercent=null,trendVisualPoints=[],trendMeasured=false;
     if(previous.length===3){
       previous.forEach(function(g){
         var left=Math.round((g.start+g.end)/2),t=h,b=-1;
@@ -110,19 +111,35 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           }
           if(yes>=Math.max(2,Math.floor((g.end-g.start+1)*.5))){t=Math.min(t,y2);b=Math.max(b,y2);}
         }
-        if(b>t+4)pastCloses.push({closeY:g.dir==='BUY'?t:b,dir:g.dir});
+        if(b>t+4)pastCloses.push({closeY:g.dir==='BUY'?t:b,dir:g.dir,bodyHeight:b-t});
       });
       if(pastCloses.length===3){
+        trendMeasured=true;
         var move=pastCloses[2].closeY-pastCloses[0].closeY;
         var greenCount=pastCloses.filter(function(z){return z.dir==='BUY';}).length;
         if(move<=-Math.max(7,h*.018)&&greenCount>=2)trend='BUY';
         if(move>=Math.max(7,h*.018)&&greenCount<=1)trend='SELL';
+        var lo=Math.min.apply(null,pastCloses.map(function(z){return z.closeY;}));
+        var hi=Math.max.apply(null,pastCloses.map(function(z){return z.closeY;}));
+        var meanBody=pastCloses.reduce(function(acc,z){return acc+z.bodyHeight;},0)/3;
+        // Bounded screen-relative displacement strength, NOT angle/price
+        // percentage, signal probability or a measured financial return.
+        var denom=Math.max(1,hi-lo+meanBody);
+        trendStrengthPercent=Math.min(100,Math.round(100*Math.abs(move)/denom));
+        // Preserve visual fluctuations while avoiding fabricated data.
+        var visualScale=Math.max(45,hi-lo+meanBody*2);
+        var mid=(hi+lo)/2;
+        trendVisualPoints=pastCloses.map(function(z){
+          return Math.max(0,Math.min(100,Math.round(50+(z.closeY-mid)*100/visualScale)));
+        });
       }
     }
     return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,
       width:width,bodyHeight:bottom-top,wickPixels:wickPixels,wickPercent:wickPercent,
       topWickPixels:upperWickPixels,bottomWickPixels:lowerWickPixels,
-      trendDirection:trend,opticalQuality:opticalQuality};
+      trendDirection:trend,trendMeasured:trendMeasured,
+      trendStrengthPercent:trendStrengthPercent,trendVisualPoints:trendVisualPoints,
+      opticalQuality:opticalQuality};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
     pair=typeof pair==='string'?pair:'';
@@ -176,7 +193,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           observedBodyHeightPx:candle.bodyHeight,
           observedTopWickPx:candle.topWickPixels,
           observedBottomWickPx:candle.bottomWickPixels,
-          observedTrendDirection:candle.trendDirection};
+          observedTrendDirection:candle.trendDirection,
+          trendStrengthPercent:candle.trendStrengthPercent,
+          trendVisualPoints:candle.trendVisualPoints};
         history=history.filter(function(o){return now-o.t<=24000&&o.t<=now;});
         history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x,bodyHeight:candle.bodyHeight,wickPixels:candle.wickPixels});
         if(history.length>100)history.shift();
@@ -255,6 +274,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             shockDropDurationMs:confirmed?confirmedDuration:0,
             shockObservedDurationMs:confirmed?confirmedDuration:displayedDropDuration,
             trendDirection:candle.trendDirection,
+            trendMeasured:candle.trendMeasured,
+            trendStrengthPercent:candle.trendStrengthPercent,
+            trendVisualPoints:candle.trendVisualPoints,
             observedBodyHeightPx:candle.bodyHeight,
             observedTopWickPx:candle.topWickPixels,
             observedBottomWickPx:candle.bottomWickPixels,
