@@ -130,6 +130,7 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastConfirmedShockPercent = 0
   @Volatile private var observedWickPercent = 0
   @Volatile private var observedWickAt = 0L
+  @Volatile private var shockBlocker = "AȘTEAPTĂ DATE"
   @Volatile private var observedCandleDirection = "NONE"
   @Volatile private var observedOpticalQuality = 0
   @Volatile private var observedCandleAt = 0L
@@ -190,6 +191,7 @@ class ScalpOverlayService : Service() {
     observedShockAt = 0L
     observedWickPercent = 0
     observedWickAt = 0L
+    shockBlocker = "AȘTEAPTĂ DATE"
     observedCandleDirection = "NONE"
     observedOpticalQuality = 0
     observedCandleAt = 0L
@@ -454,6 +456,7 @@ class ScalpOverlayService : Service() {
 
   private var candleGraphic: ShockCandleView? = null
   private var qualityText: TextView? = null
+  private var shockReasonText: TextView? = null
   private var wickText: TextView? = null
   private var signalBlinkAnimator: ValueAnimator? = null
   private var signalBlinkDirection = "NONE"
@@ -624,6 +627,13 @@ class ScalpOverlayService : Service() {
       gravity = Gravity.CENTER
       background = pulseRingDrawable
     }
+    val shockHeader = TextView(this).apply {
+      text = "ȘOC"
+      textSize = 10f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(108, 121, 131))
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
+    }
     qualityText = TextView(this).apply {
       text = "—%"
       setTextColor(Color.rgb(105, 120, 126))
@@ -632,12 +642,12 @@ class ScalpOverlayService : Service() {
       setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
     signalText = TextView(this).apply {
-      text = "—"
+      text = "AȘTEAPTĂ"
       setTextColor(Color.rgb(105, 120, 126))
-      textSize = 16f
+      textSize = 11f
       gravity = Gravity.CENTER
       setTypeface(typeface, android.graphics.Typeface.BOLD)
-      setPadding(0, dp(2), 0, 0)
+      setPadding(0, dp(1), 0, 0)
     }
     wickText = TextView(this).apply {
       text = "FITIL —%"
@@ -646,9 +656,18 @@ class ScalpOverlayService : Service() {
       gravity = Gravity.CENTER
       maxLines = 1
     }
+    shockReasonText = TextView(this).apply {
+      text = "URMĂRESC"
+      textSize = 9f
+      maxLines = 1
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(105, 120, 126))
+    }
+    signalRing?.addView(shockHeader)
     signalRing?.addView(qualityText)
     signalRing?.addView(signalText)
     signalRing?.addView(wickText)
+    signalRing?.addView(shockReasonText)
     body.addView(signalRing, LinearLayout.LayoutParams(dp(109), dp(109)))
     root.addView(body)
 
@@ -1435,6 +1454,7 @@ class ScalpOverlayService : Service() {
     val shockBodyPercent = result.optInt("shockRetracementPercent", 0).coerceIn(0, 100)
     val shockReboundPercent = result.optInt("shockRecoveryPercent", 0).coerceIn(0, 100)
     val shockDropDurationMs = result.optLong("shockDropDurationMs", -1L)
+    shockBlocker = result.optString("shockBlocker", "URMĂRESC")
     val wickMeasured = result.optInt("shockWickPercent", 0).coerceIn(0, 100)
     if (detected && (observed == "BUY" || observed == "SELL")) {
       observedWickPercent = wickMeasured
@@ -1669,8 +1689,9 @@ class ScalpOverlayService : Service() {
         signalText?.text = when {
           green -> "↑ BUY"
           red -> "↓ SELL"
-          else -> "—"
+          else -> "AȘTEAPTĂ"
         }
+        signalText?.textSize = if (green || red) 16f else 11f
         signalText?.setTextColor(
           if (green || red) visualTone else Color.rgb(105, 120, 126)
         )
@@ -1698,7 +1719,12 @@ class ScalpOverlayService : Service() {
         else -> 0
       }
       qualityText?.text = if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%"
-      qualityText?.setTextColor(visualTone)
+      // The candle glyph may be red/green, but the percentage stays NEUTRAL
+      // unless the engine emitted the corresponding confirmed signal.
+      qualityText?.setTextColor(if (green || red) visualTone else Color.rgb(90, 104, 114))
+      shockReasonText?.text = if (brokerConnected) {
+        if (green || red) "BIP CONFIRMAT" else shockBlocker
+      } else "FĂRĂ DATE LIVE"
       wickText?.text = if (brokerConnected && observedWickAt > 0L &&
         now-observedWickAt in 0L..3000L) "FITIL " + observedWickPercent + "%"
         else "FITIL —%"
