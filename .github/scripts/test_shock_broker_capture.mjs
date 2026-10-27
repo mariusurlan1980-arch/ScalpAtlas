@@ -89,6 +89,7 @@ let buy;
 for(const close of [110,128,181,219,211,172,159]){
   buy=analyze(close,'BUY','EUR/USD OTC',2,'M5',0,close===172||close===159);
 }
+assert.equal(buy.shockBlocker,'ȘOC CONFIRMAT');
 assert.equal(buy.shockDirection,'BUY','Green candle down retracement + recovery must be recognized');
 assert.equal(buy.shockSameCandle,true);
 assert.ok(buy.quality>=55);
@@ -105,6 +106,7 @@ assertQuiet(analyze(136,'BUY','GBP/USD OTC',4,'M10')); // interval changed
 let sell;
 for(const close of [280,262,215,174,181,220,235])
   sell=analyze(close,'SELL','GBP/USD OTC',5,'M5',0,close===220||close===235);
+assert.equal(sell.shockBlocker,'ȘOC CONFIRMAT');
 assert.equal(sell.shockDirection,'SELL','Red candle upward retracement + recovery must be recognized');
 assert.equal(sell.shockOpticalVerified,true);
 assert.ok(sell.shockRetracementPercent>=70 && sell.shockRecoveryPercent>=40);
@@ -137,6 +139,7 @@ for(let n=0;n<13;n++){
 // The circle may display image-derived retracement, NEVER OCR-fill quality.
 const plain=analyze(140,'BUY','NO-SHOCK OTC',45,'M10');
 assert.ok(!plain.shockRetracementPercent,'No fabricated SHOCK percentage');
+assert.equal(plain.shockBlocker,'AȘTEAPTĂ ȘOC');
 // A long wick by itself, without a rapid down/up sequence, must stay silent.
 for(let n=0;n<8;n++){
   const wickOnly=analyze(144,'BUY','WICK-ONLY OTC',47,'M10',0,true);
