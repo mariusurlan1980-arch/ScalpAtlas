@@ -127,6 +127,9 @@ class ScalpOverlayService : Service() {
   // Only measured live-candle shock RETRACEMENT is displayed as percentage.
   @Volatile private var observedShockPercent = 0
   @Volatile private var observedShockAt = 0L
+  @Volatile private var observedShockDurationMs = 0L
+  @Volatile private var lastConfirmedShockDurationMs = 0L
+  @Volatile private var observedTrendDirection = "NONE"
   @Volatile private var lastConfirmedShockPercent = 0
   @Volatile private var observedWickPercent = 0
   @Volatile private var observedWickAt = 0L
@@ -134,6 +137,9 @@ class ScalpOverlayService : Service() {
   @Volatile private var observedCandleDirection = "NONE"
   @Volatile private var observedOpticalQuality = 0
   @Volatile private var observedCandleAt = 0L
+  @Volatile private var observedBodyPx = 24
+  @Volatile private var observedUpperWickPx = 8
+  @Volatile private var observedLowerWickPx = 8
   private var lastRenderedDetails = ""
   private var lastRenderedModel = ""
   private var lastRenderedCounterAt = 0L
@@ -189,12 +195,17 @@ class ScalpOverlayService : Service() {
   private fun resetSignalState() {
     observedShockPercent = 0
     observedShockAt = 0L
+    observedShockDurationMs = 0L
+    observedTrendDirection = "NONE"
     observedWickPercent = 0
     observedWickAt = 0L
     shockBlocker = "AȘTEAPTĂ DATE"
     observedCandleDirection = "NONE"
     observedOpticalQuality = 0
     observedCandleAt = 0L
+    observedBodyPx = 24
+    observedUpperWickPx = 8
+    observedLowerWickPx = 8
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
@@ -348,6 +359,17 @@ class ScalpOverlayService : Service() {
           invalidate()
         }
       }
+    // The miniature stays in place, but candle body/wicks react to NEW
+    // captured pixels. Never animate prices without incoming frames.
+    var bodyPx: Int = 24
+    var topWickPx: Int = 8
+    var bottomWickPx: Int = 8
+    fun updateObserved(body: Int, upper: Int, lower: Int) {
+      bodyPx = body.coerceIn(5, 200)
+      topWickPx = upper.coerceIn(0, 150)
+      bottomWickPx = lower.coerceIn(0, 150)
+      invalidate()
+    }
 
     override fun onDraw(canvas: Canvas) {
       super.onDraw(canvas)
@@ -363,12 +385,16 @@ class ScalpOverlayService : Service() {
         strokeCap = Paint.Cap.ROUND
       }
       val cx = width * 0.5f
-      val top = height * 0.12f
-      val bottom = height * 0.89f
-      canvas.drawLine(cx, top, cx, bottom, p)
+      val scale = height * 0.65f / max(70f, (bodyPx + topWickPx + bottomWickPx).toFloat())
+      val bodyHeight = (bodyPx * scale).coerceIn(height * 0.13f, height * 0.58f)
+      val topWick = (topWickPx * scale).coerceIn(0f, height * 0.16f)
+      val bottomWick = (bottomWickPx * scale).coerceIn(0f, height * 0.16f)
+      val bodyTop = height * 0.5f - bodyHeight * 0.5f
+      val bodyBottom = bodyTop + bodyHeight
+      canvas.drawLine(cx, bodyTop - topWick, cx, bodyBottom + bottomWick, p)
       p.style = Paint.Style.FILL
       canvas.drawRoundRect(
-        width * 0.29f, height * 0.32f, width * 0.71f, height * 0.70f,
+        width * 0.29f, bodyTop, width * 0.71f, bodyBottom,
         width * 0.05f, width * 0.05f, p
       )
     }
@@ -456,6 +482,7 @@ class ScalpOverlayService : Service() {
 
   private var candleGraphic: ShockCandleView? = null
   private var qualityText: TextView? = null
+  private var shockDurationText: TextView? = null
   private var shockReasonText: TextView? = null
   private var wickText: TextView? = null
   private var signalBlinkAnimator: ValueAnimator? = null
@@ -641,6 +668,14 @@ class ScalpOverlayService : Service() {
       gravity = Gravity.CENTER
       setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
+    shockDurationText = TextView(this).apply {
+      text = "— s"
+      setTextColor(Color.rgb(90, 104, 114))
+      textSize = 13f
+      gravity = Gravity.CENTER
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
+      maxLines = 1
+    }
     signalText = TextView(this).apply {
       text = "AȘTEAPTĂ"
       setTextColor(Color.rgb(105, 120, 126))
@@ -665,9 +700,10 @@ class ScalpOverlayService : Service() {
     }
     signalRing?.addView(shockHeader)
     signalRing?.addView(qualityText)
+    signalRing?.addView(shockDurationText)
     signalRing?.addView(signalText)
-    signalRing?.addView(wickText)
-    signalRing?.addView(shockReasonText)
+    // FITIL and SUB-threshold labels stay in diagnostic logic,
+    // never clutter the small circle.
     body.addView(signalRing, LinearLayout.LayoutParams(dp(109), dp(109)))
     root.addView(body)
 
@@ -1440,6 +1476,9 @@ class ScalpOverlayService : Service() {
       observedCandleDirection = observed
       observedOpticalQuality = opticalQuality
       observedCandleAt = now
+      observedBodyPx = result.optInt("observedBodyHeightPx", 24).coerceIn(5, 200)
+      observedUpperWickPx = result.optInt("observedTopWickPx", 8).coerceIn(0, 150)
+      observedLowerWickPx = result.optInt("observedBottomWickPx", 8).coerceIn(0, 150)
     } else {
       observedCandleDirection = "NONE"
       observedOpticalQuality = 0
@@ -1454,6 +1493,9 @@ class ScalpOverlayService : Service() {
     val shockBodyPercent = result.optInt("shockRetracementPercent", 0).coerceIn(0, 100)
     val shockReboundPercent = result.optInt("shockRecoveryPercent", 0).coerceIn(0, 100)
     val shockDropDurationMs = result.optLong("shockDropDurationMs", -1L)
+    val shockObservedDurationMs = result.optLong("shockObservedDurationMs", 0L)
+    val trendDirection = result.optString("trendDirection", "NONE")
+    observedTrendDirection = if (trendDirection == "BUY" || trendDirection == "SELL") trendDirection else "NONE"
     shockBlocker = result.optString("shockBlocker", "URMĂRESC")
     val wickMeasured = result.optInt("shockWickPercent", 0).coerceIn(0, 100)
     if (detected && (observed == "BUY" || observed == "SELL")) {
@@ -1466,17 +1508,21 @@ class ScalpOverlayService : Service() {
     if (detected && (observed == "BUY" || observed == "SELL") && shockBodyPercent > 0) {
       observedShockPercent = shockBodyPercent
       observedShockAt = now
+      observedShockDurationMs = shockObservedDurationMs.coerceIn(0L, 10000L)
     } else {
       observedShockPercent = 0
       observedShockAt = 0L
+      observedShockDurationMs = 0L
     }
-    // DEMO gate: 70% physical retracement in <=10s, >=40% rebound,
-    // and a visible long wick on the SAME recovered candle (JS verified).
+    // DEMO ONLY: >=50% measured retreat in <=10s + 40% rebound, visible
+    // same-candle wick AND independently measured three-candle trend.
+    // Current candle color does not determine the trend on its own.
     val confirmedSignal = if (quality >= 55 && opticalGate && shockSameCandle &&
         shockRetraced && shockRecovered && shockFrameFresh &&
-        shockBodyPercent >= 70 && shockReboundPercent >= 40 &&
+        shockBodyPercent >= 50 && shockReboundPercent >= 40 &&
         wickMeasured >= 1 && shockDropDurationMs in 300L..10000L &&
-        (rawSignal == "BUY" || rawSignal == "SELL")) rawSignal else "NONE"
+        (rawSignal == "BUY" || rawSignal == "SELL") &&
+        observedTrendDirection == rawSignal && observed == rawSignal) rawSignal else "NONE"
     val rejectionText = "ȘOC neconfirmat optic pe aceeași lumânare"
     val expiry = result.optInt("expiry", 0)
     val directionMax = result.optInt("directionMax", 0)
@@ -1528,6 +1574,7 @@ class ScalpOverlayService : Service() {
       lockedUntil = 0L
       lockedAt = 0L
       lastConfirmedShockPercent = 0
+      lastConfirmedShockDurationMs = 0L
       candidateDir = null
       candidateCount = 0
       candidateLastAt = 0L
@@ -1607,6 +1654,7 @@ class ScalpOverlayService : Service() {
     lockedDir = confirmedSignal
     lastShockQuality = quality // Internal optical quality, NOT displayed as shock %
     lastConfirmedShockPercent = shockBodyPercent // Physical retracement
+    lastConfirmedShockDurationMs = shockDropDurationMs
     candidateDir = null
     candidateCount = 0
     candidateLastAt = 0L
@@ -1685,6 +1733,10 @@ class ScalpOverlayService : Service() {
       // Repaint the miniature and optical percentage for EVERY live result.
       // The arrow still shows BUY/SELL only after a confirmed SHOCK beep.
       candleGraphic?.direction = visualDirection
+      // Repaint shape from most recent observed candle dimensions only.
+      if (opticalFresh) candleGraphic?.updateObserved(
+        observedBodyPx, observedUpperWickPx, observedLowerWickPx
+      )
       if (signalChanged) {
         signalText?.text = when {
           green -> "↑ BUY"
@@ -1713,7 +1765,7 @@ class ScalpOverlayService : Service() {
       val percentFromCandle = when {
         brokerConnected && (green || red) &&
           lockedDir == signal && now < lockedUntil &&
-          lastConfirmedShockPercent >= 70 -> lastConfirmedShockPercent
+          lastConfirmedShockPercent >= 50 -> lastConfirmedShockPercent
         brokerConnected && observedShockAt > 0L &&
           now - observedShockAt in 0L..3000L -> observedShockPercent
         else -> 0
@@ -1722,6 +1774,15 @@ class ScalpOverlayService : Service() {
       // The candle glyph may be red/green, but the percentage stays NEUTRAL
       // unless the engine emitted the corresponding confirmed signal.
       qualityText?.setTextColor(if (green || red) visualTone else Color.rgb(90, 104, 114))
+      val measuredTime = when {
+        brokerConnected && (green || red) && lockedDir == signal &&
+          now < lockedUntil -> lastConfirmedShockDurationMs
+        brokerConnected && observedShockAt > 0L &&
+          now - observedShockAt in 0L..3000L -> observedShockDurationMs
+        else -> 0L
+      }
+      shockDurationText?.text = if (measuredTime > 0L)
+        ((measuredTime / 100f).roundToInt() / 10f).toString() + " s" else "— s"
       shockReasonText?.text = if (brokerConnected) {
         if (green || red) "BIP CONFIRMAT" else shockBlocker
       } else "FĂRĂ DATE LIVE"
