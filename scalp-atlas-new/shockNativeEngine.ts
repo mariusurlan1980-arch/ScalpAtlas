@@ -16,6 +16,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       source:'ANDROID_SCREEN_CAPTURE',shockDirection:'NONE',signal:'NONE',
       shockFrameId:frameId,shockOpticalVerified:false,shockSameCandle:false,
       shockRetraced:false,shockRecovered:false,quality:quality||0,
+      shockBlocker:'AȘTEAPTĂ DATE',
       candidateDirection:'NONE',reason:reason};
     if(extra)Object.keys(extra).forEach(function(key){result[key]=extra[key];});
     send({type:'RESULT',result:result});
@@ -192,6 +193,13 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             }
           }
         }
+        // Show a short, grounded explanation for why a LIVE observed
+        // percentage is NOT an entry. No direction is inferred from color.
+        var shockBlocker=confirmed?'ȘOC CONFIRMAT':
+          displayedDepth===0?'AȘTEAPTĂ ȘOC':
+          displayedDepth<70?'SUB 70%':
+          candle.wickPixels<minBody*.35?'FITIL SCURT':
+          'REVENIRE/TIMP';
         var quality=confirmed?75:0; // internal optical gate only
         report(frameId,tf,pair,epoch,
           confirmed?'ȘOC rapid si revenire masurata in aceeasi lumânare':'Aștept retragere rapida și revenire',
@@ -204,6 +212,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             shockRetracementPercent:confirmed?confirmedDepth:displayedDepth,
             shockRecoveryPercent:confirmed?confirmedRebound:0,
             shockDropDurationMs:confirmed?confirmedDuration:0,
+            shockBlocker:shockBlocker,
             shockWickPercent:candle.wickPercent,
             shockWickPixels:candle.wickPixels,
             shockMaxWindowMs:maxDropMs,
