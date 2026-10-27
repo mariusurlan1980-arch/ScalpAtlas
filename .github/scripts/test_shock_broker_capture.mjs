@@ -101,6 +101,10 @@ for(const close of [110,128,181,219,211,172,159]){
 }
 assert.equal(buy.shockBlocker,'ȘOC CONFIRMAT');
 assert.equal(buy.trendDirection,'BUY','BUY must match measured 3-closed-candle trend');
+assert.equal(buy.trendMeasured,true);
+assert.ok(buy.trendVisualPoints.length===3,'Mini trend has three observed closes');
+assert.ok(buy.trendStrengthPercent>0 && buy.trendStrengthPercent<=100,'Trend slope strength measured');
+assert.ok(buy.trendVisualPoints[2]<buy.trendVisualPoints[0],'BUY mini line rises in price');
 assert.equal(buy.shockThresholdPercent,50);
 assert.equal(buy.shockObservedDurationMs,buy.shockDropDurationMs,'seconds must come from measured LIVE frames');
 assert.ok(buy.shockObservedDurationMs>=300 && buy.shockObservedDurationMs<=10000);
@@ -122,6 +126,10 @@ for(const close of [280,262,215,174,181,220,235])
   sell=analyze(close,'SELL','GBP/USD OTC',5,'M5',0,close===220||close===235);
 assert.equal(sell.shockBlocker,'ȘOC CONFIRMAT');
 assert.equal(sell.trendDirection,'SELL','SELL must match measured 3-closed-candle trend');
+assert.equal(sell.trendMeasured,true);
+assert.ok(sell.trendVisualPoints.length===3);
+assert.ok(sell.trendStrengthPercent>0 && sell.trendStrengthPercent<=100);
+assert.ok(sell.trendVisualPoints[2]>sell.trendVisualPoints[0],'SELL mini line falls in price');
 assert.ok(sell.shockObservedDurationMs>=300 && sell.shockObservedDurationMs<=10000);
 assert.equal(sell.shockDirection,'SELL','Red candle upward retracement + recovery must be recognized');
 assert.equal(sell.shockOpticalVerified,true);
@@ -172,5 +180,7 @@ for(const close of [110,128,181,219,211,172,159])
   againstTrend=analyze(close,'BUY','COUNTER-TREND OTC',51,'M10',0,close===172||close===159,'SELL');
 assertQuiet(againstTrend);
 assert.equal(againstTrend.trendDirection,'SELL');
+assert.equal(againstTrend.trendMeasured,true);
+assert.equal(againstTrend.trendVisualPoints.length,3);
 assert.equal(againstTrend.shockBlocker,'CONTRA TREND');
 console.log('PASS: 50% wick shock <=10s, observed seconds, 3-candle trend BUY SELL, countertrend/no-wick silent');
