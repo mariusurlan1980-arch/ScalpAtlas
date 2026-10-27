@@ -595,13 +595,15 @@ class ScalpOverlayService : Service() {
   private var liveCameraDotActive = false
   private var signalRing: LinearLayout? = null
 
-  // A small red recording-style dot to the LEFT of the existing LIVE label.
-  // Separate from BUY/SELL; this only reflects fresh, verified live capture.
+  // Purple camera-live LED: subtle soft halo + one pulse per second.
+  // Only recent captured/analyzed frames enable this visual indicator.
   private fun stopLiveCameraDot() {
     liveCameraDotActive = false
     liveCameraAnimator?.cancel()
     liveCameraAnimator = null
     liveCameraDot?.alpha = 1f
+    liveCameraDot?.scaleX = 1f
+    liveCameraDot?.scaleY = 1f
     liveCameraDot?.visibility = View.GONE
   }
 
@@ -615,19 +617,28 @@ class ScalpOverlayService : Service() {
     liveCameraDot?.apply {
       visibility = View.VISIBLE
       alpha = 0.55f
+      scaleX = 0.90f
+      scaleY = 0.90f
     }
-    liveCameraAnimator = ValueAnimator.ofFloat(0.55f, 0.95f, 0.55f).apply {
+    liveCameraAnimator = ValueAnimator.ofFloat(0.55f, 1f, 0.55f).apply {
       duration = 1000L  // one full pulse per second
       repeatCount = ValueAnimator.INFINITE
       interpolator = LinearInterpolator()
       addUpdateListener { animator ->
         val now = System.currentTimeMillis()
-        // No red "LIVE" camera dot over an old/frozen capture.
+        // No purple LIVE glow over an old/frozen capture.
         val streamFresh = analyzerReady && lastCapturedImageAt > 0L &&
           now - lastCapturedImageAt in 0L..3500L &&
           lastAnalysisResultAt > 0L && now - lastAnalysisResultAt in 0L..5000L
         if (!streamFresh) stopLiveCameraDot()
-        else liveCameraDot?.alpha = animator.animatedValue as Float
+        else {
+          val bright = animator.animatedValue as Float
+          liveCameraDot?.alpha = bright
+          // Gentle breathing glow, not a directional trading alert.
+          val size = 0.90f + (bright - 0.55f) / 0.45f * 0.22f
+          liveCameraDot?.scaleX = size
+          liveCameraDot?.scaleY = size
+        }
       }
       start()
     }
@@ -717,14 +728,17 @@ class ScalpOverlayService : Service() {
       setPadding(0, dp(3), 0, 0)
     }
     liveCameraDot = View(this).apply {
-      background = GradientDrawable().apply {
+      background = GradientDrawable(
+        GradientDrawable.Orientation.TL_BR,
+        intArrayOf(Color.rgb(213, 177, 255), Color.rgb(141, 73, 214))
+      ).apply {
         shape = GradientDrawable.OVAL
-        setColor(Color.rgb(223, 120, 91)) // warmer, less piercing coral camera dot
+        setStroke(dp(2), Color.rgb(206, 178, 244))
       }
       visibility = View.GONE
-      contentDescription = "Indicator captură LIVE activă"
+      contentDescription = "Lumină purpurie pulsatorie pentru captură LIVE"
     }
-    liveStatusRow.addView(liveCameraDot, LinearLayout.LayoutParams(dp(10), dp(10)).apply {
+    liveStatusRow.addView(liveCameraDot, LinearLayout.LayoutParams(dp(13), dp(13)).apply {
       marginEnd = dp(4)
     })
     captureStatusText?.setPadding(0, 0, 0, 0)
@@ -750,15 +764,17 @@ class ScalpOverlayService : Service() {
     qualityText = TextView(this).apply {
       text = "—%"
       setTextColor(Color.rgb(105, 120, 126))
-      textSize = 25f
+      textSize = 23f
       gravity = Gravity.CENTER
+      includeFontPadding = false
       setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
     shockDurationText = TextView(this).apply {
       text = "— s"
       setTextColor(Color.rgb(90, 104, 114))
-      textSize = 13f
+      textSize = 12f
       gravity = Gravity.CENTER
+      includeFontPadding = false
       setTypeface(typeface, android.graphics.Typeface.BOLD)
       maxLines = 1
     }
@@ -767,8 +783,10 @@ class ScalpOverlayService : Service() {
       setTextColor(Color.rgb(105, 120, 126))
       textSize = 11f
       gravity = Gravity.CENTER
+      includeFontPadding = false
       setTypeface(typeface, android.graphics.Typeface.BOLD)
-      setPadding(0, dp(1), 0, 0)
+      setPadding(0, 0, 0, 0)
+      maxLines = 1
     }
     wickText = TextView(this).apply {
       text = "FITIL —%"
@@ -786,8 +804,9 @@ class ScalpOverlayService : Service() {
     }
     signalRing?.addView(shockHeader)
     signalRing?.addView(qualityText)
-    signalRing?.addView(shockDurationText)
+    // Put the direction at the visual CENTER, never along the bottom rim.
     signalRing?.addView(signalText)
+    signalRing?.addView(shockDurationText)
     // FITIL and SUB-threshold labels stay in diagnostic logic,
     // never clutter the small circle.
     body.addView(signalRing, LinearLayout.LayoutParams(dp(109), dp(109)))
