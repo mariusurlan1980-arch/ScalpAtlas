@@ -336,6 +336,15 @@ jobs:
           grep -Fq 'candleConnected -> "LIVE"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'maskSelfOverlay(fullFrame, width, 0)' .github/native-overlay/ScalpOverlayService.kt
 
+      - name: Pin Java 17 for native CMake and Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify Java runtime
+        run: java -version
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
