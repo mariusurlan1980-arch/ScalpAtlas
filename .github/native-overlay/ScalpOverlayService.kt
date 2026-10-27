@@ -42,6 +42,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -673,6 +674,20 @@ class ScalpOverlayService : Service() {
         text = if (bellEnabled) "🔔" else "🔕"
       }
     }
+    val testBipControl = TextView(this).apply {
+      text = "TEST BIP"
+      textSize = 10f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(53, 97, 120))
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
+      contentDescription = "Test audio original ScalpAtlas; NU este semnal de tranzacționare"
+      setOnClickListener {
+        // Audible diagnostics only: no journal entry, direction change,
+        // signal confirmation or trading action.
+        playTestBip()
+      }
+    }
+    header.addView(testBipControl, LinearLayout.LayoutParams(dp(63), dp(28)))
     header.addView(bellControl, LinearLayout.LayoutParams(dp(35), dp(28)))
     root.addView(header)
 
@@ -1811,6 +1826,28 @@ class ScalpOverlayService : Service() {
     return "%02d:%02d".format(minutes, seconds)
   }
 
+  private fun playTestBip() {
+    if (!bellEnabled) {
+      Toast.makeText(this, "BIP dezactivat • apasă clopoțelul pentru activare", Toast.LENGTH_SHORT).show()
+      return
+    }
+    // Use the exact original BUY BIP asset but do not alter signal state or
+    // vibrate. This makes testing possible even when the market has no alerts.
+    try {
+      val player = MediaPlayer.create(this, R.raw.scalp_buy_bip)
+      if (player == null) {
+        Toast.makeText(this, "TEST BIP: fișier audio indisponibil", Toast.LENGTH_SHORT).show()
+        return
+      }
+      player.setVolume(1f, 1f)
+      player.setOnCompletionListener { it.release() }
+      player.start()
+      Toast.makeText(this, "TEST BIP redat • nu este semnal BUY/SELL", Toast.LENGTH_SHORT).show()
+    } catch (_: Throwable) {
+      Toast.makeText(this, "TEST BIP: eroare audio", Toast.LENGTH_SHORT).show()
+    }
+  }
+
   private fun playBip(direction: String) {
     if (!bellEnabled) return
     mainHandler.post {
@@ -1881,27 +1918,41 @@ class ScalpOverlayService : Service() {
         now - lastAnalysisResultAt in 0L..5000L
       val trendFresh = brokerConnected && observedTrendMeasured &&
         observedTrendAt > 0L && now - observedTrendAt in 0L..3500L
-      val trendDir = if (trendFresh) observedTrendDirection else "NONE"
-      val trendColor = when(trendDir){
+      val candleFresh = opticalFresh &&
+        (observedCandleDirection == "BUY" || observedCandleDirection == "SELL")
+      // Trend of previous CLOSED candles may disagree with the current
+      // forming candle. In that case DO NOT paint a green BUY indication
+      // while the current market candle is red (or vice versa).
+      val trendContradicted = trendFresh && candleFresh &&
+        observedTrendDirection != "NONE" &&
+        observedTrendDirection != observedCandleDirection
+      val trendAgrees = trendFresh && candleFresh &&
+        observedTrendDirection != "NONE" && !trendContradicted
+      val trendDir = if (trendAgrees) observedTrendDirection else "NONE"
+      val trendColor = when (trendDir) {
         "BUY" -> Color.rgb(35, 212, 116)
         "SELL" -> Color.rgb(242, 84, 91)
         else -> Color.rgb(180, 192, 206)
       }
+      // Measured historical points remain visible in GREY on reversal.
+      // Missing/stale candles show a blank guide instead of invented data.
       trendMiniView?.showData(
-        if (trendFresh) observedTrendPoints else floatArrayOf(),
+        if (trendFresh && candleFresh) observedTrendPoints else floatArrayOf(),
         trendDir
       )
-      trendPercentLabel?.text = if(trendFresh)
-        (if(trendDir=="SELL") "−" else if(trendDir=="BUY") "+" else "") +
+      trendPercentLabel?.text = if (trendAgrees)
+        (if (trendDir == "SELL") "−" else "+") +
           observedTrendStrengthPercent.toString() + "%"
         else "—%"
       trendPercentLabel?.setTextColor(trendColor)
-      trendDirectionLabel?.text = if(!trendFresh) "NECONFIRMAT"
-        else when(trendDir){
-          "BUY" -> "ASCENDENT"
-          "SELL" -> "DESCENDENT"
-          else -> "LATERAL"
-        }
+      trendDirectionLabel?.setTextColor(trendColor)
+      trendDirectionLabel?.text = when {
+        !trendFresh || !candleFresh -> "NECONFIRMAT"
+        trendContradicted -> "CONTRA TREND"
+        trendDir == "BUY" -> "ASCENDENT"
+        trendDir == "SELL" -> "DESCENDENT"
+        else -> "LATERAL"
+      }
       // A new BUY/SELL is displayed on the first confirmed analysis callback.
       // Animation is gated by a real, unexpired signal lock, never OCR colors.
       val activeSignal = if (brokerConnected && (green || red) &&
