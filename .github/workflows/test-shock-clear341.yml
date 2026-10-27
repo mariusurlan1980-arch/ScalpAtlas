@@ -1,0 +1,33 @@
+name: Verify SHOCK 341 clear waiting indicators
+on:
+  push:
+    branches: [feature/scalpatlas-build341-clear-shock-status]
+    paths:
+      - 'scalp-atlas-new/shockNativeEngine.ts'
+      - '.github/scripts/test_shock_broker_capture.mjs'
+      - '.github/workflows/test-shock-clear341.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract screen analyzer for offline test
+        run: |
+          mkdir -p scalp-atlas-new/android/app/src/main/assets
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('scalp-atlas-new/shockNativeEngine.ts','utf8');
+          const m=s.match(/export const SHOCK_NATIVE_HTML = `([\s\S]*?)`;/);
+          if(!m)throw Error('SHOCK native HTML template missing');
+          fs.writeFileSync('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html',m[1]);
+          NODE
+      - name: Verify wick and 10-second shock BUY/SELL screen regressions
+        run: node .github/scripts/test_shock_broker_capture.mjs
