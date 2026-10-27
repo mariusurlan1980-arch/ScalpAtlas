@@ -99,7 +99,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     // A trend must be measured independently of the LIVE candle's color.
     // Previous three FILLED candle bodies are read in chronological order.
     // If any is missing or the slope is unclear, no trade trend is assumed.
-    var previous=viable.slice(-7,-1),trend='NONE',pastCloses=[];
+    var previous=viable.slice(-4,-1),trend='NONE',pastCloses=[];
     var trendStrengthPercent=null,trendVisualPoints=[],trendMeasured=false;
     if(previous.length===3){
       previous.forEach(function(g){
