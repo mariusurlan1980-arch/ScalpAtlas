@@ -90,13 +90,39 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       }
       if(supported){wickMin=Math.min(wickMin,wy);wickMax=Math.max(wickMax,wy);}
     }
-    var wickPixels=candle.dir==='BUY'?Math.max(0,wickMax-bottom):Math.max(0,top-wickMin);
+    var upperWickPixels=Math.max(0,top-wickMin),lowerWickPixels=Math.max(0,wickMax-bottom);
+    var wickPixels=candle.dir==='BUY'?lowerWickPixels:upperWickPixels;
     var wickPercent=Math.min(100,Math.round(100*wickPixels/Math.max(1,bottom-top)));
     // Optical color-fill percentage, NEVER a trade win probability.
     var opticalQuality=Math.max(1,Math.min(99,
       Math.round(100*fillPixels/(width*bodyRows.length))));
+    // A trend must be measured independently of the LIVE candle's color.
+    // Previous three FILLED candle bodies are read in chronological order.
+    // If any is missing or the slope is unclear, no trade trend is assumed.
+    var previous=viable.slice(-4,-1),trend='NONE',pastCloses=[];
+    if(previous.length===3){
+      previous.forEach(function(g){
+        var left=Math.round((g.start+g.end)/2),t=h,b=-1;
+        for(var y2=minY;y2<maxY;y2++){
+          var yes=0;
+          for(var x2=g.start;x2<=g.end;x2++){
+            if(isColor(p,(y2*w+x2)*4)===g.dir)yes++;
+          }
+          if(yes>=Math.max(2,Math.floor((g.end-g.start+1)*.5))){t=Math.min(t,y2);b=Math.max(b,y2);}
+        }
+        if(b>t+4)pastCloses.push({closeY:g.dir==='BUY'?t:b,dir:g.dir});
+      });
+      if(pastCloses.length===3){
+        var move=pastCloses[2].closeY-pastCloses[0].closeY;
+        var greenCount=pastCloses.filter(function(z){return z.dir==='BUY';}).length;
+        if(move<=-Math.max(7,h*.018)&&greenCount>=2)trend='BUY';
+        if(move>=Math.max(7,h*.018)&&greenCount<=1)trend='SELL';
+      }
+    }
     return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,
-      width:width,bodyHeight:bottom-top,wickPixels:wickPixels,wickPercent:wickPercent,opticalQuality:opticalQuality};
+      width:width,bodyHeight:bottom-top,wickPixels:wickPixels,wickPercent:wickPercent,
+      topWickPixels:upperWickPixels,bottomWickPixels:lowerWickPixels,
+      trendDirection:trend,opticalQuality:opticalQuality};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
     pair=typeof pair==='string'?pair:'';
@@ -146,7 +172,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         lastX=candle.x;
         lastValidCandleAt=now;
         var opticalInfo={candleDetected:true,observedCandleDirection:candle.dir,
-          observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality};
+          observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality,
+          observedBodyHeightPx:candle.bodyHeight,
+          observedTopWickPx:candle.topWickPixels,
+          observedBottomWickPx:candle.bottomWickPixels,
+          observedTrendDirection:candle.trendDirection};
         history=history.filter(function(o){return now-o.t<=24000&&o.t<=now;});
         history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x,bodyHeight:candle.bodyHeight,wickPixels:candle.wickPixels});
         if(history.length>100)history.shift();
@@ -158,9 +188,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var latest=history[history.length-1];
         var minBody=Math.max(10,h*.035); // still require a measurable pre-shock candle
         var minMove=Math.max(7,h*.018);
-        // DEMO variant, not a guarantee: 70% drop in <=10 sec, 40% recovery.
-        var minShockFraction=.70,maxDropMs=10000,minRecoveryFraction=.40;
-        var displayedDepth=0,confirmed=false,dir='NONE';
+        // DEMO threshold: 50% RETRACEMENT, not 50% trade win probability.
+        // 10s max to descend/ascend against the LIVE candle, >=40% recovery.
+        var minShockFraction=.50,maxDropMs=10000,minRecoveryFraction=.40;
+        var displayedDepth=0,displayedDropDuration=0,confirmed=false,dir='NONE';
         var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
         for(var i=0;i<history.length-1;i++){
           var start=history[i];
@@ -173,7 +204,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             if(drop<minMove)continue;
             var fraction=drop/start.bodyHeight;
             var percent=Math.min(100,Math.max(0,Math.round(100*fraction)));
-            displayedDepth=Math.max(displayedDepth,percent);
+            if(percent>=displayedDepth){
+              displayedDepth=percent;
+              displayedDropDuration=fallMs;
+            }
             if(fraction<minShockFraction||j>=history.length-2)continue;
             var reboundMs=latest.t-bottom.t;
             if(reboundMs<300||reboundMs>5000)continue;
@@ -182,6 +216,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             // Visible LONG wick must remain on the SAME recovered candle.
             // At least 35% of the body before the rapid retreat.
             if(latest.wickPixels<start.bodyHeight*.35)continue;
+            // BOTH the observed trend from closed candles AND current LIVE
+            // candle color must agree. Never turn a candle color into a trend.
+            if(candle.trendDirection!==candle.dir)continue;
             // Both ends must be the same live candle, detected in its
             // original direction after the recovery, not the opposite candle.
             confirmed=true;
@@ -197,7 +234,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // percentage is NOT an entry. No direction is inferred from color.
         var shockBlocker=confirmed?'ȘOC CONFIRMAT':
           displayedDepth===0?'AȘTEAPTĂ ȘOC':
-          displayedDepth<70?'SUB 70%':
+          displayedDepth<50?'SUB 50%':
+          candle.trendDirection==='NONE'?'TREND NECLAR':
+          candle.trendDirection!==candle.dir?'CONTRA TREND':
           candle.wickPixels<minBody*.35?'FITIL SCURT':
           'REVENIRE/TIMP';
         var quality=confirmed?75:0; // internal optical gate only
@@ -211,7 +250,14 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             // All percentages below refer to the observed forming candle.
             shockRetracementPercent:confirmed?confirmedDepth:displayedDepth,
             shockRecoveryPercent:confirmed?confirmedRebound:0,
+            // A time is shown only when two LIVE frames actually measured
+            // opposing movement; no fabricated seconds for blank/no-data.
             shockDropDurationMs:confirmed?confirmedDuration:0,
+            shockObservedDurationMs:confirmed?confirmedDuration:displayedDropDuration,
+            trendDirection:candle.trendDirection,
+            observedBodyHeightPx:candle.bodyHeight,
+            observedTopWickPx:candle.topWickPixels,
+            observedBottomWickPx:candle.bottomWickPixels,
             shockBlocker:shockBlocker,
             shockWickPercent:candle.wickPercent,
             shockWickPixels:candle.wickPixels,
