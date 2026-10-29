@@ -44,7 +44,7 @@ jobs:
         run: |
           npm install
           npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage
-          npm install tesseract.js
+          npm install tesseract.js expo-ocr-kit@0.1.0
       - name: Typecheck integrated app
         working-directory: scalp-atlas-new
         run: npx tsc --noEmit
