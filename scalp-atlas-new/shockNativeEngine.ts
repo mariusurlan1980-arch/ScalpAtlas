@@ -228,7 +228,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
               displayedDepth=percent;
               displayedDropDuration=fallMs;
             }
-            if(fraction<=minShockFraction||j>=history.length-2)continue;
+            if(percent<=minShockFraction*100||j>=history.length-2)continue;
             var reboundMs=latest.t-bottom.t;
             if(reboundMs<300||reboundMs>5000)continue;
             var recovery=candle.dir==='BUY'?bottom.y-latest.y:latest.y-bottom.y;
