@@ -43,6 +43,16 @@ function screen(close,dir='BUY',verticalShift=0,stickyWick=false,trendDir=dir){
     candle(p,314,120,145,'SELL');
     candle(p,342,155,178,'SELL');
     candle(p,369,188,214,'SELL');
+  }else if(trendDir==='BUY_WEAK'){
+    // Three advancing closes: real BUY direction, but slope below 50%.
+    candle(p,314,256,232,'BUY');
+    candle(p,342,248,224,'BUY');
+    candle(p,369,244,218,'BUY');
+  }else if(trendDir==='SELL_WEAK'){
+    // Three falling closes: real SELL direction, but slope below 50%.
+    candle(p,314,120,145,'SELL');
+    candle(p,342,127,152,'SELL');
+    candle(p,369,134,159,'SELL');
   }
   const open=(dir==='BUY'?230:165)+verticalShift;
   candle(p,391,open,close+verticalShift,dir);
@@ -103,7 +113,8 @@ assert.equal(buy.shockBlocker,'ȘOC CONFIRMAT');
 assert.equal(buy.trendDirection,'BUY','BUY must match measured 3-closed-candle trend');
 assert.equal(buy.trendMeasured,true);
 assert.ok(buy.trendVisualPoints.length===3,'Mini trend has three observed closes');
-assert.ok(buy.trendStrengthPercent>0 && buy.trendStrengthPercent<=100,'Trend slope strength measured');
+assert.ok(buy.trendStrengthPercent>=50 && buy.trendStrengthPercent<=100,'BUY trend must reach 50% for alert');
+assert.equal(buy.trendThresholdPercent,50);
 assert.ok(buy.trendVisualPoints[2]<buy.trendVisualPoints[0],'BUY mini line rises in price');
 assert.equal(buy.shockThresholdPercent,50);
 assert.equal(buy.shockObservedDurationMs,buy.shockDropDurationMs,'seconds must come from measured LIVE frames');
@@ -128,7 +139,8 @@ assert.equal(sell.shockBlocker,'ȘOC CONFIRMAT');
 assert.equal(sell.trendDirection,'SELL','SELL must match measured 3-closed-candle trend');
 assert.equal(sell.trendMeasured,true);
 assert.ok(sell.trendVisualPoints.length===3);
-assert.ok(sell.trendStrengthPercent>0 && sell.trendStrengthPercent<=100);
+assert.ok(sell.trendStrengthPercent>=50 && sell.trendStrengthPercent<=100,'SELL trend must reach 50% for alert');
+assert.equal(sell.trendThresholdPercent,50);
 assert.ok(sell.trendVisualPoints[2]>sell.trendVisualPoints[0],'SELL mini line falls in price');
 assert.ok(sell.shockObservedDurationMs>=300 && sell.shockObservedDurationMs<=10000);
 assert.equal(sell.shockDirection,'SELL','Red candle upward retracement + recovery must be recognized');
@@ -183,4 +195,24 @@ assert.equal(againstTrend.trendDirection,'SELL');
 assert.equal(againstTrend.trendMeasured,true);
 assert.equal(againstTrend.trendVisualPoints.length,3);
 assert.equal(againstTrend.shockBlocker,'CONTRA TREND');
-console.log('PASS: 50% wick shock <=10s, observed seconds, 3-candle trend BUY SELL, countertrend/no-wick silent');
+// Even a confirmed 50%+ retracement cannot BIP if the trend is weak.
+// Both directions have genuine 3-candle slopes, independently below 50%.
+let weakBuy;
+for(const close of [110,128,181,219,211,172,159])
+  weakBuy=analyze(close,'BUY','WEAK-TREND-BUY OTC',60,'M10',0,close===172||close===159,'BUY_WEAK');
+assert.equal(weakBuy.trendMeasured,true);
+assert.equal(weakBuy.trendDirection,'BUY');
+assert.ok(weakBuy.trendStrengthPercent>0 && weakBuy.trendStrengthPercent<50);
+assert.ok(weakBuy.shockRetracementPercent>=50);
+assert.equal(weakBuy.shockBlocker,'PANTĂ SUB 50%');
+assertQuiet(weakBuy);
+let weakSell;
+for(const close of [280,262,215,174,181,220,235])
+  weakSell=analyze(close,'SELL','WEAK-TREND-SELL OTC',61,'M10',0,close===220||close===235,'SELL_WEAK');
+assert.equal(weakSell.trendMeasured,true);
+assert.equal(weakSell.trendDirection,'SELL');
+assert.ok(weakSell.trendStrengthPercent>0 && weakSell.trendStrengthPercent<50);
+assert.ok(weakSell.shockRetracementPercent>=50);
+assert.equal(weakSell.shockBlocker,'PANTĂ SUB 50%');
+assertQuiet(weakSell);
+console.log('PASS DEMO 346: SHOCK >=50% and TREND >=50% BUY/SELL; weak trend, countertrend and no wick silent');
