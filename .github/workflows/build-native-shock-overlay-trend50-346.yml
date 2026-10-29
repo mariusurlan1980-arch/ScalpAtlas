@@ -454,5 +454,5 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "SCALP ATLAS 346 SHOCK 50% plus TREND 50% and test BIP DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "APK DEMO 346: BIP de intrare numai daca SOC >=50% in aceeasi lumanare, panta TREND >=50% din trei lumanari inchise si directie identica, revenire >=40% in max 5 secunde dupa retragere <=10 secunde. Clopotel ON/OFF si TEST BIP independente de piata. MINI TREND si camera LIVE pastrate. Este un test exclusiv DEMO, nu garanteaza tranzactii castigatoare. Generat din commit $GITHUB_SHA."
+            --notes "APK DEMO 346: BIP de intrare numai daca SOC >=50% in aceeasi lumanare, panta TREND >=50% din trei lumanari inchise si directie identica, revenire >=40% in max 5 secunde dupa retragere <=10 secunde. Clopotel ON/OFF si TEST BIP independente de piata. MINI TREND si camera LIVE pastrate. Este un test exclusiv DEMO, nu garanteaza tranzactii castigatoare. Generat din commit $GITHUB_SHA." \
             --prerelease
