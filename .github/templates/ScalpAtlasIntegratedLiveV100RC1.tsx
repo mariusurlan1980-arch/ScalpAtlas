@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { ShockOverlayIndicators } from './ShockOverlayIndicators';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { recognizeText } from './ocrAdapter';
@@ -149,6 +150,14 @@ export default function LiveAnalysisApp() {
   const [engineReady, setEngineReady] = useState(false);
   const [locked, setLocked] = useState(false);
   const [live, setLive] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [lastValidFrameAt, setLastValidFrameAt] = useState(0);
+  const [captureClock, setCaptureClock] = useState(Date.now());
+  useEffect(() => {
+    if (!live) return;
+    const timer = setInterval(() => setCaptureClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [live]);
   const [detectedTimeframe, setDetectedTimeframe] = useState<string | null>(null);
   const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 });
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -392,6 +401,8 @@ export default function LiveAnalysisApp() {
         return;
       }
 
+      setLastValidFrameAt(Date.now());
+
       // Dacă graficul este valid dar timeframe-ul nu a fost citit încă, motorul poate analiza structura,
       // însă expirarea și durata rămân ascunse până la detectarea timeframe-ului real.
       const engineTf = activeTf || 'M15';
@@ -463,6 +474,7 @@ export default function LiveAnalysisApp() {
   };
 
   const playConfirmedAlert = (direction: 'BUY' | 'SELL') => {
+    if (!soundEnabled) return;
     const player = direction === 'BUY' ? buyAlertPlayer : sellAlertPlayer;
 
     void (async () => {
@@ -800,6 +812,12 @@ export default function LiveAnalysisApp() {
 
   return (
     <View style={styles.safe}>
+      <ShockOverlayIndicators
+        captureActive={live && cameraReady && lastValidFrameAt > 0 && captureClock - lastValidFrameAt < 3000}
+        signal={analysis?.state === 'SIGNAL' && (analysis.signal === 'BUY' || analysis.signal === 'SELL') ? analysis.signal : 'WAIT'}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled(previous => !previous)}
+      />
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>
