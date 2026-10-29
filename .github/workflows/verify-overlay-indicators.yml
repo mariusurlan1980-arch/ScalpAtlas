@@ -39,6 +39,9 @@ jobs:
           grep -q "captureActive=" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "soundEnabled=" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "onTestSound=" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "#B86BFF" scalp-atlas-new/LiveCaptureIndicator.tsx
+          grep -q "bellDome" scalp-atlas-new/ShockSignalBell.tsx
+          grep -q "onLongPress={onTestSound}" scalp-atlas-new/ShockSignalBell.tsx
       - name: Install Expo app dependencies
         working-directory: scalp-atlas-new
         run: |

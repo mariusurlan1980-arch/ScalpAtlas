@@ -4,11 +4,11 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 type Props = { captureActive: boolean; size?: number };
 
 /**
- * Camera LIVE variant 3 — glowing ring.
- * captureActive MUST be supplied by the real capture pipeline after it has
- * successfully delivered a fresh frame, not merely from the overlay's ON state.
+ * Larger violet LIVE capture dot (v3).
+ * A purple pulse is shown only after a fresh frame has been captured.
+ * This is an indicator, not a screen-capture implementation.
  */
-export function LiveCaptureIndicator({ captureActive, size = 48 }: Props) {
+export function LiveCaptureIndicator({ captureActive, size = 46 }: Props) {
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -23,22 +23,32 @@ export function LiveCaptureIndicator({ captureActive, size = 48 }: Props) {
     return () => loop.stop();
   }, [captureActive, pulse]);
 
-  const color = captureActive ? '#FF474D' : '#727B89';
+  const color = captureActive ? '#B86BFF' : '#68567D';
+  const coreSize = Math.round(size * 0.49);
   return (
     <View accessibilityLabel={captureActive ? 'Captură LIVE activă' : 'Captură LIVE inactivă'} style={styles.row}>
       <Animated.View style={[styles.ring, {
         width: size, height: size, borderRadius: size / 2, borderColor: color,
+        backgroundColor: captureActive ? '#362041' : '#252036',
         transform: [{ scale: pulse }],
       }]}>
-        <View style={[styles.core, { width: size * 0.45, height: size * 0.45, borderRadius: size * 0.225, backgroundColor: color }]} />
+        <View style={[styles.core, {
+          width: coreSize,
+          height: coreSize,
+          borderRadius: coreSize / 2,
+          backgroundColor: color,
+        }]} />
       </Animated.View>
-      <Text style={[styles.label, { color }]}>{captureActive ? 'LIVE' : 'OFF'}</Text>
+      <Text style={[styles.label, { color: captureActive ? '#D7A8FF' : '#8F839F' }]}>
+        {captureActive ? 'LIVE' : 'OFF'}
+      </Text>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  ring: { alignItems: 'center', justifyContent: 'center', borderWidth: 3, backgroundColor: '#1D2430' },
-  core: { opacity: 0.95 },
+  ring: { alignItems: 'center', justifyContent: 'center', borderWidth: 3 },
+  core: { opacity: 0.98 },
   label: { fontSize: 14, fontWeight: '700' },
 });

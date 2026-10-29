@@ -21,7 +21,7 @@ export function ShockOverlayIndicators({
 }: Props) {
   return (
     <View style={styles.container}>
-      <LiveCaptureIndicator captureActive={captureActive} size={40} />
+      <LiveCaptureIndicator captureActive={captureActive} size={46} />
       <ShockSignalBell
         signal={signal}
         soundEnabled={soundEnabled}

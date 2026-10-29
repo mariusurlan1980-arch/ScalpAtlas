@@ -67,9 +67,9 @@ jobs:
           expo = cfg['expo']
           expo['name'] = 'SCALP ATLAS'
           expo['slug'] = 'scalp-atlas'
-          expo['version'] = '1.0.25'
+          expo['version'] = '1.0.26'
           expo['android']['package'] = 'com.scalpatlas.app'
-          expo['android']['versionCode'] = 125
+          expo['android']['versionCode'] = 126
           expo['ios']['bundleIdentifier'] = 'com.scalpatlas.app'
           expo['ios']['supportsTablet'] = True
           expo['orientation'] = 'default'
@@ -239,7 +239,7 @@ jobs:
       - name: Package Web build
         run: |
           cd scalp-atlas-new/dist
-          zip -r ../../ScalpAtlas-327-CAMERA-BELL-TEST-v1.0.25-WEB.zip .
+          zip -r ../../ScalpAtlas-327-VIOLET-CAMERA-COLOR-BELL-v1.0.26-WEB.zip .
           cd ../..
 
       - name: Generate Android project
@@ -257,14 +257,14 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Collect APK
-        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-327-CAMERA-BELL-TEST-v1.0.25.apk
+        run: cp scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk ScalpAtlas-327-VIOLET-CAMERA-COLOR-BELL-v1.0.26.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-327-CAMERA-BELL-TEST-v1.0.25
+          name: ScalpAtlas-327-VIOLET-CAMERA-COLOR-BELL-v1.0.26
           path: |
-            ScalpAtlas-327-CAMERA-BELL-TEST-v1.0.25.apk
-            ScalpAtlas-327-CAMERA-BELL-TEST-v1.0.25-WEB.zip
+            ScalpAtlas-327-VIOLET-CAMERA-COLOR-BELL-v1.0.26.apk
+            ScalpAtlas-327-VIOLET-CAMERA-COLOR-BELL-v1.0.26-WEB.zip
           if-no-files-found: error
 
