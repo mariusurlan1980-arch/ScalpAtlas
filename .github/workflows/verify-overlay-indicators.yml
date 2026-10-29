@@ -1,0 +1,38 @@
+name: Verify Scalp Atlas 327 indicator integration
+
+on:
+  push:
+    branches:
+      - feature/auto-demo-engine-20261013
+    paths:
+      - '.github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx'
+      - 'scalp-atlas-new/LiveCaptureIndicator.tsx'
+      - 'scalp-atlas-new/ShockSignalBell.tsx'
+      - 'scalp-atlas-new/ShockOverlayIndicators.tsx'
+      - '.github/workflows/verify-overlay-indicators.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Copy the production UI template into the app
+        run: cp .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx scalp-atlas-new/LiveAnalysisApp.tsx
+      - name: Check that the selected components are mounted
+        run: |
+          grep -q "ShockOverlayIndicators" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "captureActive=" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "soundEnabled=" scalp-atlas-new/LiveAnalysisApp.tsx
+      - name: Install Expo app dependencies
+        working-directory: scalp-atlas-new
+        run: |
+          npm install
+          npx expo install expo-camera expo-audio expo-haptics expo-localization @react-native-async-storage/async-storage
+          npm install tesseract.js
+      - name: Typecheck integrated app
+        working-directory: scalp-atlas-new
+        run: npx tsc --noEmit

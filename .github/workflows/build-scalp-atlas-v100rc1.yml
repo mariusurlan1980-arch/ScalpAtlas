@@ -40,6 +40,10 @@ jobs:
         run: |
           set -e
           cp .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx scalp-atlas-new/LiveAnalysisApp.tsx
+          test -f scalp-atlas-new/LiveCaptureIndicator.tsx
+          test -f scalp-atlas-new/ShockSignalBell.tsx
+          test -f scalp-atlas-new/ShockOverlayIndicators.tsx
+          # UI components are retained for integration; this check does not imply they are mounted.
           cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
           cp .github/templates/ScalpAtlasIntegratedAppV042.tsx scalp-atlas-new/App.tsx
           cp .github/templates/ScalpAtlasLocalizationV0418.ts scalp-atlas-new/localization.ts
