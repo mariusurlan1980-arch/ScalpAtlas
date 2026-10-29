@@ -207,7 +207,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var latest=history[history.length-1];
         var minBody=Math.max(10,h*.035); // still require a measurable pre-shock candle
         var minMove=Math.max(7,h*.018);
-        // DEMO thresholds: SHOCK >=50% and separately measured TREND >=50%.
+        // DEMO thresholds: SHOCK >50% and separately measured TREND >50%.
         // These are screen-relative measurements, NEVER profit probabilities.
         // 10s max to descend/ascend against the LIVE candle, >=40% recovery.
         var minShockFraction=.50,maxDropMs=10000,minRecoveryFraction=.40,minTrendStrengthPercent=50;
@@ -228,7 +228,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
               displayedDepth=percent;
               displayedDropDuration=fallMs;
             }
-            if(fraction<minShockFraction||j>=history.length-2)continue;
+            if(fraction<=minShockFraction||j>=history.length-2)continue;
             var reboundMs=latest.t-bottom.t;
             if(reboundMs<300||reboundMs>5000)continue;
             var recovery=candle.dir==='BUY'?bottom.y-latest.y:latest.y-bottom.y;
@@ -240,7 +240,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             // candle color must agree. Never turn a candle color into a trend.
             if(candle.trendDirection!==candle.dir || !candle.trendMeasured ||
               !Number.isFinite(candle.trendStrengthPercent) ||
-              candle.trendStrengthPercent<minTrendStrengthPercent)continue;
+              candle.trendStrengthPercent<=minTrendStrengthPercent)continue;
             // Both ends must be the same live candle, detected in its
             // original direction after the recovery, not the opposite candle.
             confirmed=true;
@@ -256,11 +256,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // percentage is NOT an entry. No direction is inferred from color.
         var shockBlocker=confirmed?'ȘOC CONFIRMAT':
           displayedDepth===0?'AȘTEAPTĂ ȘOC':
-          displayedDepth<50?'SUB 50%':
+          displayedDepth<=50?'ȘOC ≤50%':
           candle.trendDirection==='NONE'?'TREND NECLAR':
           candle.trendDirection!==candle.dir?'CONTRA TREND':
           !candle.trendMeasured || !Number.isFinite(candle.trendStrengthPercent) ||
-            candle.trendStrengthPercent<minTrendStrengthPercent?'PANTĂ SUB 50%':
+            candle.trendStrengthPercent<=minTrendStrengthPercent?'PANTĂ ≤50%':
           candle.wickPixels<minBody*.35?'FITIL SCURT':
           'REVENIRE/TIMP';
         var quality=confirmed?75:0; // internal optical gate only
