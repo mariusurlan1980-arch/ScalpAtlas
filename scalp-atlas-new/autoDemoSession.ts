@@ -1,5 +1,5 @@
-import { AutoDemoEngine, type DemoTrade } from './autoDemoEngine';
-import { submitLiveSignalToDemo, type LiveAnalysisEvent, type BridgeResult } from './liveDemoBridge';
+import { AutoDemoEngine, type DemoTrade } from './autoDemoEngine.ts';
+import { submitLiveSignalToDemo, type LiveAnalysisEvent, type BridgeResult } from './liveDemoBridge.ts';
 
 /**
  * In-app paper-trading coordinator.
