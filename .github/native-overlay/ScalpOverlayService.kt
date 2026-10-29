@@ -1672,13 +1672,14 @@ class ScalpOverlayService : Service() {
       observedShockDurationMs = 0L
     }
     // DEMO ONLY: >=50% measured retreat in <=10s + 40% rebound, visible
-    // same-candle wick AND independently measured three-candle trend.
+    // same-candle wick AND independently measured three-candle trend strength >=50%.
     // Current candle color does not determine the trend on its own.
     val confirmedSignal = if (quality >= 55 && opticalGate && shockSameCandle &&
         shockRetraced && shockRecovered && shockFrameFresh &&
         shockBodyPercent >= 50 && shockReboundPercent >= 40 &&
         wickMeasured >= 1 && shockDropDurationMs in 300L..10000L &&
         (rawSignal == "BUY" || rawSignal == "SELL") &&
+        observedTrendMeasured && observedTrendStrengthPercent >= 50 &&
         observedTrendDirection == rawSignal && observed == rawSignal) rawSignal else "NONE"
     val rejectionText = "ȘOC neconfirmat optic pe aceeași lumânare"
     val expiry = result.optInt("expiry", 0)
@@ -1945,8 +1946,9 @@ class ScalpOverlayService : Service() {
       val trendContradicted = trendFresh && candleFresh &&
         observedTrendDirection != "NONE" &&
         observedTrendDirection != observedCandleDirection
+      val trendThresholdMet = trendFresh && observedTrendStrengthPercent >= 50
       val trendAgrees = trendFresh && candleFresh &&
-        observedTrendDirection != "NONE" && !trendContradicted
+        observedTrendDirection != "NONE" && !trendContradicted && trendThresholdMet
       val trendDir = if (trendAgrees) observedTrendDirection else "NONE"
       val trendColor = when (trendDir) {
         "BUY" -> Color.rgb(35, 212, 116)
@@ -1959,8 +1961,11 @@ class ScalpOverlayService : Service() {
         if (trendFresh && candleFresh) observedTrendPoints else floatArrayOf(),
         trendDir
       )
-      trendPercentLabel?.text = if (trendAgrees)
-        (if (trendDir == "SELL") "−" else "+") +
+      // Keep the measured percent visible even below the DEMO 50% entry gate;
+      // grey means observation only and must not suggest a BUY/SELL alert.
+      trendPercentLabel?.text = if (trendFresh && candleFresh &&
+          observedTrendDirection != "NONE" && !trendContradicted)
+        (if (observedTrendDirection == "SELL") "−" else "+") +
           observedTrendStrengthPercent.toString() + "%"
         else "—%"
       trendPercentLabel?.setTextColor(trendColor)
@@ -1968,6 +1973,7 @@ class ScalpOverlayService : Service() {
       trendDirectionLabel?.text = when {
         !trendFresh || !candleFresh -> "NECONFIRMAT"
         trendContradicted -> "CONTRA TREND"
+        !trendThresholdMet -> "PANTĂ SUB 50%"
         trendDir == "BUY" -> "ASCENDENT"
         trendDir == "SELL" -> "DESCENDENT"
         else -> "LATERAL"
