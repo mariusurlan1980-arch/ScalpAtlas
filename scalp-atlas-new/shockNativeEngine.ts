@@ -207,9 +207,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var latest=history[history.length-1];
         var minBody=Math.max(10,h*.035); // still require a measurable pre-shock candle
         var minMove=Math.max(7,h*.018);
-        // DEMO threshold: 50% RETRACEMENT, not 50% trade win probability.
+        // DEMO thresholds: SHOCK >=50% and separately measured TREND >=50%.
+        // These are screen-relative measurements, NEVER profit probabilities.
         // 10s max to descend/ascend against the LIVE candle, >=40% recovery.
-        var minShockFraction=.50,maxDropMs=10000,minRecoveryFraction=.40;
+        var minShockFraction=.50,maxDropMs=10000,minRecoveryFraction=.40,minTrendStrengthPercent=50;
         var displayedDepth=0,displayedDropDuration=0,confirmed=false,dir='NONE';
         var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
         for(var i=0;i<history.length-1;i++){
@@ -237,7 +238,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             if(latest.wickPixels<start.bodyHeight*.35)continue;
             // BOTH the observed trend from closed candles AND current LIVE
             // candle color must agree. Never turn a candle color into a trend.
-            if(candle.trendDirection!==candle.dir)continue;
+            if(candle.trendDirection!==candle.dir || !candle.trendMeasured ||
+              !Number.isFinite(candle.trendStrengthPercent) ||
+              candle.trendStrengthPercent<minTrendStrengthPercent)continue;
             // Both ends must be the same live candle, detected in its
             // original direction after the recovery, not the opposite candle.
             confirmed=true;
@@ -256,6 +259,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           displayedDepth<50?'SUB 50%':
           candle.trendDirection==='NONE'?'TREND NECLAR':
           candle.trendDirection!==candle.dir?'CONTRA TREND':
+          !candle.trendMeasured || !Number.isFinite(candle.trendStrengthPercent) ||
+            candle.trendStrengthPercent<minTrendStrengthPercent?'PANTĂ SUB 50%':
           candle.wickPixels<minBody*.35?'FITIL SCURT':
           'REVENIRE/TIMP';
         var quality=confirmed?75:0; // internal optical gate only
@@ -276,6 +281,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             trendDirection:candle.trendDirection,
             trendMeasured:candle.trendMeasured,
             trendStrengthPercent:candle.trendStrengthPercent,
+            trendThresholdPercent:minTrendStrengthPercent,
             trendVisualPoints:candle.trendVisualPoints,
             observedBodyHeightPx:candle.bodyHeight,
             observedTopWickPx:candle.topWickPixels,
