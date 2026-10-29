@@ -438,6 +438,7 @@ export default function LiveAnalysisApp() {
   const pauseLive = () => {
     liveRef.current = false;
     setLive(false);
+    setLastValidFrameAt(0);
     captureBusyRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
     setMessage(t('readyLive'));
