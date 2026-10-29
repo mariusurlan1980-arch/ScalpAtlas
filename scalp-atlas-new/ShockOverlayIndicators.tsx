@@ -8,6 +8,7 @@ type Props = {
   signal: ShockSignal;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  onTestSound: () => void;
 };
 
 /**
@@ -16,7 +17,7 @@ type Props = {
  * This component never infers signals or plays audio.
  */
 export function ShockOverlayIndicators({
-  captureActive, signal, soundEnabled, onToggleSound,
+  captureActive, signal, soundEnabled, onToggleSound, onTestSound,
 }: Props) {
   return (
     <View style={styles.container}>
@@ -25,6 +26,7 @@ export function ShockOverlayIndicators({
         signal={signal}
         soundEnabled={soundEnabled}
         onToggleSound={onToggleSound}
+        onTestSound={onTestSound}
         size={48}
       />
     </View>

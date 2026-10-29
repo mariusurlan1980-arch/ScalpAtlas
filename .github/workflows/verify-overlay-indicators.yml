@@ -22,11 +22,23 @@ jobs:
           node-version: '22'
       - name: Copy the production UI template into the app
         run: cp .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx scalp-atlas-new/LiveAnalysisApp.tsx
+      - name: Prepare all application modules exactly as in the APK build
+        run: |
+          cp .github/templates/ScalpAtlasIntegratedAppV042.tsx scalp-atlas-new/App.tsx
+          cp .github/templates/ScalpAtlasAnalysisEngineV0416.ts scalp-atlas-new/analysisEngine.ts
+          cp .github/templates/ScalpAtlasLocalizationV0418.ts scalp-atlas-new/localization.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.ts scalp-atlas-new/ocrAdapter.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.native.ts scalp-atlas-new/ocrAdapter.native.ts
+          cp .github/templates/ScalpAtlasOcrAdapterV0416.web.ts scalp-atlas-new/ocrAdapter.web.ts
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.tsx scalp-atlas-new/AnalyzerBridge.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx scalp-atlas-new/AnalyzerBridge.native.tsx
+          cp .github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx scalp-atlas-new/AnalyzerBridge.web.tsx
       - name: Check that the selected components are mounted
         run: |
           grep -q "ShockOverlayIndicators" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "captureActive=" scalp-atlas-new/LiveAnalysisApp.tsx
           grep -q "soundEnabled=" scalp-atlas-new/LiveAnalysisApp.tsx
+          grep -q "onTestSound=" scalp-atlas-new/LiveAnalysisApp.tsx
       - name: Install Expo app dependencies
         working-directory: scalp-atlas-new
         run: |

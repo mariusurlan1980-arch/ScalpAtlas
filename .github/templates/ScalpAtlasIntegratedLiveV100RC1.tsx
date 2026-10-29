@@ -152,6 +152,8 @@ export default function LiveAnalysisApp() {
   const [live, setLive] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastValidFrameAt, setLastValidFrameAt] = useState(0);
+  // Camera indicator reflects successfully captured frames, independently of OCR chart validation.
+  const [lastCapturedFrameAt, setLastCapturedFrameAt] = useState(0);
   const [captureClock, setCaptureClock] = useState(Date.now());
   useEffect(() => {
     if (!live) return;
@@ -340,6 +342,7 @@ export default function LiveAnalysisApp() {
         return;
       }
 
+      setLastCapturedFrameAt(Date.now());
       let activeTf = timeframeRef.current;
       let currentFrameIsChart = false;
       try {
@@ -814,10 +817,18 @@ export default function LiveAnalysisApp() {
   return (
     <View style={styles.safe}>
       <ShockOverlayIndicators
-        captureActive={live && cameraReady && lastValidFrameAt > 0 && captureClock - lastValidFrameAt < 3000}
+        captureActive={live && cameraReady && lastCapturedFrameAt > 0 && captureClock - lastCapturedFrameAt < 5000}
         signal={analysis?.state === 'SIGNAL' && (analysis.signal === 'BUY' || analysis.signal === 'SELL') ? analysis.signal : 'WAIT'}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(previous => !previous)}
+        onTestSound={() => {
+          if (!soundEnabled) {
+            setMessage('Clopoțel OFF. Atinge o dată pentru a porni sunetul.');
+            return;
+          }
+          setMessage('BIP TEST — verificare audio, NU este semnal de tranzacționare.');
+          playConfirmedAlert('BUY');
+        }}
       />
       <View style={styles.header}>
         <View>

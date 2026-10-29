@@ -6,15 +6,17 @@ type Props = {
   signal: ShockSignal;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  onTestSound: () => void;
   size?: number;
 };
 
 /**
  * Selected variant 3: one enlarged bell with directional color and pulse.
- * Visual animation only; NEVER generates trading signals or plays sound.
+ * The bell itself is visual; a long press asks the host to run an explicitly labeled test beep.
+ * No test interaction must create a trading signal.
  * The confirmed signal engine remains responsible for exactly one beep.
  */
-export function ShockSignalBell({ signal, soundEnabled, onToggleSound, size = 52 }: Props) {
+export function ShockSignalBell({ signal, soundEnabled, onToggleSound, onTestSound, size = 52 }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
   const active = signal !== 'WAIT';
   const color = !soundEnabled ? '#89919B' : signal === 'BUY' ? '#27D67A' : signal === 'SELL' ? '#FF505B' : '#A9B0B8';
@@ -37,6 +39,9 @@ export function ShockSignalBell({ signal, soundEnabled, onToggleSound, size = 52
       accessibilityLabel={soundEnabled ? 'Oprește sunetul semnalelor' : 'Pornește sunetul semnalelor'}
       accessibilityState={{ selected: soundEnabled }}
       onPress={onToggleSound}
+      onLongPress={onTestSound}
+      delayLongPress={650}
+      accessibilityHint="Atinge pentru ON sau OFF; ține apăsat pentru BIP de test, fără semnal de tranzacționare"
       style={[styles.hitArea, { width: size + 14, height: size + 14 }]}
     >
       <Animated.View style={[styles.circle, {
