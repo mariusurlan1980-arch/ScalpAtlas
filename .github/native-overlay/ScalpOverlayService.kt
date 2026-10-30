@@ -724,8 +724,10 @@ class ScalpOverlayService : Service() {
           // below the screen edge. This prevents tap-through at the edge.
           root.post {
             val window = overlayWindowParams ?: return@post
-            val maxTop = (resources.displayMetrics.heightPixels - root.height - dp(16))
-              .coerceAtLeast(0)
+            // Keep test targets in the chart region, well above the
+            // broker's bottom trade controls even if user dragged the card.
+            val chartAreaLimit = (resources.displayMetrics.heightPixels * 0.73f).toInt()
+            val maxTop = (chartAreaLimit - root.height - dp(22)).coerceAtLeast(0)
             if (window.y > maxTop) {
               window.y = maxTop
               try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
@@ -1031,8 +1033,11 @@ class ScalpOverlayService : Service() {
           val metrics = resources.displayMetrics
           params.x = (startX + (event.rawX - touchX).toInt())
             .coerceIn(0, (metrics.widthPixels - dp(224)).coerceAtLeast(0))
+          val limitBottom = if (touchProbeRow?.visibility == View.VISIBLE)
+            (metrics.heightPixels * 0.73f).toInt()
+            else metrics.heightPixels
           params.y = (startY + (event.rawY - touchY).toInt())
-            .coerceIn(0, (metrics.heightPixels - dp(165)).coerceAtLeast(0))
+            .coerceIn(0, (limitBottom - root.height - dp(22)).coerceAtLeast(0))
           overlayView?.let { windowManager.updateViewLayout(it, params) }
           true
         }
