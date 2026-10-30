@@ -94,6 +94,7 @@ class ScalpOverlayService : Service() {
   private var journalControl: TextView? = null
   private var testStatusText: TextView? = null
   private var touchProbeRow: LinearLayout? = null
+  private var touchProbeCommandRow: LinearLayout? = null
   private var touchProbeStatus: TextView? = null
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
@@ -714,8 +715,23 @@ class ScalpOverlayService : Service() {
       setOnClickListener {
         val visible = touchProbeRow?.visibility != View.VISIBLE
         touchProbeRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
-        touchProbeStatus?.text = if (visible) "TEST LOCAL • FĂRĂ ORDINE" else ""
+        touchProbeStatus?.text = if (visible)
+          "TEST ANDROID • FĂRĂ ORDINE" else ""
+        if (visible) {
+          // Shift the card upward if its expanded test controls would go
+          // below the screen edge. This prevents tap-through at the edge.
+          root.post {
+            val window = overlayWindowParams ?: return@post
+            val maxTop = (resources.displayMetrics.heightPixels - root.height - dp(16))
+              .coerceAtLeast(0)
+            if (window.y > maxTop) {
+              window.y = maxTop
+              try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
+            }
+          }
+        }
       }
     }
     header.addView(touchProbeToggle, LinearLayout.LayoutParams(dp(48), dp(28)))
@@ -881,41 +897,95 @@ class ScalpOverlayService : Service() {
     }
     root.addView(note)
 
-    // Isolated BUY/SELL exercise on top of the broker's chart, never broker
-    // button automation. Explicit user clicks, no AccessibilityService.
+    // Android 350: opt-in virtual gestures sent exclusively to Scalp Atlas's
+    // own visible overlay test targets. No broker-button coordinates, no
+    // signal-driven execution, and no trade order transmission.
     val probeRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(4), 0, 0)
+    }
+    val commandRow = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER
       visibility = View.GONE
       setPadding(0, dp(5), 0, 0)
     }
     val probeStatus = TextView(this).apply {
-      text = "TEST LOCAL • FĂRĂ ORDINE"
+      text = "TEST ANDROID • FĂRĂ ORDINE"
       textSize = 9f
       gravity = Gravity.CENTER
       visibility = View.GONE
       setTextColor(Color.rgb(97, 110, 117))
-      maxLines = 1
+      maxLines = 2
     }
-    fun touchProbeButton(label: String, color: Int): TextView =
+    var pendingVirtualSide: String? = null
+    fun localButton(label: String, color: Int): TextView =
       TextView(this).apply {
         text = label
-        textSize = 11f
+        textSize = 10f
         gravity = Gravity.CENTER
         setTextColor(Color.WHITE)
         setTypeface(typeface, android.graphics.Typeface.BOLD)
         background = rounded(color, color)
-        contentDescription = "Buton " + label + " de probă. Fără ordine în broker"
-        setOnClickListener {
-          probeStatus.text = "PROBĂ " + label.removePrefix("TEST ") + " • FĂRĂ ORDIN"
+        contentDescription = "Zonă Scalp Atlas " + label + " de probă, fără ordine în broker"
+      }
+    val targetBuy = localButton("ZONĂ BUY", Color.rgb(17, 129, 76))
+    val targetSell = localButton("ZONĂ SELL", Color.rgb(182, 48, 66))
+    fun receivedProbeClick(side: String) {
+      val virtual = pendingVirtualSide == side
+      pendingVirtualSide = null
+      probeStatus.text = if (virtual)
+        "SUCCES: ATINGERE VIRTUALĂ " + side + " • FĂRĂ ORDIN"
+      else "TEST MANUAL " + side + " • FĂRĂ ORDIN"
+    }
+    targetBuy.setOnClickListener { receivedProbeClick("BUY") }
+    targetSell.setOnClickListener { receivedProbeClick("SELL") }
+    probeRow.addView(targetBuy,
+      LinearLayout.LayoutParams(0, dp(31), 1f).apply { marginEnd = dp(5) })
+    probeRow.addView(targetSell, LinearLayout.LayoutParams(0, dp(31), 1f))
+
+    fun testVirtualTouch(side: String, target: TextView) {
+      val rootWindow = overlayView
+      if (pendingVirtualSide != null) {
+        probeStatus.text = "TEST ÎN CURS • NU DUBLA COMANDA"
+        return
+      }
+      if (rootWindow == null || touchProbeRow?.visibility != View.VISIBLE ||
+          !TouchTestService.ready()) {
+        probeStatus.text = "ACTIVEAZĂ ACCESIBILITATE ÎN SCALP ATLAS"
+        return
+      }
+      pendingVirtualSide = side
+      probeStatus.text = "ANDROID: ÎNCERC ATINGEREA " + side + "…"
+      val accepted = TouchTestService.tapVisibleOwnOverlayTarget(rootWindow, target) { completed ->
+        // The target's click listener is the only proof of received tap.
+        if (pendingVirtualSide == side) {
+          pendingVirtualSide = null
+          probeStatus.text = if (completed)
+            "GEST TRIMIS, DAR ZONA " + side + " NU A CONFIRMAT"
+          else "GEST ANULAT • REPETĂ TESTUL"
         }
       }
-    probeRow.addView(touchProbeButton("TEST BUY", Color.rgb(17, 129, 76)),
-      LinearLayout.LayoutParams(0, dp(35), 1f).apply { marginEnd = dp(5) })
-    probeRow.addView(touchProbeButton("TEST SELL", Color.rgb(182, 48, 66)),
-      LinearLayout.LayoutParams(0, dp(35), 1f))
+      if (!accepted) {
+        pendingVirtualSide = null
+        probeStatus.text = "ATINGERE NELANSATĂ • VERIFICĂ PERMISIUNEA"
+      }
+    }
+    fun testCommand(label: String, side: String, target: TextView, color: Int): TextView =
+      localButton(label, color).apply {
+        contentDescription = "Trimite un gest Android către zona de probă " + side + " Scalp Atlas"
+        setOnClickListener { testVirtualTouch(side, target) }
+      }
+    commandRow.addView(testCommand("SIM BUY", "BUY", targetBuy, Color.rgb(19, 92, 66)),
+      LinearLayout.LayoutParams(0, dp(31), 1f).apply { marginEnd = dp(5) })
+    commandRow.addView(testCommand("SIM SELL", "SELL", targetSell, Color.rgb(122, 44, 61)),
+      LinearLayout.LayoutParams(0, dp(31), 1f))
+    root.addView(commandRow)
     root.addView(probeRow)
     root.addView(probeStatus)
+    touchProbeCommandRow = commandRow
     touchProbeRow = probeRow
     touchProbeStatus = probeStatus
 
