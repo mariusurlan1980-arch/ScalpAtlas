@@ -52,7 +52,11 @@ class TouchTestService : AccessibilityService() {
       // Reject partially clipped / inconsistent coordinates rather than
       // injecting a tap that could fall through to the background app.
       val maxDeltaPx = 6f * svc.resources.displayMetrics.density
-      if (targetBounds.width() < 24 || targetBounds.height() < 20 ||
+      // Extra fail-closed protection: testing at the lower trade-button
+      // portion of a broker screen is not allowed.
+      val safeChartBottom = (svc.resources.displayMetrics.heightPixels * 0.73f).toInt()
+      if (targetBounds.bottom >= safeChartBottom ||
+          targetBounds.width() < 24 || targetBounds.height() < 20 ||
           !rootBounds.contains(targetBounds) ||
           kotlin.math.abs(x - expectedX) > maxDeltaPx ||
           kotlin.math.abs(y - expectedY) > maxDeltaPx ||
