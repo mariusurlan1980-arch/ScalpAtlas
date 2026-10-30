@@ -362,7 +362,7 @@ jobs:
 
       - name: Verify APK, analyzer, signature, and app identity
         run: |
-          set -e
+          set -ex
           APK="scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           unzip -l "$APK" | grep -E "assets/(index\\.android\\.bundle|.*\\.bundle)"
@@ -393,7 +393,7 @@ jobs:
           grep -q 'candidateStrategy != confirmedStrategy' "$SERVICE"
           grep -q 'activeStrategy == "SCALP_TREND"' "$SERVICE"
           grep -q 'Never clear lockedDir/lockedUntil' "$SERVICE"
-          grep -q 'lastConfirmedShockPercent = shockBodyPercent' "$SERVICE"
+          grep -Fq 'lastConfirmedShockPercent = if (confirmedShock) shockBodyPercent else 0' "$SERVICE"
           grep -q 'setLiveCameraDotActive(scanStatus == "LIVE")' "$SERVICE"
           grep -q 'duration = 1500L' "$SERVICE"
           grep -q 'setSignalBlink(activeSignal)' "$SERVICE"
