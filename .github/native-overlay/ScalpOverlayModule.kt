@@ -143,6 +143,19 @@ class ScalpOverlayModule(
   }
 
   @ReactMethod
+  fun openTouchTest(promise: Promise) {
+    val activity = reactContext.currentActivity
+    if (activity == null) {
+      promise.reject("NO_ACTIVITY", "Scalp Atlas trebuie deschis.")
+      return
+    }
+    activity.runOnUiThread {
+      activity.startActivity(Intent(activity, TouchTestActivity::class.java))
+      promise.resolve("TEST_OPENED")
+    }
+  }
+
+  @ReactMethod
   fun stopOverlayMode(promise: Promise) {
     // stopService is immediate and works even when Android forbids starting
     // background services; onDestroy removes the floating window and capture.
