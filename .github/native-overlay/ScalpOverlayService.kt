@@ -88,6 +88,7 @@ class ScalpOverlayService : Service() {
   private var overlayView: View? = null
   @Volatile private var overlayWindowParams: WindowManager.LayoutParams? = null
   private var signalText: TextView? = null
+  private var strategyHeaderText: TextView? = null
   private var detailText: TextView? = null
   private var modelText: TextView? = null
   private var journalControl: TextView? = null
@@ -137,6 +138,8 @@ class ScalpOverlayService : Service() {
   @Volatile private var observedTrendPoints = floatArrayOf()
   @Volatile private var observedTrendAt = 0L
   @Volatile private var lastConfirmedShockPercent = 0
+  @Volatile private var lastConfirmedScalpPercent = 0
+  @Volatile private var activeStrategy = "NONE"
   @Volatile private var observedWickPercent = 0
   @Volatile private var observedWickAt = 0L
   @Volatile private var shockBlocker = "AȘTEAPTĂ DATE"
@@ -161,6 +164,7 @@ class ScalpOverlayService : Service() {
   private var lastDiagnosticStage = ""
 
   private var candidateDir: String? = null
+  private var candidateStrategy: String? = null
   private var candidateCount = 0
   private var candidateLastAt = 0L
   private var candidateLastSeenAt = 0L
@@ -217,6 +221,7 @@ class ScalpOverlayService : Service() {
     observedUpperWickPx = 8
     observedLowerWickPx = 8
     candidateDir = null
+    candidateStrategy = null
     candidateCount = 0
     candidateLastAt = 0L
     candidateLastSeenAt = 0L
@@ -226,18 +231,15 @@ class ScalpOverlayService : Service() {
   }
 
   /**
-   * Instrument changes must never inherit the previous pair's 3 confirmations,
-   * BUY/SELL headline, or its 5-7 minute direction lock.
-   * This is distinct from transient timeframe OCR failures.
+   * A new pair must not inherit unfinished candidates, optical samples, or
+   * trend readings. A confirmed 5-minute alert lock stays GLOBAL on the phone:
+   * changing instruments must not start a second concurrent DEMO trade.
    */
   private fun clearOnInstrumentChange() {
     marketLabelAmbiguous = false
     resetSignalState()
-    lockedDir = null
-    lockedUntil = 0L
-    lockedAt = 0L
-    lastShockQuality = 0
-    lastConfirmedShockPercent = 0
+    // Never clear lockedDir/lockedUntil when the observed broker pair changes.
+    // They expire inside handleResult(), not from instrument switching.
     resetVisualBaseline()
     marketEpoch += 1L
   }
@@ -802,6 +804,7 @@ class ScalpOverlayService : Service() {
       gravity = Gravity.CENTER
       setTextColor(Color.rgb(105, 120, 126))
     }
+    strategyHeaderText = shockHeader
     signalRing?.addView(shockHeader)
     signalRing?.addView(qualityText)
     // Put the direction at the visual CENTER, never along the bottom rim.
@@ -1605,9 +1608,10 @@ class ScalpOverlayService : Service() {
         "Pereche sau cadru schimbat • fără bip")
       return
     }
-    // SHOCK-only contract: a single forming-candle retracement and recovery
-    // must be evidenced by multiple captured pixels, not a predicted candle.
-    val rawSignal = result.optString("shockDirection", "NONE")
+    // Two independent DEMO detectors: SHOCK and M5 SCALP TREND.
+    // Neither may use an unconfirmed direction, color alone, or broker orders.
+    val rawSignal = result.optString("signal", "NONE")
+    val rawStrategy = result.optString("strategy", "NONE")
     val score = 0 // no unvalidated probability displayed
     val quality = result.optInt("quality", 0)
     // Optical recognition is NOT a BUY/SELL signal. Show it in the miniature.
@@ -1671,22 +1675,35 @@ class ScalpOverlayService : Service() {
       observedShockAt = 0L
       observedShockDurationMs = 0L
     }
-    // DEMO ONLY: >50% measured retreat in <=10s + 40% rebound, visible
-    // same-candle wick AND independently measured three-candle trend strength >=50%.
-    // Current candle color does not determine the trend on its own.
-    val confirmedSignal = if (quality >= 55 && opticalGate && shockSameCandle &&
-        shockRetraced && shockRecovered && shockFrameFresh &&
-        shockBodyPercent > 50 && shockReboundPercent >= 40 &&
-        wickMeasured >= 1 && shockDropDurationMs in 300L..10000L &&
-        (rawSignal == "BUY" || rawSignal == "SELL") &&
-        observedTrendMeasured && observedTrendStrengthPercent > 50 &&
-        observedTrendDirection == rawSignal && observed == rawSignal) rawSignal else "NONE"
-    val rejectionText = "ȘOC neconfirmat optic pe aceeași lumânare"
-    val expiry = result.optInt("expiry", 0)
+    // Independent, strict gates. 50% of chart geometry is NOT win probability.
+    val sameDirection = (rawSignal == "BUY" || rawSignal == "SELL") &&
+      observedTrendMeasured && observedTrendStrengthPercent > 50 &&
+      observedTrendDirection == rawSignal && observed == rawSignal
+    val confirmedShock = rawStrategy == "SHOCK" && quality >= 55 &&
+      opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
+      shockFrameFresh && shockBodyPercent > 50 && shockReboundPercent >= 40 &&
+      wickMeasured >= 1 && shockDropDurationMs in 300L..10000L &&
+      sameDirection && result.optString("shockDirection") == rawSignal
+    val scalpGate = result.optBoolean("scalpOpticalVerified", false) &&
+      result.optBoolean("scalpSameCandle", false)
+    val scalpDepth = result.optInt("scalpRetracementPercent", 0).coerceIn(0, 100)
+    val scalpRecovery = result.optInt("scalpRecoveryPercent", 0).coerceIn(0, 100)
+    val scalpPullbackMs = result.optLong("scalpPullbackDurationMs", -1L)
+    val confirmedScalp = rawStrategy == "SCALP_TREND" && timeframe == "M5" &&
+      quality >= 55 && shockFrameFresh && scalpGate &&
+      scalpDepth in 21..50 && scalpRecovery >= 35 &&
+      scalpPullbackMs in 700L..15000L && sameDirection &&
+      result.optString("scalpDirection") == rawSignal
+    val confirmedSignal = if (confirmedShock || confirmedScalp) rawSignal else "NONE"
+    val confirmedStrategy = if (confirmedShock) "SHOCK"
+      else if (confirmedScalp) "SCALP_TREND" else "NONE"
+    val rejectionText = if (rawStrategy == "SCALP_TREND")
+      "SCALP TREND neconfirmat" else "ȘOC / SCALP în așteptare"
+    val expiry = 5 // five-minute DEMO alert timer, not an automatic broker order
     val directionMax = result.optInt("directionMax", 0)
-    val pattern = "ȘOC • o lumânare"
+    val pattern = if (confirmedScalp) "SCALP TREND • M5" else "ȘOC • o lumânare"
     val reason = result.optString("reason", "")
-    val opticalCount = if (opticalGate) 1 else 0
+    val opticalCount = if (opticalGate || scalpGate) 1 else 0
 
     try {
       liveTest.onClassifier(
@@ -1731,9 +1748,12 @@ class ScalpOverlayService : Service() {
       lockedDir = null
       lockedUntil = 0L
       lockedAt = 0L
+      activeStrategy = "NONE"
       lastConfirmedShockPercent = 0
+      lastConfirmedScalpPercent = 0
       lastConfirmedShockDurationMs = 0L
       candidateDir = null
+      candidateStrategy = null
       candidateCount = 0
       candidateLastAt = 0L
       candidateLastSeenAt = 0L
@@ -1760,6 +1780,7 @@ class ScalpOverlayService : Service() {
       }
 
       candidateDir = null
+      candidateStrategy = null
       candidateCount = 0
       candidateLastAt = 0L
       candidateLastSeenAt = 0L
@@ -1778,8 +1799,10 @@ class ScalpOverlayService : Service() {
       now - candidateLastSeenAt > CANDIDATE_EVIDENCE_GRACE_MS ||
       candidateStartedAt <= 0L ||
       now - candidateStartedAt > CANDIDATE_MAX_AGE_MS
-    if (candidateDir != confirmedSignal || candidateEvidenceExpired) {
+    if (candidateDir != confirmedSignal ||
+        candidateStrategy != confirmedStrategy || candidateEvidenceExpired) {
       candidateDir = confirmedSignal
+      candidateStrategy = confirmedStrategy
       candidateCount = 1
       candidateLastAt = now
       candidateStartedAt = now
@@ -1802,7 +1825,7 @@ class ScalpOverlayService : Service() {
     // SIGNAL LOCK v1.0.23
     // Blocarea direcției urmează fereastra indicativă a semnalului,
     // pentru a evita alerte contradictorii în câteva secunde.
-    // Keep the lock aligned to the selected M10 ten-minute DEMO contract.
+    // Both DEMO strategies run under one five-minute phone-wide signal lock.
     // A lock prevents opposite notifications; it is not a trade order.
     val lockMinutes = 5 // fixed five-minute display and direction lock
     // Publish expiry before direction so other callbacks cannot treat the
@@ -1810,10 +1833,13 @@ class ScalpOverlayService : Service() {
     lockedUntil = now + lockMinutes * 60_000L
     lockedAt = now
     lockedDir = confirmedSignal
-    lastShockQuality = quality // Internal optical quality, NOT displayed as shock %
-    lastConfirmedShockPercent = shockBodyPercent // Physical retracement
-    lastConfirmedShockDurationMs = shockDropDurationMs
+    activeStrategy = confirmedStrategy
+    lastShockQuality = quality // Internal optical quality, NOT displayed as win %
+    lastConfirmedShockPercent = if (confirmedShock) shockBodyPercent else 0
+    lastConfirmedScalpPercent = if (confirmedScalp) scalpDepth else 0
+    lastConfirmedShockDurationMs = if (confirmedScalp) scalpPullbackMs else shockDropDurationMs
     candidateDir = null
+    candidateStrategy = null
     candidateCount = 0
     candidateLastAt = 0L
     candidateLastSeenAt = 0L
@@ -1910,6 +1936,9 @@ class ScalpOverlayService : Service() {
         "SELL" -> Color.rgb(192, 50, 64)
         else -> Color.rgb(105, 120, 126)
       }
+      // Keep strategy identity visible when the SINGLE shared BIP is issued.
+      strategyHeaderText?.text = if ((green || red) && activeStrategy == "SCALP_TREND")
+        "SCALP TREND" else if (green || red) "ȘOC" else "ȘOC / SCALP"
       // Repaint the miniature and optical percentage for EVERY live result.
       // The arrow still shows BUY/SELL only after a confirmed SHOCK beep.
       candleGraphic?.direction = visualDirection
@@ -1987,7 +2016,10 @@ class ScalpOverlayService : Service() {
       val percentFromCandle = when {
         brokerConnected && (green || red) &&
           lockedDir == signal && now < lockedUntil &&
-          lastConfirmedShockPercent >= 50 -> lastConfirmedShockPercent
+          activeStrategy == "SCALP_TREND" -> lastConfirmedScalpPercent
+        brokerConnected && (green || red) &&
+          lockedDir == signal && now < lockedUntil &&
+          lastConfirmedShockPercent > 50 -> lastConfirmedShockPercent
         brokerConnected && observedShockAt > 0L &&
           now - observedShockAt in 0L..3000L -> observedShockPercent
         else -> 0
