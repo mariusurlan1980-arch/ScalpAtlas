@@ -14,6 +14,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
   function report(frameId,tf,pair,epoch,reason,quality,extra){
     var result={frameId:frameId,timeframe:tf,brokerPair:pair,marketEpoch:epoch,
       source:'ANDROID_SCREEN_CAPTURE',shockDirection:'NONE',signal:'NONE',
+      strategy:'NONE',scalpDirection:'NONE',scalpOpticalVerified:false,
+      scalpSameCandle:false,scalpRetracementPercent:0,scalpRecoveryPercent:0,
+      scalpPullbackDurationMs:0,
       shockFrameId:frameId,shockOpticalVerified:false,shockSameCandle:false,
       shockRetraced:false,shockRecovered:false,quality:quality||0,
       shockBlocker:'AȘTEAPTĂ DATE',
@@ -252,6 +255,47 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             }
           }
         }
+        // SCALP TREND is an independent DEMO strategy on M5 only:
+        // confirmed three-closed-candle direction and strength >50%;
+        // moderate (21..50%) same-candle pullback, then >=35% rebound
+        // along that trend. It is not a mere color or trendline signal.
+        // Prefer a confirmed SHOCK if both ever qualify in one frame.
+        var scalpConfirmed=false,scalpDir='NONE',scalpDepth=0;
+        var scalpRebound=0,scalpDuration=0;
+        var strongTrend=candle.trendMeasured &&
+          Number.isFinite(candle.trendStrengthPercent) &&
+          candle.trendStrengthPercent>minTrendStrengthPercent &&
+          candle.trendDirection===candle.dir &&
+          (candle.dir==='BUY'||candle.dir==='SELL');
+        if(!confirmed && tf==='M5' && strongTrend){
+          var scalpMinMove=Math.max(9,h*.022);
+          for(var si=0;si<history.length-2;si++){
+            var prior=history[si];
+            if(prior.dir!==candle.dir||prior.bodyHeight<minBody)continue;
+            for(var sj=si+1;sj<history.length-1;sj++){
+              var trough=history[sj],pullMs=trough.t-prior.t;
+              if(pullMs>15000)break;
+              if(pullMs<700||trough.dir!==candle.dir)continue;
+              var pull=candle.dir==='BUY'?trough.y-prior.y:prior.y-trough.y;
+              if(pull<scalpMinMove)continue;
+              var pct=Math.round(100*pull/prior.bodyHeight);
+              // More than 20% but no more than 50%: distinct from SHOCK.
+              if(pct<=20||pct>50)continue;
+              var resumeMs=latest.t-trough.t;
+              if(resumeMs<700||resumeMs>8000)continue;
+              var resume=candle.dir==='BUY'?trough.y-latest.y:latest.y-trough.y;
+              if(resume/pull<.35)continue;
+              if(latest.wickPixels<prior.bodyHeight*.15)continue;
+              if(pct>scalpDepth){
+                scalpConfirmed=true;scalpDir=candle.dir;scalpDepth=pct;
+                scalpRebound=Math.min(100,Math.round(100*resume/pull));
+                scalpDuration=pullMs;
+              }
+            }
+          }
+        }
+        var strategy=confirmed?'SHOCK':scalpConfirmed?'SCALP_TREND':'NONE';
+        var emittedDirection=confirmed?dir:scalpConfirmed?scalpDir:'NONE';
         // Show a short, grounded explanation for why a LIVE observed
         // percentage is NOT an entry. No direction is inferred from color.
         var shockBlocker=confirmed?'ȘOC CONFIRMAT':
@@ -263,12 +307,20 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             candle.trendStrengthPercent<=minTrendStrengthPercent?'PANTĂ ≤50%':
           candle.wickPixels<minBody*.35?'FITIL SCURT':
           'REVENIRE/TIMP';
-        var quality=confirmed?75:0; // internal optical gate only
+        var quality=strategy!=='NONE'?75:0; // internal optical gate only
         report(frameId,tf,pair,epoch,
-          confirmed?'ȘOC rapid si revenire masurata in aceeasi lumânare':'Aștept retragere rapida și revenire',
+          confirmed?'ȘOC rapid și revenire în aceeași lumânare':
+          scalpConfirmed?'SCALP TREND: retragere moderată și reluare pe M5':
+          'Aștept ȘOC sau retragere SCALP TREND confirmată',
           quality,{
-            signal:confirmed?dir:'NONE',shockDirection:confirmed?dir:'NONE',
-            candidateDirection:confirmed?dir:'NONE',
+            strategy:strategy,signal:emittedDirection,
+            shockDirection:confirmed?dir:'NONE',
+            scalpDirection:scalpConfirmed?scalpDir:'NONE',
+            scalpOpticalVerified:scalpConfirmed,scalpSameCandle:scalpConfirmed,
+            scalpRetracementPercent:scalpConfirmed?scalpDepth:0,
+            scalpRecoveryPercent:scalpConfirmed?scalpRebound:0,
+            scalpPullbackDurationMs:scalpConfirmed?scalpDuration:0,
+            candidateDirection:emittedDirection,
             shockOpticalVerified:confirmed,shockSameCandle:confirmed,
             shockRetraced:confirmed,shockRecovered:confirmed,
             // All percentages below refer to the observed forming candle.
