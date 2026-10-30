@@ -36,11 +36,29 @@ class TouchTestService : AccessibilityService() {
       val targetBounds = Rect()
       if (!overlay.getGlobalVisibleRect(rootBounds) ||
           !target.getGlobalVisibleRect(targetBounds)) return false
+      // getGlobalVisibleRect is in the ROOT VIEW's coordinate space, not
+      // the physical display. Accessibility gestures require SCREEN pixels.
+      // This conversion is essential for draggable TYPE_APPLICATION_OVERLAY.
+      val rootLocationOnScreen = IntArray(2)
+      val targetLocationOnScreen = IntArray(2)
+      overlay.getLocationOnScreen(rootLocationOnScreen)
+      target.getLocationOnScreen(targetLocationOnScreen)
+      rootBounds.offset(rootLocationOnScreen[0], rootLocationOnScreen[1])
+      targetBounds.offset(rootLocationOnScreen[0], rootLocationOnScreen[1])
       val x = targetBounds.exactCenterX()
       val y = targetBounds.exactCenterY()
-      if (targetBounds.width() < 8 || targetBounds.height() < 8 ||
-          !rootBounds.contains(x.toInt(), y.toInt()) ||
-          x < 0f || y < 0f) return false
+      val expectedX = targetLocationOnScreen[0] + target.width / 2f
+      val expectedY = targetLocationOnScreen[1] + target.height / 2f
+      // Reject partially clipped / inconsistent coordinates rather than
+      // injecting a tap that could fall through to the background app.
+      val maxDeltaPx = 6f * svc.resources.displayMetrics.density
+      if (targetBounds.width() < 24 || targetBounds.height() < 20 ||
+          !rootBounds.contains(targetBounds) ||
+          kotlin.math.abs(x - expectedX) > maxDeltaPx ||
+          kotlin.math.abs(y - expectedY) > maxDeltaPx ||
+          x < 0f || y < 0f ||
+          x >= svc.resources.displayMetrics.widthPixels ||
+          y >= svc.resources.displayMetrics.heightPixels) return false
 
       val path = Path().apply { moveTo(x, y) }
       val gesture = GestureDescription.Builder()
