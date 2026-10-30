@@ -13,11 +13,13 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import TouchPracticePanel from './TouchPracticePanel';
 
 type Session = 'OFF' | 'STARTING' | 'ON';
 
 export default function App() {
   const [session, setSession] = useState<Session>('OFF');
+  const [showTouchPractice, setShowTouchPractice] = useState(false);
   const [status, setStatus] = useState('Pregătit pentru capturare. Semnalele ȘOC necesită validarea datelor live.');
   const busy = useRef(false);
   const [installedBuild, setInstalledBuild] = useState('Se verifică versiunea instalată…');
@@ -113,6 +115,7 @@ export default function App() {
             <Text style={styles.pillText}>{active ? 'LIVE' : session === 'STARTING' ? 'PORNIRE' : 'OPRIT'}</Text>
           </View>
 
+          {showTouchPractice ? <TouchPracticePanel onClose={() => setShowTouchPractice(false)} /> : <>
           <Text style={styles.timeframe}>ȘOC<Text style={styles.accent}>.</Text></Text>
           <Text style={styles.expiry}>M5  ·  M10  ·  M15  /  AUTO</Text>
           <Text style={styles.direction}>↗  BUY    ↘  SELL</Text>
@@ -132,6 +135,11 @@ export default function App() {
           </Pressable>
 
           <Text style={styles.status}>{status}</Text>
+          <Pressable disabled={session !== 'OFF'} onPress={() => setShowTouchPractice(true)}
+            style={[styles.testButton, session !== 'OFF' && styles.disabled]}>
+            <Text style={styles.testButtonText}>TEST BUTOANE BUY / SELL</Text>
+          </Pressable>
+          </>}
         </View>
 
         <View style={styles.footer}>
@@ -148,6 +156,8 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: {flex:1,backgroundColor:'#080b10'},
+  testButton: {borderWidth:1,borderColor:'#53c7de',borderRadius:10,padding:15,marginTop:8},
+  testButtonText: {color:'#53c7de',fontWeight:'bold',textAlign:'center'},
   page: {flex:1,paddingHorizontal:26,justifyContent:'space-between',paddingBottom:26},
   header: {paddingTop:42,alignItems:'center'},
   titleRow: {flexDirection:'row',justifyContent:'center'},
