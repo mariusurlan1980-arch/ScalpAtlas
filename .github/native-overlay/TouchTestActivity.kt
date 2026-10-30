@@ -2,6 +2,7 @@ package com.scalpatlas.app
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.graphics.Color
 import android.os.Bundle
 import android.provider.Settings
@@ -53,11 +54,24 @@ class TouchTestActivity : Activity() {
 
     add(textView("TEST ATINGERE VIRTUALĂ · SCALP ATLAS"), 80)
     add(textView("NUMAI ECRANUL DE PROBĂ. Fără ordine și fără acces la broker."), 85)
-    val settings = button("ACTIVEAZĂ ACCESIBILITATE TEST", Color.rgb(43, 76, 104))
-    add(settings, 55)
-    settings.setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-    status = textView("Serviciul de test nu este verificat.")
-    add(status, 78)
+    val settings = button("DESCHIDE ACCESIBILITATE (FĂRĂ SUPRAPUNERE)", Color.rgb(43, 76, 104))
+    add(settings, 66)
+    settings.setOnClickListener {
+      // Android's security screen must not be obscured by our own floating card.
+      stopService(Intent(this, ScalpOverlayService::class.java))
+      status.text = "LIVE oprit. Android controlează activarea serviciului."
+      startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+    val appInfo = button("INFORMAȚII APLICAȚIE (SETĂRI ANDROID)", Color.rgb(54, 76, 95))
+    add(appInfo, 55)
+    appInfo.setOnClickListener {
+      stopService(Intent(this, ScalpOverlayService::class.java))
+      val info = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.parse("package:" + packageName))
+      startActivity(info)
+    }
+    status = textView("Verific dacă serviciul de test este conectat…")
+    add(status, 102)
 
     val requestBuy = button("SIMULEAZĂ ATINGERE BUY", Color.rgb(8, 122, 71))
     val requestSell = button("SIMULEAZĂ ATINGERE SELL", Color.rgb(155, 33, 58))
@@ -80,8 +94,10 @@ class TouchTestActivity : Activity() {
     super.onResume()
     status.postDelayed({
       if (!isFinishing) {
-        status.text = if (TouchTestService.ready()) "Accesibilitate conectată. Poți încerca BUY sau SELL."
-          else "Activează «Scalp Atlas Test Atingere» din Accesibilitate."
+        status.text = if (TouchTestService.ready())
+          "CONECTAT: gesturile de test pot fi trimise doar în Scalp Atlas."
+        else
+          "NECONECTAT: Android nu a autorizat atingerea virtuală. Dacă opțiunea este gri, nu forța; verifică Informații aplicație."
       }
     }, 350L)
   }
