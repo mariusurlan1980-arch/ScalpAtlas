@@ -913,7 +913,7 @@ class ScalpOverlayService : Service() {
       setPadding(0, dp(5), 0, 0)
     }
     val probeStatus = TextView(this).apply {
-      text = "TEST ANDROID • FĂRĂ ORDINE"
+      text = "TEST DOAR DEMO • FĂRĂ ORDINE"
       textSize = 9f
       gravity = Gravity.CENTER
       visibility = View.GONE
@@ -960,12 +960,21 @@ class ScalpOverlayService : Service() {
       pendingVirtualSide = side
       probeStatus.text = "ANDROID: ÎNCERC ATINGEREA " + side + "…"
       val accepted = TouchTestService.tapVisibleOwnOverlayTarget(rootWindow, target) { completed ->
-        // The target's click listener is the only proof of received tap.
-        if (pendingVirtualSide == side) {
-          pendingVirtualSide = null
-          probeStatus.text = if (completed)
-            "GEST TRIMIS, DAR ZONA " + side + " NU A CONFIRMAT"
-          else "GEST ANULAT • REPETĂ TESTUL"
+        // dispatchGesture.onCompleted proves delivery to the touch layer,
+        // NOT that the intended View received an onClick event. Allow
+        // the UI event loop to process the click before declaring failure.
+        if (!completed) {
+          if (pendingVirtualSide == side) {
+            pendingVirtualSide = null
+            probeStatus.text = "GEST ANULAT • REPETĂ TESTUL"
+          }
+        } else {
+          mainHandler.postDelayed({
+            if (pendingVirtualSide == side) {
+              pendingVirtualSide = null
+              probeStatus.text = "GEST TRIMIS, DAR ZONA " + side + " NU A CONFIRMAT"
+            }
+          }, 500L)
         }
       }
       if (!accepted) {
