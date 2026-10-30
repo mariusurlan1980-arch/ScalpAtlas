@@ -135,6 +135,20 @@ export default function App() {
           </Pressable>
 
           <Text style={styles.status}>{status}</Text>
+          <Pressable
+            disabled={session !== 'OFF'}
+            onPress={() => {
+              if (Platform.OS !== 'android' || !NativeModules.ScalpOverlay?.openTouchTest) {
+                setStatus('Testul Android nu este disponibil pe această versiune.');
+                return;
+              }
+              void NativeModules.ScalpOverlay.openTouchTest()
+                .catch((e: unknown) => setStatus('Ecranul de test nu a pornit: ' + String(e)));
+            }}
+            style={[styles.testButton, session !== 'OFF' && styles.disabled]}
+          >
+            <Text style={styles.testButtonText}>TEST ATINGERE VIRTUALĂ ANDROID</Text>
+          </Pressable>
           <Pressable disabled={session !== 'OFF'} onPress={() => setShowTouchPractice(true)}
             style={[styles.testButton, session !== 'OFF' && styles.disabled]}>
             <Text style={styles.testButtonText}>TEST BUTOANE BUY / SELL</Text>
