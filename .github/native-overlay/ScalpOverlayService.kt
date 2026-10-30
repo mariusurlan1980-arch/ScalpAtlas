@@ -93,6 +93,8 @@ class ScalpOverlayService : Service() {
   private var modelText: TextView? = null
   private var journalControl: TextView? = null
   private var testStatusText: TextView? = null
+  private var touchProbeRow: LinearLayout? = null
+  private var touchProbeStatus: TextView? = null
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
   private var lastTestStatusAt = 0L
@@ -700,6 +702,23 @@ class ScalpOverlayService : Service() {
         playTestBip()
       }
     }
+    // Optional broker-screen OVERLAY TEST controls, disabled by default.
+    // These buttons update this overlay only; they never tap or interact
+    // with Pocket Option's underlying buttons or send broker orders.
+    val touchProbeToggle = TextView(this).apply {
+      text = "PROBĂ"
+      textSize = 9f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(68, 99, 126))
+      contentDescription = "Arată sau ascunde testul BUY SELL pe suprapunere"
+      setOnClickListener {
+        val visible = touchProbeRow?.visibility != View.VISIBLE
+        touchProbeRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
+        touchProbeStatus?.text = if (visible) "TEST LOCAL • FĂRĂ ORDINE" else ""
+      }
+    }
+    header.addView(touchProbeToggle, LinearLayout.LayoutParams(dp(48), dp(28)))
     header.addView(testBipControl, LinearLayout.LayoutParams(dp(63), dp(28)))
     header.addView(bellControl, LinearLayout.LayoutParams(dp(35), dp(28)))
     root.addView(header)
@@ -861,6 +880,44 @@ class ScalpOverlayService : Service() {
       setPadding(0, dp(4), 0, 0)
     }
     root.addView(note)
+
+    // Isolated BUY/SELL exercise on top of the broker's chart, never broker
+    // button automation. Explicit user clicks, no AccessibilityService.
+    val probeRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(5), 0, 0)
+    }
+    val probeStatus = TextView(this).apply {
+      text = "TEST LOCAL • FĂRĂ ORDINE"
+      textSize = 9f
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setTextColor(Color.rgb(97, 110, 117))
+      maxLines = 1
+    }
+    fun touchProbeButton(label: String, color: Int): TextView =
+      TextView(this).apply {
+        text = label
+        textSize = 11f
+        gravity = Gravity.CENTER
+        setTextColor(Color.WHITE)
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        background = rounded(color, color)
+        contentDescription = "Buton " + label + " de probă. Fără ordine în broker"
+        setOnClickListener {
+          probeStatus.text = "PROBĂ " + label.removePrefix("TEST ") + " • FĂRĂ ORDIN"
+        }
+      }
+    probeRow.addView(touchProbeButton("TEST BUY", Color.rgb(17, 129, 76)),
+      LinearLayout.LayoutParams(0, dp(35), 1f).apply { marginEnd = dp(5) })
+    probeRow.addView(touchProbeButton("TEST SELL", Color.rgb(182, 48, 66)),
+      LinearLayout.LayoutParams(0, dp(35), 1f))
+    root.addView(probeRow)
+    root.addView(probeStatus)
+    touchProbeRow = probeRow
+    touchProbeStatus = probeStatus
 
     val params = WindowManager.LayoutParams(
       dp(224),
