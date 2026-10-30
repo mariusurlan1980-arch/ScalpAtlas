@@ -103,6 +103,8 @@ function analyze(close,dir='BUY',pair='EUR/USD OTC',epoch=2,tf='M5',verticalShif
 function assertQuiet(result){
   assert.equal(result.shockDirection,'NONE');
   assert.equal(result.shockOpticalVerified,false);
+  assert.equal(result.signal,'NONE','No SHOCK or SCALP TREND should be emitted');
+  assert.equal(result.strategy,'NONE','No strategy should be emitted');
 }
 for(let i=0;i<8;i++)assertQuiet(analyze(140,'BUY'));
 let buy;
@@ -215,4 +217,38 @@ assert.ok(weakSell.trendStrengthPercent>0 && weakSell.trendStrengthPercent<=50);
 assert.ok(weakSell.shockRetracementPercent>50);
 assert.equal(weakSell.shockBlocker,'PANTĂ ≤50%');
 assertQuiet(weakSell);
-console.log('PASS DEMO 346: SHOCK >50% and TREND >50% BUY/SELL; weak trend, countertrend and no wick silent');
+// Independent M5 SCALP TREND: a moderate, timed pullback and measured
+// rebound, not a merely descending or ascending candle.
+let scalpBuy;
+for(let i=0;i<8;i++) assertQuiet(analyze(140,'BUY','SCALP-BUY OTC',71,'M5'));
+for(const close of [148,162,170,166,157,150])
+  scalpBuy=analyze(close,'BUY','SCALP-BUY OTC',71,'M5',0,
+    close===166||close===157||close===150);
+assert.equal(scalpBuy.strategy,'SCALP_TREND');
+assert.equal(scalpBuy.signal,'BUY');
+assert.equal(scalpBuy.shockDirection,'NONE');
+assert.equal(scalpBuy.scalpOpticalVerified,true);
+assert.equal(scalpBuy.scalpSameCandle,true);
+assert.ok(scalpBuy.scalpRetracementPercent>20 && scalpBuy.scalpRetracementPercent<=50);
+assert.ok(scalpBuy.scalpRecoveryPercent>=35);
+assert.ok(scalpBuy.trendStrengthPercent>50);
+assert.ok(scalpBuy.scalpPullbackDurationMs>=700);
+let scalpSell;
+for(let i=0;i<8;i++) assertQuiet(analyze(240,'SELL','SCALP-SELL OTC',72,'M5'));
+for(const close of [234,225,215,220,229,235])
+  scalpSell=analyze(close,'SELL','SCALP-SELL OTC',72,'M5',0,
+    close===220||close===229||close===235);
+assert.equal(scalpSell.strategy,'SCALP_TREND');
+assert.equal(scalpSell.signal,'SELL');
+assert.equal(scalpSell.shockDirection,'NONE');
+assert.equal(scalpSell.scalpOpticalVerified,true);
+assert.ok(scalpSell.scalpRetracementPercent>20 && scalpSell.scalpRetracementPercent<=50);
+assert.ok(scalpSell.scalpRecoveryPercent>=35);
+// SCALP TREND must not fire on M10, even when the price pattern is identical.
+for(let i=0;i<8;i++) assertQuiet(analyze(140,'BUY','SCALP-M10 OTC',73,'M10'));
+for(const close of [148,162,170,166,157,150])
+  assertQuiet(analyze(close,'BUY','SCALP-M10 OTC',73,'M10',0,
+    close===166||close===157||close===150));
+// Trend-line without an observed pullback and recovery is NOT a scalp signal.
+for(let i=0;i<9;i++) assertQuiet(analyze(140,'BUY','TREND-ONLY OTC',74,'M5'));
+console.log('PASS DEMO 347: independent SCALP TREND BUY and SELL M5, SHOCK preserved, no signal on M10 or trend-only');
