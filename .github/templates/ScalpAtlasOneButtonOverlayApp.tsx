@@ -20,6 +20,7 @@ type Session = 'OFF' | 'STARTING' | 'ON';
 export default function App() {
   const [session, setSession] = useState<Session>('OFF');
   const [showTouchPractice, setShowTouchPractice] = useState(false);
+  const [touchAccessStatus, setTouchAccessStatus] = useState('VERIFICARE…');
   const [status, setStatus] = useState('Pregătit pentru capturare. Semnalele ȘOC necesită validarea datelor live.');
   const busy = useRef(false);
   const [installedBuild, setInstalledBuild] = useState('Se verifică versiunea instalată…');
@@ -55,7 +56,14 @@ export default function App() {
         .finally(() => { requesting = false; });
     };
     refresh();
-    const interval = setInterval(refresh, 2500);
+    const refreshTouch = () => {
+      if (!native?.getTouchTestStatus) return;
+      native.getTouchTestStatus().then((value: unknown) => {
+        if (alive) setTouchAccessStatus(String(value));
+      }).catch(() => { if (alive) setTouchAccessStatus('NECUNOSCUT'); });
+    };
+    refreshTouch();
+    const interval = setInterval(() => { refresh(); refreshTouch(); }, 2500);
     return () => { alive = false; clearInterval(interval); };
   }, []);
 
@@ -149,6 +157,7 @@ export default function App() {
           >
             <Text style={styles.testButtonText}>TEST ATINGERE VIRTUALĂ ANDROID</Text>
           </Pressable>
+          <Text style={styles.touchAccess}>ACCESIBILITATE: {touchAccessStatus} · Activarea aparține Android, nu Scalp Atlas.</Text>
           <Pressable disabled={session !== 'OFF'} onPress={() => setShowTouchPractice(true)}
             style={[styles.testButton, session !== 'OFF' && styles.disabled]}>
             <Text style={styles.testButtonText}>TEST BUTOANE BUY / SELL</Text>
@@ -171,6 +180,7 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {flex:1,backgroundColor:'#080b10'},
   testButton: {borderWidth:1,borderColor:'#53c7de',borderRadius:10,padding:15,marginTop:8},
+  touchAccess: {fontSize:10,color:'#e3bd83',textAlign:'center',marginTop:6},
   testButtonText: {color:'#53c7de',fontWeight:'bold',textAlign:'center'},
   page: {flex:1,paddingHorizontal:26,justifyContent:'space-between',paddingBottom:26},
   header: {paddingTop:42,alignItems:'center'},
