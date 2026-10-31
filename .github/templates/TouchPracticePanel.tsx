@@ -19,7 +19,7 @@ export default function TouchPracticePanel({onClose}: {onClose: () => void}) {
     </Pressable>
   );
   return <View style={{gap:16,paddingHorizontal:18,width:'100%',alignItems:'center'}}>
-    <Text style={{color:'white',fontSize:19,fontWeight:'bold'}}>TEST BUTOANE PE TELEFON</Text>
+    <Text style={{color:'white',fontSize:19,fontWeight:'bold'}}>TEST MANUAL BUY / SELL</Text>
     <Text style={{color:'#bccbd6',textAlign:'center'}}>Doar demonstrație locală. Nu sunt transmise comenzi către alte aplicații.</Text>
     <View style={{flexDirection:'row',gap:12}}>
       {makeButton('ALEGE BUY','#087f45',()=>{setSelected('BUY');setMessage('Apasă zona BUY de mai jos.');})}
