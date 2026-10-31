@@ -518,7 +518,9 @@ jobs:
           # Fail the build if the native overlay still exposes legacy controls.
           SERVICE="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt"
           ! grep -q 'text = "Scalp Atlas 3.2.7"' "$SERVICE"
-          grep -q 'dp(224)' "$SERVICE"
+          grep -Fq 'dp(176)' "$SERVICE"
+          grep -Fq 'fun applyCompactMode()' "$SERVICE"
+          grep -Fq 'compactStatusText?.text' "$SERVICE"
           grep -q 'override fun onTaskRemoved' "$SERVICE"
           grep -q 'stopSelf()' "$SERVICE"
           grep -q 'PendingIntent.getService' "$SERVICE"
