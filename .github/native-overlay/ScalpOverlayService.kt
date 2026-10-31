@@ -740,8 +740,10 @@ class ScalpOverlayService : Service() {
         touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
         calculatorTestRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
-        touchProbeStatus?.text = if (visible)
-          "TEST ANDROID • FĂRĂ ORDINE" else ""
+        touchProbeStatus?.text = if (!visible) "" else
+          if (TouchTestService.ready())
+            "ROBOT CONECTAT • APASĂ SIM BUY SAU SIM SELL"
+          else "ROBOT NECONECTAT • ACTIVEAZĂ ACCESIBILITATE"
         if (visible) {
           // Shift the card upward if its expanded test controls would go
           // below the screen edge. This prevents tap-through at the edge.
@@ -1002,9 +1004,12 @@ class ScalpOverlayService : Service() {
         probeStatus.text = "TEST ÎN CURS • NU DUBLA COMANDA"
         return
       }
-      if (rootWindow == null || touchProbeRow?.visibility != View.VISIBLE ||
-          !TouchTestService.ready()) {
-        probeStatus.text = "ACTIVEAZĂ ACCESIBILITATE ÎN SCALP ATLAS"
+      if (!TouchTestService.ready()) {
+        probeStatus.text = "ROBOT NECONECTAT • DESCHIDE ACCESIBILITATE"
+        return
+      }
+      if (rootWindow == null || touchProbeRow?.visibility != View.VISIBLE) {
+        probeStatus.text = "DESCHIDE PROBĂ PENTRU TESTUL ROBOTULUI"
         return
       }
       val diagnostic = TouchTestService.checkOverlayTarget(rootWindow, target)
