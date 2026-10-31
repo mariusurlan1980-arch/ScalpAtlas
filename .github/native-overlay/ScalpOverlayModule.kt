@@ -131,8 +131,14 @@ class ScalpOverlayModule(
         val frames = prefs.getLong("frames", 0L)
         val results = prefs.getLong("results", 0L)
         val errors = prefs.getLong("errors", 0L)
+        val tfSource = prefs.getString("tfOcrSource", "NECONFIRMAT") ?: "NECONFIRMAT"
+        val opticalQuality = prefs.getInt("opticalQuality", 0)
+        val candleDirection = prefs.getString("candleDirection", "NONE") ?: "NONE"
+        val candleState = if (opticalQuality > 0 && candleDirection != "NONE")
+          "LUMÂNARE: detectată" else "LUMÂNARE: neconfirmată"
         promise.resolve(
           "FLUX " + stage + " · TF " + tf + " · " + pair + "\n" +
+            "Citire TF: " + tfSource + " · " + candleState + "\n" +
             "Cadre " + frames + " · Analize " + results + " · Erori " + errors +
             "\n" + reason
         )
