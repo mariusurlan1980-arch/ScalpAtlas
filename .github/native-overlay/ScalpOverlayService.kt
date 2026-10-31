@@ -87,6 +87,7 @@ class ScalpOverlayService : Service() {
   private lateinit var windowManager: WindowManager
   private var overlayView: View? = null
   @Volatile private var overlayWindowParams: WindowManager.LayoutParams? = null
+  private var compactStatusText: TextView? = null
   private var signalText: TextView? = null
   private var strategyHeaderText: TextView? = null
   private var detailText: TextView? = null
@@ -685,9 +686,20 @@ class ScalpOverlayService : Service() {
       contentDescription = "Închide suprapunerea și oprește LIVE"
       setOnClickListener { stopSelf() }
     }
-    header.addView(close, LinearLayout.LayoutParams(dp(34), dp(28)))
+    header.addView(close, LinearLayout.LayoutParams(dp(30), dp(28)))
     val headerGap = View(this)
     header.addView(headerGap, LinearLayout.LayoutParams(0, dp(1), 1f))
+    val compactStatus = TextView(this).apply {
+      text = "ȘOC —%"
+      textSize = 13f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(74, 93, 106))
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
+      maxLines = 1
+      contentDescription = "Stare ȘOC live. Ține apăsat și mută suprapunerea."
+    }
+    compactStatusText = compactStatus
+    header.addView(compactStatus, LinearLayout.LayoutParams(0, dp(28), 1f))
     bellControl = TextView(this).apply {
       text = if (bellEnabled) "🔔" else "🔕"
       textSize = 17f
@@ -747,9 +759,17 @@ class ScalpOverlayService : Service() {
         }
       }
     }
-    header.addView(touchProbeToggle, LinearLayout.LayoutParams(dp(48), dp(28)))
-    header.addView(testBipControl, LinearLayout.LayoutParams(dp(63), dp(28)))
-    header.addView(bellControl, LinearLayout.LayoutParams(dp(35), dp(28)))
+    header.addView(touchProbeToggle, LinearLayout.LayoutParams(dp(42), dp(28)))
+    header.addView(testBipControl, LinearLayout.LayoutParams(dp(55), dp(28)))
+    header.addView(bellControl, LinearLayout.LayoutParams(dp(30), dp(28)))
+    val minimizeToggle = TextView(this).apply {
+      text = "+"
+      textSize = 22f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(54, 92, 121))
+      contentDescription = "Extinde Scalp Atlas"
+    }
+    header.addView(minimizeToggle, LinearLayout.LayoutParams(dp(28), dp(28)))
     root.addView(header)
 
     val body = LinearLayout(this).apply {
@@ -1057,8 +1077,44 @@ class ScalpOverlayService : Service() {
     touchProbeRow = probeRow
     touchProbeStatus = probeStatus
 
+    // Start in an unobtrusive status-pill mode; all live monitoring and the
+    // enabled/disabled bell continue to work. Opening the card is manual.
+    var minimized = true
+    fun applyCompactMode() {
+      body.visibility = if (minimized) View.GONE else View.VISIBLE
+      trendRow.visibility = if (minimized) View.GONE else View.VISIBLE
+      note.visibility = if (minimized) View.GONE else View.VISIBLE
+      touchProbeToggle.visibility = if (minimized) View.GONE else View.VISIBLE
+      testBipControl.visibility = if (minimized) View.GONE else View.VISIBLE
+      compactStatus.visibility = if (minimized) View.VISIBLE else View.GONE
+      headerGap.visibility = if (minimized) View.GONE else View.VISIBLE
+      if (minimized) {
+        // Never leave Android gesture-test buttons exposed when compact.
+        probeRow.visibility = View.GONE
+        commandRow.visibility = View.GONE
+        calcRow.visibility = View.GONE
+        probeStatus.visibility = View.GONE
+      }
+      minimizeToggle.text = if (minimized) "+" else "−"
+      minimizeToggle.contentDescription = if (minimized)
+        "Extinde panoul Scalp Atlas" else "Micșorează panoul Scalp Atlas"
+      val window = overlayWindowParams ?: return
+      window.width = dp(if (minimized) 176 else 224)
+      val metrics = resources.displayMetrics
+      window.x = window.x.coerceIn(0, (metrics.widthPixels - window.width).coerceAtLeast(0))
+      root.post {
+        window.y = window.y.coerceIn(0, (metrics.heightPixels - root.height - dp(16)).coerceAtLeast(0))
+        try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
+      }
+    }
+    minimizeToggle.setOnClickListener {
+      minimized = !minimized
+      applyCompactMode()
+    }
+    applyCompactMode()
+
     val params = WindowManager.LayoutParams(
-      dp(224),
+      dp(176),
       WindowManager.LayoutParams.WRAP_CONTENT,
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -1077,7 +1133,7 @@ class ScalpOverlayService : Service() {
     var startY = 0
     var touchX = 0f
     var touchY = 0f
-    root.setOnTouchListener { _, event ->
+    val dragListener = View.OnTouchListener { _, event ->
       when (event.action) {
         MotionEvent.ACTION_DOWN -> {
           startX = params.x
@@ -1089,7 +1145,7 @@ class ScalpOverlayService : Service() {
         MotionEvent.ACTION_MOVE -> {
           val metrics = resources.displayMetrics
           params.x = (startX + (event.rawX - touchX).toInt())
-            .coerceIn(0, (metrics.widthPixels - dp(224)).coerceAtLeast(0))
+            .coerceIn(0, (metrics.widthPixels - params.width).coerceAtLeast(0))
           val limitBottom = if (touchProbeRow?.visibility == View.VISIBLE)
             (metrics.heightPixels * 0.73f).toInt()
             else metrics.heightPixels
@@ -1101,6 +1157,8 @@ class ScalpOverlayService : Service() {
         else -> false
       }
     }
+    root.setOnTouchListener(dragListener)
+    compactStatus.setOnTouchListener(dragListener)
     overlayView = root
     overlayWindowParams = params
     windowManager.addView(root, params)
@@ -2275,6 +2333,15 @@ class ScalpOverlayService : Service() {
         else -> 0
       }
       qualityText?.text = if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%"
+      compactStatusText?.text = when (activeSignal) {
+        "BUY", "SELL" -> activeSignal + " " + percentFromCandle + "%"
+        else -> "ȘOC " + (if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%")
+      }
+      compactStatusText?.setTextColor(when (activeSignal) {
+        "BUY" -> Color.rgb(13, 119, 69)
+        "SELL" -> Color.rgb(174, 50, 65)
+        else -> Color.rgb(74, 93, 106)
+      })
       // The candle glyph may be red/green, but the percentage stays NEUTRAL
       // unless the engine emitted the corresponding confirmed signal.
       qualityText?.setTextColor(if (green || red) visualTone else Color.rgb(90, 104, 114))
