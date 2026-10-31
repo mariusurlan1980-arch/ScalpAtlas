@@ -272,6 +272,7 @@ class ScalpOverlayService : Service() {
   }
 
   private val mainHandler = Handler(Looper.getMainLooper())
+  private var lastRobotConnectionDiagnostic: String? = null
 
   override fun onCreate() {
     super.onCreate()
@@ -740,10 +741,9 @@ class ScalpOverlayService : Service() {
         touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
         calculatorTestRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
-        touchProbeStatus?.text = if (!visible) "" else
-          if (TouchTestService.ready())
-            "ROBOT CONECTAT • APASĂ SIM BUY SAU SIM SELL"
-          else "ROBOT NECONECTAT • ACTIVEAZĂ ACCESIBILITATE"
+        lastRobotConnectionDiagnostic = if (visible)
+          TouchTestService.accessDiagnostic(this@ScalpOverlayService) else null
+        touchProbeStatus?.text = lastRobotConnectionDiagnostic ?: ""
         if (visible) {
           // Shift the card upward if its expanded test controls would go
           // below the screen edge. This prevents tap-through at the edge.
@@ -1005,7 +1005,8 @@ class ScalpOverlayService : Service() {
         return
       }
       if (!TouchTestService.ready()) {
-        probeStatus.text = "ROBOT NECONECTAT • DESCHIDE ACCESIBILITATE"
+        probeStatus.text = TouchTestService.accessDiagnostic(this)
+        lastRobotConnectionDiagnostic = probeStatus.text.toString()
         return
       }
       if (rootWindow == null || touchProbeRow?.visibility != View.VISIBLE) {
@@ -2232,6 +2233,15 @@ class ScalpOverlayService : Service() {
   private fun updateOverlay(signal: String, details: String, model: String) {
     mainHandler.post {
       val now = System.currentTimeMillis()
+      // The accessibility service can bind/unbind while LIVE is running.
+      // Refresh only on state changes; never erase a SIM BUY/SELL test result.
+      if (touchProbeStatus?.visibility == View.VISIBLE) {
+        val diagnostic = TouchTestService.accessDiagnostic(this@ScalpOverlayService)
+        if (diagnostic != lastRobotConnectionDiagnostic) {
+          lastRobotConnectionDiagnostic = diagnostic
+          touchProbeStatus?.text = diagnostic
+        }
+      }
       val signalChanged = signal != lastRenderedSignal
       lastRenderedSignal = signal
       val green = signal == "BUY"
