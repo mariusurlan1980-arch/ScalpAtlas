@@ -146,6 +146,7 @@ class ScalpOverlayService : Service() {
   @Volatile private var observedWickPercent = 0
   @Volatile private var observedWickAt = 0L
   @Volatile private var shockBlocker = "AȘTEAPTĂ DATE"
+  @Volatile private var scalpBlocker = "AȘTEAPTĂ DATE"
   @Volatile private var observedCandleDirection = "NONE"
   @Volatile private var observedOpticalQuality = 0
   @Volatile private var observedCandleAt = 0L
@@ -223,6 +224,7 @@ class ScalpOverlayService : Service() {
     observedWickPercent = 0
     observedWickAt = 0L
     shockBlocker = "AȘTEAPTĂ DATE"
+    scalpBlocker = "AȘTEAPTĂ DATE"
     observedCandleDirection = "NONE"
     observedOpticalQuality = 0
     observedCandleAt = 0L
@@ -567,6 +569,7 @@ class ScalpOverlayService : Service() {
   private var qualityText: TextView? = null
   private var shockDurationText: TextView? = null
   private var shockReasonText: TextView? = null
+  private var signalGateNote: TextView? = null
   private var wickText: TextView? = null
   private var signalBlinkAnimator: ValueAnimator? = null
   private var signalBlinkDirection = "NONE"
@@ -904,6 +907,7 @@ class ScalpOverlayService : Service() {
       setPadding(0, dp(4), 0, 0)
     }
     root.addView(note)
+    signalGateNote = note
 
     // Android 350: opt-in virtual gestures sent exclusively to Scalp Atlas's
     // own visible overlay test targets. No broker-button coordinates, no
@@ -1880,6 +1884,7 @@ class ScalpOverlayService : Service() {
     val trendDirection = result.optString("trendDirection", "NONE")
     observedTrendDirection = if (trendDirection == "BUY" || trendDirection == "SELL") trendDirection else "NONE"
     shockBlocker = result.optString("shockBlocker", "URMĂRESC")
+    scalpBlocker = result.optString("scalpBlocker", "URMĂRESC")
     val wickMeasured = result.optInt("shockWickPercent", 0).coerceIn(0, 100)
     if (detected && (observed == "BUY" || observed == "SELL")) {
       observedWickPercent = wickMeasured
@@ -2302,6 +2307,8 @@ class ScalpOverlayService : Service() {
             .putString("pair", currentPair(now))
             .putString("timeframe", if (tfAutomatic && !tfVerified) "AUTO ?" else selectedTimeframe)
             .putString("tfOcrSource", if (tfReady) lastTfOcrSource else "NECONFIRMAT")
+            .putString("shockBlocker", if (brokerConnected) shockBlocker else "NECONFIRMAT")
+            .putString("scalpBlocker", if (brokerConnected) scalpBlocker else "NECONFIRMAT")
             .putLong("frames", frameCount)
             .putLong("results", resultCount)
             .putLong("errors", errorCount)
@@ -2312,6 +2319,15 @@ class ScalpOverlayService : Service() {
         } catch (_: Throwable) {
           // Diagnostics must never interrupt screen capture or SHOCK signals.
         }
+      }
+      // Reuse the existing narrow footer; no extra controls, no added panel height.
+      // Display a reason, not a false probability of winning.
+      signalGateNote?.text = when {
+        green || red -> "SEMNAL CONFIRMAT • NU EXECUTĂ ORDINE"
+        scanStatus != "LIVE" -> "SCAN " + scanStatus + " • FĂRĂ SEMNAL"
+        selectedTimeframe == "M5" && shockBlocker == "AȘTEAPTĂ ȘOC" ->
+          "M5 • " + scalpBlocker
+        else -> "ȘOC: " + shockBlocker + " • NU WIN"
       }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
