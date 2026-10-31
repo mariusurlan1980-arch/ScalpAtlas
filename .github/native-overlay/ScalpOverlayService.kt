@@ -915,14 +915,16 @@ class ScalpOverlayService : Service() {
       setPadding(0, dp(5), 0, 0)
     }
     val probeStatus = TextView(this).apply {
-      text = "TEST DOAR DEMO • FĂRĂ ORDINE"
-      textSize = 9f
+      text = "TEST LOCAL • FĂRĂ ORDINE"
+      textSize = 10f
       gravity = Gravity.CENTER
       visibility = View.GONE
       setTextColor(Color.rgb(97, 110, 117))
-      maxLines = 2
+      maxLines = 3
+      setPadding(0, dp(4), 0, dp(3))
     }
     var pendingVirtualSide: String? = null
+    var touchDownObserved = false
     fun localButton(label: String, color: Int): TextView =
       TextView(this).apply {
         text = label
@@ -942,6 +944,20 @@ class ScalpOverlayService : Service() {
         "SUCCES: ATINGERE VIRTUALĂ " + side + " • FĂRĂ ORDIN"
       else "TEST MANUAL " + side + " • FĂRĂ ORDIN"
     }
+    targetBuy.setOnTouchListener { _, event ->
+      if (event.actionMasked == MotionEvent.ACTION_DOWN && pendingVirtualSide == "BUY") {
+        touchDownObserved = true
+        probeStatus.text = "BUY: GESTUL A AJUNS LA ZONĂ"
+      }
+      false
+    }
+    targetSell.setOnTouchListener { _, event ->
+      if (event.actionMasked == MotionEvent.ACTION_DOWN && pendingVirtualSide == "SELL") {
+        touchDownObserved = true
+        probeStatus.text = "SELL: GESTUL A AJUNS LA ZONĂ"
+      }
+      false
+    }
     targetBuy.setOnClickListener { receivedProbeClick("BUY") }
     targetSell.setOnClickListener { receivedProbeClick("SELL") }
     probeRow.addView(targetBuy,
@@ -959,8 +975,14 @@ class ScalpOverlayService : Service() {
         probeStatus.text = "ACTIVEAZĂ ACCESIBILITATE ÎN SCALP ATLAS"
         return
       }
+      val diagnostic = TouchTestService.checkOverlayTarget(rootWindow, target)
+      if (!diagnostic.ready) {
+        probeStatus.text = diagnostic.reason
+        return
+      }
       pendingVirtualSide = side
-      probeStatus.text = "ANDROID: ÎNCERC ATINGEREA " + side + "…"
+      touchDownObserved = false
+      probeStatus.text = "SIM " + side + ": COMANDĂ PRIMITĂ"
       val accepted = TouchTestService.tapVisibleOwnOverlayTarget(rootWindow, target) { completed ->
         // dispatchGesture.onCompleted proves delivery to the touch layer,
         // NOT that the intended View received an onClick event. Allow
@@ -974,14 +996,16 @@ class ScalpOverlayService : Service() {
           mainHandler.postDelayed({
             if (pendingVirtualSide == side) {
               pendingVirtualSide = null
-              probeStatus.text = "GEST TRIMIS, DAR ZONA " + side + " NU A CONFIRMAT"
+              probeStatus.text = if (touchDownObserved)
+                "GEST AJUNS LA " + side + ", DAR FĂRĂ CLICK"
+              else "GEST TRIMIS, DAR FĂRĂ ATINGERE " + side
             }
           }, 500L)
         }
       }
       if (!accepted) {
         pendingVirtualSide = null
-        probeStatus.text = "ATINGERE NELANSATĂ • VERIFICĂ PERMISIUNEA"
+        probeStatus.text = "GEST REFUZAT DE ANDROID • FĂRĂ ORDIN"
       }
     }
     fun testCommand(label: String, side: String, target: TextView, color: Int): TextView =
