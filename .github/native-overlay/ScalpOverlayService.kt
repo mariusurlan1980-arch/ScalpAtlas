@@ -189,6 +189,12 @@ class ScalpOverlayService : Service() {
   private var manualTfMismatchAt = 0L
   @Volatile private var manualTfConflict = false
   private val ocrRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+  // A separate recognizer for tiny M5/M10/M15 labels on the right chart axis.
+  // The fallback only reads visible pixels; it never guesses a timeframe.
+  private val tfCropOcrRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+  @Volatile private var tfCropBusy = false
+  private var lastTfCropAttemptAt = 0L
+  @Volatile private var lastTfOcrSource = "NECONFIRMAT"
   @Volatile private var chartZone = 1
   @Volatile private var bellEnabled = true
   private val bellPrefsName = "scalp_atlas_327"
@@ -1259,6 +1265,106 @@ class ScalpOverlayService : Service() {
    * avoids '00:05:00' (expiry) and 'TF M10' inside our own floating window.
    * Two consistent reads are required; uncertain OCR means NO SIGNAL.
    */
+  /**
+   * Two consistent on-screen OCR reads are mandatory even for cropped OCR.
+   * An isolated "M5" observation is never enough to unlock analysis or BIP.
+   */
+  private fun recordVisibleTimeframe(found: String, at: Long, source: String) {
+    if (found != "M5" && found != "M10" && found != "M15") return
+    lastTfOcrSource = source + " " + found
+    if (!tfAutomatic) {
+      if (found == selectedTimeframe) {
+        manualTfConflict = false
+        manualTfMismatchCount = 0
+        manualTfMismatchAt = 0L
+      } else {
+        if (at - manualTfMismatchAt > 9_000L) manualTfMismatchCount = 0
+        manualTfMismatchCount += 1
+        manualTfMismatchAt = at
+        if (manualTfMismatchCount >= 2 && !manualTfConflict) {
+          manualTfConflict = true
+          clearOnInstrumentChange()
+          updateOverlay("AȘTEAPTĂ", "TF diferit pe Pocket Option",
+            "Selectat " + selectedTimeframe + " • detectat " + found + " • bip blocat")
+        }
+      }
+      return
+    }
+    if (pendingTf != found || at - pendingTfAt > 9000L) {
+      pendingTf = found
+      pendingTfCount = 1
+      pendingTfAt = at
+      if (tfVerified && found != selectedTimeframe) {
+        tfVerified = false
+        clearOnInstrumentChange()
+        marketStableAt = at
+        updateOverlay("AȘTEAPTĂ", "AUTO • verific " + found,
+          "Schimbare interval detectată • aștept confirmarea")
+      }
+    } else {
+      pendingTfCount += 1
+      pendingTfAt = at
+      if (pendingTfCount >= 2 && tfAutomatic) {
+        val changed = selectedTimeframe != found
+        val recovered = !tfVerified
+        selectedTimeframe = found
+        tfVerified = true
+        confirmedTfAt = at
+        tfControl?.text = "TF AUTO " + found + " ▸"
+        if (changed) {
+          clearOnInstrumentChange()
+          marketStableAt = at
+          updateOverlay("AȘTEAPTĂ", "AUTO • " + found + " confirmat",
+            "Schimbare reală de interval • reiau stabilizarea")
+        } else if (recovered) {
+          updateOverlay("AȘTEAPTĂ", "AUTO • " + found + " reconfirmat",
+            "Păstrez stabilizarea perechii")
+        }
+      }
+    }
+  }
+
+  /**
+   * Targeted, enlarged OCR fallback for the small M5/M10/M15 caption at the
+   * right edge of the broker chart. Only called when full-frame OCR missed TF.
+   * No screenshot is stored, and a single read cannot enable a signal.
+   */
+  private fun scheduleRightAxisTfOcr(frame: Bitmap, now: Long) {
+    if (tfCropBusy || now - lastTfCropAttemptAt < 2_700L) return
+    if (frame.width < 240 || frame.height < 450) return
+    lastTfCropAttemptAt = now
+    val left = (frame.width * 0.63f).toInt()
+    val right = (frame.width * 0.98f).toInt()
+    val top = (frame.height * 0.23f).toInt()
+    val bottom = (frame.height * 0.69f).toInt()
+    if (right <= left + 20 || bottom <= top + 30) return
+    val enlarged = try {
+      val area = Bitmap.createBitmap(frame, left, top, right - left, bottom - top)
+      val copy = Bitmap.createScaledBitmap(area, area.width * 2, area.height * 2, true)
+      if (copy !== area) area.recycle()
+      copy
+    } catch (_: Throwable) {
+      return
+    }
+    tfCropBusy = true
+    tfCropOcrRecognizer.process(InputImage.fromBitmap(enlarged, 0))
+      .addOnSuccessListener { result ->
+        // The crop excludes the expiry controls, app header, and broker orders.
+        // Require a line beginning with the exact broker TF caption.
+        val pattern = Regex("""(?i)^\\s*M\\s*(5|10|15)(?:\\s+\\d{1,2}:\\d{2})?\\s*$""")
+        val observations = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+          pattern.matchEntire(line.text.trim())?.groupValues?.getOrNull(1)?.let { "M" + it }
+        }.distinct()
+        if (observations.size == 1) {
+          recordVisibleTimeframe(observations[0], System.currentTimeMillis(), "AXĂ")
+        }
+      }
+      .addOnCompleteListener {
+        enlarged.recycle()
+        tfCropBusy = false
+      }
+  }
+
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
     if (ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
     ocrBusy = true
@@ -1371,66 +1477,17 @@ class ScalpOverlayService : Service() {
             "Fără bip până la reconfirmarea instrumentului")
         }
 
-        if (!tfAutomatic) {
-          // Manual fallback must not silently interpret a visible M15 chart
-          // as M5. Two consistent contradictory readings fail closed.
-          if (values.size == 1) {
-            if (values[0] == selectedTimeframe) {
-              manualTfConflict = false
-              manualTfMismatchCount = 0
-              manualTfMismatchAt = 0L
-            } else {
-              if (observedAt - manualTfMismatchAt > 9_000L) manualTfMismatchCount = 0
-              manualTfMismatchCount += 1
-              manualTfMismatchAt = observedAt
-              if (manualTfMismatchCount >= 2 && !manualTfConflict) {
-                manualTfConflict = true
-                clearOnInstrumentChange()
-                updateOverlay("AȘTEAPTĂ", "TF diferit pe Pocket Option",
-                  "Selectat " + selectedTimeframe + " • detectat " + values[0] +
-                    " • bip blocat")
-              }
-            }
-          }
-          return@addOnSuccessListener
+        if (values.size == 1) {
+          // Primary full-frame OCR: still needs two consistent observations.
+          recordVisibleTimeframe(values[0], observedAt, "ECRAN")
+        } else if (values.isEmpty()) {
+          // M5 is often too small at native right-edge text size; enlarge only
+          // the axis caption, without lowering confirmation gates.
+          scheduleRightAxisTfOcr(copy, observedAt)
         }
 
-        if (values.size == 1) {
-          val found = values[0]
-          if (pendingTf != found || observedAt - pendingTfAt > 9000L) {
-            pendingTf = found
-            pendingTfCount = 1
-            pendingTfAt = observedAt
-            if (tfVerified && found != selectedTimeframe) {
-              tfVerified = false
-              clearOnInstrumentChange()
-              marketStableAt = observedAt
-              updateOverlay("AȘTEAPTĂ", "AUTO • verific " + found,
-                "Schimbare interval detectată • aștept confirmarea")
-            }
-          } else {
-            pendingTfCount += 1
-            pendingTfAt = observedAt
-            if (pendingTfCount >= 2 && tfAutomatic) {
-              val changed = selectedTimeframe != found
-              val recovered = !tfVerified
-              selectedTimeframe = found
-              tfVerified = true
-              confirmedTfAt = observedAt
-              tfControl?.text = "TF AUTO " + found + " ▸"
-              if (changed) {
-                clearOnInstrumentChange()
-                marketStableAt = observedAt
-                updateOverlay("AȘTEAPTĂ", "AUTO • " + found + " confirmat",
-                  "Schimbare reală de interval • reiau stabilizarea")
-              } else if (recovered) {
-                // Reconfirmation of the SAME M10 does not reset settlement.
-                updateOverlay("AȘTEAPTĂ", "AUTO • " + found + " reconfirmat",
-                  "Păstrez stabilizarea perechii")
-              }
-            }
-          }
-        } else if (tfVerified && observedAt - confirmedTfAt > TF_STALE_MS) {
+        if (values.size != 1 && tfAutomatic && tfVerified &&
+            observedAt - confirmedTfAt > TF_STALE_MS) {
           tfVerified = false
           resetSignalState()
           updateOverlay("AȘTEAPTĂ", "TF necunoscut",
@@ -2244,6 +2301,7 @@ class ScalpOverlayService : Service() {
             .putString("reason", diagnosticReason)
             .putString("pair", currentPair(now))
             .putString("timeframe", if (tfAutomatic && !tfVerified) "AUTO ?" else selectedTimeframe)
+            .putString("tfOcrSource", if (tfReady) lastTfOcrSource else "NECONFIRMAT")
             .putLong("frames", frameCount)
             .putLong("results", resultCount)
             .putLong("errors", errorCount)
@@ -2293,6 +2351,7 @@ class ScalpOverlayService : Service() {
     try { imageReader?.close() } catch (_: Throwable) {}
     try { mediaProjection?.stop() } catch (_: Throwable) {}
     try { ocrRecognizer.close() } catch (_: Throwable) {}
+    try { tfCropOcrRecognizer.close() } catch (_: Throwable) {}
     overlayWindowParams = null
     virtualDisplay = null
     imageReader = null
