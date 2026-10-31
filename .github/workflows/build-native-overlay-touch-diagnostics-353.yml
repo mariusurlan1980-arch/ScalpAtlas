@@ -229,9 +229,9 @@ jobs:
         run: |
           set -euo pipefail
           FILE=.github/native-overlay/TouchTestService.kt
-          grep -Fq 'overlay.getLocationOnScreen(rootLocationOnScreen)' "$FILE"
-          grep -Fq 'target.getLocationOnScreen(targetLocationOnScreen)' "$FILE"
-          grep -Fq 'targetBounds.offset(rootLocationOnScreen[0], rootLocationOnScreen[1])' "$FILE"
+          grep -Fq 'overlay.getLocationOnScreen(rootScreen)' "$FILE"
+          grep -Fq 'target.getLocationOnScreen(targetScreen)' "$FILE"
+          grep -Fq 'targetBounds.offset(rootScreen[0], rootScreen[1])' "$FILE"
           grep -Fq 'rootBounds.contains(targetBounds)' "$FILE"
           grep -Fq 'kotlin.math.abs(y - expectedY)' "$FILE"
           grep -Fq 'GestureDescription.StrokeDescription(path' "$FILE"
