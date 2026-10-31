@@ -160,7 +160,7 @@ export default function App() {
           <Text style={styles.touchAccess}>ACCESIBILITATE: {touchAccessStatus} · Activarea aparține Android, nu Scalp Atlas.</Text>
           <Pressable disabled={session !== 'OFF'} onPress={() => setShowTouchPractice(true)}
             style={[styles.testButton, session !== 'OFF' && styles.disabled]}>
-            <Text style={styles.testButtonText}>TEST BUTOANE BUY / SELL</Text>
+            <Text style={styles.testButtonText}>TEST MANUAL · NU VERIFICĂ GESTUL VIRTUAL</Text>
           </Pressable>
           </>}
         </View>
