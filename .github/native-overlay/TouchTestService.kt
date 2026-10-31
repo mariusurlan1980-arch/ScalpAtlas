@@ -8,12 +8,59 @@ import android.view.View
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 
 /** Test only; this does not control or inspect other apps. */
 class TouchTestService : AccessibilityService() {
   companion object {
     @Volatile private var connected: TouchTestService? = null
     fun ready(): Boolean = connected != null
+    @Volatile private var lastCalculatorTestAt = 0L
+
+    /**
+     * Cross-app capability proof with one harmless key only: digit 1 in the
+     * Google/AOSP Calculator. Never targets broker apps, screen coordinates
+     * or financial actions. A user must explicitly press the TEST CALC button.
+     *
+     * ACTION_CLICK is not a physical screen gesture and its boolean result
+     * is NOT proof that the Calculator display changed. Verify visually.
+     */
+    fun clickCalculatorDigitOne(): String {
+      val svc = connected ?: return "CALC: ACCESIBILITATE NECONECTATĂ"
+      val now = android.os.SystemClock.elapsedRealtime()
+      if (now - lastCalculatorTestAt < 3000L)
+        return "CALC: O SINGURĂ PROBĂ LA 3 SECUNDE"
+      val root = svc.rootInActiveWindow ?: return "CALC: FEREASTRĂ ACTIVĂ INDISPONIBILĂ"
+      val activePackage = root.packageName?.toString() ?: ""
+      val allowed = activePackage == "com.google.android.calculator" ||
+        activePackage == "com.android.calculator2"
+      if (!allowed) return "CALC: DESCHIDE CALCULATOR, NU BROKERUL"
+      val matches = root.findAccessibilityNodeInfosByText("1")
+        .filter { node ->
+          node.packageName?.toString() == activePackage &&
+            (node.text?.toString()?.trim() == "1" ||
+              node.contentDescription?.toString()?.trim() == "1") &&
+            node.isClickable && node.isEnabled && node.isVisibleToUser
+        }
+      // An ambiguous UI must never result in a random click.
+      if (matches.size != 1) return "CALC: CIFRA 1 NU ESTE IDENTIFICATĂ UNIC"
+      val button = matches[0]
+      val bounds = Rect()
+      button.getBoundsInScreen(bounds)
+      if (bounds.width() < 15 || bounds.height() < 15 ||
+          bounds.left < 0 || bounds.top < 0 ||
+          bounds.right > svc.resources.displayMetrics.widthPixels ||
+          bounds.bottom > svc.resources.displayMetrics.heightPixels)
+        return "CALC: BUTONUL 1 NU ESTE VIZIBIL COMPLET"
+      // Double-check the foreground package immediately before the click.
+      if (svc.rootInActiveWindow?.packageName?.toString() != activePackage)
+        return "CALC: APLICAȚIA ACTIVĂ S-A SCHIMBAT"
+      lastCalculatorTestAt = now
+      val accepted = button.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+      return if (accepted)
+        "CALC: COMANDĂ 1 ACCEPTATĂ • VERIFICĂ AFIȘAJUL"
+        else "CALC: ANDROID A REFUZAT CLICK 1"
+    }
     /**
      * Dispatch a demonstration gesture ONLY into a visible target that belongs
      * to Scalp Atlas's floating window. No arbitrary screen coordinates accepted.
