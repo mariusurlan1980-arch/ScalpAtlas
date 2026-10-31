@@ -95,6 +95,7 @@ class ScalpOverlayService : Service() {
   private var testStatusText: TextView? = null
   private var touchProbeRow: LinearLayout? = null
   private var touchProbeCommandRow: LinearLayout? = null
+  private var calculatorTestRow: LinearLayout? = null
   private var touchProbeStatus: TextView? = null
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
@@ -725,6 +726,7 @@ class ScalpOverlayService : Service() {
         val visible = touchProbeRow?.visibility != View.VISIBLE
         touchProbeRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        calculatorTestRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.text = if (visible)
           "TEST ANDROID • FĂRĂ ORDINE" else ""
@@ -1029,7 +1031,28 @@ class ScalpOverlayService : Service() {
       LinearLayout.LayoutParams(0, dp(31), 1f))
     root.addView(commandRow)
     root.addView(probeRow)
+    // One explicit, broker-independent cross-app test. Never triggered by
+    // SHOCK/SCALP signals and never uses underlying Pocket Option coordinates.
+    val calcRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(4), 0, 0)
+    }
+    val calcOne = localButton("TEST CALCULATOR · 1", Color.rgb(43, 79, 114)).apply {
+      contentDescription = "Testează apăsarea cifrei 1 numai în Calculator, fără ordine"
+      setOnClickListener {
+        if (pendingVirtualSide != null) {
+          probeStatus.text = "FINALIZEAZĂ MAI ÎNTÂI TESTUL BUY/SELL"
+        } else {
+          probeStatus.text = TouchTestService.clickCalculatorDigitOne()
+        }
+      }
+    }
+    calcRow.addView(calcOne, LinearLayout.LayoutParams(-1, dp(31)))
+    root.addView(calcRow)
     root.addView(probeStatus)
+    calculatorTestRow = calcRow
     touchProbeCommandRow = commandRow
     touchProbeRow = probeRow
     touchProbeStatus = probeStatus
