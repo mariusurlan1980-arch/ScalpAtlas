@@ -1351,7 +1351,7 @@ class ScalpOverlayService : Service() {
       .addOnSuccessListener { result ->
         // The crop excludes the expiry controls, app header, and broker orders.
         // Require a line beginning with the exact broker TF caption.
-        val pattern = Regex("""(?i)^\\s*M\\s*(5|10|15)(?:\\s+\\d{1,2}:\\d{2})?\\s*$""")
+        val pattern = Regex("""(?i)^\s*M\s*(5|10|15)(?:\s+\d{1,2}:\d{2})?\s*$""")
         val observations = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
           pattern.matchEntire(line.text.trim())?.groupValues?.getOrNull(1)?.let { "M" + it }
         }.distinct()
