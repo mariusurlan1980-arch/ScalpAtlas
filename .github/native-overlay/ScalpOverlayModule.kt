@@ -136,9 +136,12 @@ class ScalpOverlayModule(
         val candleDirection = prefs.getString("candleDirection", "NONE") ?: "NONE"
         val candleState = if (opticalQuality > 0 && candleDirection != "NONE")
           "LUMÂNARE: detectată" else "LUMÂNARE: neconfirmată"
+        val shockBlock = prefs.getString("shockBlocker", "NECONFIRMAT") ?: "NECONFIRMAT"
+        val scalpBlock = prefs.getString("scalpBlocker", "NECONFIRMAT") ?: "NECONFIRMAT"
         promise.resolve(
           "FLUX " + stage + " · TF " + tf + " · " + pair + "\n" +
             "Citire TF: " + tfSource + " · " + candleState + "\n" +
+            "ȘOC: " + shockBlock + " · SCALP: " + scalpBlock + "\n" +
             "Cadre " + frames + " · Analize " + results + " · Erori " + errors +
             "\n" + reason
         )
