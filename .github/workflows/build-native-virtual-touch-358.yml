@@ -232,9 +232,11 @@ jobs:
           FILE=.github/native-overlay/TouchTestService.kt
           grep -Fq 'overlay.getLocationOnScreen(rootScreen)' "$FILE"
           grep -Fq 'target.getLocationOnScreen(targetScreen)' "$FILE"
-          grep -Fq 'targetBounds.offset(rootScreen[0], rootScreen[1])' "$FILE"
           grep -Fq 'rootBounds.contains(targetBounds)' "$FILE"
-          grep -Fq 'kotlin.math.abs(y - expectedY)' "$FILE"
+          grep -Fq 'targetScreen[0] + target.width' "$FILE"
+          grep -Fq 'targetScreen[1] + target.height' "$FILE"
+          ! grep -Fq 'targetBounds.offset(rootScreen[0], rootScreen[1])' "$FILE"
+          ! grep -Fq 'rootBounds.offset(rootScreen[0], rootScreen[1])' "$FILE"
           grep -Fq 'GestureDescription.StrokeDescription(path' "$FILE"
           grep -Fq 'mainHandler.postDelayed' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '500L' .github/native-overlay/ScalpOverlayService.kt
