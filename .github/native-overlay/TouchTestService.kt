@@ -89,35 +89,42 @@ class TouchTestService : AccessibilityService() {
           target.context.packageName != svc.packageName)
         return OverlayTargetCheck("ȚINTA NU APARȚINE SUPRAPUNERII")
 
-      val rootBounds = Rect()
-      val targetBounds = Rect()
-      if (!overlay.getGlobalVisibleRect(rootBounds) ||
-          !target.getGlobalVisibleRect(targetBounds))
-        return OverlayTargetCheck("ZONA ESTE ASCUNSĂ")
-
+      // getGlobalVisibleRect is already in global coordinates on some
+      // Android versions. Adding getLocationOnScreen again doubles offsets.
+      // Use one coordinate space exclusively: absolute screen pixels.
       val rootScreen = IntArray(2)
       val targetScreen = IntArray(2)
       overlay.getLocationOnScreen(rootScreen)
       target.getLocationOnScreen(targetScreen)
-      rootBounds.offset(rootScreen[0], rootScreen[1])
-      targetBounds.offset(rootScreen[0], rootScreen[1])
-      val x = targetBounds.exactCenterX()
-      val y = targetBounds.exactCenterY()
-      val expectedX = targetScreen[0] + target.width / 2f
-      val expectedY = targetScreen[1] + target.height / 2f
-      val maxDelta = 6f * svc.resources.displayMetrics.density
-      val safeChartBottom = (svc.resources.displayMetrics.heightPixels * 0.73f).toInt()
-      if (targetBounds.bottom >= safeChartBottom)
-        return OverlayTargetCheck("ZONĂ PREA JOS • MUTĂ SUPRAPUNEREA SUS")
+      val rootBounds = Rect(
+        rootScreen[0], rootScreen[1],
+        rootScreen[0] + overlay.width, rootScreen[1] + overlay.height
+      )
+      val targetBounds = Rect(
+        targetScreen[0], targetScreen[1],
+        targetScreen[0] + target.width, targetScreen[1] + target.height
+      )
+      if (rootBounds.isEmpty || targetBounds.isEmpty)
+        return OverlayTargetCheck("FEREASTRA DE TEST NU ARE DIMENSIUNI")
       if (targetBounds.width() < 24 || targetBounds.height() < 20 ||
           !rootBounds.contains(targetBounds))
-        return OverlayTargetCheck("ZONĂ PARȚIAL ASCUNSĂ")
-      if (kotlin.math.abs(x - expectedX) > maxDelta ||
-          kotlin.math.abs(y - expectedY) > maxDelta ||
-          x < 0f || y < 0f ||
-          x >= svc.resources.displayMetrics.widthPixels ||
-          y >= svc.resources.displayMetrics.heightPixels)
-        return OverlayTargetCheck("COORDONATE NEPOTRIVITE")
+        return OverlayTargetCheck("ZONA DE TEST ESTE PARTIAL ASCUNSA")
+
+      val x = targetBounds.exactCenterX()
+      val y = targetBounds.exactCenterY()
+      val width = svc.resources.displayMetrics.widthPixels
+      val height = svc.resources.displayMetrics.heightPixels
+      if (x < 0f || y < 0f || x >= width || y >= height)
+        return OverlayTargetCheck("ZONA DE TEST ESTE IN AFARA ECRANULUI")
+
+      // Limit Android gesture tests to the upper, chart-only area.
+      // Never allow the gesture near the underlying trade buttons.
+      val safeChartBottom = (height * 0.73f).toInt()
+      if (targetBounds.bottom >= safeChartBottom)
+        return OverlayTargetCheck("ZONĂ PREA JOS • MUTĂ SUPRAPUNEREA SUS")
+      if (!overlay.getGlobalVisibleRect(Rect()) ||
+          !target.getGlobalVisibleRect(Rect()))
+        return OverlayTargetCheck("ZONA ESTE ASCUNSĂ")
 
       return OverlayTargetCheck("PREGĂTIT", x, y)
     }
