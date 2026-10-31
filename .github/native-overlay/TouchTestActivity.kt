@@ -94,10 +94,7 @@ class TouchTestActivity : Activity() {
     super.onResume()
     status.postDelayed({
       if (!isFinishing) {
-        status.text = if (TouchTestService.ready())
-          "CONECTAT: gesturile de test pot fi trimise doar în Scalp Atlas."
-        else
-          "NECONECTAT: Android nu a autorizat atingerea virtuală. Dacă opțiunea este gri, nu forța; verifică Informații aplicație."
+        status.text = TouchTestService.accessDiagnostic(this)
       }
     }, 350L)
   }
@@ -110,7 +107,7 @@ class TouchTestActivity : Activity() {
 
   private fun simulate(direction: String, target: View) {
     if (!TouchTestService.ready() || !hasWindowFocus()) {
-      status.text = "Activează Accesibilitate și revino la ecranul de test."
+      status.text = TouchTestService.accessDiagnostic(this)
       return
     }
     if (waitingFor != null) {
