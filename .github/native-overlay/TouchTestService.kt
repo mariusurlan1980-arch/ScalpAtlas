@@ -2,6 +2,9 @@ package com.scalpatlas.app
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.Context
+import android.view.accessibility.AccessibilityManager
 import android.graphics.Path
 import android.graphics.Rect
 import android.view.View
@@ -15,6 +18,32 @@ class TouchTestService : AccessibilityService() {
   companion object {
     @Volatile private var connected: TouchTestService? = null
     fun ready(): Boolean = connected != null
+
+    /**
+     * Distinguish the user-granted Android accessibility setting from the
+     * live service binding. Enabling a service is exclusively Android's job.
+     * No gesture is allowed unless the service is genuinely bound.
+     */
+    fun accessDiagnostic(context: Context): String {
+      if (ready()) return "ROBOT CONECTAT • APASĂ SIM BUY SAU SIM SELL"
+      return try {
+        val manager = context.getSystemService(Context.ACCESSIBILITY_SERVICE)
+          as AccessibilityManager
+        val enabled = manager.getEnabledAccessibilityServiceList(
+          AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+        ).any { info ->
+          val serviceInfo = info.resolveInfo?.serviceInfo
+          serviceInfo?.packageName == context.packageName &&
+            serviceInfo.name == TouchTestService::class.java.name
+        }
+        if (enabled)
+          "ACCES DEJA PERMIS • SERVICIUL ANDROID NU ESTE CONECTAT"
+        else
+          "ACCES OPRIT ÎN ANDROID • VERIFICĂ ACCESIBILITATE"
+      } catch (_: Throwable) {
+        "NU POT CITI STAREA SERVICIULUI ANDROID"
+      }
+    }
     @Volatile private var lastCalculatorTestAt = 0L
 
     /**
@@ -175,6 +204,10 @@ class TouchTestService : AccessibilityService() {
   override fun onServiceConnected() {
     super.onServiceConnected()
     connected = this
+  }
+  override fun onUnbind(intent: android.content.Intent?): Boolean {
+    if (connected === this) connected = null
+    return super.onUnbind(intent)
   }
   override fun onDestroy() {
     if (connected === this) connected = null
