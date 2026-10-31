@@ -19,7 +19,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       scalpPullbackDurationMs:0,
       shockFrameId:frameId,shockOpticalVerified:false,shockSameCandle:false,
       shockRetraced:false,shockRecovered:false,quality:quality||0,
-      shockBlocker:'AȘTEAPTĂ DATE',
+      shockBlocker:'AȘTEAPTĂ DATE',scalpBlocker:'AȘTEAPTĂ DATE',
       candidateDirection:'NONE',reason:reason};
     if(extra)Object.keys(extra).forEach(function(key){result[key]=extra[key];});
     send({type:'RESULT',result:result});
@@ -307,6 +307,16 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             candle.trendStrengthPercent<=minTrendStrengthPercent?'PANTĂ ≤50%':
           candle.wickPixels<minBody*.35?'FITIL SCURT':
           'REVENIRE/TIMP';
+        // Diagnostic only: explain why independent M5 SCALP TREND did NOT
+        // produce a trade alert. These are measured optical conditions,
+        // not probabilities and not permission to trade.
+        var scalpBlocker=scalpConfirmed?'SCALP CONFIRMAT':
+          tf!=='M5'?'SCALP DOAR M5':
+          !candle.trendMeasured||candle.trendDirection==='NONE'?'TREND NECLAR':
+          candle.trendDirection!==candle.dir?'CONTRA TREND':
+          !Number.isFinite(candle.trendStrengthPercent)||
+            candle.trendStrengthPercent<=minTrendStrengthPercent?'PANTĂ ≤50%':
+          'AȘTEAPTĂ RETRAGERE + REVENIRE';
         var quality=strategy!=='NONE'?75:0; // internal optical gate only
         report(frameId,tf,pair,epoch,
           confirmed?'ȘOC rapid și revenire în aceeași lumânare':
@@ -338,7 +348,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             observedBodyHeightPx:candle.bodyHeight,
             observedTopWickPx:candle.topWickPixels,
             observedBottomWickPx:candle.bottomWickPixels,
-            shockBlocker:shockBlocker,
+            shockBlocker:shockBlocker,scalpBlocker:scalpBlocker,
             shockWickPercent:candle.wickPercent,
             shockWickPixels:candle.wickPixels,
             shockMaxWindowMs:maxDropMs,
