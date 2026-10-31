@@ -142,7 +142,8 @@ jobs:
       - name: Verify Android overlay source
         run: |
           test -s .github/native-overlay/ScalpOverlayService.kt
-          grep -q 'dp(224)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'dp(176)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fun applyCompactMode()' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'Închide suprapunerea și oprește LIVE' .github/native-overlay/ScalpOverlayService.kt
           ! grep -q 'text = "Scalp Atlas 3.2.7"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'setOnClickListener { stopSelf() }' .github/native-overlay/ScalpOverlayService.kt
