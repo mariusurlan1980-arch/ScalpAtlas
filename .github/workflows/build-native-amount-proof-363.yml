@@ -237,7 +237,7 @@ jobs:
           grep -Fq 'DIAG SUMĂ 1 USD' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'QT DEMO NECONFIRMAT' .github/native-overlay/TouchTestService.kt
           grep -Fq 'QT REAL PE ECRAN' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'SETEAZĂ SUMA LA 1 USD' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'SUMA NU ESTE CONFIRMATĂ CA 1 USD' .github/native-overlay/TouchTestService.kt
           grep -Fq 'demoBrokerOrderRow' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'CONFIRMĂ ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'pressOneDollarDemoOrderOnce(side)' .github/native-overlay/ScalpOverlayService.kt
