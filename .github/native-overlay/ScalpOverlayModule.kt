@@ -154,9 +154,13 @@ class ScalpOverlayModule(
   @ReactMethod
   fun getTouchTestStatus(promise: Promise) {
     // Read-only diagnostic. This does not request or change Android permissions.
-    promise.resolve(if (TouchTestService.ready()) "CONECTAT • " +
-      TouchTestService.accessDiagnostic(reactContext)
-      else "NECONECTAT • " + TouchTestService.accessDiagnostic(reactContext))
+    val diagnostic = TouchTestService.accessDiagnostic(reactContext)
+    promise.resolve(when {
+      TouchTestService.ready() -> "CONECTAT • ACCESIBILITATE ACTIVĂ"
+      diagnostic.startsWith("ACCES DEJA PERMIS") ->
+        "PERMISIUNE ACORDATĂ • NECONECTAT TEMPORAR • NU REACTIVA ACCESIBILITATEA"
+      else -> "NECONECTAT • " + diagnostic
+    })
   }
 
   @ReactMethod
