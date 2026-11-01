@@ -175,7 +175,7 @@ class TouchTestService : AccessibilityService() {
     )
     private const val DEMO_TEST_LOCK_MS = 300_000L
 
-    private fun checkOneDollarDemoTarget(side: String): DemoOrderCheck {
+    private fun checkOneDollarDemoTarget(side: String, requirePayout92: Boolean = false): DemoOrderCheck {
       val svc = connected ?: return DemoOrderCheck(reason = "ROBOT NECONECTAT")
       if (side != "BUY" && side != "SELL") return DemoOrderCheck(reason = "DIRECȚIE INVALIDĂ")
       val root = svc.rootInActiveWindow ?: return DemoOrderCheck(reason = "BROKERUL NU ESTE ACTIV")
@@ -335,6 +335,26 @@ class TouchTestService : AccessibilityService() {
       }.distinctBy { it.second }
       if (candidates.size != 1)
         return DemoOrderCheck(reason = "BLOCAT: BUTONUL " + side + " NU ESTE UNIC ȘI APĂSABIL")
+      if (requirePayout92) {
+        // Payout must be visible INSIDE the intended button, not elsewhere
+        // on the chart. Never guess 92% from a different currency pair.
+        val buttonBounds = Rect()
+        candidates.single().first.getBoundsInScreen(buttonBounds)
+        val payoutPattern = Regex("""(?<![0-9])(\d{1,3})\s*%(?![0-9])""")
+        val payoutValues = labels.filter {
+          it.rect.centerX() in buttonBounds.left..buttonBounds.right &&
+          it.rect.centerY() in buttonBounds.top..buttonBounds.bottom &&
+          it.rect.width() <= buttonBounds.width()
+        }.flatMap { label ->
+          payoutPattern.findAll(label.value).mapNotNull { match ->
+            match.groupValues[1].toIntOrNull()
+          }.toList()
+        }.distinct()
+        if (payoutValues.size != 1 || payoutValues[0] !in 92..100)
+          return DemoOrderCheck(
+            reason = "BLOCAT: PAYOUT " + side + " NECONFIRMAT ≥92%"
+          )
+      }
       if (svc.rootInActiveWindow?.packageName?.toString() != pkg)
         return DemoOrderCheck(reason = "BLOCAT: APLICAȚIA ACTIVĂ S-A SCHIMBAT")
       return DemoOrderCheck(DemoOrderTarget(candidates[0].first, pkg),
@@ -356,6 +376,53 @@ class TouchTestService : AccessibilityService() {
       }
     }
 
+    /**
+     * Single explicitly armed AUTO DEMO pilot. Every call fails closed on
+     * QT Real, missing data, payout under 92%, stale/change of pair, or any
+     * competing DEMO order recorded within five minutes.
+     */
+    fun previewAutoOneDollarDemoOrder(side: String, expectedPair: String): String {
+      if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
+          readVisibleDemoPair() != expectedPair)
+        return "BLOCAT: PERECHEA QT DEMO NU ESTE CONFIRMATĂ"
+      val svc = connected ?: return "ROBOT NECONECTAT"
+      val now = android.os.SystemClock.elapsedRealtime()
+      val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+        .getLong("lastAcceptedAt", 0L)
+      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+        return "BLOCAT: TRADE DEMO RECENT • AȘTEAPTĂ 5 MINUTE"
+      val check = checkOneDollarDemoTarget(side, true)
+      return if (check.target == null) check.reason
+        else "GATA AUTO DEMO " + side + " • 1 USD • PAYOUT ≥92%"
+    }
+
+    @Synchronized
+    fun pressAutoOneDollarDemoOrderOnce(side: String, expectedPair: String): String {
+      // Fresh confirmation, not a cached screenshot or a demo flag from
+      // a previous screen. The broker may have switched to QT Real.
+      if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
+          readVisibleDemoPair() != expectedPair)
+        return "BLOCAT: PERECHEA QT DEMO S-A SCHIMBAT"
+      val svc = connected ?: return "ROBOT NECONECTAT"
+      val now = android.os.SystemClock.elapsedRealtime()
+      val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+      val last = store.getLong("lastAcceptedAt", 0L)
+      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+        return "BLOCAT: O SINGURĂ TRANZACȚIE DEMO LA 5 MINUTE"
+      val check = checkOneDollarDemoTarget(side, true)
+      val target = check.target ?: return check.reason
+      // Consume the one-shot allowance BEFORE sending a screen click.
+      if (!store.edit().putLong("lastAcceptedAt", now).commit())
+        return "BLOCAT: BLOCAREA ORDINULUI NU A FOST SALVATĂ"
+      if (readVisibleDemoPair() != expectedPair ||
+          svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
+        return "BLOCAT: ECRANUL SAU PERECHEA S-A SCHIMBAT"
+      val accepted = target.node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+      return if (accepted)
+        "AUTO DEMO " + side + ": CLIC ACCEPTAT • VERIFICĂ ISTORICUL"
+      else "AUTO DEMO " + side + ": CLIC REFUZAT DE ANDROID"
+    }
+
     fun previewOneDollarDemoOrder(side: String): String {
       val svc = connected ?: return "ROBOT NECONECTAT"
       val at = android.os.SystemClock.elapsedRealtime()
@@ -366,6 +433,7 @@ class TouchTestService : AccessibilityService() {
       return checkOneDollarDemoTarget(side).reason
     }
 
+    @Synchronized
     fun pressOneDollarDemoOrderOnce(side: String): String {
       val svc = connected ?: return "ROBOT NECONECTAT"
       val at = android.os.SystemClock.elapsedRealtime()
