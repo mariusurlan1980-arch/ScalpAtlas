@@ -240,6 +240,22 @@ class TouchTestService : AccessibilityService() {
       if (amountCaptions.size != 1)
         return DemoOrderCheck(reason = "BLOCAT: ETICHETA SUMĂ NU ESTE IDENTIFICATĂ UNIC")
       val caption = amountCaptions.single()
+      // The 92% payout labels sit directly underneath the amount input on
+      // Motorola G24, and were incorrectly collected as a second "amount".
+      // Find the first actual broker BUY/SELL action text and NEVER inspect
+      // numeric nodes at or underneath that action region as amount values.
+      val brokerActionLabels = labels.filter {
+        it.rect.centerY() >= h * 0.77 &&
+        it.rect.centerY() <= h * 0.96 &&
+        Regex("""(?i)^\\s*(?:CUMPĂRAȚI|CUMPARATI|VINDEȚI|VINDETI)(?:\\s+\\d{1,3}\\s*%)?\\s*$""")
+          .matches(it.value.replace('\\n', ' ').replace(Regex("""\\s+"""), " ").trim())
+      }
+      val actionTop = brokerActionLabels.map { it.rect.top }
+        .filter { it > caption.rect.bottom + (h * 0.015f).toInt() }
+        .minOrNull()
+        ?: return DemoOrderCheck(
+          reason = "BLOCAT: LIMITA CÂMPULUI SUMĂ NU ESTE CONFIRMATĂ"
+        )
       // The amount field is DIRECTLY BELOW the "Suma" caption on Moto G24.
       // The previous ±10%-of-screen vertical band could include text from
       // unrelated controls (payout/time/price) as if it were the amount.
@@ -254,7 +270,12 @@ class TouchTestService : AccessibilityService() {
           (w * 0.83f).toInt(), caption.rect.right + (w * 0.18f).toInt()
         )
         val fieldTop = caption.rect.bottom - (h * 0.015f).toInt()
-        val fieldBottom = caption.rect.bottom + (h * 0.075f).toInt()
+        // Exclude both BUY/SELL payout values: they are not amount nodes.
+        // Margin leaves a gap above broker controls on different DP scales.
+        val fieldBottom = minOf(
+          caption.rect.bottom + (h * 0.060f).toInt(),
+          actionTop - (h * 0.012f).toInt()
+        )
         x >= narrowColumnLeft && x <= narrowColumnRight &&
           y in fieldTop..fieldBottom &&
           it.rect.width() <= (w * 0.55f).toInt() &&
@@ -288,7 +309,9 @@ class TouchTestService : AccessibilityService() {
         return DemoOrderCheck(reason = when {
           amountValues.size > 1 ->
             "BLOCAT: SUMĂ AMBIGUĂ • " + amountValues.size +
-              " NUMERE ÎN CÂMP • FĂRĂ ORDIN"
+              " VALORI ÎNAINTE DE BUTOANE: " +
+              amountValues.take(3).joinToString("/") { it.take(6) } +
+              " • FĂRĂ ORDIN"
           amountValues.isEmpty() ->
             "BLOCAT: SUMA NU E VIZIBILĂ ÎN ARBORELE ANDROID"
           else -> "BLOCAT: VALOAREA CITITĂ " + amountValues.single().take(7) +
