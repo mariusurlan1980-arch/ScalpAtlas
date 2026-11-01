@@ -454,7 +454,7 @@ jobs:
           cat > scalp-atlas-new/android/app/src/main/res/values/scalp_touch_test_strings.xml <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-            <string name="touch_test_accessibility_description">Testează atingerea virtuală pe două butoane exclusiv în aplicația Scalp Atlas. Nu controlează alte aplicații.</string>
+            <string name="touch_test_accessibility_description">Poate citi etichete din aplicația vizibilă, pentru verificarea QT Demo; apasă numai butoanele de test Scalp Atlas și cifra 1 în Calculator. Nu execută ordine în broker.</string>
           </resources>
           XML
           grep -Fq 'TouchTestService' scalp-atlas-new/android/app/src/main/AndroidManifest.xml
