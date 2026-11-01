@@ -1316,6 +1316,76 @@ class ScalpOverlayService : Service() {
     demoOrderRow.addView(demoSell, LinearLayout.LayoutParams(0, dp(31), 1f))
     root.addView(demoOrderRow)
     demoBrokerOrderRow = demoOrderRow
+
+    // AUTO DEMO is separate from AUTO SIM. Two explicit taps arm exactly
+    // ONE future, fresh SHOCK BIP trade; it never trades on installation.
+    var autoArmFirstAt = 0L
+    var autoArmFirstPair: String? = null
+    val brokerAutoRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(5), 0, 0)
+    }
+    val brokerAutoButton = localButton("AUTO DEMO OFF", Color.rgb(88, 62, 115)).apply {
+      textSize = 11f
+      contentDescription = "Activează un singur ordin automat în QT Demo după două confirmări"
+      setOnClickListener {
+        if (autoDemoArmed) {
+          autoDemoArmed = false
+          autoDemoMarket = null
+          autoDemoExpiry = 0L
+          autoArmFirstAt = 0L
+          autoArmFirstPair = null
+          text = "AUTO DEMO OFF"
+          probeStatus.text = "AUTO DEMO OPRIT • FĂRĂ ORDINE NOI"
+        } else {
+          val wallNow = System.currentTimeMillis()
+          val clockNow = android.os.SystemClock.elapsedRealtime()
+          val pair = currentPair(wallNow)
+          val condition = when {
+            onePairEvalEnabled -> "BLOCAT: OPREȘTE AUTO SIM"
+            !bellEnabled -> "BLOCAT: ACTIVEAZĂ BIPUL"
+            !TouchTestService.ready() ->
+              TouchTestService.accessDiagnostic(this@ScalpOverlayService)
+            !pairReady(wallNow) || pair == "NEIDENTIFICAT" ->
+              "BLOCAT: PERECHEA NU ESTE STABILĂ"
+            else -> {
+              val buy = TouchTestService.previewAutoOneDollarDemoOrder("BUY", pair)
+              if (!buy.startsWith("GATA AUTO DEMO")) buy
+              else {
+                val sell = TouchTestService.previewAutoOneDollarDemoOrder("SELL", pair)
+                if (!sell.startsWith("GATA AUTO DEMO")) sell else ""
+              }
+            }
+          }
+          if (condition.isNotEmpty()) {
+            autoArmFirstAt = 0L
+            autoArmFirstPair = null
+            probeStatus.text = condition
+          } else if (autoArmFirstPair == pair &&
+              clockNow - autoArmFirstAt in 0L..8000L) {
+            autoDemoArmed = true
+            autoDemoMarket = pair
+            autoDemoLockedAt = lockedAt // don't replay prior BIP
+            autoDemoExpiry = clockNow + 10 * 60_000L
+            autoArmFirstAt = 0L
+            autoArmFirstPair = null
+            text = "AUTO DEMO ON · 1$"
+            probeStatus.text = "ARMAT: " + pair +
+              " • 1 ȘOC CONFIRMAT • 1 USD • PAYOUT MINIM 92%"
+          } else {
+            autoArmFirstPair = pair
+            autoArmFirstAt = clockNow
+            probeStatus.text = "CONFIRMĂ AUTO DEMO DIN NOU ÎN 8 SECUNDE"
+          }
+        }
+      }
+    }
+    brokerAutoRow.addView(brokerAutoButton, LinearLayout.LayoutParams(-1, dp(31)))
+    root.addView(brokerAutoRow)
+    autoDemoRow = brokerAutoRow
+    autoDemoButton = brokerAutoButton
     // One explicit, broker-independent cross-app test. Never triggered by
     // SHOCK/SCALP signals and never uses underlying Pocket Option coordinates.
     val calcRow = LinearLayout(this).apply {
