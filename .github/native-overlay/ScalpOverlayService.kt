@@ -109,6 +109,13 @@ class ScalpOverlayService : Service() {
   private var demoBrokerInspectionRow: LinearLayout? = null
   private var demoBrokerOrderRow: LinearLayout? = null
   private var demoAmountCheckRow: LinearLayout? = null
+  // Explicit one-shot DEMO trade mode; always OFF on app launch.
+  private var autoDemoArmed = false
+  private var autoDemoMarket: String? = null
+  private var autoDemoLockedAt = 0L
+  private var autoDemoExpiry = 0L
+  private var autoDemoRow: LinearLayout? = null
+  private var autoDemoButton: TextView? = null
   private var onePairEvalAutoPending = false
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
@@ -766,6 +773,8 @@ class ScalpOverlayService : Service() {
         touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
         onePairEvalRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        // AUTO DEMO is an advanced action and never opens by default.
+        autoDemoRow?.visibility = View.GONE
         demoBrokerInspectionRow?.visibility = if (visible) View.VISIBLE else View.GONE
         moreTestsRow?.visibility = if (visible) View.VISIBLE else View.GONE
         calculatorTestRow?.visibility = View.GONE
@@ -780,6 +789,10 @@ class ScalpOverlayService : Service() {
           onePairEvalEnabled = false
           onePairEvalPair = null
           onePairEvalButton?.text = "AUTO SIM OFF"
+          autoDemoArmed = false
+          autoDemoMarket = null
+          autoDemoExpiry = 0L
+          autoDemoButton?.text = "AUTO DEMO OFF"
         }
         lastRobotConnectionDiagnostic = if (visible)
           TouchTestService.accessDiagnostic(this@ScalpOverlayService) else null
@@ -1135,6 +1148,8 @@ class ScalpOverlayService : Service() {
           val now = System.currentTimeMillis()
           val market = currentPair(now)
           when {
+            autoDemoArmed ->
+              probeStatus.text = "OPREȘTE AUTO DEMO ÎNAINTE DE AUTO SIM"
             !TouchTestService.ready() ->
               probeStatus.text = TouchTestService.accessDiagnostic(this@ScalpOverlayService)
             !pairReady(now) || market == "NEIDENTIFICAT" ->
@@ -1195,6 +1210,8 @@ class ScalpOverlayService : Service() {
           if (extraTestControlsVisible) View.VISIBLE else View.GONE
         demoBrokerOrderRow?.visibility =
           if (extraTestControlsVisible) View.VISIBLE else View.GONE
+        autoDemoRow?.visibility =
+          if (extraTestControlsVisible) View.VISIBLE else View.GONE
         calculatorTestRow?.visibility =
           if (extraTestControlsVisible) View.VISIBLE else View.GONE
         // Any pending order confirmation times out after 8 seconds.
@@ -1252,8 +1269,8 @@ class ScalpOverlayService : Service() {
     var armedDemoMarket: String? = null
     var armedDemoAt = 0L
     fun confirmDemoOrder(side: String) {
-      if (onePairEvalEnabled) {
-        probeStatus.text = "OPREȘTE AUTO SIM ÎNAINTE DE PROBA DEMO"
+      if (onePairEvalEnabled || autoDemoArmed) {
+        probeStatus.text = "OPREȘTE AUTO SIM/AUTO DEMO ÎNAINTE DE PROBA MANUALĂ"
         return
       }
       val now = android.os.SystemClock.elapsedRealtime()
@@ -1344,6 +1361,7 @@ class ScalpOverlayService : Service() {
         brokerInspectionRow.visibility = View.GONE
         demoOrderRow.visibility = View.GONE
         amountCheckRow.visibility = View.GONE
+        autoDemoRow?.visibility = View.GONE
         moreRow.visibility = View.GONE
         probeModeActive = false
         extraTestControlsVisible = false
@@ -1356,6 +1374,10 @@ class ScalpOverlayService : Service() {
         onePairEvalEnabled = false
         onePairEvalPair = null
         evaluationButton.text = "AUTO SIM OFF"
+        autoDemoArmed = false
+        autoDemoMarket = null
+        autoDemoExpiry = 0L
+        autoDemoButton?.text = "AUTO DEMO OFF"
       }
       minimizeToggle.text = if (minimized) "+" else "−"
       minimizeToggle.contentDescription = if (minimized)
@@ -2779,6 +2801,11 @@ class ScalpOverlayService : Service() {
     demoBrokerInspectionRow = null
     demoBrokerOrderRow = null
     demoAmountCheckRow = null
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoExpiry = 0L
+    autoDemoButton = null
+    autoDemoRow = null
     onePairEvalAutoPending = false
     overlayWindowParams = null
     virtualDisplay = null
