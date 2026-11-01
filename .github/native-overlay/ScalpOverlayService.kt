@@ -98,6 +98,15 @@ class ScalpOverlayService : Service() {
   private var touchProbeCommandRow: LinearLayout? = null
   private var calculatorTestRow: LinearLayout? = null
   private var touchProbeStatus: TextView? = null
+  // Opt-in single-pair evaluation: touches ONLY our own visible test buttons.
+  // Never route gestures to Pocket Option or any financial order UI.
+  private var onePairEvalEnabled = false
+  private var onePairEvalPair: String? = null
+  private var onePairEvalLastLockAt = 0L
+  private var onePairEvalTouch: ((String) -> Unit)? = null
+  private var onePairEvalButton: TextView? = null
+  private var onePairEvalRow: LinearLayout? = null
+  private var onePairEvalAutoPending = false
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
   private var lastTestStatusAt = 0L
@@ -741,6 +750,12 @@ class ScalpOverlayService : Service() {
         touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
         calculatorTestRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
+        onePairEvalRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        if (!visible) {
+          onePairEvalEnabled = false
+          onePairEvalPair = null
+          onePairEvalButton?.text = "AUTO SIM OFF"
+        }
         lastRobotConnectionDiagnostic = if (visible)
           TouchTestService.accessDiagnostic(this@ScalpOverlayService) else null
         touchProbeStatus?.text = lastRobotConnectionDiagnostic ?: ""
@@ -973,9 +988,12 @@ class ScalpOverlayService : Service() {
     val targetSell = localButton("ZONĂ SELL", Color.rgb(182, 48, 66))
     fun receivedProbeClick(side: String) {
       val virtual = pendingVirtualSide == side
+      val automatic = onePairEvalAutoPending
       pendingVirtualSide = null
+      onePairEvalAutoPending = false
       probeStatus.text = if (virtual)
-        "SUCCES: ATINGERE VIRTUALĂ " + side + " • FĂRĂ ORDIN"
+        (if (automatic) "AUTO SIM " + side + " CONFIRMAT • FĂRĂ ORDIN"
+        else "SUCCES: ATINGERE VIRTUALĂ " + side + " • FĂRĂ ORDIN")
       else "TEST MANUAL " + side + " • FĂRĂ ORDIN"
     }
     targetBuy.setOnTouchListener { _, event ->
@@ -998,7 +1016,7 @@ class ScalpOverlayService : Service() {
       LinearLayout.LayoutParams(0, dp(31), 1f).apply { marginEnd = dp(5) })
     probeRow.addView(targetSell, LinearLayout.LayoutParams(0, dp(31), 1f))
 
-    fun testVirtualTouch(side: String, target: TextView) {
+    fun testVirtualTouch(side: String, target: TextView, automatic: Boolean = false) {
       val rootWindow = overlayView
       if (pendingVirtualSide != null) {
         probeStatus.text = "TEST ÎN CURS • NU DUBLA COMANDA"
@@ -1019,8 +1037,10 @@ class ScalpOverlayService : Service() {
         return
       }
       pendingVirtualSide = side
+      onePairEvalAutoPending = automatic
       touchDownObserved = false
-      probeStatus.text = "SIM " + side + ": COMANDĂ PRIMITĂ"
+      probeStatus.text = (if (automatic) "AUTO SIM " else "SIM ") +
+        side + ": COMANDĂ PRIMITĂ"
       val accepted = TouchTestService.tapVisibleOwnOverlayTarget(rootWindow, target) { completed ->
         // dispatchGesture.onCompleted proves delivery to the touch layer,
         // NOT that the intended View received an onClick event. Allow
@@ -1028,12 +1048,14 @@ class ScalpOverlayService : Service() {
         if (!completed) {
           if (pendingVirtualSide == side) {
             pendingVirtualSide = null
+            onePairEvalAutoPending = false
             probeStatus.text = "GEST ANULAT • REPETĂ TESTUL"
           }
         } else {
           mainHandler.postDelayed({
             if (pendingVirtualSide == side) {
               pendingVirtualSide = null
+              onePairEvalAutoPending = false
               probeStatus.text = if (touchDownObserved)
                 "GEST AJUNS LA " + side + ", DAR FĂRĂ CLICK"
               else "GEST TRIMIS, DAR FĂRĂ ATINGERE " + side
@@ -1043,6 +1065,7 @@ class ScalpOverlayService : Service() {
       }
       if (!accepted) {
         pendingVirtualSide = null
+        onePairEvalAutoPending = false
         probeStatus.text = "GEST REFUZAT DE ANDROID • FĂRĂ ORDIN"
       }
     }
@@ -1057,6 +1080,50 @@ class ScalpOverlayService : Service() {
       LinearLayout.LayoutParams(0, dp(31), 1f))
     root.addView(commandRow)
     root.addView(probeRow)
+    // Explicit opt-in. Lock exactly one verified pair for automated SELF test.
+    // Every confirmed new BIP is translated to one gesture on ZONĂ BUY/SELL.
+    // No screen coordinates, broker buttons, or transaction APIs are used.
+    val evaluationRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(5), 0, 0)
+    }
+    val evaluationButton = localButton("AUTO SIM OFF", Color.rgb(63, 88, 109)).apply {
+      textSize = 10f
+      contentDescription = "Activează sau dezactivează testul automat pe o singură pereche fără ordine"
+      setOnClickListener {
+        if (onePairEvalEnabled) {
+          onePairEvalEnabled = false
+          onePairEvalPair = null
+          text = "AUTO SIM OFF"
+          probeStatus.text = "AUTO SIM OPRIT • FĂRĂ ORDINE"
+        } else {
+          val now = System.currentTimeMillis()
+          val market = currentPair(now)
+          when {
+            !TouchTestService.ready() ->
+              probeStatus.text = TouchTestService.accessDiagnostic(this@ScalpOverlayService)
+            !pairReady(now) || market == "NEIDENTIFICAT" ->
+              probeStatus.text = "AȘTEAPTĂ IDENTIFICAREA UNEI PERECHI STABILE"
+            else -> {
+              onePairEvalPair = market
+              onePairEvalLastLockAt = lockedAt // do not replay earlier alerts
+              onePairEvalEnabled = true
+              text = "AUTO SIM ON"
+              probeStatus.text = "TEST 1 PERECHE: " + market + " • FĂRĂ ORDINE"
+            }
+          }
+        }
+      }
+    }
+    evaluationRow.addView(evaluationButton, LinearLayout.LayoutParams(-1, dp(31)))
+    root.addView(evaluationRow)
+    onePairEvalButton = evaluationButton
+    onePairEvalRow = evaluationRow
+    onePairEvalTouch = { side ->
+      testVirtualTouch(side, if (side == "BUY") targetBuy else targetSell, true)
+    }
     // One explicit, broker-independent cross-app test. Never triggered by
     // SHOCK/SCALP signals and never uses underlying Pocket Option coordinates.
     val calcRow = LinearLayout(this).apply {
@@ -1098,8 +1165,12 @@ class ScalpOverlayService : Service() {
         // Never leave Android gesture-test buttons exposed when compact.
         probeRow.visibility = View.GONE
         commandRow.visibility = View.GONE
+        evaluationRow.visibility = View.GONE
         calcRow.visibility = View.GONE
         probeStatus.visibility = View.GONE
+        onePairEvalEnabled = false
+        onePairEvalPair = null
+        evaluationButton.text = "AUTO SIM OFF"
       }
       minimizeToggle.text = if (minimized) "+" else "−"
       minimizeToggle.contentDescription = if (minimized)
@@ -2334,6 +2405,27 @@ class ScalpOverlayService : Service() {
       // Animation is gated by a real, unexpired signal lock, never OCR colors.
       val activeSignal = if (brokerConnected && (green || red) &&
           lockedDir == signal && now < lockedUntil) signal else "NONE"
+      // Single-pair pilot. Auto SIM runs only on a NEW confirmed BIP lock.
+      // This is an own-app gesture test, NEVER an order in the broker.
+      if (onePairEvalEnabled) {
+        val trackedPair = onePairEvalPair
+        val observedPair = currentPair(now)
+        if (observedPair != "NEIDENTIFICAT" &&
+            pairReady(now) && observedPair != trackedPair) {
+          onePairEvalEnabled = false
+          onePairEvalPair = null
+          onePairEvalButton?.text = "AUTO SIM OFF"
+          touchProbeStatus?.text = "ALTĂ PERECHE • AUTO SIM OPRIT"
+        } else if (activeSignal != "NONE" && lockedAt > 0L &&
+            lockedAt != onePairEvalLastLockAt &&
+            trackedPair != null && observedPair == trackedPair &&
+            onePairEvalRow?.visibility == View.VISIBLE &&
+            touchProbeRow?.visibility == View.VISIBLE &&
+            TouchTestService.ready()) {
+          onePairEvalLastLockAt = lockedAt
+          onePairEvalTouch?.invoke(activeSignal)
+        }
+      }
       setPulseRing(activeSignal)
       setSignalBlink(activeSignal)
       val percentFromCandle = when {
@@ -2473,6 +2565,12 @@ class ScalpOverlayService : Service() {
     try { mediaProjection?.stop() } catch (_: Throwable) {}
     try { ocrRecognizer.close() } catch (_: Throwable) {}
     try { tfCropOcrRecognizer.close() } catch (_: Throwable) {}
+    onePairEvalEnabled = false
+    onePairEvalPair = null
+    onePairEvalTouch = null
+    onePairEvalButton = null
+    onePairEvalRow = null
+    onePairEvalAutoPending = false
     overlayWindowParams = null
     virtualDisplay = null
     imageReader = null
