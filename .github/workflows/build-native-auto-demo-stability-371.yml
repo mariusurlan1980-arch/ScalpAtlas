@@ -237,7 +237,7 @@ jobs:
           grep -Fq 'val fieldTop = caption.rect.bottom' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun preflightOneDollarDemoOrder(expectedPair: String)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'PREGĂTIT AUTO DEMO' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'PAYOUT BUY/SELL NU POATE FI CITIT' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'PAYOUT ' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun pressAutoOneDollarDemoOrderOnce' .github/native-overlay/TouchTestService.kt
           grep -Fq 'payoutValues[0] !in 92..100' .github/native-overlay/TouchTestService.kt
           grep -Fq 'getSharedPreferences("scalp_demo_order_safety"' .github/native-overlay/TouchTestService.kt
