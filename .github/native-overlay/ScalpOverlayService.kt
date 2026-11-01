@@ -2760,7 +2760,7 @@ class ScalpOverlayService : Service() {
           // The accessibility service checks QT Demo, same instrument,
           // exact 1 USD, sufficient balance and payout >= 92% AGAIN.
           touchProbeStatus?.text =
-            TouchTestService.pressAutoOneDollarDemoOrderOnce(activeSignal, expectedPair)
+            TouchTestService.pressAutoOneDollarDemoOrderOnce(activeSignal, expectedPair ?: "NEIDENTIFICAT")
         }
       }
       setPulseRing(activeSignal)
