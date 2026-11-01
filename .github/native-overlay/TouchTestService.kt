@@ -44,6 +44,57 @@ class TouchTestService : AccessibilityService() {
         "NU POT CITI STAREA SERVICIULUI ANDROID"
       }
     }
+    /**
+     * READ-ONLY validation of the visible broker interface for a future
+     * explicit DEMO-only test. The service never clicks, dispatches gestures,
+     * or captures text/screenshot in this method.
+     *
+     * In particular, DEMO cannot be inferred from a balance or a screenshot
+     * pattern; the Accessibility tree must explicitly expose "QT Demo".
+     */
+    fun inspectDemoBrokerReadOnly(): String {
+      val svc = connected ?: return "ROBOT NECONECTAT • FĂRĂ ACCES LA BROKER"
+      val root = svc.rootInActiveWindow
+        ?: return "FEREASTRA BROKERULUI NU ESTE DISPONIBILĂ"
+      val packageName = root.packageName?.toString() ?: ""
+      if (packageName == svc.packageName ||
+          packageName.startsWith("com.android.settings") ||
+          packageName.contains("calculator", ignoreCase = true))
+        return "DESCHIDE POCKET OPTION • VERIFICARE FĂRĂ CLIC"
+
+      // Explicit bounded, ephemeral read; do not store accessibility contents.
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      val labels = ArrayList<String>()
+      queue.add(root)
+      var visited = 0
+      while (queue.isNotEmpty() && visited < 240) {
+        val node = queue.removeFirst()
+        visited += 1
+        val text = node.text?.toString()?.trim().orEmpty()
+        val description = node.contentDescription?.toString()?.trim().orEmpty()
+        if (text.isNotEmpty()) labels.add(text.take(100))
+        if (description.isNotEmpty() && description != text)
+          labels.add(description.take(100))
+        for (i in 0 until node.childCount.coerceAtMost(30)) {
+          node.getChild(i)?.let { queue.addLast(it) }
+        }
+      }
+
+      val visible = labels.joinToString(" ").replace(Regex("""\\s+"""), " ")
+      val real = Regex("""(?i)\\bQT\\s*Real\\b""").containsMatchIn(visible)
+      val demo = Regex("""(?i)\\bQT\\s*Demo\\b""").containsMatchIn(visible)
+      val buy = Regex("""(?i)(CUMPĂRAȚI|CUMPARATI|BUY)""").containsMatchIn(visible)
+      val sell = Regex("""(?i)(VINDEȚI|VINDETI|SELL)""").containsMatchIn(visible)
+
+      // Conservative: false-negative means diagnostics only, never a tap.
+      return when {
+        real -> "BLOCAT: QT REAL DETECTAT • FĂRĂ ATINGERI"
+        !demo -> "QT DEMO NECONFIRMAT ÎN ACCESIBILITATE"
+        !buy || !sell -> "QT DEMO VIZIBIL • BUTOANE BUY/SELL NECONFIRMATE"
+        else -> "QT DEMO + BUY/SELL IDENTIFICATE • NUMAI CITIRE"
+      }
+    }
+
     @Volatile private var lastCalculatorTestAt = 0L
 
     /**
