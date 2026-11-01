@@ -241,7 +241,9 @@ jobs:
           grep -Fq 'QT DEMO NECONFIRMAT' .github/native-overlay/TouchTestService.kt
           grep -Fq 'demoBrokerInspectionRow' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.inspectDemoBrokerReadOnly()' .github/native-overlay/ScalpOverlayService.kt
-          ! grep -Fq 'node.performAction' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'target.node.performAction(AccessibilityNodeInfo.ACTION_CLICK)' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'getSharedPreferences("scalp_demo_order_safety"' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'marketNow != expectedMarket' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'onePairEvalEnabled = false' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (side == "BUY") targetBuy else targetSell' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'getEnabledAccessibilityServiceList' .github/native-overlay/TouchTestService.kt
@@ -642,6 +644,6 @@ jobs:
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 362 TEST ORDIN DEMO MANUAL CONFIRMAT · FARA ORDINE • ${GITHUB_SHA:0:12}" \
+            --title "SCALP ATLAS 362 TEST ORDIN DEMO MANUAL CONFIRMAT · FARA REAL • ${GITHUB_SHA:0:12}" \
             --notes "DEMO Android Motorola G24: test inter-aplicatie numai in Calculator Google/AOSP: cifra 1 prin ACTION_CLICK al nodului de accesibilitate dupa atingere explicita. Test explicit cu dubla confirmare manuala: 1 USD BUY/SELL numai pe QT Demo, cont validat, sold suficient, buton unic, blocare 5 minute. AUTO SIM ramane strict pe butoane proprii; semnalele nu executa ordine. Orice ecran incert este blocat. Cele doua strategii existente raman pentru semnale manuale. SOC >50% si trend >50% cu revenire >=40%; SCALP TREND numai M5: trend din 3 lumanari inchise >50%, retragere intre 21% si 50%, revenire >=35% in aceeasi lumanare. Un singur BIP, intrare manuala, blocare 5 minute intre alerte inclusiv schimbare pereche; buton TEST BIP. Nu transmite ordine catre broker si nu controleaza mini robotul. Test exclusiv DEMO, fara garantie de castig. Build din $GITHUB_SHA." \
             --prerelease
