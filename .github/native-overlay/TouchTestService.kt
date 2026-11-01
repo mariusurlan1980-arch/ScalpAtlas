@@ -240,15 +240,25 @@ class TouchTestService : AccessibilityService() {
       if (amountCaptions.size != 1)
         return DemoOrderCheck(reason = "BLOCAT: ETICHETA SUMĂ NU ESTE IDENTIFICATĂ UNIC")
       val caption = amountCaptions.single()
+      // The amount field is DIRECTLY BELOW the "Suma" caption on Moto G24.
+      // The previous ±10%-of-screen vertical band could include text from
+      // unrelated controls (payout/time/price) as if it were the amount.
+      // Only examine compact accessibility nodes in the same input column,
+      // beneath that caption. Never read a full-screen WebView parent as a
+      // monetary value, and NEVER infer "1" from the chart or a screenshot.
       val nearby = labels.filter {
         val x = it.rect.centerX()
         val y = it.rect.centerY()
-        // Only the amount input column. The old 95%-of-screen bound also
-        // included payout labels and other broker values to its right.
-        x >= caption.rect.left - (w * 0.035f).toInt() &&
-          x <= caption.rect.right + (w * 0.14f).toInt() &&
-          y >= caption.rect.top - (h * 0.015f).toInt() &&
-          y <= caption.rect.bottom + (h * 0.10f).toInt()
+        val narrowColumnLeft = caption.rect.left - (w * 0.04f).toInt()
+        val narrowColumnRight = minOf(
+          (w * 0.83f).toInt(), caption.rect.right + (w * 0.18f).toInt()
+        )
+        val fieldTop = caption.rect.bottom - (h * 0.015f).toInt()
+        val fieldBottom = caption.rect.bottom + (h * 0.075f).toInt()
+        x >= narrowColumnLeft && x <= narrowColumnRight &&
+          y in fieldTop..fieldBottom &&
+          it.rect.width() <= (w * 0.55f).toInt() &&
+          it.rect.height() <= (h * 0.105f).toInt()
       }.distinctBy { it.rect.toShortString() + ":" + it.value.trim() }
       // Keep only an unambiguous value. Android WebViews may duplicate
       // the exact same visible amount as parent and child accessibility
@@ -277,10 +287,12 @@ class TouchTestService : AccessibilityService() {
       if (!hasOneDollar)
         return DemoOrderCheck(reason = when {
           amountValues.size > 1 ->
-            "BLOCAT: SUMĂ AMBIGUĂ (" + amountValues.size + " VALORI DIFERITE)"
+            "BLOCAT: SUMĂ AMBIGUĂ • " + amountValues.size +
+              " NUMERE ÎN CÂMP • FĂRĂ ORDIN"
           amountValues.isEmpty() ->
-            "BLOCAT: ANDROID NU POATE CITI VALOAREA SUMEI"
-          else -> "BLOCAT: SUMA NU ESTE CONFIRMATĂ CA 1 USD"
+            "BLOCAT: SUMA NU E VIZIBILĂ ÎN ARBORELE ANDROID"
+          else -> "BLOCAT: VALOAREA CITITĂ " + amountValues.single().take(7) +
+            " NU ESTE 1 USD"
         })
 
       // Validate that demo balance is visible in the narrow account region;
