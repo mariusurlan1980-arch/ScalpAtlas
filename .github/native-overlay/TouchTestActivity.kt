@@ -53,14 +53,26 @@ class TouchTestActivity : Activity() {
     }
 
     add(textView("TEST ATINGERE VIRTUALĂ · SCALP ATLAS"), 80)
-    add(textView("NUMAI ECRANUL DE PROBĂ. Fără ordine și fără acces la broker."), 85)
-    val settings = button("DESCHIDE ACCESIBILITATE (FĂRĂ SUPRAPUNERE)", Color.rgb(43, 76, 104))
+    add(textView("Accesibilitatea se acordă O SINGURĂ DATĂ. Nu o dezactiva după test. Android poate cere din nou permisiunea după actualizări."), 95)
+    val settings = button("VERIFICĂ / DESCHIDE ACCESIBILITATE", Color.rgb(43, 76, 104))
     add(settings, 66)
     settings.setOnClickListener {
-      // Android's security screen must not be obscured by our own floating card.
-      stopService(Intent(this, ScalpOverlayService::class.java))
-      status.text = "LIVE oprit. Android controlează activarea serviciului."
-      startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+      // Do not push the user into Android settings or stop LIVE when the
+      // original one-time grant is still present. Only Android can toggle
+      // accessibility; this app never grants it or silently changes it.
+      val diagnostic = TouchTestService.accessDiagnostic(this)
+      when {
+        TouchTestService.ready() ->
+          status.text = "ROBOT CONECTAT • ACCESIBILITATE ACTIVĂ • NU O REACTIVA"
+        diagnostic.startsWith("ACCES DEJA PERMIS") ->
+          status.text = "PERMISIUNE DEJA ACORDATĂ • SERVICIUL ANDROID NU ESTE CONECTAT. VERIFICĂ BATERIA / REPORNEȘTE APLICAȚIA, NU DEZACTIVA PERMISIUNEA."
+        else -> {
+          // Android's security settings must not be covered by the overlay.
+          stopService(Intent(this, ScalpOverlayService::class.java))
+          status.text = diagnostic + " • ACTIVAREA SE FACE O SINGURĂ DATĂ"
+          startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+      }
     }
     val appInfo = button("INFORMAȚII APLICAȚIE (SETĂRI ANDROID)", Color.rgb(54, 76, 95))
     add(appInfo, 55)
@@ -87,14 +99,20 @@ class TouchTestActivity : Activity() {
     sell.setOnClickListener { received("SELL") }
     requestBuy.setOnClickListener { simulate("BUY", buy) }
     requestSell.setOnClickListener { simulate("SELL", sell) }
-    add(textView("Dezactivează serviciul din Setări după probă."), 70)
+    add(textView("PĂSTREAZĂ ACCESIBILITATEA ACTIVĂ. Dacă sistemul o oprește după actualizare, doar Android poate cere reactivarea."), 95)
   }
 
   override fun onResume() {
     super.onResume()
     status.postDelayed({
       if (!isFinishing) {
-        status.text = TouchTestService.accessDiagnostic(this)
+        val diagnostic = TouchTestService.accessDiagnostic(this)
+        status.text = when {
+          TouchTestService.ready() -> "ROBOT CONECTAT • ACCESIBILITATE ACTIVĂ"
+          diagnostic.startsWith("ACCES DEJA PERMIS") ->
+            "ACCESIBILITATE ACORDATĂ • SERVICIU NECONECTAT TEMPORAR"
+          else -> diagnostic
+        }
       }
     }, 350L)
   }
