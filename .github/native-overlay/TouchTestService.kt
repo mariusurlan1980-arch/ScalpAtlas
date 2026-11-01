@@ -95,6 +95,157 @@ class TouchTestService : AccessibilityService() {
       }
     }
 
+
+    /**
+     * An explicitly confirmed, single BUY/SELL *DEMO* order pilot.
+     * Fails closed on unknown apps, mixed Demo/Real markers, stale controls,
+     * ambiguous targets, insufficient balance, or unverified 1 USD amount.
+     *
+     * No signal callback ever calls this; only a deliberate double press in
+     * Scalp Atlas can call it. ACTION_CLICK only reports Android acceptance,
+     * NOT broker execution: the human verifies the DEMO transaction log.
+     */
+    private data class DemoOrderTarget(
+      val node: AccessibilityNodeInfo,
+      val activePackage: String
+    )
+    private data class DemoOrderCheck(
+      val target: DemoOrderTarget? = null,
+      val reason: String
+    )
+    private const val DEMO_TEST_LOCK_MS = 300_000L
+
+    private fun checkOneDollarDemoTarget(side: String): DemoOrderCheck {
+      val svc = connected ?: return DemoOrderCheck(reason = "ROBOT NECONECTAT")
+      if (side != "BUY" && side != "SELL") return DemoOrderCheck(reason = "DIRECȚIE INVALIDĂ")
+      val root = svc.rootInActiveWindow ?: return DemoOrderCheck(reason = "BROKERUL NU ESTE ACTIV")
+      val pkg = root.packageName?.toString().orEmpty()
+      // Known official Android app identifiers; never click a browser, unknown
+      // app, copycat or Scalp Atlas's own overlay.
+      if (pkg != "com.pocketoption.broker" && pkg != "com.potradeweb")
+        return DemoOrderCheck(reason = "APLICAȚIE NECONFIRMATĂ: " + pkg.take(36))
+      val w = svc.resources.displayMetrics.widthPixels
+      val h = svc.resources.displayMetrics.heightPixels
+      if (w < 300 || h < 650) return DemoOrderCheck(reason = "ECRAN NEIDENTIFICAT")
+      data class VisibleLabel(val node: AccessibilityNodeInfo, val value: String, val rect: Rect)
+      val labels = ArrayList<VisibleLabel>()
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      var visited = 0
+      while (queue.isNotEmpty() && visited < 350) {
+        val node = queue.removeFirst()
+        visited++
+        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
+          val bounds = Rect()
+          node.getBoundsInScreen(bounds)
+          if (bounds.width() > 0 && bounds.height() > 0 &&
+              bounds.left >= 0 && bounds.right <= w &&
+              bounds.top >= 0 && bounds.bottom <= h) {
+            val content = node.text?.toString()?.trim().orEmpty()
+            val description = node.contentDescription?.toString()?.trim().orEmpty()
+            if (content.isNotEmpty()) labels.add(VisibleLabel(node, content.take(120), Rect(bounds)))
+            if (description.isNotEmpty() && description != content)
+              labels.add(VisibleLabel(node, description.take(120), Rect(bounds)))
+          }
+        }
+        for (i in 0 until node.childCount.coerceAtMost(35))
+          node.getChild(i)?.let(queue::addLast)
+      }
+      val demo = labels.any { it.rect.centerY() < h * 0.28 &&
+        Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it.value) }
+      val real = labels.any { Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.value) }
+      if (real) return DemoOrderCheck(reason = "BLOCAT: QT REAL PE ECRAN")
+      if (!demo) return DemoOrderCheck(reason = "BLOCAT: QT DEMO NECONFIRMAT")
+
+      // The user screenshot shows "Suma" above the order amount in the
+      // lower-right controls. Require a unique, visible 1 USD value there.
+      val amountArea = labels.filter {
+        it.rect.centerX() > w * 0.48 &&
+        it.rect.centerY() in (h * 0.69).toInt()..(h * 0.82).toInt()
+      }
+      if (amountArea.none { Regex("""(?i)\bSuma\b""").containsMatchIn(it.value) })
+        return DemoOrderCheck(reason = "BLOCAT: ETICHETA SUMĂ NU ESTE LIZIBILĂ")
+      val oneDollar = amountArea.any {
+        Regex("""(?i)^(?:USD\s*)?1(?:[.,]00)?(?:\s*USD)?$""").matches(it.value)
+      }
+      if (!oneDollar) return DemoOrderCheck(reason = "BLOCAT: SETEAZĂ SUMA LA 1 USD")
+
+      // Validate that demo balance is visible in the narrow account region;
+      // the chart quotes have more decimal places and cannot count as balance.
+      val balanceValues = labels.filter {
+        it.rect.centerX() in (w * 0.48).toInt()..(w * 0.86).toInt() &&
+        it.rect.centerY() < h * 0.17
+      }.mapNotNull {
+        Regex("""(?<!\d)(\d{1,5}[.,]\d{2})(?!\d)""").find(it.value)
+          ?.groupValues?.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
+      }.distinct()
+      if (balanceValues.size != 1 || balanceValues[0] < 1.0)
+        return DemoOrderCheck(reason = "BLOCAT: SOLD DEMO NECONFIRMAT SAU SUB 1 USD")
+
+      val expression = if (side == "BUY")
+        Regex("""(?i)^\s*(?:CUMPĂRAȚI|CUMPARATI)(?:\s+\d{1,3}\s*%)?\s*$""")
+      else Regex("""(?i)^\s*(?:VINDEȚI|VINDETI)(?:\s+\d{1,3}\s*%)?\s*$""")
+      val candidates = labels.filter {
+        expression.matches(it.value.replace('\n',' ').trim()) &&
+        it.rect.centerY() >= h * 0.77 &&
+        it.rect.centerY() <= h * 0.94 &&
+        (if (side == "BUY") it.rect.centerX() < w * 0.50
+         else it.rect.centerX() > w * 0.50)
+      }.mapNotNull { matching ->
+        var node: AccessibilityNodeInfo? = matching.node
+        var steps = 0
+        while (node != null && !node.isClickable && steps++ < 4)
+          node = node.parent
+        if (node == null || !node.isEnabled || !node.isVisibleToUser ||
+            node.packageName?.toString() != pkg) null
+        else {
+          val bounds = Rect()
+          node.getBoundsInScreen(bounds)
+          if (bounds.isEmpty || bounds.top < h * 0.76 ||
+              bounds.bottom > h * 0.96 ||
+              (if (side == "BUY") bounds.centerX() >= w * 0.51
+               else bounds.centerX() <= w * 0.49)) null
+          else Pair(node, bounds.toShortString())
+        }
+      }.distinctBy { it.second }
+      if (candidates.size != 1)
+        return DemoOrderCheck(reason = "BLOCAT: BUTONUL " + side + " NU ESTE UNIC ȘI APĂSABIL")
+      if (svc.rootInActiveWindow?.packageName?.toString() != pkg)
+        return DemoOrderCheck(reason = "BLOCAT: APLICAȚIA ACTIVĂ S-A SCHIMBAT")
+      return DemoOrderCheck(DemoOrderTarget(candidates[0].first, pkg),
+        "GATA " + side + " • QT DEMO • 1 USD")
+    }
+
+    fun previewOneDollarDemoOrder(side: String): String {
+      val svc = connected ?: return "ROBOT NECONECTAT"
+      val at = android.os.SystemClock.elapsedRealtime()
+      val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+        .getLong("lastAcceptedAt", 0L)
+      if (last > 0L && at - last in 0 until DEMO_TEST_LOCK_MS)
+        return "BLOCAT: O SINGURĂ PROBĂ LA 5 MINUTE"
+      return checkOneDollarDemoTarget(side).reason
+    }
+
+    fun pressOneDollarDemoOrderOnce(side: String): String {
+      val svc = connected ?: return "ROBOT NECONECTAT"
+      val at = android.os.SystemClock.elapsedRealtime()
+      val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+      val last = store.getLong("lastAcceptedAt", 0L)
+      if (last > 0L && at - last in 0 until DEMO_TEST_LOCK_MS)
+        return "BLOCAT: EXISTĂ O PROBĂ ÎN ULTIMELE 5 MINUTE"
+      val check = checkOneDollarDemoTarget(side)
+      val target = check.target ?: return check.reason
+      // Set the lock BEFORE sending a potentially irreversible screen click.
+      if (!store.edit().putLong("lastAcceptedAt", at).commit())
+        return "BLOCAT: NU POT SALVA BLOCAREA COMENZII"
+      if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
+        return "BLOCAT: BROKERUL NU MAI ESTE ACTIV"
+      val accepted = target.node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+      return if (accepted)
+        "DEMO " + side + ": CLIC ACCEPTAT • VERIFICĂ TRANZACȚIA"
+      else "DEMO " + side + ": ANDROID A REFUZAT CLICUL"
+    }
+
     @Volatile private var lastCalculatorTestAt = 0L
 
     /**
