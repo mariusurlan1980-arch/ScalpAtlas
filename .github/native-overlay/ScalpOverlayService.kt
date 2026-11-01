@@ -2724,6 +2724,45 @@ class ScalpOverlayService : Service() {
           onePairEvalTouch?.invoke(activeSignal)
         }
       }
+      // One-shot DEMO order ONLY on a NEW SHOCK lock created by a true BIP.
+      // A five-minute signal display is never a fresh entry instruction.
+      if (autoDemoArmed) {
+        val expectedPair = autoDemoMarket
+        val seenPair = currentPair(now)
+        val nowClock = android.os.SystemClock.elapsedRealtime()
+        val readyForDemo = brokerConnected && bellEnabled &&
+          TouchTestService.ready() && pairReady(now) &&
+          expectedPair != null && seenPair == expectedPair &&
+          touchProbeRow?.visibility == View.VISIBLE &&
+          autoDemoRow?.visibility == View.VISIBLE &&
+          lastCapturedImageAt > 0L &&
+          now - lastCapturedImageAt in 0L..3500L &&
+          !manualTfConflict &&
+          (!tfAutomatic || (tfVerified &&
+            now - confirmedTfAt in 0L..TF_STALE_MS))
+        val newShock = activeSignal != "NONE" &&
+          activeStrategy == "SHOCK" &&
+          lastConfirmedShockPercent > 50 &&
+          lockedAt > 0L && now - lockedAt in 0L..2500L &&
+          lockedAt != autoDemoLockedAt
+        if (nowClock >= autoDemoExpiry || !readyForDemo) {
+          autoDemoArmed = false
+          autoDemoMarket = null
+          autoDemoExpiry = 0L
+          autoDemoButton?.text = "AUTO DEMO OFF"
+          touchProbeStatus?.text = "AUTO DEMO OPRIT • DATE/CONT NECONFIRMATE"
+        } else if (newShock) {
+          autoDemoLockedAt = lockedAt
+          autoDemoArmed = false
+          autoDemoMarket = null
+          autoDemoExpiry = 0L
+          autoDemoButton?.text = "AUTO DEMO OFF"
+          // The accessibility service checks QT Demo, same instrument,
+          // exact 1 USD, sufficient balance and payout >= 92% AGAIN.
+          touchProbeStatus?.text =
+            TouchTestService.pressAutoOneDollarDemoOrderOnce(activeSignal, expectedPair)
+        }
+      }
       setPulseRing(activeSignal)
       setSignalBlink(activeSignal)
       val percentFromCandle = when {
