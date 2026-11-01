@@ -13,7 +13,7 @@ import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
-/** Test only; this does not control or inspect other apps. */
+/** A user-invoked read-only broker-label probe and isolated test gestures. No broker orders. */
 class TouchTestService : AccessibilityService() {
   companion object {
     @Volatile private var connected: TouchTestService? = null
