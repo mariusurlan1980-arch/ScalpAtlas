@@ -1228,10 +1228,14 @@ class ScalpOverlayService : Service() {
       visibility = View.GONE
       setPadding(0, dp(4), 0, 0)
     }
-    val amountCheck = localButton("DIAG SUMĂ 1 USD", Color.rgb(71, 88, 118)).apply {
-      contentDescription = "Diagnostichează citirea sumei 1 USD fără să trimită ordine"
+    val amountCheck = localButton("PREGĂTEȘTE DEMO 1$", Color.rgb(71, 88, 118)).apply {
+      contentDescription = "Verifică QT Demo, perechea, suma 1 USD, soldul și payout-ul fără ordin"
       setOnClickListener {
-        probeStatus.text = TouchTestService.diagnoseOneDollarAmount()
+        val now = System.currentTimeMillis()
+        val pair = currentPair(now)
+        probeStatus.text = if (!pairReady(now) || pair == "NEIDENTIFICAT")
+          "BLOCAT: PERECHEA NU ESTE IDENTIFICATĂ STABIL"
+        else TouchTestService.preflightOneDollarDemoOrder(pair)
       }
     }
     amountCheckRow.addView(amountCheck, LinearLayout.LayoutParams(-1, dp(31)))
