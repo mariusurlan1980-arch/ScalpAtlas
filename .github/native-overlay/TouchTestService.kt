@@ -288,7 +288,8 @@ class TouchTestService : AccessibilityService() {
         return DemoOrderCheck(reason = when {
           amountValues.size > 1 ->
             "BLOCAT: SUMĂ AMBIGUĂ • " + amountValues.size +
-              " NUMERE ÎN CÂMP • FĂRĂ ORDIN"
+              " VALORI [" + amountValues.joinToString(", ") { it.take(8) } +
+              "] • FĂRĂ ORDIN"
           amountValues.isEmpty() ->
             "BLOCAT: SUMA NU E VIZIBILĂ ÎN ARBORELE ANDROID"
           else -> "BLOCAT: VALOAREA CITITĂ " + amountValues.single().take(7) +
