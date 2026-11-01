@@ -107,6 +107,7 @@ class ScalpOverlayService : Service() {
   private var onePairEvalButton: TextView? = null
   private var onePairEvalRow: LinearLayout? = null
   private var demoBrokerInspectionRow: LinearLayout? = null
+  private var demoBrokerOrderRow: LinearLayout? = null
   private var onePairEvalAutoPending = false
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
@@ -753,6 +754,7 @@ class ScalpOverlayService : Service() {
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
         onePairEvalRow?.visibility = if (visible) View.VISIBLE else View.GONE
         demoBrokerInspectionRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        demoBrokerOrderRow?.visibility = if (visible) View.VISIBLE else View.GONE
         if (!visible) {
           onePairEvalEnabled = false
           onePairEvalPair = null
@@ -1146,6 +1148,53 @@ class ScalpOverlayService : Service() {
     brokerInspectionRow.addView(brokerInspectionButton, LinearLayout.LayoutParams(-1, dp(31)))
     root.addView(brokerInspectionRow)
     demoBrokerInspectionRow = brokerInspectionRow
+
+    // Manual two-step DEMO order probe. This is NOT connected to strategy
+    // signals or AUTO SIM. Android refuses any order unless QT Demo, exactly
+    // 1 USD, adequate demo balance, and a unique clickable trade button exist.
+    val demoOrderRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(5), 0, 0)
+    }
+    var armedDemoSide: String? = null
+    var armedDemoAt = 0L
+    fun confirmDemoOrder(side: String) {
+      if (onePairEvalEnabled) {
+        probeStatus.text = "OPREȘTE AUTO SIM ÎNAINTE DE PROBA DEMO"
+        return
+      }
+      val now = android.os.SystemClock.elapsedRealtime()
+      if (armedDemoSide == side && now - armedDemoAt in 0L..8000L) {
+        armedDemoSide = null
+        armedDemoAt = 0L
+        probeStatus.text = TouchTestService.pressOneDollarDemoOrderOnce(side)
+      } else {
+        armedDemoSide = null
+        armedDemoAt = 0L
+        val inspection = TouchTestService.previewOneDollarDemoOrder(side)
+        if (!inspection.startsWith("GATA ")) {
+          probeStatus.text = inspection
+          return
+        }
+        armedDemoSide = side
+        armedDemoAt = now
+        probeStatus.text = "CONFIRMĂ " + side + " DEMO 1 USD ÎN 8 SECUNDE"
+      }
+    }
+    val demoBuy = localButton("DEMO BUY 1$", Color.rgb(16, 89, 62)).apply {
+      contentDescription = "Două apăsări deliberate pentru ordin BUY de probă de 1 dolar doar în QT Demo"
+      setOnClickListener { confirmDemoOrder("BUY") }
+    }
+    val demoSell = localButton("DEMO SELL 1$", Color.rgb(127, 43, 66)).apply {
+      contentDescription = "Două apăsări deliberate pentru ordin SELL de probă de 1 dolar doar în QT Demo"
+      setOnClickListener { confirmDemoOrder("SELL") }
+    }
+    demoOrderRow.addView(demoBuy, LinearLayout.LayoutParams(0, dp(31), 1f).apply { marginEnd = dp(5) })
+    demoOrderRow.addView(demoSell, LinearLayout.LayoutParams(0, dp(31), 1f))
+    root.addView(demoOrderRow)
+    demoBrokerOrderRow = demoOrderRow
     // One explicit, broker-independent cross-app test. Never triggered by
     // SHOCK/SCALP signals and never uses underlying Pocket Option coordinates.
     val calcRow = LinearLayout(this).apply {
@@ -1189,6 +1238,9 @@ class ScalpOverlayService : Service() {
         commandRow.visibility = View.GONE
         evaluationRow.visibility = View.GONE
         brokerInspectionRow.visibility = View.GONE
+        demoOrderRow.visibility = View.GONE
+        armedDemoSide = null
+        armedDemoAt = 0L
         calcRow.visibility = View.GONE
         probeStatus.visibility = View.GONE
         onePairEvalEnabled = false
@@ -2594,6 +2646,7 @@ class ScalpOverlayService : Service() {
     onePairEvalButton = null
     onePairEvalRow = null
     demoBrokerInspectionRow = null
+    demoBrokerOrderRow = null
     onePairEvalAutoPending = false
     overlayWindowParams = null
     virtualDisplay = null
