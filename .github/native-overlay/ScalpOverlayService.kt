@@ -98,6 +98,7 @@ class ScalpOverlayService : Service() {
   private var touchProbeCommandRow: LinearLayout? = null
   private var calculatorTestRow: LinearLayout? = null
   private var touchProbeStatus: TextView? = null
+  private var liveObservationStatus: TextView? = null
   // Opt-in single-pair evaluation: touches ONLY our own visible test buttons.
   // Never route gestures to Pocket Option or any financial order UI.
   private var onePairEvalEnabled = false
@@ -466,12 +467,16 @@ class ScalpOverlayService : Service() {
       val tone = when(direction) {
         "BUY" -> Color.rgb(0, 204, 102)
         "SELL" -> Color.rgb(235, 52, 72)
+        // Muted steady ring for a measured live candle ONLY.
+        // OBS never means an entry signal and must never pulsate.
+        "OBS_BUY" -> Color.rgb(82, 153, 116)
+        "OBS_SELL" -> Color.rgb(176, 101, 111)
         else -> Color.rgb(221, 233, 229)
       }
       paint.color = tone
-      if (direction == "NONE") {
+      if (direction == "NONE" || direction.startsWith("OBS_")) {
         paint.strokeWidth = strokePx
-        paint.alpha = 255
+        paint.alpha = if (direction == "NONE") 255 else 190
         canvas.drawCircle(cx, cy, radius, paint)
       } else {
         // Subtle outer colored halo, never obscures the broker's candles.
@@ -772,6 +777,7 @@ class ScalpOverlayService : Service() {
         touchProbeRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
+        liveObservationStatus?.visibility = if (visible) View.VISIBLE else View.GONE
         onePairEvalRow?.visibility = if (visible) View.VISIBLE else View.GONE
         // AUTO DEMO is an advanced action and never opens by default.
         autoDemoRow?.visibility = View.GONE
@@ -1407,6 +1413,20 @@ class ScalpOverlayService : Service() {
     calcRow.addView(calcOne, LinearLayout.LayoutParams(-1, dp(31)))
     root.addView(calcRow)
     root.addView(probeStatus)
+    // Separate non-actionable LIVE state from the order-safety diagnostics.
+    // Never overwrite a "BLOCAT" result merely to show a green candle.
+    val observationText = TextView(this).apply {
+      text = "LIVE: VERIFIC CADRELE • FĂRĂ SEMNAL"
+      textSize = 9f
+      gravity = Gravity.CENTER
+      setTextColor(Color.rgb(91, 108, 116))
+      visibility = View.GONE
+      maxLines = 2
+      setPadding(dp(4), dp(1), dp(4), dp(2))
+      contentDescription = "Starea observării lumânării LIVE, nu semnal de tranzacționare"
+    }
+    root.addView(observationText)
+    liveObservationStatus = observationText
     calculatorTestRow = calcRow
     touchProbeCommandRow = commandRow
     touchProbeRow = probeRow
@@ -1441,6 +1461,7 @@ class ScalpOverlayService : Service() {
         armedDemoAt = 0L
         calcRow.visibility = View.GONE
         probeStatus.visibility = View.GONE
+        liveObservationStatus?.visibility = View.GONE
         onePairEvalEnabled = false
         onePairEvalPair = null
         evaluationButton.text = "AUTO SIM OFF"
@@ -2780,6 +2801,17 @@ class ScalpOverlayService : Service() {
         }
       }
       setPulseRing(activeSignal)
+      // Observation colors are QUIET: they only reflect a newly analyzed
+      // green/red candle. Never change activeSignal, lock, BIP or orders.
+      if (activeSignal == "NONE") {
+        pulseRingDrawable?.direction = when {
+          brokerConnected && opticalFresh &&
+            observedCandleDirection == "BUY" -> "OBS_BUY"
+          brokerConnected && opticalFresh &&
+            observedCandleDirection == "SELL" -> "OBS_SELL"
+          else -> "NONE"
+        }
+      }
       setSignalBlink(activeSignal)
       val percentFromCandle = when {
         brokerConnected && (green || red) &&
@@ -2795,11 +2827,22 @@ class ScalpOverlayService : Service() {
       qualityText?.text = if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%"
       compactStatusText?.text = when (activeSignal) {
         "BUY", "SELL" -> activeSignal + " " + percentFromCandle + "%"
-        else -> "ȘOC " + (if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%")
+        else -> when {
+          brokerConnected && opticalFresh && observedCandleDirection == "BUY" ->
+            "OBS ↑ VERDE"
+          brokerConnected && opticalFresh && observedCandleDirection == "SELL" ->
+            "OBS ↓ ROȘU"
+          else -> "ȘOC " +
+            (if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%")
+        }
       }
-      compactStatusText?.setTextColor(when (activeSignal) {
-        "BUY" -> Color.rgb(13, 119, 69)
-        "SELL" -> Color.rgb(174, 50, 65)
+      compactStatusText?.setTextColor(when {
+        activeSignal == "BUY" -> Color.rgb(13, 119, 69)
+        activeSignal == "SELL" -> Color.rgb(174, 50, 65)
+        brokerConnected && opticalFresh && observedCandleDirection == "BUY" ->
+          Color.rgb(68, 132, 100)
+        brokerConnected && opticalFresh && observedCandleDirection == "SELL" ->
+          Color.rgb(158, 79, 91)
         else -> Color.rgb(74, 93, 106)
       })
       // The candle glyph may be red/green, but the percentage stays NEUTRAL
@@ -2832,8 +2875,26 @@ class ScalpOverlayService : Service() {
         !pairReady(now) -> "STABIL"
         else -> "GRAFIC?"
       }
+      // In PROBĂ, show WHY the ring is gray or its measured candle color
+      // without overwriting the broker order safety message in probeStatus.
+      liveObservationStatus?.text = when {
+        activeSignal == "BUY" || activeSignal == "SELL" ->
+          "BIP " + activeSignal + " CONFIRMAT • SEMNAL"
+        candleConnected && observedCandleDirection == "BUY" ->
+          "LUMÂNARE VERDE LIVE • DOAR OBSERVAȚIE"
+        candleConnected && observedCandleDirection == "SELL" ->
+          "LUMÂNARE ROȘIE LIVE • DOAR OBSERVAȚIE"
+        else -> "SCAN " + scanStatus + " • AȘTEPT DATE LIVE"
+      }
+      liveObservationStatus?.setTextColor(when {
+        activeSignal == "BUY" || (candleConnected &&
+            observedCandleDirection == "BUY") -> Color.rgb(52, 135, 95)
+        activeSignal == "SELL" || (candleConnected &&
+            observedCandleDirection == "SELL") -> Color.rgb(169, 70, 89)
+        else -> Color.rgb(91, 108, 116)
+      })
       // Show the precise gate holding back LIVE on the main screen, without
-      // making the floating panel larger or weakening any signal gate.
+      // weakening any signal gate.
       if (now - lastDiagnosticWriteAt >= 2_000L || scanStatus != lastDiagnosticStage) {
         lastDiagnosticWriteAt = now
         lastDiagnosticStage = scanStatus
@@ -2926,6 +2987,7 @@ class ScalpOverlayService : Service() {
     demoBrokerInspectionRow = null
     demoBrokerOrderRow = null
     demoAmountCheckRow = null
+    liveObservationStatus = null
     autoDemoArmed = false
     autoDemoMarket = null
     autoDemoExpiry = 0L
