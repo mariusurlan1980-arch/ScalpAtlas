@@ -2730,11 +2730,16 @@ class ScalpOverlayService : Service() {
         val expectedPair = autoDemoMarket
         val seenPair = currentPair(now)
         val nowClock = android.os.SystemClock.elapsedRealtime()
+        val pairMismatch = expectedPair == null ||
+          (seenPair != "NEIDENTIFICAT" && seenPair != expectedPair)
+        val pairLostLong = seenPair == "NEIDENTIFICAT" &&
+          latestMarketAt > 0L && now - latestMarketAt > MARKET_STALE_MS
+        val uiClosed = touchProbeRow?.visibility != View.VISIBLE ||
+          autoDemoRow?.visibility != View.VISIBLE
         val readyForDemo = brokerConnected && bellEnabled &&
           TouchTestService.ready() && pairReady(now) &&
-          expectedPair != null && seenPair == expectedPair &&
-          touchProbeRow?.visibility == View.VISIBLE &&
-          autoDemoRow?.visibility == View.VISIBLE &&
+          !pairMismatch && !pairLostLong &&
+          seenPair == expectedPair &&
           lastCapturedImageAt > 0L &&
           now - lastCapturedImageAt in 0L..3500L &&
           !manualTfConflict &&
@@ -2745,22 +2750,33 @@ class ScalpOverlayService : Service() {
           lastConfirmedShockPercent > 50 &&
           lockedAt > 0L && now - lockedAt in 0L..2500L &&
           lockedAt != autoDemoLockedAt
-        if (nowClock >= autoDemoExpiry || !readyForDemo) {
+        // A transient OCR/capture gap must not cancel the whole arm.
+        // Suspend while waiting for evidence; NEVER tap without fresh data.
+        if (nowClock >= autoDemoExpiry || pairMismatch || pairLostLong ||
+            uiClosed || !TouchTestService.ready() || !bellEnabled) {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
           autoDemoButton?.text = "AUTO DEMO OFF"
-          touchProbeStatus?.text = "AUTO DEMO OPRIT • DATE/CONT NECONFIRMATE"
+          touchProbeStatus?.text =
+            "AUTO DEMO OPRIT • PERECHE/SERVICIU/EXPIRARE"
         } else if (newShock) {
           autoDemoLockedAt = lockedAt
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
           autoDemoButton?.text = "AUTO DEMO OFF"
-          // The accessibility service checks QT Demo, same instrument,
-          // exact 1 USD, sufficient balance and payout >= 92% AGAIN.
+          // Consume this one-shot even when the market data fails the
+          // last freshness check. Never retry an expired shock signal.
+          touchProbeStatus?.text = if (!readyForDemo)
+            "BLOCAT: ȘOC CONFIRMAT, DAR CADRU/TF NEACTUAL • FĂRĂ ORDIN"
+          else TouchTestService.pressAutoOneDollarDemoOrderOnce(
+            activeSignal, expectedPair ?: "NEIDENTIFICAT"
+          )
+        } else if (!readyForDemo) {
+          // Diagnostic only; keeps the arm alive for the next fresh frame.
           touchProbeStatus?.text =
-            TouchTestService.pressAutoOneDollarDemoOrderOnce(activeSignal, expectedPair ?: "NEIDENTIFICAT")
+            "AUTO DEMO ARMAT • AȘTEAPTĂ CADRU/TF ACTUAL • FĂRĂ ORDIN"
         }
       }
       setPulseRing(activeSignal)
