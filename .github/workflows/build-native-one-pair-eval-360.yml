@@ -261,7 +261,8 @@ jobs:
           ! grep -Fq 'rootBounds.offset(rootScreen[0], rootScreen[1])' .github/native-overlay/TouchTestService.kt
           grep -Fq 'OverlayTargetCheck("ACCESIBILITATE NECONECTATĂ")' .github/native-overlay/TouchTestService.kt
           grep -Fq 'ZONĂ PREA JOS' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'probeStatus.text = "SIM " + side + ": COMANDĂ PRIMITĂ"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'side + ": COMANDĂ PRIMITĂ"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'onePairEvalAutoPending = automatic' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'GEST AJUNS LA' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'FĂRĂ ATINGERE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TEST MANUAL · NU VERIFICĂ GESTUL VIRTUAL' .github/templates/ScalpAtlasOneButtonOverlayApp.tsx
