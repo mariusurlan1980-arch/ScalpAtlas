@@ -106,6 +106,7 @@ class ScalpOverlayService : Service() {
   private var onePairEvalTouch: ((String) -> Unit)? = null
   private var onePairEvalButton: TextView? = null
   private var onePairEvalRow: LinearLayout? = null
+  private var demoBrokerInspectionRow: LinearLayout? = null
   private var onePairEvalAutoPending = false
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
@@ -751,6 +752,7 @@ class ScalpOverlayService : Service() {
         calculatorTestRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
         onePairEvalRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        demoBrokerInspectionRow?.visibility = if (visible) View.VISIBLE else View.GONE
         if (!visible) {
           onePairEvalEnabled = false
           onePairEvalPair = null
@@ -1124,6 +1126,26 @@ class ScalpOverlayService : Service() {
     onePairEvalTouch = { side ->
       testVirtualTouch(side, if (side == "BUY") targetBuy else targetSell, true)
     }
+
+    // Read-only broker screen capability probe. Even if QT DEMO is detected,
+    // this button cannot execute a broker order. No automatic broker taps.
+    val brokerInspectionRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(4), 0, 0)
+    }
+    val brokerInspectionButton = localButton(
+      "VERIFICĂ QT DEMO", Color.rgb(66, 86, 120)
+    ).apply {
+      contentDescription = "Identifică doar contul demo și butoanele, fără atingere broker"
+      setOnClickListener {
+        probeStatus.text = TouchTestService.inspectDemoBrokerReadOnly()
+      }
+    }
+    brokerInspectionRow.addView(brokerInspectionButton, LinearLayout.LayoutParams(-1, dp(31)))
+    root.addView(brokerInspectionRow)
+    demoBrokerInspectionRow = brokerInspectionRow
     // One explicit, broker-independent cross-app test. Never triggered by
     // SHOCK/SCALP signals and never uses underlying Pocket Option coordinates.
     val calcRow = LinearLayout(this).apply {
@@ -1166,6 +1188,7 @@ class ScalpOverlayService : Service() {
         probeRow.visibility = View.GONE
         commandRow.visibility = View.GONE
         evaluationRow.visibility = View.GONE
+        brokerInspectionRow.visibility = View.GONE
         calcRow.visibility = View.GONE
         probeStatus.visibility = View.GONE
         onePairEvalEnabled = false
@@ -2570,6 +2593,7 @@ class ScalpOverlayService : Service() {
     onePairEvalTouch = null
     onePairEvalButton = null
     onePairEvalRow = null
+    demoBrokerInspectionRow = null
     onePairEvalAutoPending = false
     overlayWindowParams = null
     virtualDisplay = null
