@@ -80,9 +80,9 @@ class TouchTestService : AccessibilityService() {
         }
       }
 
-      val visible = labels.joinToString(" ").replace(Regex("""\\s+"""), " ")
-      val real = Regex("""(?i)\\bQT\\s*Real\\b""").containsMatchIn(visible)
-      val demo = Regex("""(?i)\\bQT\\s*Demo\\b""").containsMatchIn(visible)
+      val visible = labels.joinToString(" ").replace(Regex("""\s+"""), " ")
+      val real = Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(visible)
+      val demo = Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(visible)
       val buy = Regex("""(?i)(CUMPĂRAȚI|CUMPARATI|BUY)""").containsMatchIn(visible)
       val sell = Regex("""(?i)(VINDEȚI|VINDETI|SELL)""").containsMatchIn(visible)
 
