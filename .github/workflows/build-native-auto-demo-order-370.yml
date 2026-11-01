@@ -244,7 +244,7 @@ jobs:
           grep -Fq 'CONFIRMĂ AUTO DEMO DIN NOU ÎN 8 SECUNDE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoExpiry = clockNow + 10' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'pressAutoOneDollarDemoOrderOnce(activeSignal, expectedPair)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'pressAutoOneDollarDemoOrderOnce(activeSignal, expectedPair ?: "NEIDENTIFICAT")' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.preflightOneDollarDemoOrder(pair)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val fieldBottom = caption.rect.bottom' .github/native-overlay/TouchTestService.kt
           grep -Fq 'it.rect.height() <=' .github/native-overlay/TouchTestService.kt
