@@ -381,72 +381,16 @@ class TouchTestService : AccessibilityService() {
      * balance, and >=92% payout. No ACTION_CLICK, orders, or AUTO SIM here.
      */
     fun preflightOneDollarDemoOrder(expectedPair: String): String {
-      val svc = connected ?: return "BLOCAT: ROBOT NECONECTAT"
-      if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
-          readVisibleDemoPair() != expectedPair)
-        return "BLOCAT: PERECHEA QT DEMO NU ESTE CONFIRMATĂ"
-      val buy = previewOneDollarDemoOrder("BUY")
-      if (!buy.startsWith("GATA BUY")) return buy
-      val sell = previewOneDollarDemoOrder("SELL")
-      if (!sell.startsWith("GATA SELL")) return sell
-      val root = svc.rootInActiveWindow
-        ?: return "BLOCAT: FEREASTRA BROKERULUI INDISPONIBILĂ"
-      val pkg = root.packageName?.toString().orEmpty()
-      if (pkg != "com.pocketoption.broker" && pkg != "com.potradeweb")
-        return "BLOCAT: BROKER NECONFIRMAT"
-      val metrics = android.util.DisplayMetrics()
-      try {
-        val wm = svc.getSystemService(Context.WINDOW_SERVICE)
-          as android.view.WindowManager
-        @Suppress("DEPRECATION")
-        wm.defaultDisplay.getRealMetrics(metrics)
-      } catch (_: Throwable) {
-        return "BLOCAT: ECRAN NECONFIRMAT"
-      }
-      val width = metrics.widthPixels
-      val height = metrics.heightPixels
-      val labels = ArrayList<Pair<String, Rect>>()
-      val nodes = ArrayDeque<AccessibilityNodeInfo>()
-      nodes.add(root)
-      var count = 0
-      while (nodes.isNotEmpty() && count++ < 350) {
-        val node = nodes.removeFirst()
-        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
-          val bounds = Rect()
-          node.getBoundsInScreen(bounds)
-          if (!bounds.isEmpty && bounds.left >= 0 &&
-              bounds.right <= width && bounds.top >= 0 &&
-              bounds.bottom <= height && bounds.width() < width * 0.60f) {
-            val caption = node.text?.toString()?.trim().orEmpty()
-            val desc = node.contentDescription?.toString()?.trim().orEmpty()
-            if (caption.isNotEmpty()) labels.add(caption.take(80) to Rect(bounds))
-            if (desc.isNotEmpty() && desc != caption)
-              labels.add(desc.take(80) to Rect(bounds))
-          }
-        }
-        for (i in 0 until node.childCount.coerceAtMost(35))
-          node.getChild(i)?.let { nodes.addLast(it) }
-      }
-      val percent = Regex("""(?<!\d)(\d{1,3})\s*%(?!\d)""")
-      fun payout(side: String): Int? {
-        val values = labels.filter { (_, rect) ->
-          rect.centerY() in (height * 0.77).toInt()..(height * 0.96).toInt() &&
-            (if (side == "BUY") rect.centerX() < width * 0.49f
-             else rect.centerX() > width * 0.51f)
-        }.flatMap { (v, _) ->
-          percent.findAll(v).mapNotNull { it.groupValues[1].toIntOrNull() }.toList()
-        }.distinct()
-        return values.singleOrNull()
-      }
-      val buyPayout = payout("BUY")
-      val sellPayout = payout("SELL")
-      if (buyPayout == null || sellPayout == null)
-        return "BLOCAT: PAYOUT BUY/SELL NU POATE FI CITIT"
-      if (buyPayout !in 92..100 || sellPayout !in 92..100)
-        return "BLOCAT: PAYOUT BUY " + buyPayout + "% / SELL " +
-          sellPayout + "% • MINIM 92%"
-      return "PREGĂTIT PENTRU CONFIRMARE MANUALĂ • QT DEMO • " +
-        expectedPair + " • 1 USD • PAYOUT ≥92%"
+      // The readiness button MUST use the exact same Qt Demo / 1 USD /
+      // payout >= 92% validators as the automatic one-shot click.
+      // An optimistic preview must never claim that AUTO DEMO is ready
+      // while the broker button would reject the same amount or payout.
+      val buy = previewAutoOneDollarDemoOrder("BUY", expectedPair)
+      if (!buy.startsWith("GATA AUTO DEMO BUY")) return buy
+      val sell = previewAutoOneDollarDemoOrder("SELL", expectedPair)
+      if (!sell.startsWith("GATA AUTO DEMO SELL")) return sell
+      return "PREGĂTIT AUTO DEMO • QT DEMO • " + expectedPair +
+        " • 1 USD • BUY/SELL PAYOUT ≥92% • FĂRĂ ORDIN"
     }
 
     fun previewAutoOneDollarDemoOrder(side: String, expectedPair: String): String {
