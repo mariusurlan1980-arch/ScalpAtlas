@@ -247,8 +247,8 @@ class TouchTestService : AccessibilityService() {
       val brokerActionLabels = labels.filter {
         it.rect.centerY() >= h * 0.77 &&
         it.rect.centerY() <= h * 0.96 &&
-        Regex("""(?i)^\\s*(?:CUMPĂRAȚI|CUMPARATI|VINDEȚI|VINDETI)(?:\\s+\\d{1,3}\\s*%)?\\s*$""")
-          .matches(it.value.replace('\\n', ' ').replace(Regex("""\\s+"""), " ").trim())
+        Regex("""(?i)^\s*(?:CUMPĂRAȚI|CUMPARATI|VINDEȚI|VINDETI)(?:\s+\d{1,3}\s*%)?\s*$""")
+          .matches(it.value.replace('\n', ' ').replace(Regex("""\s+"""), " ").trim())
       }
       val actionTop = brokerActionLabels.map { it.rect.top }
         .filter { it > caption.rect.bottom + (h * 0.015f).toInt() }
