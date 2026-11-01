@@ -772,10 +772,17 @@ class ScalpOverlayService : Service() {
             val window = overlayWindowParams ?: return@post
             // Keep test targets in the chart region, well above the
             // broker's bottom trade controls even if user dragged the card.
-            val chartAreaLimit = (resources.displayMetrics.heightPixels * 0.73f).toInt()
+            val screenHeight = resources.displayMetrics.heightPixels
+            val chartAreaLimit = (screenHeight * 0.81f).toInt()
             val maxTop = (chartAreaLimit - root.height - dp(22)).coerceAtLeast(0)
-            if (window.y > maxTop) {
-              window.y = maxTop
+            // Leave top-left pair selector visible, without touching bottom
+            // broker BUY/SELL buttons.
+            val freeAssetHeaderTop = (screenHeight * 0.19f).toInt()
+            val desiredTop = if (maxTop >= freeAssetHeaderTop)
+              window.y.coerceIn(freeAssetHeaderTop, maxTop)
+            else window.y.coerceAtMost(maxTop)
+            if (window.y != desiredTop) {
+              window.y = desiredTop
               try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
             }
           }
@@ -1335,10 +1342,14 @@ class ScalpOverlayService : Service() {
           params.x = (startX + (event.rawX - touchX).toInt())
             .coerceIn(0, (metrics.widthPixels - params.width).coerceAtLeast(0))
           val limitBottom = if (touchProbeRow?.visibility == View.VISIBLE)
-            (metrics.heightPixels * 0.73f).toInt()
+            (metrics.heightPixels * 0.81f).toInt()
             else metrics.heightPixels
+          val maxTop = (limitBottom - root.height - dp(22)).coerceAtLeast(0)
+          val minTop = if (touchProbeRow?.visibility == View.VISIBLE &&
+              maxTop >= (metrics.heightPixels * 0.19f).toInt())
+            (metrics.heightPixels * 0.19f).toInt() else 0
           params.y = (startY + (event.rawY - touchY).toInt())
-            .coerceIn(0, (limitBottom - root.height - dp(22)).coerceAtLeast(0))
+            .coerceIn(minTop, maxTop)
           overlayView?.let { windowManager.updateViewLayout(it, params) }
           true
         }
@@ -1695,10 +1706,20 @@ class ScalpOverlayService : Service() {
             otcPattern.containsMatchIn(nearby)
           if (otc) "$base OTC" else base
         }.distinct().toList()
-        // Require TWO consistent OCR detections. The first different asset
-        // immediately invalidates a confirmed pair and old signal candidates.
-        if (pairs.size == 1) {
-          val foundPair = pairs[0]
+        // A second read-only sensor can see the header via Accessibility
+        // when the floating panel has masked it in MediaProjection.
+        val accessibilityPair = TouchTestService.readVisibleDemoPair()
+        val visiblePairs = when {
+          pairs.size == 1 && accessibilityPair != null &&
+            accessibilityPair != pairs[0] -> emptyList()
+          pairs.size == 1 -> pairs
+          pairs.isEmpty() && accessibilityPair != null -> listOf(accessibilityPair)
+          else -> emptyList()
+        }
+        // Never infer pair from chart pixels or an old instrument. Require
+        // two consistent observations and six seconds of chart stability.
+        if (visiblePairs.size == 1) {
+          val foundPair = visiblePairs[0]
           val sameBase = foundPair.removeSuffix(" OTC") == latestMarket.removeSuffix(" OTC")
           val ambiguousMode = marketVerified && sameBase && foundPair != latestMarket
           if (foundPair != latestMarket && marketVerified) {
@@ -2521,7 +2542,13 @@ class ScalpOverlayService : Service() {
       if (onePairEvalEnabled) {
         val trackedPair = onePairEvalPair
         val observedPair = currentPair(now)
-        if (observedPair != "NEIDENTIFICAT" &&
+        if (!pairReady(now) && latestMarketAt > 0L &&
+            now - latestMarketAt > MARKET_STALE_MS) {
+          onePairEvalEnabled = false
+          onePairEvalPair = null
+          onePairEvalButton?.text = "AUTO SIM OFF"
+          touchProbeStatus?.text = "PERECHE PIERDUTĂ • AUTO SIM OPRIT"
+        } else if (observedPair != "NEIDENTIFICAT" &&
             pairReady(now) && observedPair != trackedPair) {
           onePairEvalEnabled = false
           onePairEvalPair = null
