@@ -52,6 +52,66 @@ class TouchTestService : AccessibilityService() {
      * In particular, DEMO cannot be inferred from a balance or a screenshot
      * pattern; the Accessibility tree must explicitly expose "QT Demo".
      */
+
+    /**
+     * Read-only FX pair from the currently visible QT Demo broker header.
+     * Returns just one unambiguous instrument label, otherwise null.
+     * This never clicks broker buttons or submits orders.
+     */
+    fun readVisibleDemoPair(): String? {
+      val svc = connected ?: return null
+      val root = svc.rootInActiveWindow ?: return null
+      val pkg = root.packageName?.toString().orEmpty()
+      if (pkg.isBlank() || pkg == svc.packageName ||
+          pkg.startsWith("com.android.settings") ||
+          pkg.contains("calculator", ignoreCase = true)) return null
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val manager = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        manager.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return null }
+      if (metrics.heightPixels < 650) return null
+      val labels = ArrayList<Pair<String, Rect>>()
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      var visited = 0
+      while (queue.isNotEmpty() && visited++ < 300) {
+        val node = queue.removeFirst()
+        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
+          val bounds = Rect()
+          node.getBoundsInScreen(bounds)
+          if (!bounds.isEmpty && bounds.top >= 0 &&
+              bounds.bottom <= metrics.heightPixels &&
+              bounds.left >= 0 && bounds.right <= metrics.widthPixels) {
+            val text = node.text?.toString()?.trim().orEmpty()
+            val desc = node.contentDescription?.toString()?.trim().orEmpty()
+            if (text.isNotEmpty()) labels.add(text.take(90) to Rect(bounds))
+            if (desc.isNotEmpty() && desc != text)
+              labels.add(desc.take(90) to Rect(bounds))
+          }
+        }
+        for (i in 0 until node.childCount.coerceAtMost(35))
+          node.getChild(i)?.let { queue.addLast(it) }
+      }
+      val all = labels.map { it.first }
+      val demo = all.any { Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it) }
+      val real = all.any { Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it) }
+      if (!demo || real) return null
+      val pattern = Regex("""(?i)(?<![A-Z])([A-Z]{3})\s*/\s*([A-Z]{3})\b(?:\s*\(?\s*(OTC)\s*\)?)?""")
+      val instruments = labels.mapNotNull { (value, bounds) ->
+        if (bounds.centerY() !in
+          (metrics.heightPixels * 0.105f).toInt()..(metrics.heightPixels * 0.33f).toInt() ||
+          bounds.centerX() > metrics.widthPixels * 0.70f ||
+          value.length > 46) return@mapNotNull null
+        val match = pattern.find(value) ?: return@mapNotNull null
+        val suffix = if (match.groupValues[3].isNotBlank()) " OTC" else ""
+        match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase() + suffix
+      }.distinct()
+      return instruments.singleOrNull()
+    }
+
     fun inspectDemoBrokerReadOnly(): String {
       val svc = connected ?: return "ROBOT NECONECTAT • FĂRĂ ACCES LA BROKER"
       val root = svc.rootInActiveWindow
