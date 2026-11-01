@@ -108,6 +108,7 @@ class ScalpOverlayService : Service() {
   private var onePairEvalRow: LinearLayout? = null
   private var demoBrokerInspectionRow: LinearLayout? = null
   private var demoBrokerOrderRow: LinearLayout? = null
+  private var demoAmountCheckRow: LinearLayout? = null
   private var onePairEvalAutoPending = false
   private lateinit var journal: SignalJournal
   private lateinit var liveTest: LiveTestMonitor
@@ -755,6 +756,7 @@ class ScalpOverlayService : Service() {
         onePairEvalRow?.visibility = if (visible) View.VISIBLE else View.GONE
         demoBrokerInspectionRow?.visibility = if (visible) View.VISIBLE else View.GONE
         demoBrokerOrderRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        demoAmountCheckRow?.visibility = if (visible) View.VISIBLE else View.GONE
         if (!visible) {
           onePairEvalEnabled = false
           onePairEvalPair = null
@@ -1152,6 +1154,24 @@ class ScalpOverlayService : Service() {
     // Manual two-step DEMO order probe. This is NOT connected to strategy
     // signals or AUTO SIM. Android refuses any order unless QT Demo, exactly
     // 1 USD, adequate demo balance, and a unique clickable trade button exist.
+    // Verify account and exactly 1 USD without starting a transaction.
+    // The current fail-closed error is shown verbatim to diagnose WebView nodes.
+    val amountCheckRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(4), 0, 0)
+    }
+    val amountCheck = localButton("DIAG SUMĂ 1 USD", Color.rgb(71, 88, 118)).apply {
+      contentDescription = "Diagnostichează citirea sumei 1 USD fără să trimită ordine"
+      setOnClickListener {
+        probeStatus.text = TouchTestService.diagnoseOneDollarAmount()
+      }
+    }
+    amountCheckRow.addView(amountCheck, LinearLayout.LayoutParams(-1, dp(31)))
+    root.addView(amountCheckRow)
+    demoAmountCheckRow = amountCheckRow
+
     val demoOrderRow = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER
@@ -1253,6 +1273,7 @@ class ScalpOverlayService : Service() {
         evaluationRow.visibility = View.GONE
         brokerInspectionRow.visibility = View.GONE
         demoOrderRow.visibility = View.GONE
+        amountCheckRow.visibility = View.GONE
         armedDemoSide = null
         armedDemoMarket = null
         armedDemoAt = 0L
@@ -2662,6 +2683,7 @@ class ScalpOverlayService : Service() {
     onePairEvalRow = null
     demoBrokerInspectionRow = null
     demoBrokerOrderRow = null
+    demoAmountCheckRow = null
     onePairEvalAutoPending = false
     overlayWindowParams = null
     virtualDisplay = null
