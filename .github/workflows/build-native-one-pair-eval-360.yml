@@ -222,13 +222,13 @@ jobs:
           grep -Fq 'Settings.ACTION_APPLICATION_DETAILS_SETTINGS' .github/native-overlay/TouchTestActivity.kt
           grep -Fq 'Settings.ACTION_ACCESSIBILITY_SETTINGS' .github/native-overlay/TouchTestActivity.kt
           grep -Fq 'getTouchTestStatus' .github/native-overlay/ScalpOverlayModule.kt
-          grep -Fq 'fun accessDiagnostic(context: Context)'
+          grep -Fq 'fun accessDiagnostic(context: Context)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'AUTO SIM OFF' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'onePairEvalPair = market' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'lockedAt != onePairEvalLastLockAt' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'onePairEvalTouch?.invoke(activeSignal)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'onePairEvalEnabled = false' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'if (side == "BUY") targetBuy else targetSell' .github/native-overlay/ScalpOverlayService.kt .github/native-overlay/TouchTestService.kt
+          grep -Fq 'if (side == "BUY") targetBuy else targetSell' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'getEnabledAccessibilityServiceList' .github/native-overlay/TouchTestService.kt
           grep -Fq 'lastRobotConnectionDiagnostic' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'onUnbind(intent:' .github/native-overlay/TouchTestService.kt
