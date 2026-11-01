@@ -243,28 +243,45 @@ class TouchTestService : AccessibilityService() {
       val nearby = labels.filter {
         val x = it.rect.centerX()
         val y = it.rect.centerY()
-        x >= caption.rect.left - (w * 0.03f).toInt() &&
-          x <= (w * 0.95).toInt() &&
+        // Only the amount input column. The old 95%-of-screen bound also
+        // included payout labels and other broker values to its right.
+        x >= caption.rect.left - (w * 0.035f).toInt() &&
+          x <= caption.rect.right + (w * 0.14f).toInt() &&
           y >= caption.rect.top - (h * 0.015f).toInt() &&
           y <= caption.rect.bottom + (h * 0.10f).toInt()
       }.distinctBy { it.rect.toShortString() + ":" + it.value.trim() }
-      // Accept ONLY a literal one-dollar value, with an optional decimal
-      // fraction of zeros. Do not guess from a screenshot or similar "10".
+      // Keep only an unambiguous value. Android WebViews may duplicate
+      // the exact same visible amount as parent and child accessibility
+      // nodes, so deduplicate EQUAL numeric values; never choose among
+      // conflicting numbers or infer a value from pixels.
       val strictOne = Regex("""(?i)^\s*(?:USD\s*|\$\s*)?1(?:[.,]0{1,2})?(?:\s*(?:USD|\$))?\s*$""")
       val amountNumber = Regex("""(?i)^\s*(?:(?:USD|\$)\s*)?\d+(?:[.,]\d{1,2})?(?:\s*(?:USD|\$))?\s*$""")
+      fun canonicalAmount(v: String): String {
+        val cleaned = v.uppercase().replace("USD", "").replace("\$", "")
+          .replace(",", ".").trim()
+        return cleaned.toDoubleOrNull()?.let {
+          if (it.isFinite()) "%.2f".format(java.util.Locale.ROOT, it) else cleaned
+        } ?: cleaned
+      }
       val amountValues = nearby.filter { amountNumber.matches(it.value) }
-      // Some WebViews expose a single multiline "Suma 1" parent label.
+        .map { canonicalAmount(it.value) }.distinct()
+      // A parent may expose both caption and amount as a single label;
+      // use that only if no separate numeric amount value exists.
       val inlineOne = nearby.any {
         Regex("""(?i)^\s*Suma\s*:?\s*(?:USD\s*|\$\s*)?1(?:[.,]0{1,2})?(?:\s*(?:USD|\$))?\s*$""")
           .matches(it.value)
       }
       val hasOneDollar = (amountValues.size == 1 &&
-        strictOne.matches(amountValues.single().value)) ||
+        strictOne.matches(amountValues.single())) ||
         (amountValues.isEmpty() && inlineOne)
       if (!hasOneDollar)
-        return DemoOrderCheck(reason = if (amountValues.isEmpty())
-          "BLOCAT: ANDROID NU POATE CITI VALOAREA SUMEI"
-          else "BLOCAT: SUMA NU ESTE CONFIRMATĂ CA 1 USD")
+        return DemoOrderCheck(reason = when {
+          amountValues.size > 1 ->
+            "BLOCAT: SUMĂ AMBIGUĂ (" + amountValues.size + " VALORI DIFERITE)"
+          amountValues.isEmpty() ->
+            "BLOCAT: ANDROID NU POATE CITI VALOAREA SUMEI"
+          else -> "BLOCAT: SUMA NU ESTE CONFIRMATĂ CA 1 USD"
+        })
 
       // Validate that demo balance is visible in the narrow account region;
       // the chart quotes have more decimal places and cannot count as balance.
