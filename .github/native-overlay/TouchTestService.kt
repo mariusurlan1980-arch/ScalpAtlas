@@ -124,8 +124,20 @@ class TouchTestService : AccessibilityService() {
       // app, copycat or Scalp Atlas's own overlay.
       if (pkg != "com.pocketoption.broker" && pkg != "com.potradeweb")
         return DemoOrderCheck(reason = "APLICAȚIE NECONFIRMATĂ: " + pkg.take(36))
-      val w = svc.resources.displayMetrics.widthPixels
-      val h = svc.resources.displayMetrics.heightPixels
+      // Accessibility bounds are absolute SCREEN coordinates, including the
+      // status/navigation regions. resources.displayMetrics.heightPixels may
+      // EXCLUDE them on Motorola and was cutting off the visible amount.
+      val realMetrics = android.util.DisplayMetrics()
+      try {
+        val manager = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        manager.defaultDisplay.getRealMetrics(realMetrics)
+      } catch (_: Throwable) {
+        return DemoOrderCheck(reason = "BLOCAT: DIMENSIUNILE ECRANULUI SUNT INDISPONIBILE")
+      }
+      val w = realMetrics.widthPixels
+      val h = realMetrics.heightPixels
       if (w < 300 || h < 650) return DemoOrderCheck(reason = "ECRAN NEIDENTIFICAT")
       data class VisibleLabel(val node: AccessibilityNodeInfo, val value: String, val rect: Rect)
       val labels = ArrayList<VisibleLabel>()
@@ -157,18 +169,42 @@ class TouchTestService : AccessibilityService() {
       if (real) return DemoOrderCheck(reason = "BLOCAT: QT REAL PE ECRAN")
       if (!demo) return DemoOrderCheck(reason = "BLOCAT: QT DEMO NECONFIRMAT")
 
-      // The user screenshot shows "Suma" above the order amount in the
-      // lower-right controls. Require a unique, visible 1 USD value there.
-      val amountArea = labels.filter {
-        it.rect.centerX() > w * 0.48 &&
-        it.rect.centerY() in (h * 0.69).toInt()..(h * 0.82).toInt()
+      // Match the amount to the actual "Suma" caption, NOT to a global
+      // screen-height band. Android can exclude status/navigation regions
+      // from DisplayMetrics, so the old 69–82% crop missed a visible "1".
+      val amountCaptions = labels.filter {
+        it.rect.centerX() > w * 0.46 &&
+        it.rect.centerY() in (h * 0.62).toInt()..(h * 0.88).toInt() &&
+        Regex("""(?i)^\s*Suma\s*:?\s*$""").matches(it.value)
+      }.distinctBy { it.rect.toShortString() }
+      if (amountCaptions.size != 1)
+        return DemoOrderCheck(reason = "BLOCAT: ETICHETA SUMĂ NU ESTE IDENTIFICATĂ UNIC")
+      val caption = amountCaptions.single()
+      val nearby = labels.filter {
+        val x = it.rect.centerX()
+        val y = it.rect.centerY()
+        x >= caption.rect.left - (w * 0.03f).toInt() &&
+          x <= (w * 0.95).toInt() &&
+          y >= caption.rect.top - (h * 0.015f).toInt() &&
+          y <= caption.rect.bottom + (h * 0.10f).toInt()
+      }.distinctBy { it.rect.toShortString() + ":" + it.value.trim() }
+      // Accept ONLY a literal one-dollar value, with an optional decimal
+      // fraction of zeros. Do not guess from a screenshot or similar "10".
+      val strictOne = Regex("""(?i)^\s*(?:USD\s*|\$\s*)?1(?:[.,]0{1,2})?(?:\s*(?:USD|\$))?\s*$""")
+      val amountNumber = Regex("""(?i)^\s*(?:(?:USD|\$)\s*)?\d+(?:[.,]\d{1,2})?(?:\s*(?:USD|\$))?\s*$""")
+      val amountValues = nearby.filter { amountNumber.matches(it.value) }
+      // Some WebViews expose a single multiline "Suma 1" parent label.
+      val inlineOne = nearby.any {
+        Regex("""(?i)^\s*Suma\s*:?\s*(?:USD\s*|\$\s*)?1(?:[.,]0{1,2})?(?:\s*(?:USD|\$))?\s*$""")
+          .matches(it.value)
       }
-      if (amountArea.none { Regex("""(?i)\bSuma\b""").containsMatchIn(it.value) })
-        return DemoOrderCheck(reason = "BLOCAT: ETICHETA SUMĂ NU ESTE LIZIBILĂ")
-      val oneDollar = amountArea.any {
-        Regex("""(?i)^(?:USD\s*)?1(?:[.,]00)?(?:\s*USD)?$""").matches(it.value)
-      }
-      if (!oneDollar) return DemoOrderCheck(reason = "BLOCAT: SETEAZĂ SUMA LA 1 USD")
+      val hasOneDollar = (amountValues.size == 1 &&
+        strictOne.matches(amountValues.single().value)) ||
+        (amountValues.isEmpty() && inlineOne)
+      if (!hasOneDollar)
+        return DemoOrderCheck(reason = if (amountValues.isEmpty())
+          "BLOCAT: ANDROID NU POATE CITI VALOAREA SUMEI"
+          else "BLOCAT: SUMA NU ESTE CONFIRMATĂ CA 1 USD")
 
       // Validate that demo balance is visible in the narrow account region;
       // the chart quotes have more decimal places and cannot count as balance.
@@ -214,6 +250,21 @@ class TouchTestService : AccessibilityService() {
         return DemoOrderCheck(reason = "BLOCAT: APLICAȚIA ACTIVĂ S-A SCHIMBAT")
       return DemoOrderCheck(DemoOrderTarget(candidates[0].first, pkg),
         "GATA " + side + " • QT DEMO • 1 USD")
+    }
+
+    /**
+     * Read-only diagnostic for the amount widget. It only reports if Android
+     * exposes the exact 1 USD value; never returns the user's account data or
+     * performs any action. The same validation gates are used by the pilot.
+     */
+    fun diagnoseOneDollarAmount(side: String = "BUY"): String {
+      val result = checkOneDollarDemoTarget(side)
+      return when {
+        result.target != null -> "SUMĂ 1 USD CONFIRMATĂ • QT DEMO • TEST PREGĂTIT"
+        result.reason.contains("SUMĂ", ignoreCase = true) ->
+          "DIAG SUMĂ: " + result.reason.removePrefix("BLOCAT: ")
+        else -> result.reason
+      }
     }
 
     fun previewOneDollarDemoOrder(side: String): String {
