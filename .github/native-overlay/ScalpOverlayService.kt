@@ -741,6 +741,16 @@ class ScalpOverlayService : Service() {
     // Optional broker-screen OVERLAY TEST controls, disabled by default.
     // These buttons update this overlay only; they never tap or interact
     // with Pocket Option's underlying buttons or send broker orders.
+    // The broker's currency selector must remain visible above the test card.
+    // In PROBĂ mode hide the live visualization and show only essential
+    // controls; keep risky or seldom-used tests inside MAI MULT.
+    var probeModeActive = false
+    var extraTestControlsVisible = false
+    var moreTestsToggle: TextView? = null
+    var hiddenBody: View? = null
+    var hiddenTrend: View? = null
+    var hiddenNote: View? = null
+    var moreTestsRow: View? = null
     val touchProbeToggle = TextView(this).apply {
       text = "PROBĂ"
       textSize = 9f
@@ -749,14 +759,23 @@ class ScalpOverlayService : Service() {
       contentDescription = "Arată sau ascunde testul BUY SELL pe suprapunere"
       setOnClickListener {
         val visible = touchProbeRow?.visibility != View.VISIBLE
+        probeModeActive = visible
+        extraTestControlsVisible = false
+        moreTestsToggle?.text = "MAI MULT ▸"
         touchProbeRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
-        calculatorTestRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
         onePairEvalRow?.visibility = if (visible) View.VISIBLE else View.GONE
         demoBrokerInspectionRow?.visibility = if (visible) View.VISIBLE else View.GONE
-        demoBrokerOrderRow?.visibility = if (visible) View.VISIBLE else View.GONE
-        demoAmountCheckRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        moreTestsRow?.visibility = if (visible) View.VISIBLE else View.GONE
+        calculatorTestRow?.visibility = View.GONE
+        demoBrokerOrderRow?.visibility = View.GONE
+        demoAmountCheckRow?.visibility = View.GONE
+        // Hide the large candle/trend panel WHILE testing, instead of
+        // covering the pair selector or underlying broker chart.
+        hiddenBody?.visibility = if (visible) View.GONE else View.VISIBLE
+        hiddenTrend?.visibility = if (visible) View.GONE else View.VISIBLE
+        hiddenNote?.visibility = if (visible) View.GONE else View.VISIBLE
         if (!visible) {
           onePairEvalEnabled = false
           onePairEvalPair = null
@@ -773,18 +792,16 @@ class ScalpOverlayService : Service() {
             // Keep test targets in the chart region, well above the
             // broker's bottom trade controls even if user dragged the card.
             val screenHeight = resources.displayMetrics.heightPixels
-            val chartAreaLimit = (screenHeight * 0.81f).toInt()
-            val maxTop = (chartAreaLimit - root.height - dp(22)).coerceAtLeast(0)
-            // Leave top-left pair selector visible, without touching bottom
-            // broker BUY/SELL buttons.
-            val freeAssetHeaderTop = (screenHeight * 0.19f).toInt()
-            val desiredTop = if (maxTop >= freeAssetHeaderTop)
-              window.y.coerceIn(freeAssetHeaderTop, maxTop)
-            else window.y.coerceAtMost(maxTop)
-            if (window.y != desiredTop) {
-              window.y = desiredTop
-              try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
-            }
+            // Keep the entire expanded test card below the broker asset
+            // selector, and above the underlying broker BUY/SELL area.
+            val freeAssetHeaderTop = (screenHeight * 0.20f).toInt()
+            val maxTop = ((screenHeight * 0.76f).toInt() - root.height -
+              dp(18)).coerceAtLeast(0)
+            val targetTop = if (maxTop >= freeAssetHeaderTop)
+              window.y.coerceIn(freeAssetHeaderTop, maxTop) else maxTop
+            window.x = dp(8)
+            window.y = targetTop
+            try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
           }
         }
       }
@@ -912,6 +929,7 @@ class ScalpOverlayService : Service() {
     // never clutter the small circle.
     body.addView(signalRing, LinearLayout.LayoutParams(dp(109), dp(109)))
     root.addView(body)
+    hiddenBody = body
 
     val trendRow = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
@@ -949,6 +967,7 @@ class ScalpOverlayService : Service() {
     }.also {trendColumn.addView(it)}
     trendRow.addView(trendColumn, LinearLayout.LayoutParams(0, dp(48), 1f))
     root.addView(trendRow)
+    hiddenTrend = trendRow
 
     val note = TextView(this).apply {
       text = "ȘOC = RETRAGERE LUMÂNARE • NU WIN"
@@ -959,6 +978,7 @@ class ScalpOverlayService : Service() {
       setPadding(0, dp(4), 0, 0)
     }
     root.addView(note)
+    hiddenNote = note
     signalGateNote = note
 
     // Android 350: opt-in virtual gestures sent exclusively to Scalp Atlas's
@@ -1158,6 +1178,45 @@ class ScalpOverlayService : Service() {
     root.addView(brokerInspectionRow)
     demoBrokerInspectionRow = brokerInspectionRow
 
+    // Secondary diagnostics stay folded so the currency selector and chart
+    // are readable with PROBĂ open. This is NOT an automatic order switch.
+    val moreRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(4), 0, 0)
+    }
+    val moreTests = localButton("MAI MULT ▸", Color.rgb(84, 103, 120)).apply {
+      contentDescription = "Arată sau ascunde teste avansate fără a atinge brokerul"
+      setOnClickListener {
+        extraTestControlsVisible = !extraTestControlsVisible
+        text = if (extraTestControlsVisible) "MAI PUȚIN ▴" else "MAI MULT ▸"
+        demoAmountCheckRow?.visibility =
+          if (extraTestControlsVisible) View.VISIBLE else View.GONE
+        demoBrokerOrderRow?.visibility =
+          if (extraTestControlsVisible) View.VISIBLE else View.GONE
+        calculatorTestRow?.visibility =
+          if (extraTestControlsVisible) View.VISIBLE else View.GONE
+        // Any pending order confirmation times out after 8 seconds.
+        // Folding detail rows never performs an order.
+        root.post {
+          val window = overlayWindowParams ?: return@post
+          val height = resources.displayMetrics.heightPixels
+          val freeHeader = (height * 0.20f).toInt()
+          val maxTop = ((height * 0.76f).toInt() - root.height -
+            dp(18)).coerceAtLeast(0)
+          window.y = if (maxTop >= freeHeader)
+            window.y.coerceIn(freeHeader, maxTop) else maxTop
+          window.x = dp(8)
+          try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
+        }
+      }
+    }
+    moreRow.addView(moreTests, LinearLayout.LayoutParams(-1, dp(30)))
+    root.addView(moreRow)
+    moreTestsRow = moreRow
+    moreTestsToggle = moreTests
+
     // Manual two-step DEMO order probe. This is NOT connected to strategy
     // signals or AUTO SIM. Android refuses any order unless QT Demo, exactly
     // 1 USD, adequate demo balance, and a unique clickable trade button exist.
@@ -1266,9 +1325,9 @@ class ScalpOverlayService : Service() {
     // enabled/disabled bell continue to work. Opening the card is manual.
     var minimized = true
     fun applyCompactMode() {
-      body.visibility = if (minimized) View.GONE else View.VISIBLE
-      trendRow.visibility = if (minimized) View.GONE else View.VISIBLE
-      note.visibility = if (minimized) View.GONE else View.VISIBLE
+      body.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
+      trendRow.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
+      note.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
       touchProbeToggle.visibility = if (minimized) View.GONE else View.VISIBLE
       testBipControl.visibility = if (minimized) View.GONE else View.VISIBLE
       compactStatus.visibility = if (minimized) View.VISIBLE else View.GONE
@@ -1281,6 +1340,10 @@ class ScalpOverlayService : Service() {
         brokerInspectionRow.visibility = View.GONE
         demoOrderRow.visibility = View.GONE
         amountCheckRow.visibility = View.GONE
+        moreRow.visibility = View.GONE
+        probeModeActive = false
+        extraTestControlsVisible = false
+        moreTests.text = "MAI MULT ▸"
         armedDemoSide = null
         armedDemoMarket = null
         armedDemoAt = 0L
@@ -1320,7 +1383,8 @@ class ScalpOverlayService : Service() {
     ).apply {
       gravity = Gravity.TOP or Gravity.START
       x = dp(8)
-      y = dp(210) // initial position below asset picker; leaves BHD/CNY OTC visible for OCR
+      y = (resources.displayMetrics.heightPixels * 0.205f).toInt()
+      // Initial location stays below the broker currency selector.
     }
 
     // Drag the white card on its background; bell and X remain clickable.
@@ -1342,12 +1406,12 @@ class ScalpOverlayService : Service() {
           params.x = (startX + (event.rawX - touchX).toInt())
             .coerceIn(0, (metrics.widthPixels - params.width).coerceAtLeast(0))
           val limitBottom = if (touchProbeRow?.visibility == View.VISIBLE)
-            (metrics.heightPixels * 0.81f).toInt()
+            (metrics.heightPixels * 0.76f).toInt()
             else metrics.heightPixels
           val maxTop = (limitBottom - root.height - dp(22)).coerceAtLeast(0)
           val minTop = if (touchProbeRow?.visibility == View.VISIBLE &&
-              maxTop >= (metrics.heightPixels * 0.19f).toInt())
-            (metrics.heightPixels * 0.19f).toInt() else 0
+              maxTop >= (metrics.heightPixels * 0.20f).toInt())
+            (metrics.heightPixels * 0.20f).toInt() else 0
           params.y = (startY + (event.rawY - touchY).toInt())
             .coerceIn(minTop, maxTop)
           overlayView?.let { windowManager.updateViewLayout(it, params) }
