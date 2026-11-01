@@ -294,8 +294,59 @@ class TouchTestService : AccessibilityService() {
           if (it.isFinite()) "%.2f".format(java.util.Locale.ROOT, it) else cleaned
         } ?: cleaned
       }
-      val amountValues = nearby.filter { amountNumber.matches(it.value) }
-        .map { canonicalAmount(it.value) }.distinct()
+      val numericNearby = nearby.filter { amountNumber.matches(it.value) }
+      val allAmountValues = numericNearby.map { canonicalAmount(it.value) }.distinct()
+      // First choice: a uniquely identified editable text field is the
+      // actual monetary input; ordinary sibling labels are not.
+      val editableValues = numericNearby.filter {
+        it.node.isEditable ||
+          it.node.className?.toString()?.contains("EditText", ignoreCase = true) == true
+      }.map { canonicalAmount(it.value) }.distinct()
+
+      // Motorola WebView can expose payout as a bare numeric sibling ("79")
+      // within the broad amount column. Do NOT discard arbitrary numbers:
+      // only a DIFFERENT, non-editable number that matches both independently
+      // visible BUY and SELL percentages can be classified as a payout echo.
+      val percentRx = Regex("""(?<!\d)(\d{1,3})\s*%(?!\d)""")
+      fun sidePayout(buy: Boolean): Int? {
+        val sideNumbers = labels.filter {
+          it.rect.centerY() >= actionTop - (h * 0.020f).toInt() &&
+            it.rect.centerY() <= h * 0.96f &&
+            (if (buy) it.rect.centerX() < w * 0.49f
+             else it.rect.centerX() > w * 0.51f)
+        }.mapNotNull {
+          percentRx.find(it.value)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        }.distinct()
+        return sideNumbers.singleOrNull()
+      }
+      val buyPercent = sidePayout(true)
+      val sellPercent = sidePayout(false)
+      val verifiedPayout = if (buyPercent != null && buyPercent == sellPercent)
+        buyPercent else null
+      val exactOneNodes = numericNearby.filter {
+        canonicalAmount(it.value) == "1.00"
+      }
+      val otherNodes = numericNearby.filter {
+        canonicalAmount(it.value) != "1.00"
+      }
+      val earliestOneY = exactOneNodes.minOfOrNull { it.rect.centerY() }
+      val echoFromLowerButtons = editableValues.isEmpty() &&
+        exactOneNodes.isNotEmpty() && otherNodes.isNotEmpty() &&
+        earliestOneY != null && verifiedPayout != null &&
+        otherNodes.all {
+          !it.node.isEditable &&
+            canonicalAmount(it.value) == "%.2f".format(
+              java.util.Locale.ROOT, verifiedPayout
+            ) &&
+            it.rect.centerY() > earliestOneY + (h * 0.020f).toInt()
+        }
+      // If payout cannot be independently established, if the extra number
+      // is in the same input row, or if editable data conflicts: BLOCK.
+      val amountValues = when {
+        editableValues.isNotEmpty() -> editableValues
+        echoFromLowerButtons -> listOf("1.00")
+        else -> allAmountValues
+      }
       // A parent may expose both caption and amount as a single label;
       // use that only if no separate numeric amount value exists.
       val inlineOne = nearby.any {
@@ -309,9 +360,9 @@ class TouchTestService : AccessibilityService() {
         return DemoOrderCheck(reason = when {
           amountValues.size > 1 ->
             "BLOCAT: SUMĂ AMBIGUĂ • " + amountValues.size +
-              " VALORI ÎNAINTE DE BUTOANE: " +
-              amountValues.take(3).joinToString("/") { it.take(6) } +
-              " • FĂRĂ ORDIN"
+              " VALORI: " + amountValues.take(3).joinToString("/") { it.take(6) } +
+              " • PAYOUT " + (verifiedPayout?.toString() ?: "NECONFIRMAT") +
+              "% • FĂRĂ ORDIN"
           amountValues.isEmpty() ->
             "BLOCAT: SUMA NU E VIZIBILĂ ÎN ARBORELE ANDROID"
           else -> "BLOCAT: VALOAREA CITITĂ " + amountValues.single().take(7) +
