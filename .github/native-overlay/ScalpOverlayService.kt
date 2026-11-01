@@ -1159,6 +1159,7 @@ class ScalpOverlayService : Service() {
       setPadding(0, dp(5), 0, 0)
     }
     var armedDemoSide: String? = null
+    var armedDemoMarket: String? = null
     var armedDemoAt = 0L
     fun confirmDemoOrder(side: String) {
       if (onePairEvalEnabled) {
@@ -1167,20 +1168,33 @@ class ScalpOverlayService : Service() {
       }
       val now = android.os.SystemClock.elapsedRealtime()
       if (armedDemoSide == side && now - armedDemoAt in 0L..8000L) {
+        val expectedMarket = armedDemoMarket
         armedDemoSide = null
+        armedDemoMarket = null
         armedDemoAt = 0L
-        probeStatus.text = TouchTestService.pressOneDollarDemoOrderOnce(side)
+        val marketNow = currentPair(System.currentTimeMillis())
+        probeStatus.text = if (expectedMarket == null ||
+            !pairReady(System.currentTimeMillis()) || marketNow != expectedMarket)
+          "BLOCAT: PERECHEA S-A SCHIMBAT SAU NU ESTE CONFIRMATĂ"
+        else TouchTestService.pressOneDollarDemoOrderOnce(side)
       } else {
         armedDemoSide = null
+        armedDemoMarket = null
         armedDemoAt = 0L
+        val marketNow = currentPair(System.currentTimeMillis())
+        if (!pairReady(System.currentTimeMillis()) || marketNow == "NEIDENTIFICAT") {
+          probeStatus.text = "BLOCAT: PERECHEA NU ESTE STABILĂ"
+          return
+        }
         val inspection = TouchTestService.previewOneDollarDemoOrder(side)
         if (!inspection.startsWith("GATA ")) {
           probeStatus.text = inspection
           return
         }
         armedDemoSide = side
+        armedDemoMarket = marketNow
         armedDemoAt = now
-        probeStatus.text = "CONFIRMĂ " + side + " DEMO 1 USD ÎN 8 SECUNDE"
+        probeStatus.text = "CONFIRMĂ " + side + " " + marketNow + " • DEMO 1 USD"
       }
     }
     val demoBuy = localButton("DEMO BUY 1$", Color.rgb(16, 89, 62)).apply {
@@ -1240,6 +1254,7 @@ class ScalpOverlayService : Service() {
         brokerInspectionRow.visibility = View.GONE
         demoOrderRow.visibility = View.GONE
         armedDemoSide = null
+        armedDemoMarket = null
         armedDemoAt = 0L
         calcRow.visibility = View.GONE
         probeStatus.visibility = View.GONE
