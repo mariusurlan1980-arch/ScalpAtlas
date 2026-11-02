@@ -557,25 +557,80 @@ class TouchTestService : AccessibilityService() {
       return "GATA TEST BUY QT DEMO • 1 USD • ORICE PERECHE • PAYOUT ≥92%"
     }
 
+    /**
+     * Explicit one-shot QT Demo BUY gesture pilot.
+     *
+     * AccessibilityNodeInfo.ACTION_CLICK can return true on a WebView
+     * wrapper without delivering a real pointer event to its trade button.
+     * This test instead sends one short Android touch at the center of the
+     * strictly verified BUY button. No arbitrary broker coordinates.
+     *
+     * We NEVER interpret gesture acceptance/completion as a confirmed order:
+     * confirmation belongs to the Pocket Option DEMO Open/Closed history.
+     * Global once-only lock is persisted BEFORE dispatch; no automatic retry.
+     */
     @Synchronized
-    fun pressAnyPairDemoBuyOnce(): String {
+    fun pressAnyPairDemoBuyOnce(onResult: (String) -> Unit): String {
       val svc = connected ?: return "BLOCAT: ACCESIBILITATE NECONECTATĂ"
       val now = android.os.SystemClock.elapsedRealtime()
       val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
       val last = store.getLong("lastAcceptedAt", 0L)
       if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
-        return "BLOCAT: LIMITĂ 5 MINUTE • FĂRĂ CLIC"
+        return "BLOCAT: LIMITĂ 5 MINUTE • FĂRĂ GEST"
+      // Freshly verify exact broker package, QT Demo and absence of QT Real,
+      // readable 1 USD, sufficient Demo balance, payout >=92% and unique BUY.
       val check = checkOneDollarDemoTarget("BUY", true)
       val target = check.target ?: return check.reason
-      // Consume global allowance before the attempted action.
-      if (!store.edit().putLong("lastAcceptedAt", now).commit())
-        return "BLOCAT: NU POT SALVA BLOCAREA ORDINULUI"
+      // Also require a separately identifiable SELL button before a live tap.
+      val sell = checkOneDollarDemoTarget("SELL", true)
+      if (sell.target == null) return sell.reason
       if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
         return "BLOCAT: BROKERUL NU MAI ESTE ACTIV"
-      val accepted = target.node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-      return if (accepted)
-        "TEST BUY: ANDROID A ACCEPTAT CLICUL • VERIFICĂ ISTORICUL QT DEMO"
-      else "TEST BUY: ANDROID A REFUZAT CLICUL • NU REPETA"
+      val bounds = Rect()
+      target.node.getBoundsInScreen(bounds)
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val manager = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        manager.defaultDisplay.getRealMetrics(metrics)
+      } catch (error: Exception) {
+        return "BLOCAT: ECRAN ANDROID NECONFIRMAT"
+      }
+      val x = bounds.exactCenterX()
+      val y = bounds.exactCenterY()
+      if (bounds.width() < 65 || bounds.height() < 35 ||
+          bounds.left < 0 || bounds.top < (metrics.heightPixels * 0.76f).toInt() ||
+          bounds.bottom > (metrics.heightPixels * 0.96f).toInt() ||
+          bounds.right > metrics.widthPixels ||
+          x >= metrics.widthPixels * 0.50f ||
+          y <= 0f || y >= metrics.heightPixels.toFloat())
+        return "BLOCAT: CENTRUL BUY NU ESTE CONFIRMAT"
+      // Persist the allowance even when Android rejects a gesture, because
+      // a double tap could result in two broker orders.
+      if (!store.edit().putLong("lastAcceptedAt", now).commit())
+        return "BLOCAT: NU POT SALVA LIMITA GESTULUI"
+      if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
+        return "BLOCAT: BROKERUL S-A SCHIMBAT • FĂRĂ GEST"
+      val path = Path().apply { moveTo(x, y) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 85L))
+        .build()
+      return try {
+        val submitted = svc.dispatchGesture(gesture, object : GestureResultCallback() {
+          override fun onCompleted(gestureDescription: GestureDescription?) {
+            onResult("GEST BUY TRIMIS • VERIFICĂ TRANZACȚII > DESCHIS")
+          }
+          override fun onCancelled(gestureDescription: GestureDescription?) {
+            onResult("GEST BUY ANULAT DE ANDROID • FĂRĂ REPETARE")
+          }
+        }, Handler(Looper.getMainLooper()))
+        if (submitted) "GEST BUY ACCEPTAT DE ANDROID • FĂRĂ CONFIRMARE TRADE"
+        else "GEST BUY REFUZAT DE ANDROID • FĂRĂ REPETARE"
+      } catch (error: Exception) {
+        android.util.Log.e("ScalpAtlasDemo392", "One-shot DEMO gesture rejected", error)
+        "GEST BUY BLOCAT: " + error.javaClass.simpleName.take(22)
+      }
     }
 
     /**
