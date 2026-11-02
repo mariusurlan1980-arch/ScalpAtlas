@@ -73,7 +73,7 @@ class ScalpOverlayService : Service() {
           service.autoDemoArmed = false
           service.autoDemoMarket = null
           service.autoDemoExpiry = 0L
-          service.autoDemoButton?.text = "🤖 AUTO DEMO OFF"
+          service.autoDemoButton?.text = "🤖 PORNEȘTE • ON"
         }
         service.overlayView?.visibility = if (hidden) View.GONE else View.VISIBLE
       }
@@ -362,7 +362,7 @@ class ScalpOverlayService : Service() {
     autoDemoMarket = null
     autoDemoExpiry = 0L
     mainHandler.post {
-      autoDemoButton?.text = "🤖 AUTO DEMO OFF"
+      autoDemoButton?.text = "🤖 PORNEȘTE • ON"
       touchProbeStatus?.text = "ROBOT OPRIT • LIVE RĂMÂNE ACTIV"
     }
     super.onTaskRemoved(rootIntent)
@@ -1347,82 +1347,61 @@ class ScalpOverlayService : Service() {
     root.addView(demoOrderRow)
     demoBrokerOrderRow = demoOrderRow
 
-    // AUTO DEMO is separate from AUTO SIM. Two explicit taps arm exactly
-    // ONE future, fresh SHOCK BIP trade; it never trades on installation.
-    var autoArmFirstAt = 0L
-    var autoArmFirstPair: String? = null
+    // One explicit ON press arms at most ONE fresh SHOCK DEMO order.
+    // Never starts automatically on launch. Real money is forbidden and
+    // all strict verification gates remain mandatory before arming/clicking.
     val brokerAutoRow = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER
-      // The ONE relevant robot control is always visible, even when compact.
       visibility = View.VISIBLE
       setPadding(0, dp(5), 0, 0)
     }
-    val brokerAutoButton = localButton("🤖 AUTO DEMO OFF", Color.rgb(88, 62, 115)).apply {
+    val brokerAutoButton = localButton("🤖 PORNEȘTE • ON", Color.rgb(88, 62, 115)).apply {
       textSize = 11f
-      contentDescription = "Roboțel DEMO: atinge de două ori în 8 secunde pentru un singur ordin automat, doar dacă verificările sunt confirmate"
+      contentDescription = "Pornește roboțelul automat numai pentru QT Demo, un singur ordin de 1 USD la ȘOC valid. Atinge din nou pentru oprire."
       setOnClickListener {
-        // A flaky Android Accessibility/WebView tree must never crash LIVE.
-        // Keep AUTO DEMO fail-closed if read-only broker validation throws.
         try {
-        if (autoDemoArmed) {
-          autoDemoArmed = false
-          autoDemoMarket = null
-          autoDemoExpiry = 0L
-          autoArmFirstAt = 0L
-          autoArmFirstPair = null
-          text = "🤖 AUTO DEMO OFF"
-          probeStatus.text = "AUTO DEMO OPRIT • FĂRĂ ORDINE NOI"
-        } else {
-          val wallNow = System.currentTimeMillis()
-          val clockNow = android.os.SystemClock.elapsedRealtime()
-          val pair = currentPair(wallNow)
-          val condition = when {
-            onePairEvalEnabled -> "BLOCAT: OPREȘTE AUTO SIM"
-            !bellEnabled -> "BLOCAT: ACTIVEAZĂ BIPUL"
-            !TouchTestService.ready() ->
-              TouchTestService.accessDiagnostic(this@ScalpOverlayService)
-            !pairReady(wallNow) || pair == "NEIDENTIFICAT" ->
-              "BLOCAT: PERECHEA NU ESTE STABILĂ"
-            else -> {
-              val buy = TouchTestService.previewAutoOneDollarDemoOrder("BUY", pair)
-              if (!buy.startsWith("GATA AUTO DEMO")) buy
-              else {
-                val sell = TouchTestService.previewAutoOneDollarDemoOrder("SELL", pair)
-                if (!sell.startsWith("GATA AUTO DEMO")) sell else ""
-              }
+          if (autoDemoArmed) {
+            autoDemoArmed = false
+            autoDemoMarket = null
+            autoDemoExpiry = 0L
+            text = "🤖 PORNEȘTE • ON"
+            probeStatus.text = "ROBOT OPRIT • FĂRĂ ORDINE NOI"
+          } else {
+            val wallNow = System.currentTimeMillis()
+            val clockNow = android.os.SystemClock.elapsedRealtime()
+            val pair = currentPair(wallNow)
+            val condition = when {
+              onePairEvalEnabled -> "BLOCAT: OPREȘTE AUTO SIM"
+              !bellEnabled -> "BLOCAT: ACTIVEAZĂ BIPUL"
+              !TouchTestService.ready() -> TouchTestService.accessDiagnostic(this@ScalpOverlayService)
+              !pairReady(wallNow) || pair == "NEIDENTIFICAT" ->
+                "BLOCAT: PERECHEA NU ESTE STABILĂ"
+              else -> TouchTestService.preflightOneDollarDemoOrder(pair)
+            }
+            if (!condition.startsWith("PREGĂTIT AUTO DEMO")) {
+              autoDemoArmed = false
+              autoDemoMarket = null
+              autoDemoExpiry = 0L
+              text = "🤖 PORNEȘTE • ON"
+              probeStatus.text = condition
+            } else {
+              autoDemoArmed = true
+              autoDemoMarket = pair
+              autoDemoLockedAt = lockedAt // never replay a previous BIP
+              autoDemoExpiry = clockNow + 10 * 60_000L
+              text = "🤖 ROBOT ON • OPREȘTE"
+              probeStatus.text = "ON QT DEMO • " + pair +
+                " • 1 SINGUR ȘOC NOU • 1 USD • PAYOUT ≥92%"
             }
           }
-          if (condition.isNotEmpty()) {
-            autoArmFirstAt = 0L
-            autoArmFirstPair = null
-            probeStatus.text = condition
-          } else if (autoArmFirstPair == pair &&
-              clockNow - autoArmFirstAt in 0L..8000L) {
-            autoDemoArmed = true
-            autoDemoMarket = pair
-            autoDemoLockedAt = lockedAt // don't replay prior BIP
-            autoDemoExpiry = clockNow + 10 * 60_000L
-            autoArmFirstAt = 0L
-            autoArmFirstPair = null
-            text = "🤖 AUTO DEMO ON · 1$"
-            probeStatus.text = "ARMAT: " + pair +
-              " • 1 ȘOC CONFIRMAT • 1 USD • PAYOUT MINIM 92%"
-          } else {
-            autoArmFirstPair = pair
-            autoArmFirstAt = clockNow
-            probeStatus.text = "CONFIRMĂ AUTO DEMO DIN NOU ÎN 8 SECUNDE"
-          }
-        }
         } catch (error: Exception) {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
-          autoArmFirstAt = 0L
-          autoArmFirstPair = null
-          text = "🤖 AUTO DEMO OFF"
-          probeStatus.text = "BLOCAT: EROARE VERIFICARE ROBOT • FĂRĂ ORDIN"
-          android.util.Log.e("ScalpAtlasRobot", "AUTO DEMO preflight failed safely", error)
+          text = "🤖 PORNEȘTE • ON"
+          probeStatus.text = "BLOCAT: VERIFICARE ANDROID • FĂRĂ ORDIN"
+          android.util.Log.e("ScalpAtlasRobot", "AUTO DEMO one-tap preflight failed safely", error)
         }
       }
     }
@@ -1499,6 +1478,7 @@ class ScalpOverlayService : Service() {
         // still disarm as before.
       }
       minimizeToggle.text = if (minimized) "+" else "−"
+      minimizeToggle.visibility = View.GONE // One-button pilot: no extra UI controls.
       minimizeToggle.contentDescription = if (minimized)
         "Extinde panoul Scalp Atlas" else "Micșorează panoul Scalp Atlas"
       val window = overlayWindowParams ?: return
@@ -2027,7 +2007,7 @@ class ScalpOverlayService : Service() {
         autoDemoArmed = false
         autoDemoMarket = null
         autoDemoExpiry = 0L
-        autoDemoButton?.text = "🤖 AUTO DEMO OFF"
+        autoDemoButton?.text = "🤖 PORNEȘTE • ON"
         lockedDir = null
         lockedAt = 0L
         lockedUntil = 0L
@@ -2846,7 +2826,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
-          autoDemoButton?.text = "🤖 AUTO DEMO OFF"
+          autoDemoButton?.text = "🤖 PORNEȘTE • ON"
           touchProbeStatus?.text =
             "AUTO DEMO OPRIT • PERECHE/SERVICIU/EXPIRARE"
         } else if (newShock) {
@@ -2854,7 +2834,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
-          autoDemoButton?.text = "🤖 AUTO DEMO OFF"
+          autoDemoButton?.text = "🤖 PORNEȘTE • ON"
           // Consume this one-shot even when the market data fails the
           // last freshness check. Never retry an expired shock signal.
           touchProbeStatus?.text = if (!readyForDemo)
