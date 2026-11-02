@@ -480,8 +480,17 @@ class TouchTestService : AccessibilityService() {
     }
 
     fun previewAutoOneDollarDemoOrder(side: String, expectedPair: String): String {
+      // Android may invalidate a live Accessibility/WebView node mid-scan.
+      // Fail closed and show the failing stage; never bypass a missing tree.
+      val observedPair = try {
+        readVisibleDemoPair()
+      } catch (error: Exception) {
+        android.util.Log.e("ScalpAtlasRobot", "read-only pair lookup failed", error)
+        return "BLOCAT: CITIRE PERECHE ANDROID (" +
+          error.javaClass.simpleName.take(24) + ") • FĂRĂ ORDIN"
+      }
       if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
-          readVisibleDemoPair() != expectedPair)
+          observedPair != expectedPair)
         return "BLOCAT: PERECHEA QT DEMO NU ESTE CONFIRMATĂ"
       val svc = connected ?: return "ROBOT NECONECTAT"
       val now = android.os.SystemClock.elapsedRealtime()
@@ -489,7 +498,13 @@ class TouchTestService : AccessibilityService() {
         .getLong("lastAcceptedAt", 0L)
       if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
         return "BLOCAT: TRADE DEMO RECENT • AȘTEAPTĂ 5 MINUTE"
-      val check = checkOneDollarDemoTarget(side, true)
+      val check = try {
+        checkOneDollarDemoTarget(side, true)
+      } catch (error: Exception) {
+        android.util.Log.e("ScalpAtlasRobot", "read-only " + side + " validation failed", error)
+        return "BLOCAT: VERIFICARE " + side + " ANDROID (" +
+          error.javaClass.simpleName.take(24) + ") • FĂRĂ ORDIN"
+      }
       return if (check.target == null) check.reason
         else "GATA AUTO DEMO " + side + " • 1 USD • PAYOUT ≥92%"
     }
