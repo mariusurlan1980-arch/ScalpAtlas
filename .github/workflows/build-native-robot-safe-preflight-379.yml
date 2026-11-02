@@ -1,10 +1,10 @@
-name: Build Scalp Atlas 379 Robot Safe Preflight
+name: Build Scalp Atlas 380 One Button Demo UI
 
 on:
   push:
-    branches: [feature/scalpatlas-motorola-robot-preflight-guard379]
+    branches: [feature/scalpatlas-motorola-auto-demo-one-tap380]
     paths:
-      - '.github/workflows/build-native-robot-safe-preflight-379.yml'
+      - '.github/workflows/build-native-robot-safe-preflight-380.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
       - '.github/native-overlay/TouchTestService.kt'
       - '.github/native-overlay/touch_test_accessibility.xml'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-379
+  group: scalp-atlas-calculator-test-380
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=379
+          expo['android']['versionCode']=380
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -198,7 +198,7 @@ jobs:
       - name: Validate isolated touch practice panel
         run: |
           test -s scalp-atlas-new/TouchPracticePanel.tsx
-          grep -Fq "TouchPracticePanel" scalp-atlas-new/App.tsx
+          ! grep -Fq "TouchPracticePanel" scalp-atlas-new/App.tsx
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
 
@@ -253,7 +253,7 @@ jobs:
           grep -Fq 'fun pressAutoOneDollarDemoOrderOnce' .github/native-overlay/TouchTestService.kt
           grep -Fq 'payoutValues[0] !in 92..100' .github/native-overlay/TouchTestService.kt
           grep -Fq 'getSharedPreferences("scalp_demo_order_safety"' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'CONFIRMĂ AUTO DEMO DIN NOU ÎN 8 SECUNDE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '🤖 ROBOT ON • OPREȘTE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoExpiry = clockNow + 10' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val pairLostLong = seenPair ==' .github/native-overlay/ScalpOverlayService.kt
@@ -282,7 +282,7 @@ jobs:
           grep -Fq 'val uiClosed = overlayView == null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'touchProbeToggle.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'testBipControl.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '🤖 AUTO DEMO OFF' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '🤖 PORNEȘTE • ON' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROBOT OPRIT • LIVE RĂMÂNE ACTIV' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoArmed = false' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoExpiry = clockNow + 10 * 60_000L' .github/native-overlay/ScalpOverlayService.kt
@@ -358,7 +358,7 @@ jobs:
           grep -Fq 'onePairEvalAutoPending = automatic' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'GEST AJUNS LA' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'FĂRĂ ATINGERE' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'TEST MANUAL · NU VERIFICĂ GESTUL VIRTUAL' .github/templates/ScalpAtlasOneButtonOverlayApp.tsx
+          ! grep -Fq 'TEST MANUAL · NU VERIFICĂ GESTUL VIRTUAL' .github/templates/ScalpAtlasOneButtonOverlayApp.tsx
           grep -Fq 'TEST MANUAL BUY / SELL' .github/templates/TouchPracticePanel.tsx
 
       - name: Verify enlarged right-edge TF OCR preserves no-signal safety gates
@@ -699,12 +699,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-379-ACCESSIBILITY-LIFECYCLE-G24.apk
+          cp "$APK" ScalpAtlas-380-ONE-BUTTON-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-379
-          path: ScalpAtlas-379-ACCESSIBILITY-LIFECYCLE-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-380
+          path: ScalpAtlas-380-ACCESSIBILITY-LIFECYCLE-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -713,13 +713,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-379-ACCESSIBILITY-LIFECYCLE-G24.apk"
+          FILE="ScalpAtlas-380-ACCESSIBILITY-LIFECYCLE-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator379-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator380-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 379 ROBOT VIZIBIL SI SETARI ACCESIBILITATE FARA OPRIRE LIVE · FARA REAL • ${GITHUB_SHA:0:12}" \
-            --notes "AUTO DEMO ONE SHOT: Doua confirmari activeaza cel mult un ordin automat de 1 USD pe QT Demo, numai la BIP SOC confirmat, pe aceeasi pereche si payout de minimum 92%. Accesibilitatea reverifica QT Demo, suma, soldul, butonul si payout-ul inainte de fiecare clic. Protectie QT Real, pauza 5 minute si expirare armare 10 minute. AUTO SIM ramane doar simulat; nu garanteaza castiguri. Codul nu a fost validat live pe telefon. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 380 AUTO DEMO ON CU UN SINGUR BUTON · FARA REAL • ${GITHUB_SHA:0:12}" \
+            --notes "AUTO DEMO ONE SHOT: O singura apasare ON poate activa cel mult un ordin automat de 1 USD pe QT Demo, numai la BIP SOC confirmat, pe aceeasi pereche si payout de minimum 92%. Accesibilitatea reverifica QT Demo, suma, soldul, butonul si payout-ul inainte de fiecare clic. Protectie QT Real, pauza 5 minute si expirare armare 10 minute. AUTO SIM ramane doar simulat; nu garanteaza castiguri. Codul nu a fost validat live pe telefon. Build $GITHUB_SHA." \
             --prerelease
