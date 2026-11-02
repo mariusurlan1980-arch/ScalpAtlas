@@ -103,6 +103,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     // Previous three FILLED candle bodies are read in chronological order.
     // If any is missing or the slope is unclear, no trade trend is assumed.
     var previous=viable.slice(-4,-1),trend='NONE',pastCloses=[];
+    var trendHistoryCount=previous.length;
     var trendStrengthPercent=null,trendVisualPoints=[],trendMeasured=false;
     if(previous.length===3){
       previous.forEach(function(g){
@@ -116,6 +117,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         }
         if(b>t+4)pastCloses.push({closeY:g.dir==='BUY'?t:b,dir:g.dir,bodyHeight:b-t});
       });
+      trendHistoryCount=pastCloses.length;
       if(pastCloses.length===3){
         trendMeasured=true;
         var move=pastCloses[2].closeY-pastCloses[0].closeY;
@@ -142,6 +144,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       topWickPixels:upperWickPixels,bottomWickPixels:lowerWickPixels,
       trendDirection:trend,trendMeasured:trendMeasured,
       trendStrengthPercent:trendStrengthPercent,trendVisualPoints:trendVisualPoints,
+      trendHistoryCount:trendHistoryCount,
       opticalQuality:opticalQuality};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
@@ -343,6 +346,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             trendDirection:candle.trendDirection,
             trendMeasured:candle.trendMeasured,
             trendStrengthPercent:candle.trendStrengthPercent,
+            trendHistoryCount:candle.trendHistoryCount,
             trendThresholdPercent:minTrendStrengthPercent,
             trendVisualPoints:candle.trendVisualPoints,
             observedBodyHeightPx:candle.bodyHeight,
