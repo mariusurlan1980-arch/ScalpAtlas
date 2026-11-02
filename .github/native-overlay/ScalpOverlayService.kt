@@ -553,7 +553,7 @@ class ScalpOverlayService : Service() {
         }
         val afterBuy = TouchTestService.readVerifiedDemoBalance()
         val diff = afterBuy?.let { startingBalance - it }
-        if (diff != null && kotlin.math.abs(diff - 1.0) <= 0.03) {
+        if (afterBuy != null && diff != null && kotlin.math.abs(diff - 1.0) <= 0.03) {
           touchProbeStatus?.text =
             "DEBIT BUY 1 USD OBSERVAT • VERIFICĂ TRANZACȚII → DESCHIS"
           // Schedule against the original gesture, not the final balance
