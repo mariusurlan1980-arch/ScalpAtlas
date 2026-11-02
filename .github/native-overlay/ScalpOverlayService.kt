@@ -128,7 +128,13 @@ class ScalpOverlayService : Service() {
   private var demoBrokerInspectionRow: LinearLayout? = null
   private var demoBrokerOrderRow: LinearLayout? = null
   private var demoAmountCheckRow: LinearLayout? = null
-  // Explicit one-shot DEMO trade mode; always OFF on app launch.
+  // Demo automation is requested ONLY by a deliberate Android LIVE capture start.
+  // At most one verified 1 USD QT Demo click per 30-minute LIVE session.
+  // No background rearming, no Real orders, no hidden bypass of preflight.
+  private var autoDemoSessionRequested = false
+  private var autoDemoSessionConsumed = false
+  private var autoDemoSessionEndAt = 0L
+  private var autoDemoLastPreflightAt = 0L
   private var autoDemoArmed = false
   private var autoDemoMarket: String? = null
   private var autoDemoLockedAt = 0L
@@ -344,6 +350,14 @@ class ScalpOverlayService : Service() {
         }
 
         if (resultCode != 0 && data != null) {
+          autoDemoSessionRequested = true
+          autoDemoSessionConsumed = false
+          autoDemoSessionEndAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
+          autoDemoLastPreflightAt = 0L
+          autoDemoLockedAt = lockedAt // never trade from a preexisting signal
+          // The single automated session uses the same audible confirmed SHOCK alert.
+          // This is session-local; no user bell preference is overwritten.
+          bellEnabled = true
           startProjection(resultCode, data)
         } else {
           updateOverlay("AȘTEAPTĂ", "LIVE • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
@@ -358,6 +372,8 @@ class ScalpOverlayService : Service() {
   // persistent notification's "Oprește LIVE" action. Removing the task MUST
   // disarm any pending broker order: do not trade unattended after app swipe.
   override fun onTaskRemoved(rootIntent: Intent?) {
+    autoDemoSessionRequested = false
+    autoDemoSessionConsumed = true
     autoDemoArmed = false
     autoDemoMarket = null
     autoDemoExpiry = 0L
@@ -738,6 +754,7 @@ class ScalpOverlayService : Service() {
       contentDescription = "Închide suprapunerea și oprește LIVE"
       setOnClickListener { stopSelf() }
     }
+    close.visibility = View.GONE // Stop is always available in Android's LIVE notification.
     header.addView(close, LinearLayout.LayoutParams(dp(30), dp(28)))
     val headerGap = View(this)
     header.addView(headerGap, LinearLayout.LayoutParams(0, dp(1), 1f))
@@ -851,6 +868,7 @@ class ScalpOverlayService : Service() {
     }
     header.addView(touchProbeToggle, LinearLayout.LayoutParams(dp(42), dp(28)))
     header.addView(testBipControl, LinearLayout.LayoutParams(dp(55), dp(28)))
+    bellControl?.visibility = View.GONE // No ON/OFF controls on the floating status panel.
     header.addView(bellControl, LinearLayout.LayoutParams(dp(30), dp(28)))
     val minimizeToggle = TextView(this).apply {
       text = "+"
@@ -1449,7 +1467,7 @@ class ScalpOverlayService : Service() {
       // live status, bell, +/−, and the explicit one-shot DEMO button.
       touchProbeToggle.visibility = View.GONE
       testBipControl.visibility = View.GONE
-      brokerAutoRow.visibility = View.VISIBLE
+      brokerAutoRow.visibility = View.GONE // Session auto-arms after Android LIVE consent.
       probeStatus.visibility = View.VISIBLE
       probeStatus.textSize = if (minimized) 9f else 10f
       compactStatus.visibility = if (minimized) View.VISIBLE else View.GONE
@@ -1462,7 +1480,7 @@ class ScalpOverlayService : Service() {
         brokerInspectionRow.visibility = View.GONE
         demoOrderRow.visibility = View.GONE
         amountCheckRow.visibility = View.GONE
-        autoDemoRow?.visibility = View.VISIBLE
+        autoDemoRow?.visibility = View.GONE
         moreRow.visibility = View.GONE
         probeModeActive = false
         extraTestControlsVisible = false
@@ -2007,6 +2025,8 @@ class ScalpOverlayService : Service() {
         // so the user knows WHY LIVE vanished, but never auto-resume capture
         // or attempt trades without a new explicit user consent.
         if (shuttingDown) return
+        autoDemoSessionRequested = false
+        autoDemoSessionConsumed = true
         autoDemoArmed = false
         autoDemoMarket = null
         autoDemoExpiry = 0L
@@ -2663,7 +2683,8 @@ class ScalpOverlayService : Service() {
       val now = System.currentTimeMillis()
       // The accessibility service can bind/unbind while LIVE is running.
       // Refresh only on state changes; never erase a SIM BUY/SELL test result.
-      if (touchProbeStatus?.visibility == View.VISIBLE) {
+      if (!autoDemoSessionRequested && !autoDemoSessionConsumed &&
+          touchProbeStatus?.visibility == View.VISIBLE) {
         val diagnostic = TouchTestService.accessDiagnostic(this@ScalpOverlayService)
         if (diagnostic != lastRobotConnectionDiagnostic) {
           lastRobotConnectionDiagnostic = diagnostic
@@ -2796,6 +2817,44 @@ class ScalpOverlayService : Service() {
           onePairEvalTouch?.invoke(activeSignal)
         }
       }
+      // No ON/OFF button: the user explicitly starts Android screen capture
+      // once in the app. Auto-arming uses EXACTLY the same QT Demo, 1 USD,
+      // payout >=92%, visible-pair and unique BUY/SELL checks as the former button.
+      // If Android/WebView cannot prove them, NO ORDER is sent.
+      if (autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed) {
+        val nowClock = android.os.SystemClock.elapsedRealtime()
+        if (nowClock >= autoDemoSessionEndAt) {
+          autoDemoSessionRequested = false
+          autoDemoSessionConsumed = true
+          touchProbeStatus?.text = "DEMO LIVE EXPIRAT • PORNEȘTE LIVE DIN NOU"
+        } else if (nowClock - autoDemoLastPreflightAt >= 4500L ||
+            autoDemoLastPreflightAt == 0L) {
+          autoDemoLastPreflightAt = nowClock
+          val pair = currentPair(now)
+          val diagnostic = when {
+            !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
+            !pairReady(now) || pair == "NEIDENTIFICAT" ->
+              "PERECHE NECONFIRMATĂ"
+            !tfReady || !bellEnabled -> "TF / BIP NECONFIRMAT"
+            !brokerConnected -> "CADRE LIVE NECONFIRMATE"
+            else -> try {
+              TouchTestService.preflightOneDollarDemoOrder(pair)
+            } catch (error: Exception) {
+              android.util.Log.e("ScalpAtlasRobot", "Auto start DEMO preflight failed", error)
+              "EROARE ANDROID " + error.javaClass.simpleName.take(20)
+            }
+          }
+          if (diagnostic.startsWith("PREGĂTIT AUTO DEMO")) {
+            autoDemoArmed = true
+            autoDemoMarket = pair
+            autoDemoLockedAt = lockedAt // must see a NEW SHOCK, never replay an old BIP
+            autoDemoExpiry = autoDemoSessionEndAt
+            touchProbeStatus?.text = "🤖 DEMO AUTO ACTIV • 1 USD • AȘTEAPTĂ ȘOC"
+          } else {
+            touchProbeStatus?.text = "🤖 DEMO AȘTEAPTĂ: " + diagnostic
+          }
+        }
+      }
       // One-shot DEMO order ONLY on a NEW SHOCK lock created by a true BIP.
       // A five-minute signal display is never a fresh entry instruction.
       if (autoDemoArmed) {
@@ -2806,8 +2865,7 @@ class ScalpOverlayService : Service() {
           (seenPair != "NEIDENTIFICAT" && seenPair != expectedPair)
         val pairLostLong = seenPair == "NEIDENTIFICAT" &&
           latestMarketAt > 0L && now - latestMarketAt > MARKET_STALE_MS
-        val uiClosed = overlayView == null ||
-          autoDemoRow?.visibility != View.VISIBLE
+        val uiClosed = overlayView == null || !autoDemoSessionRequested
         val readyForDemo = brokerConnected && bellEnabled &&
           TouchTestService.ready() && pairReady(now) &&
           !pairMismatch && !pairLostLong &&
@@ -2826,6 +2884,10 @@ class ScalpOverlayService : Service() {
         // Suspend while waiting for evidence; NEVER tap without fresh data.
         if (nowClock >= autoDemoExpiry || pairMismatch || pairLostLong ||
             uiClosed || !TouchTestService.ready() || !bellEnabled) {
+          if (nowClock >= autoDemoExpiry || uiClosed) {
+            autoDemoSessionRequested = false
+            autoDemoSessionConsumed = true
+          }
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
@@ -2833,6 +2895,7 @@ class ScalpOverlayService : Service() {
           touchProbeStatus?.text =
             "AUTO DEMO OPRIT • PERECHE/SERVICIU/EXPIRARE"
         } else if (newShock) {
+          autoDemoSessionConsumed = true // at most ONE attempted order per LIVE session
           autoDemoLockedAt = lockedAt
           autoDemoArmed = false
           autoDemoMarket = null
@@ -2971,6 +3034,8 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    autoDemoSessionRequested = false
+    autoDemoSessionConsumed = true
     shuttingDown = true
     if (activeOverlayService === this) activeOverlayService = null
     mainHandler.post {
