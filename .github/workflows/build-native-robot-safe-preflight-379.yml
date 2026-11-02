@@ -244,7 +244,7 @@ jobs:
           grep -Fq 'fun pressOneDollarDemoOrderOnce(side: String)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'lastAcceptedAt' .github/native-overlay/TouchTestService.kt
           grep -Fq 'getRealMetrics(realMetrics)' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'amountCaptions.size != 1' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'if (separateCaptions.isNotEmpty())' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun canonicalAmount(v: String)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val fieldTop = caption.rect.bottom' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun preflightOneDollarDemoOrder(expectedPair: String)' .github/native-overlay/TouchTestService.kt
