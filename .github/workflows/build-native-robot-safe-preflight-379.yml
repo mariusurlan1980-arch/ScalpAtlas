@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 385 Persistent LIVE with Close X
+name: Build Scalp Atlas 386 One Shot QT Demo BUY Test
 
 on:
   push:
-    branches: [feature/scalpatlas-motorola-48h-live-close-x385]
+    branches: [feature/scalpatlas-motorola-one-time-demo-click-test386]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-385
+  group: scalp-atlas-calculator-test-386
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=385
+          expo['android']['versionCode']=386
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -286,6 +286,12 @@ jobs:
           grep -Fq 'autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'ROBOT OPRIT • LIVE RĂMÂNE ACTIV' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'close.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'demoClickTestPending = !alreadyTested' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'demoClickTestUntil = android.os.SystemClock.elapsedRealtime() + 60_000L' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'pressAutoOneDollarDemoOrderOnce("BUY", pair)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'getBoolean("attempted", false)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'putBoolean("attempted", true).commit()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionRequested = false' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'setKeepScreenForTest(mediaProjection != null &&' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'setKeepScreenForTest(liveTest.isActive())' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'contentDescription = "Închide suprapunerea și oprește LIVE"' .github/native-overlay/ScalpOverlayService.kt
@@ -712,12 +718,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-385-LIVE-48H-X-G24.apk
+          cp "$APK" ScalpAtlas-386-ONE-SHOT-DEMO-TEST-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-385
-          path: ScalpAtlas-385-LIVE-48H-X-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-386
+          path: ScalpAtlas-386-ONE-SHOT-DEMO-TEST-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -726,13 +732,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-385-LIVE-48H-X-G24.apk"
+          FILE="ScalpAtlas-386-ONE-SHOT-DEMO-TEST-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator385-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator386-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 385 DEMO LIVE CONTINUU SI X · FARA REAL • ${GITHUB_SHA:0:12}" \
+            --title "SCALP ATLAS 386 TEST UN SINGUR BUY QT DEMO FARA SEMNAL · FARA REAL • ${GITHUB_SHA:0:12}" \
             --notes "AUTO DEMO ONE SHOT: Pornirea LIVE poate activa cel mult un ordin automat de 1 USD pe QT Demo, numai la BIP SOC confirmat, pe aceeasi pereche si payout de minimum 92%. Accesibilitatea reverifica QT Demo, suma, soldul, butonul si payout-ul inainte de fiecare clic. Protectie QT Real, pauza 5 minute si expirare armare 10 minute. AUTO SIM ramane doar simulat; nu garanteaza castiguri. Codul nu a fost validat live pe telefon. Build $GITHUB_SHA." \
             --prerelease
