@@ -17,6 +17,7 @@ import android.widget.TextView
 class TouchTestActivity : Activity() {
   private lateinit var status: TextView
   private var waitingFor: String? = null
+  private var returnFromAndroidSettings = false
 
   private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
@@ -67,9 +68,12 @@ class TouchTestActivity : Activity() {
         diagnostic.startsWith("ACCES DEJA PERMIS") ->
           status.text = "PERMISIUNE DEJA ACORDATĂ • SERVICIUL ANDROID NU ESTE CONECTAT. VERIFICĂ BATERIA / REPORNEȘTE APLICAȚIA, NU DEZACTIVA PERMISIUNEA."
         else -> {
-          // Android's security settings must not be covered by the overlay.
-          stopService(Intent(this, ScalpOverlayService::class.java))
-          status.text = diagnostic + " • ACTIVAREA SE FACE O SINGURĂ DATĂ"
+          // Hide the floating window over sensitive Android settings but
+          // DO NOT stop the foreground LIVE service or its screen capture.
+          // Android alone controls the accessibility permission.
+          returnFromAndroidSettings = true
+          ScalpOverlayService.setHiddenDuringAndroidSettings(true)
+          status.text = diagnostic + " • VERIFICĂ ACTIVAREA ÎN ANDROID"
           startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
       }
@@ -77,7 +81,8 @@ class TouchTestActivity : Activity() {
     val appInfo = button("INFORMAȚII APLICAȚIE (SETĂRI ANDROID)", Color.rgb(54, 76, 95))
     add(appInfo, 55)
     appInfo.setOnClickListener {
-      stopService(Intent(this, ScalpOverlayService::class.java))
+      returnFromAndroidSettings = true
+      ScalpOverlayService.setHiddenDuringAndroidSettings(true)
       val info = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
         Uri.parse("package:" + packageName))
       startActivity(info)
@@ -104,6 +109,10 @@ class TouchTestActivity : Activity() {
 
   override fun onResume() {
     super.onResume()
+    if (returnFromAndroidSettings) {
+      returnFromAndroidSettings = false
+      ScalpOverlayService.setHiddenDuringAndroidSettings(false)
+    }
     status.postDelayed({
       if (!isFinishing) {
         val diagnostic = TouchTestService.accessDiagnostic(this)
