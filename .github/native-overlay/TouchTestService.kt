@@ -4,6 +4,8 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
+import android.content.ComponentName
+import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import android.graphics.Path
 import android.graphics.Rect
@@ -36,7 +38,17 @@ class TouchTestService : AccessibilityService() {
           serviceInfo?.packageName == context.packageName &&
             serviceInfo.name == TouchTestService::class.java.name
         }
-        if (enabled)
+        // Some OEMs omit a stopped or failed accessibility binding from
+        // the active feedback list even though the user enabled it. Read the
+        // documented setting too, without changing it or granting access.
+        val enabledSetting = Settings.Secure.getString(
+          context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ).orEmpty().split(':').any { flat ->
+          val component = ComponentName.unflattenFromString(flat.trim())
+          component?.packageName == context.packageName &&
+            component.className == TouchTestService::class.java.name
+        }
+        if (enabled || enabledSetting)
           "ACCES DEJA PERMIS • SERVICIUL ANDROID NU ESTE CONECTAT"
         else
           "ACCES OPRIT ÎN ANDROID • VERIFICĂ ACCESIBILITATE"
