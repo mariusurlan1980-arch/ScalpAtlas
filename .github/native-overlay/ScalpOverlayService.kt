@@ -142,7 +142,7 @@ class ScalpOverlayService : Service() {
   private var demoClickTestUntil = 0L
   private var demoClickTestLastCheck = 0L
   private var demoClickMonitorRunning = false
-  private val demoClickTestPrefs = "scalp_atlas_demo_click_test_392"
+  private val demoClickTestPrefs = "scalp_atlas_demo_click_test_393"
   private var autoDemoLastPreflightAt = 0L
   private var autoDemoArmed = false
   private var autoDemoMarket: String? = null
@@ -476,9 +476,58 @@ class ScalpOverlayService : Service() {
                 if (!persisted) {
                   "BLOCAT: NU POT MEMORA TESTUL • FĂRĂ CLIC"
                 } else {
-                  TouchTestService.pressAnyPairDemoBuyOnce { callbackText ->
-                    if (!shuttingDown) mainHandler.post {
-                      touchProbeStatus?.text = "TEST BUY DEMO: " + callbackText.take(110)
+                  // The 393 two-step test may send SELL only after
+                  // the broker DEMO balance fell exactly 1 USD following BUY.
+                  val initialDemoBalance = TouchTestService.readVerifiedDemoBalance()
+                  val initialDemoPair = TouchTestService.readVisibleDemoPair()
+                  if (initialDemoBalance == null || initialDemoBalance < 2.0) {
+                    "BUY BLOCAT: NU POT CONFIRMA SOLD DEMO PENTRU 2 ORDINE"
+                  } else {
+                    TouchTestService.pressAnyPairDemoBuyOnce { callbackText ->
+                      if (!shuttingDown) mainHandler.post {
+                        touchProbeStatus?.text = "TEST BUY DEMO: " + callbackText.take(110)
+                        if (callbackText.startsWith("GEST BUY TRIMIS")) {
+                          // Do not infer a broker trade from Android success.
+                          // Check a fresh Demo balance 10 s later; fail closed.
+                          mainHandler.postDelayed({
+                            if (shuttingDown || mediaProjection == null ||
+                                overlayView == null || !TouchTestService.ready()) {
+                              touchProbeStatus?.text = "SELL BLOCAT: LIVE/ANDROID OPRIT"
+                            } else if (initialDemoPair == null) {
+                              touchProbeStatus?.text =
+                                "SELL BLOCAT: PERECHEA INIȚIALĂ NECONFIRMATĂ"
+                            } else {
+                              val prefs = getSharedPreferences(
+                                demoClickTestPrefs, Context.MODE_PRIVATE
+                              )
+                              if (prefs.getBoolean("sell_attempted", false)) {
+                                touchProbeStatus?.text = "SELL DEJA ÎNCERCAT • FĂRĂ REPETARE"
+                              } else if (!prefs.edit()
+                                  .putBoolean("sell_attempted", true).commit()) {
+                                touchProbeStatus?.text = "SELL BLOCAT: PROTECȚIE NECONFIRMATĂ"
+                              } else {
+                                val sellResult = try {
+                                  TouchTestService.pressVerifiedFollowupDemoSell(
+                                    initialDemoBalance, initialDemoPair
+                                  ) { callbackSell ->
+                                    if (!shuttingDown) mainHandler.post {
+                                      touchProbeStatus?.text =
+                                        "TEST SELL DEMO: " + callbackSell.take(104)
+                                    }
+                                  }
+                                } catch (error: Exception) {
+                                  android.util.Log.e(
+                                    "ScalpAtlasDemo393", "SELL 10-second test failed", error
+                                  )
+                                  "SELL BLOCAT: EROARE ANDROID • FĂRĂ REPETARE"
+                                }
+                                touchProbeStatus?.text =
+                                  "TEST SELL DEMO: " + sellResult.take(104)
+                              }
+                            }
+                          }, 10_000L)
+                        }
+                      }
                     }
                   }
                 }
