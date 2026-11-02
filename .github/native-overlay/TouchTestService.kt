@@ -695,33 +695,38 @@ class TouchTestService : AccessibilityService() {
     }
 
     /**
-     * A SECOND one-shot QT Demo gesture exactly 10 seconds after the BUY.
-     * Only attempt it when the live DEMO balance visibly dropped by 1 USD,
-     * which is supporting evidence (not a final broker trade receipt).
-     * Same currency pair is required, QT Real blocks, payout must be >=92%.
-     * The first BUY's global 5-minute lock is not bypassed except for this
-     * one explicitly requested and verified SELL in the same 393 session.
+     * A SECOND one-shot QT Demo SELL only after the configured 5-minute BUY
+     * has had at least 35 additional seconds to expire. The starting balance
+     * and a distinct immediate 1 USD debit must be captured after BUY.
+     * This is balance evidence, not a broker trade receipt. Re-check live
+     * QT Demo, same pair, at least 1 USD available and payout >=92%.
+     * No followup before 5m30s or after 7m30s; no retries or QT Real.
      */
     @Synchronized
     fun pressVerifiedFollowupDemoSell(
       firstBalance: Double,
+      balanceAfterBuy: Double,
       expectedPair: String,
       onResult: (String) -> Unit
     ): String {
       val svc = connected ?: return "SELL BLOCAT: ACCESIBILITATE NECONECTATĂ"
       if (expectedPair.isBlank() || readVisibleDemoPair() != expectedPair)
         return "SELL BLOCAT: PERECHE QT DEMO NECONFIRMATĂ"
+      if (kotlin.math.abs((firstBalance - balanceAfterBuy) - 1.0) > 0.03)
+        return "SELL BLOCAT: BUY NU A DEBITAT 1 USD DUPĂ ATINGERE"
       val balanceNow = readVerifiedDemoBalance()
         ?: return "SELL BLOCAT: SOLD QT DEMO NECITIT"
-      if (kotlin.math.abs((firstBalance - balanceNow) - 1.0) > 0.03)
-        return "SELL BLOCAT: BUY NECONFIRMAT ÎN SOLDUL DEMO"
       if (balanceNow < 1.0)
         return "SELL BLOCAT: SOLD DEMO SUB 1 USD"
+      // Additional debit during the wait suggests another position or a
+      // changed account. Do not create overlapping positions automatically.
+      if (balanceNow < balanceAfterBuy - 0.03)
+        return "SELL BLOCAT: SOLDUL A SCĂZUT DIN NOU • POSIBIL TRADE ACTIV"
       val now = android.os.SystemClock.elapsedRealtime()
       val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
       val prior = store.getLong("lastAcceptedAt", 0L)
-      if (prior <= 0L || now - prior !in 9_500L..60_000L)
-        return "SELL BLOCAT: ORDINEA SAU INTERVALUL NU ESTE VALID"
+      if (prior <= 0L || now - prior !in 330_000L..450_000L)
+        return "SELL BLOCAT: 5 MINUTE + MARJĂ NU S-AU ÎNCHEIAT"
       val check = checkOneDollarDemoTarget("SELL", true)
       val target = check.target ?: return check.reason
       val buyAgain = checkOneDollarDemoTarget("BUY", true)
@@ -770,7 +775,7 @@ class TouchTestService : AccessibilityService() {
         if (submitted) "SELL TRANSMIS CĂTRE ANDROID • VERIFICĂ ISTORICUL"
         else "SELL REFUZAT DE ANDROID • FĂRĂ REPETARE"
       } catch (error: Exception) {
-        android.util.Log.e("ScalpAtlasDemo393", "Second verified gesture rejected", error)
+        android.util.Log.e("ScalpAtlasDemo395", "Second verified gesture rejected", error)
         "SELL BLOCAT: " + error.javaClass.simpleName.take(22)
       }
     }
