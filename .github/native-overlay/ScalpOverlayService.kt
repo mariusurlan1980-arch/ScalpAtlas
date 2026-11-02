@@ -367,19 +367,35 @@ class ScalpOverlayService : Service() {
     return START_NOT_STICKY
   }
 
-  // Keep the visible overlay/foreground LIVE session when Android removes the
-  // Scalp Atlas task from Recents. The user explicitly ends it with the
-  // persistent notification's "Oprește LIVE" action. Removing the task MUST
-  // disarm any pending broker order: do not trade unattended after app swipe.
+  // Android / Motorola can remove the MAIN activity task while the user
+  // switches to Pocket Option. The foreground LIVE screen-capture session
+  // is independent of that task and was explicitly started by the user.
+  // Keep the already-authorized, one-shot QT Demo session ONLY while the
+  // MediaProjection and overlay are still active. No restart / reauthorization
+  // happens silently, and the Android "Oprește LIVE" notification always stops it.
   override fun onTaskRemoved(rootIntent: Intent?) {
-    autoDemoSessionRequested = false
-    autoDemoSessionConsumed = true
-    autoDemoArmed = false
-    autoDemoMarket = null
-    autoDemoExpiry = 0L
-    mainHandler.post {
-      autoDemoButton?.text = "🤖 PORNEȘTE • ON"
-      touchProbeStatus?.text = "ROBOT OPRIT • LIVE RĂMÂNE ACTIV"
+    val liveCaptureActive = mediaProjection != null &&
+      overlayView != null && !shuttingDown
+    if (!liveCaptureActive) {
+      autoDemoSessionRequested = false
+      autoDemoSessionConsumed = true
+      autoDemoArmed = false
+      autoDemoMarket = null
+      autoDemoExpiry = 0L
+      mainHandler.post {
+        touchProbeStatus?.text = "CAPTURĂ OPRITĂ • ROBOT BLOCAT"
+      }
+    } else {
+      // Do not reset autoDemoSessionRequested, expiry, current pair or
+      // the at-most-one-order guard when the user opens the broker.
+      mainHandler.post {
+        touchProbeStatus?.text = when {
+          autoDemoSessionConsumed -> "🤖 DEMO FINALIZAT • FĂRĂ ORDINE NOI"
+          autoDemoArmed -> "🤖 DEMO AUTO ACTIV • AȘTEAPTĂ ȘOC"
+          autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"
+          else -> "🤖 ROBOT BLOCAT • FĂRĂ SESIUNE"
+        }
+      }
     }
     super.onTaskRemoved(rootIntent)
   }
