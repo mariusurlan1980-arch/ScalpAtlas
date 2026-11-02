@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 381 Android Diagnostic Preflight
+name: Build Scalp Atlas 382 QT Demo Auto Start No Buttons
 
 on:
   push:
-    branches: [feature/scalpatlas-motorola-android-diagnostics381]
+    branches: [feature/scalpatlas-motorola-demo-autostart-no-buttons382]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-381
+  group: scalp-atlas-calculator-test-382
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=381
+          expo['android']['versionCode']=382
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -699,12 +699,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-381-ANDROID-DIAGNOSTIC-G24.apk
+          cp "$APK" ScalpAtlas-382-DEMO-AUTO-NO-BUTTONS-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-381
-          path: ScalpAtlas-381-ANDROID-DIAGNOSTIC-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-382
+          path: ScalpAtlas-382-DEMO-AUTO-NO-BUTTONS-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -713,13 +713,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-381-ANDROID-DIAGNOSTIC-G24.apk"
+          FILE="ScalpAtlas-382-DEMO-AUTO-NO-BUTTONS-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator381-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator382-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 381 AUTO DEMO DIAGNOSTIC ANDROID · FARA REAL • ${GITHUB_SHA:0:12}" \
-            --notes "AUTO DEMO ONE SHOT: O singura apasare ON poate activa cel mult un ordin automat de 1 USD pe QT Demo, numai la BIP SOC confirmat, pe aceeasi pereche si payout de minimum 92%. Accesibilitatea reverifica QT Demo, suma, soldul, butonul si payout-ul inainte de fiecare clic. Protectie QT Real, pauza 5 minute si expirare armare 10 minute. AUTO SIM ramane doar simulat; nu garanteaza castiguri. Codul nu a fost validat live pe telefon. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 382 DEMO AUTO FARA BUTOANE · FARA REAL • ${GITHUB_SHA:0:12}" \
+            --notes "AUTO DEMO ONE SHOT: Pornirea LIVE poate activa cel mult un ordin automat de 1 USD pe QT Demo, numai la BIP SOC confirmat, pe aceeasi pereche si payout de minimum 92%. Accesibilitatea reverifica QT Demo, suma, soldul, butonul si payout-ul inainte de fiecare clic. Protectie QT Real, pauza 5 minute si expirare armare 10 minute. AUTO SIM ramane doar simulat; nu garanteaza castiguri. Codul nu a fost validat live pe telefon. Build $GITHUB_SHA." \
             --prerelease
