@@ -337,7 +337,7 @@ jobs:
           grep -Fq 'GestureDescription.StrokeDescription(path' "$FILE"
           grep -Fq 'mainHandler.postDelayed' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '500L' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'TEST LOCAL' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'ROBOT OPRIT • TEST EXCLUSIV QT DEMO' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Validate explicit tap diagnostics and manual-vs-virtual separation
         run: |
