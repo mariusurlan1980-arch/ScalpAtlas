@@ -62,6 +62,25 @@ class ScalpOverlayService : Service() {
     const val EXTRA_RESULT_CODE = "resultCode"
     const val EXTRA_RESULT_DATA = "resultData"
 
+    @Volatile private var activeOverlayService: ScalpOverlayService? = null
+    // Android's security settings must never be obscured by our overlay.
+    // Hide only the WINDOW while the settings screen is open; do not stop
+    // the MediaProjection service and force another screen-share permission.
+    fun setHiddenDuringAndroidSettings(hidden: Boolean) {
+      val service = activeOverlayService ?: return
+      val applyVisibility = {
+        if (hidden) {
+          service.autoDemoArmed = false
+          service.autoDemoMarket = null
+          service.autoDemoExpiry = 0L
+          service.autoDemoButton?.text = "🤖 AUTO DEMO OFF"
+        }
+        service.overlayView?.visibility = if (hidden) View.GONE else View.VISIBLE
+      }
+      if (Looper.myLooper() == Looper.getMainLooper()) applyVisibility()
+      else service.mainHandler.post { applyVisibility() }
+    }
+
     private const val CHANNEL_ID = "scalp_atlas_overlay"
     private const val NOTIFICATION_ID = 4816
     private const val MIN_FRAME_INTERVAL_MS = 700L
@@ -294,10 +313,12 @@ class ScalpOverlayService : Service() {
   }
 
   private val mainHandler = Handler(Looper.getMainLooper())
+  @Volatile private var shuttingDown = false
   private var lastRobotConnectionDiagnostic: String? = null
 
   override fun onCreate() {
     super.onCreate()
+    activeOverlayService = this
     windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
     journal = SignalJournal(this)
     liveTest = LiveTestMonitor(this)
@@ -1984,7 +2005,38 @@ class ScalpOverlayService : Service() {
     mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
     mediaProjection?.registerCallback(object : MediaProjection.Callback() {
       override fun onStop() {
-        stopSelf()
+        // Android can revoke an ongoing screen capture when it is locked,
+        // when an app-share ends or when the user stops sharing. A stopped
+        // token is NOT reusable on Android 14. Keep the small panel visible
+        // so the user knows WHY LIVE vanished, but never auto-resume capture
+        // or attempt trades without a new explicit user consent.
+        if (shuttingDown) return
+        autoDemoArmed = false
+        autoDemoMarket = null
+        autoDemoExpiry = 0L
+        autoDemoButton?.text = "🤖 AUTO DEMO OFF"
+        lockedDir = null
+        lockedAt = 0L
+        lockedUntil = 0L
+        lastCapturedImageAt = 0L
+        lastAnalysisResultAt = 0L
+        resetSignalState()
+        try { virtualDisplay?.release() } catch (_: Throwable) {}
+        virtualDisplay = null
+        try { imageReader?.close() } catch (_: Throwable) {}
+        imageReader = null
+        mediaProjection = null
+        try { captureThread?.quitSafely() } catch (_: Throwable) {}
+        captureThread = null
+        captureHandler = null
+        setKeepScreenForTest(false)
+        updateOverlay("AȘTEAPTĂ", "CAPTURĂ OPRITĂ",
+          "Repornește LIVE din Scalp Atlas; Android cere acord pentru o nouă captură")
+        mainHandler.post {
+          compactStatusText?.text = "LIVE OPRIT"
+          captureStatusText?.text = "ECRAN?"
+          touchProbeStatus?.text = "CAPTURĂ OPRITĂ • REVINO ÎN APLICAȚIE ȘI PORNEȘTE LIVE"
+        }
       }
     }, mainHandler)
 
@@ -2923,6 +2975,8 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    shuttingDown = true
+    if (activeOverlayService === this) activeOverlayService = null
     mainHandler.post {
       stopLiveCameraDot()
       stopPulseRing()
