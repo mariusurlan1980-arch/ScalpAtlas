@@ -773,7 +773,7 @@ class ScalpOverlayService : Service() {
       contentDescription = "Închide suprapunerea și oprește LIVE"
       setOnClickListener { stopSelf() }
     }
-    close.visibility = View.GONE // Stop is always available in Android's LIVE notification.
+    close.visibility = View.VISIBLE // Small X immediately ends LIVE, capture and any robot arm.
     header.addView(close, LinearLayout.LayoutParams(dp(30), dp(28)))
     val headerGap = View(this)
     header.addView(headerGap, LinearLayout.LayoutParams(0, dp(1), 1f))
@@ -1593,11 +1593,11 @@ class ScalpOverlayService : Service() {
   }
 
   /**
-   * Keep the physical screen awake ONLY during the time-limited 30-minute
-   * observation test. The FLAG_KEEP_SCREEN_ON window flag needs no dangerous
-   * device-admin permissions and cannot override a manual power-button lock.
-   *
-   * No wakelock or keep-screen behavior survives service shutdown.
+   * Keep the phone display on only while the user-authorized foreground
+   * MediaProjection LIVE session is running. The 30-minute journal may end,
+   * but the live 24-48h monitoring request should not turn off the screen.
+   * This does NOT bypass Android capture consent, battery/thermal restrictions
+   * or a manual power-button lock. Service shutdown clears the flag.
    */
   private fun setKeepScreenForTest(enabled: Boolean) {
     if (keepScreenForTest == enabled) return
@@ -2099,7 +2099,7 @@ class ScalpOverlayService : Service() {
     if (virtualDisplay != null) {
       liveTest.begin(System.currentTimeMillis(), frameCount, resultCount, errorCount)
       setKeepScreenForTest(true)
-      mainHandler.post { testStatusText?.text = "TEST LIVE 30:00 • ECRAN PORNIT" }
+      mainHandler.post { testStatusText?.text = "LIVE CONTINUU • ECRAN PORNIT" }
     }
     startFramePolling(width, height)
     updateOverlay("AȘTEAPTĂ", "LIVE • flux ecran activ", "Cadre 0 • Rez 0 • Erori 0")
@@ -2144,9 +2144,11 @@ class ScalpOverlayService : Service() {
               lastCapturedImageAt > 0L && now - lastCapturedImageAt <= 3500L,
               lastAnalysisResultAt > 0L && now - lastAnalysisResultAt <= 5000L
             )
-            // Monitoring may end without closing the LIVE overlay. Restore
-            // normal Android auto-lock as soon as the 30-minute test finishes.
-            setKeepScreenForTest(liveTest.isActive())
+            // The 30-minute diagnostic journal expires, NOT the LIVE capture.
+            // Keep the visible screen awake for continuous phone monitoring
+            // only while the Android-authorized projection is still active.
+            setKeepScreenForTest(mediaProjection != null &&
+              virtualDisplay != null && !shuttingDown)
             mainHandler.post {
               if (testStatusText?.text?.toString() != label) testStatusText?.text = label
             }
