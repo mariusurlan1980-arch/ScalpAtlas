@@ -1400,7 +1400,10 @@ class ScalpOverlayService : Service() {
           autoDemoMarket = null
           autoDemoExpiry = 0L
           text = "🤖 PORNEȘTE • ON"
-          probeStatus.text = "BLOCAT: VERIFICARE ANDROID • FĂRĂ ORDIN"
+          // User-facing diagnostic contains only exception class, not
+          // broker contents, balance, screen text or any account data.
+          probeStatus.text = "BLOCAT: ANDROID (" +
+            error.javaClass.simpleName.take(24) + ") • FĂRĂ ORDIN"
           android.util.Log.e("ScalpAtlasRobot", "AUTO DEMO one-tap preflight failed safely", error)
         }
       }
