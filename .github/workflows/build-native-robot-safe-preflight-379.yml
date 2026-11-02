@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 383 QT Demo Persist Across App Switch
+name: Build Scalp Atlas 384 Continuous QT Demo Session
 
 on:
   push:
-    branches: [feature/scalpatlas-motorola-persistent-robot383]
+    branches: [feature/scalpatlas-motorola-continuous-demo-session384]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-383
+  group: scalp-atlas-calculator-test-384
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=383
+          expo['android']['versionCode']=384
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -279,6 +279,8 @@ jobs:
           grep -Fq 'val shockObserved = brokerConnected && opticalFresh' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val shockDisplay = if (percentFromCandle > 0 || shockObserved)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'brokerAutoRow.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionConsumed = true // at most ONE attempted order per LIVE session' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'mediaProjection != null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val liveCaptureActive = mediaProjection != null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (!liveCaptureActive)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"' .github/native-overlay/ScalpOverlayService.kt
@@ -293,7 +295,7 @@ jobs:
           grep -Fq '🤖 PORNEȘTE • ON' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '🤖 DEMO LIVE • VERIFICARE AUTOMATĂ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoArmed = false' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'autoDemoSessionEndAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionEndAt = Long.MAX_VALUE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'pressAutoOneDollarDemoOrderOnce' .github/native-overlay/ScalpOverlayService.kt
           ! grep -q 'override fun onTaskRemoved(rootIntent: Intent?) {[[:space:]]*stopSelf()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'observedTrendHistoryCount' .github/native-overlay/ScalpOverlayService.kt
@@ -707,12 +709,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-383-DEMO-LIVE-PERSIST-G24.apk
+          cp "$APK" ScalpAtlas-384-DEMO-CONTINUOUS-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-383
-          path: ScalpAtlas-383-DEMO-LIVE-PERSIST-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-384
+          path: ScalpAtlas-384-DEMO-CONTINUOUS-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -721,13 +723,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-383-DEMO-LIVE-PERSIST-G24.apk"
+          FILE="ScalpAtlas-384-DEMO-CONTINUOUS-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator383-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator384-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 383 DEMO LIVE ROBOT PERSISTENT · FARA REAL • ${GITHUB_SHA:0:12}" \
+            --title "SCALP ATLAS 384 DEMO LIVE FARA EXPIRARE 30MIN · FARA REAL • ${GITHUB_SHA:0:12}" \
             --notes "AUTO DEMO ONE SHOT: Pornirea LIVE poate activa cel mult un ordin automat de 1 USD pe QT Demo, numai la BIP SOC confirmat, pe aceeasi pereche si payout de minimum 92%. Accesibilitatea reverifica QT Demo, suma, soldul, butonul si payout-ul inainte de fiecare clic. Protectie QT Real, pauza 5 minute si expirare armare 10 minute. AUTO SIM ramane doar simulat; nu garanteaza castiguri. Codul nu a fost validat live pe telefon. Build $GITHUB_SHA." \
             --prerelease
