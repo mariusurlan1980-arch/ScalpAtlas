@@ -244,14 +244,34 @@ class TouchTestService : AccessibilityService() {
       // Match the amount to the actual "Suma" caption, NOT to a global
       // screen-height band. Android can exclude status/navigation regions
       // from DisplayMetrics, so the old 69–82% crop missed a visible "1".
-      val amountCaptions = labels.filter {
+      // Android WebView may expose the same physical Suma caption twice:
+      // once as text and once as contentDescription, with slightly different
+      // rectangles. A strict "exactly one node" check blocked the legitimate
+      // 1 USD QT Demo field even though only one caption was visible.
+      // Treat nearby copies as one PHYSICAL caption, never accept physically
+      // distant labels, and accept both "Suma" and "Sumă".
+      val rawAmountCaptions = labels.filter {
         it.rect.centerX() > w * 0.46 &&
         it.rect.centerY() in (h * 0.62).toInt()..(h * 0.88).toInt() &&
-        Regex("""(?i)^\s*Suma\s*:?\s*$""").matches(it.value)
-      }.distinctBy { it.rect.toShortString() }
-      if (amountCaptions.size != 1)
-        return DemoOrderCheck(reason = "BLOCAT: ETICHETA SUMĂ NU ESTE IDENTIFICATĂ UNIC")
-      val caption = amountCaptions.single()
+        it.rect.width() <= (w * 0.48f).toInt() &&
+        it.rect.height() <= (h * 0.075f).toInt() &&
+        Regex("""(?i)^\s*Sum[ăa]\s*:?\s*$""").matches(it.value)
+      }
+      val bestCaption = rawAmountCaptions.minByOrNull {
+        it.rect.width().toLong() * it.rect.height().toLong()
+      }
+      if (bestCaption == null)
+        return DemoOrderCheck(reason = "BLOCAT: SUMĂ • 0 ETICHETE ANDROID")
+      val separateCaptions = rawAmountCaptions.filter {
+        kotlin.math.abs(it.rect.centerX() - bestCaption.rect.centerX()) >
+          (w * 0.15f).toInt() ||
+        kotlin.math.abs(it.rect.centerY() - bestCaption.rect.centerY()) >
+          (h * 0.035f).toInt()
+      }
+      if (separateCaptions.isNotEmpty())
+        return DemoOrderCheck(reason = "BLOCAT: SUMĂ • " +
+          rawAmountCaptions.size + " ETICHETE ÎN POZIȚII DIFERITE")
+      val caption = bestCaption
       // The 92% payout labels sit directly underneath the amount input on
       // Motorola G24, and were incorrectly collected as a second "amount".
       // Find the first actual broker BUY/SELL action text and NEVER inspect
@@ -416,7 +436,7 @@ class TouchTestService : AccessibilityService() {
       // A parent may expose both caption and amount as a single label;
       // use that only if no separate numeric amount value exists.
       val inlineOne = nearby.any {
-        Regex("""(?i)^\s*Suma\s*:?\s*(?:USD\s*|\$\s*)?1(?:[.,]0{1,2})?(?:\s*(?:USD|\$))?\s*$""")
+        Regex("""(?i)^\s*Sum[ăa]\s*:?\s*(?:USD\s*|\$\s*)?1(?:[.,]0{1,2})?(?:\s*(?:USD|\$))?\s*$""")
           .matches(it.value)
       }
       val hasOneDollar = (amountValues.size == 1 &&
