@@ -380,15 +380,31 @@ class TouchTestService : AccessibilityService() {
       // Formatter %.2f requires floating-point input, not an Int.
       // This regression caused IllegalFormatConversionException on Moto G24
       // when the broker duplicated the 92% payout beside the 1 USD input.
+      // Motorola WebView can assign the payout number ("92") the SAME
+      // accessibility row/bounds as the amount ("1") even though the actual
+      // visible payout is inside both BUY and SELL buttons. The older test
+      // required the 92 node to be lower and therefore blocked valid QT Demo
+      // screens with "SUMĂ AMBIGUĂ: 1.00/92.00 • ECHO PAYOUT 0".
+      // Only resolve that one exact ambiguity when:
+      //  - the ONE value is anchored directly under the unique "Suma" caption;
+      //  - both visible broker buttons independently show the SAME payout >=92;
+      //  - every other nearby non-editable number equals THAT payout;
+      //  - no editable field disagrees with 1 USD.
+      // All other ambiguous combinations remain BLOCKED; QT REAL still blocks.
       val echoFromLowerButtons = editableValues.isEmpty() &&
         exactOneNodes.isNotEmpty() && otherNodes.isNotEmpty() &&
         earliestOneY != null && verifiedPayout != null &&
+        verifiedPayout in 92..100 &&
+        exactOneNodes.any {
+          it.rect.centerY() >= caption.rect.bottom - (h * 0.015f).toInt() &&
+            it.rect.centerY() <= actionTop - (h * 0.012f).toInt() &&
+            it.rect.centerX() >= caption.rect.left - (w * 0.04f).toInt() &&
+            !it.node.isEditable
+        } &&
         otherNodes.all {
           !it.node.isEditable &&
-            canonicalAmount(it.value) == "%.2f".format(
-              java.util.Locale.ROOT, verifiedPayout.toDouble()
-            ) &&
-            it.rect.centerY() > earliestOneY + (h * 0.020f).toInt()
+            it.node.className?.toString()?.contains("EditText", ignoreCase = true) != true &&
+            canonicalAmount(it.value) == payoutValue
         }
       // If payout cannot be independently established, if the extra number
       // is in the same input row, or if editable data conflicts: BLOCK.
