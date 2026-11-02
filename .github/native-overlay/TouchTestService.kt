@@ -634,6 +634,148 @@ class TouchTestService : AccessibilityService() {
     }
 
     /**
+     * READ ONLY: verify exactly one USD balance in the header of the active
+     * official QT Demo app. This is an observation, not an order receipt.
+     * Never accept QT Real, an unknown app, or multiple balance candidates.
+     */
+    fun readVerifiedDemoBalance(): Double? {
+      val svc = connected ?: return null
+      val root = svc.rootInActiveWindow ?: return null
+      val pkg = root.packageName?.toString().orEmpty()
+      if (pkg != "com.pocketoption.broker" && pkg != "com.potradeweb") return null
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val manager = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        manager.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Exception) {
+        return null
+      }
+      val labels = ArrayList<Pair<String, Rect>>()
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      var visited = 0
+      while (queue.isNotEmpty() && visited < 350) {
+        val node = queue.removeFirst()
+        visited++
+        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
+          val rect = Rect()
+          node.getBoundsInScreen(rect)
+          if (!rect.isEmpty && rect.left >= 0 &&
+              rect.right <= metrics.widthPixels &&
+              rect.top >= 0 && rect.bottom <= metrics.heightPixels) {
+            val value = node.text?.toString()?.trim().orEmpty()
+            val description = node.contentDescription?.toString()?.trim().orEmpty()
+            if (value.isNotEmpty()) labels.add(value.take(110) to Rect(rect))
+            if (description.isNotEmpty() && value != description)
+              labels.add(description.take(110) to Rect(rect))
+          }
+        }
+        for (i in 0 until node.childCount.coerceAtMost(35)) {
+          node.getChild(i)?.let { queue.addLast(it) }
+        }
+      }
+      if (labels.any {
+          Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.first)
+        }) return null
+      if (!labels.any {
+          it.second.centerY() < metrics.heightPixels * 0.28f &&
+            Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it.first)
+        }) return null
+      val values = labels.filter {
+        it.second.centerX() in
+          (metrics.widthPixels * 0.48f).toInt()..(metrics.widthPixels * 0.86f).toInt() &&
+        it.second.centerY() < metrics.heightPixels * 0.17f
+      }.mapNotNull {
+        Regex("""(?<!\d)(\d{1,5}[.,]\d{2})(?!\d)""").find(it.first)
+          ?.groupValues?.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
+      }.distinct()
+      return values.singleOrNull()
+    }
+
+    /**
+     * A SECOND one-shot QT Demo gesture exactly 10 seconds after the BUY.
+     * Only attempt it when the live DEMO balance visibly dropped by 1 USD,
+     * which is supporting evidence (not a final broker trade receipt).
+     * Same currency pair is required, QT Real blocks, payout must be >=92%.
+     * The first BUY's global 5-minute lock is not bypassed except for this
+     * one explicitly requested and verified SELL in the same 393 session.
+     */
+    @Synchronized
+    fun pressVerifiedFollowupDemoSell(
+      firstBalance: Double,
+      expectedPair: String,
+      onResult: (String) -> Unit
+    ): String {
+      val svc = connected ?: return "SELL BLOCAT: ACCESIBILITATE NECONECTATĂ"
+      if (expectedPair.isBlank() || readVisibleDemoPair() != expectedPair)
+        return "SELL BLOCAT: PERECHE QT DEMO NECONFIRMATĂ"
+      val balanceNow = readVerifiedDemoBalance()
+        ?: return "SELL BLOCAT: SOLD QT DEMO NECITIT"
+      if (kotlin.math.abs((firstBalance - balanceNow) - 1.0) > 0.03)
+        return "SELL BLOCAT: BUY NECONFIRMAT ÎN SOLDUL DEMO"
+      if (balanceNow < 1.0)
+        return "SELL BLOCAT: SOLD DEMO SUB 1 USD"
+      val now = android.os.SystemClock.elapsedRealtime()
+      val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+      val prior = store.getLong("lastAcceptedAt", 0L)
+      if (prior <= 0L || now - prior !in 9_500L..60_000L)
+        return "SELL BLOCAT: ORDINEA SAU INTERVALUL NU ESTE VALID"
+      val check = checkOneDollarDemoTarget("SELL", true)
+      val target = check.target ?: return check.reason
+      val buyAgain = checkOneDollarDemoTarget("BUY", true)
+      if (buyAgain.target == null) return buyAgain.reason
+      if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage ||
+          readVisibleDemoPair() != expectedPair)
+        return "SELL BLOCAT: ECRANUL BROKERULUI S-A SCHIMBAT"
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val manager = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        manager.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Exception) {
+        return "SELL BLOCAT: DIMENSIUNI ECRAN NECONFIRMATE"
+      }
+      val rect = Rect()
+      target.node.getBoundsInScreen(rect)
+      val x = rect.exactCenterX()
+      val y = rect.exactCenterY()
+      if (rect.width() < 65 || rect.height() < 35 || rect.left < 0 ||
+          rect.top < metrics.heightPixels * 0.76f ||
+          rect.bottom > metrics.heightPixels * 0.96f ||
+          rect.right > metrics.widthPixels ||
+          x <= metrics.widthPixels * 0.50f ||
+          y <= 0f || y >= metrics.heightPixels)
+        return "SELL BLOCAT: ȚINTA NU ESTE VIZIBILĂ"
+      // A second gesture may not be retried even if Android cancels it.
+      if (!store.edit().putLong("lastAcceptedAt", now).commit())
+        return "SELL BLOCAT: LIMITA ORDINULUI NU POATE FI SALVATĂ"
+      if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
+        return "SELL BLOCAT: BROKERUL NU MAI ESTE ACTIV"
+      val path = Path().apply { moveTo(x, y) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 85L))
+        .build()
+      return try {
+        val submitted = svc.dispatchGesture(gesture, object : GestureResultCallback() {
+          override fun onCompleted(gestureDescription: GestureDescription?) {
+            onResult("SELL TRIMIS • VERIFICĂ TRANZACȚII DEMO > DESCHIS")
+          }
+          override fun onCancelled(gestureDescription: GestureDescription?) {
+            onResult("SELL ANULAT DE ANDROID • FĂRĂ REPETARE")
+          }
+        }, Handler(Looper.getMainLooper()))
+        if (submitted) "SELL TRANSMIS CĂTRE ANDROID • VERIFICĂ ISTORICUL"
+        else "SELL REFUZAT DE ANDROID • FĂRĂ REPETARE"
+      } catch (error: Exception) {
+        android.util.Log.e("ScalpAtlasDemo393", "Second verified gesture rejected", error)
+        "SELL BLOCAT: " + error.javaClass.simpleName.take(22)
+      }
+    }
+
+    /**
      * READ ONLY: checks current QT Demo pair, 1 USD, broker BUY/SELL controls,
      * balance, and >=92% payout. No ACTION_CLICK, orders, or AUTO SIM here.
      */
