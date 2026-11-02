@@ -463,6 +463,47 @@ class TouchTestService : AccessibilityService() {
     }
 
     /**
+     * Standalone 387 test for the user's explicit "any pair" instruction:
+     * no SHOCK condition and no currency pair lookup. Still fail-closed on
+     * broker app package, account QT Demo, 1 USD, balance, payout 92% and
+     * exactly one BUY/Sell widget exposed through Android Accessibility.
+     */
+    fun preflightAnyPairDemoBuy(): String {
+      val svc = connected ?: return "BLOCAT: ACCESIBILITATE NECONECTATĂ"
+      val now = android.os.SystemClock.elapsedRealtime()
+      val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+        .getLong("lastAcceptedAt", 0L)
+      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+        return "BLOCAT: O PROBĂ DEMO ÎN ULTIMELE 5 MINUTE"
+      val buy = checkOneDollarDemoTarget("BUY", true)
+      if (buy.target == null) return buy.reason
+      val sell = checkOneDollarDemoTarget("SELL", true)
+      if (sell.target == null) return sell.reason
+      return "GATA TEST BUY QT DEMO • 1 USD • ORICE PERECHE • PAYOUT ≥92%"
+    }
+
+    @Synchronized
+    fun pressAnyPairDemoBuyOnce(): String {
+      val svc = connected ?: return "BLOCAT: ACCESIBILITATE NECONECTATĂ"
+      val now = android.os.SystemClock.elapsedRealtime()
+      val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+      val last = store.getLong("lastAcceptedAt", 0L)
+      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+        return "BLOCAT: LIMITĂ 5 MINUTE • FĂRĂ CLIC"
+      val check = checkOneDollarDemoTarget("BUY", true)
+      val target = check.target ?: return check.reason
+      // Consume global allowance before the attempted action.
+      if (!store.edit().putLong("lastAcceptedAt", now).commit())
+        return "BLOCAT: NU POT SALVA BLOCAREA ORDINULUI"
+      if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
+        return "BLOCAT: BROKERUL NU MAI ESTE ACTIV"
+      val accepted = target.node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+      return if (accepted)
+        "TEST BUY: ANDROID A ACCEPTAT CLICUL • VERIFICĂ ISTORICUL QT DEMO"
+      else "TEST BUY: ANDROID A REFUZAT CLICUL • NU REPETA"
+    }
+
+    /**
      * READ ONLY: checks current QT Demo pair, 1 USD, broker BUY/SELL controls,
      * balance, and >=92% payout. No ACTION_CLICK, orders, or AUTO SIM here.
      */
