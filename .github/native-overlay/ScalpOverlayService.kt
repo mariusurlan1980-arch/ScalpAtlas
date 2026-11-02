@@ -142,7 +142,7 @@ class ScalpOverlayService : Service() {
   private var demoClickTestUntil = 0L
   private var demoClickTestLastCheck = 0L
   private var demoClickMonitorRunning = false
-  private val demoClickTestPrefs = "scalp_atlas_demo_click_test_395"
+  private val demoClickTestPrefs = "scalp_atlas_demo_click_test_396"
   private var autoDemoLastPreflightAt = 0L
   private var autoDemoArmed = false
   private var autoDemoMarket: String? = null
@@ -371,7 +371,7 @@ class ScalpOverlayService : Service() {
           mainHandler.post {
             touchProbeStatus?.text = if (alreadyTested)
               "TEST DEMO DEJA FOLOSIT • FĂRĂ ORDINE NOI"
-            else "🤖 PROBĂ DEMO: BUY 1 USD → AȘTEAPTĂ 5 MIN → SELL 1 USD"
+            else "🤖 PROBĂ QT DEMO • BUY → CONFIRMĂ SOLD → SELL DUPĂ 5 MIN"
           }
           // Stay eligible while the Android-authorized LIVE screen capture
           // exists. Only a user stop, OS capture revocation, or service death
@@ -487,72 +487,18 @@ class ScalpOverlayService : Service() {
                       if (!shuttingDown) mainHandler.post {
                         touchProbeStatus?.text = "TEST BUY DEMO: " + callbackText.take(110)
                         if (callbackText.startsWith("GEST BUY TRIMIS")) {
-                          // Android gesture completion does not prove a broker
-                          // order. Read the QT Demo balance 10s later; then
-                          // only schedule a second order if it fell by $1.
-                          mainHandler.postDelayed({
-                            if (shuttingDown || mediaProjection == null ||
-                                overlayView == null || !TouchTestService.ready()) {
-                              touchProbeStatus?.text = "SELL BLOCAT: LIVE/ANDROID OPRIT"
-                            } else if (initialDemoPair == null ||
-                                TouchTestService.readVisibleDemoPair() != initialDemoPair) {
-                              touchProbeStatus?.text =
-                                "SELL BLOCAT: PERECHEA DEMO S-A SCHIMBAT"
-                            } else {
-                              val afterBuy = TouchTestService.readVerifiedDemoBalance()
-                              if (afterBuy == null ||
-                                  kotlin.math.abs((initialDemoBalance - afterBuy) - 1.0) > 0.03) {
-                                touchProbeStatus?.text =
-                                  "SELL BLOCAT: BUY NU ESTE CONFIRMAT ÎN SOLD • FĂRĂ REPETARE"
-                              } else {
-                                touchProbeStatus?.text =
-                                  "BUY 1 USD OBSERVAT • AȘTEAPTĂ EXPIRAREA 5 MIN + MARJĂ"
-                                // The broker duration is set to 00:05:00;
-                                // 10s have passed since gesture completion.
-                                // An extra 325s gives >=5m35s before SELL.
-                                // A timer alone cannot prove the broker
-                                // position closed; the second preflight must
-                                // still revalidate demo, pair and balance.
-                                mainHandler.postDelayed({
-                                  if (shuttingDown || mediaProjection == null ||
-                                      overlayView == null || !TouchTestService.ready()) {
-                                    touchProbeStatus?.text =
-                                      "SELL BLOCAT: LIVE/ANDROID OPRIT"
-                                  } else {
-                                    val prefs = getSharedPreferences(
-                                      demoClickTestPrefs, Context.MODE_PRIVATE
-                                    )
-                                    if (prefs.getBoolean("sell_attempted", false)) {
-                                      touchProbeStatus?.text =
-                                        "SELL DEJA ÎNCERCAT • FĂRĂ REPETARE"
-                                    } else if (!prefs.edit()
-                                        .putBoolean("sell_attempted", true).commit()) {
-                                      touchProbeStatus?.text =
-                                        "SELL BLOCAT: LIMITA CELUI DE-AL DOILEA ORDIN"
-                                    } else {
-                                      val sellResult = try {
-                                        TouchTestService.pressVerifiedFollowupDemoSell(
-                                          initialDemoBalance, afterBuy, initialDemoPair
-                                        ) { callbackSell ->
-                                          if (!shuttingDown) mainHandler.post {
-                                            touchProbeStatus?.text =
-                                              "TEST SELL DEMO: " + callbackSell.take(104)
-                                          }
-                                        }
-                                      } catch (error: Exception) {
-                                        android.util.Log.e(
-                                          "ScalpAtlasDemo395", "SELL demo check failed", error
-                                        )
-                                        "SELL BLOCAT: EROARE ANDROID • FĂRĂ REPETARE"
-                                      }
-                                      touchProbeStatus?.text =
-                                        "TEST SELL DEMO: " + sellResult.take(104)
-                                    }
-                                  }
-                                }, 325_000L)
-                              }
-                            }
-                          }, 10_000L)
+                          if (initialDemoPair == null) {
+                            touchProbeStatus?.text =
+                              "SELL BLOCAT: PERECHEA QT DEMO NECONFIRMATĂ"
+                          } else {
+                            // Android gesture completion is not broker proof.
+                            // The WebView balance may be stale/unreadable for
+                            // several seconds; only READ it, never repeat BUY.
+                            verifyBuyDebitThenQueueSell(
+                              initialDemoBalance, initialDemoPair,
+                              android.os.SystemClock.elapsedRealtime()
+                            )
+                          }
                         }
                       }
                     }
@@ -575,6 +521,94 @@ class ScalpOverlayService : Service() {
         }
       }
     })
+  }
+
+  /**
+   * 396: READ-ONLY debit confirmation after the first one-shot DEMO BUY.
+   *
+   * Android can finish dispatchGesture while the Pocket Option WebView has
+   * not yet exposed its refreshed USD balance to Accessibility. 395 performed
+   * ONE read after 10 seconds and aborted SELL even when the next screenshot
+   * showed exactly -$1. This polling does not touch the broker and never
+   * re-issues BUY. It times out after 70 seconds or on any pair change.
+   *
+   * SELL remains a separate once-only guarded action strictly after the
+   * configured 5-minute expiry + a 35-second margin. A balance debit is
+   * supporting evidence, NOT proof of an opened or closed broker trade.
+   */
+  private fun verifyBuyDebitThenQueueSell(
+    startingBalance: Double, expectedPair: String, buyGestureDoneAt: Long
+  ) {
+    val timeoutAt = buyGestureDoneAt + 70_000L
+    mainHandler.postDelayed(object : Runnable {
+      override fun run() {
+        if (shuttingDown || mediaProjection == null ||
+            overlayView == null || !TouchTestService.ready()) {
+          touchProbeStatus?.text = "SELL BLOCAT: LIVE/ANDROID OPRIT"
+          return
+        }
+        if (TouchTestService.readVisibleDemoPair() != expectedPair) {
+          touchProbeStatus?.text = "SELL BLOCAT: PERECHEA DEMO S-A SCHIMBAT"
+          return
+        }
+        val afterBuy = TouchTestService.readVerifiedDemoBalance()
+        val diff = afterBuy?.let { startingBalance - it }
+        if (diff != null && kotlin.math.abs(diff - 1.0) <= 0.03) {
+          touchProbeStatus?.text =
+            "DEBIT BUY 1 USD OBSERVAT • VERIFICĂ TRANZACȚII → DESCHIS"
+          // Schedule against the original gesture, not the final balance
+          // polling iteration: no early SELL and no repeated orders.
+          val elapsed = android.os.SystemClock.elapsedRealtime() - buyGestureDoneAt
+          val untilSell = (340_000L - elapsed).coerceAtLeast(0L)
+          mainHandler.postDelayed({
+            if (shuttingDown || mediaProjection == null ||
+                overlayView == null || !TouchTestService.ready()) {
+              touchProbeStatus?.text = "SELL BLOCAT: LIVE/ANDROID OPRIT"
+            } else {
+              val prefs = getSharedPreferences(
+                demoClickTestPrefs, Context.MODE_PRIVATE
+              )
+              if (prefs.getBoolean("sell_attempted", false)) {
+                touchProbeStatus?.text = "SELL DEJA ÎNCERCAT • FĂRĂ REPETARE"
+              } else if (!prefs.edit()
+                  .putBoolean("sell_attempted", true).commit()) {
+                touchProbeStatus?.text =
+                  "SELL BLOCAT: NU POT SALVA LIMITA ORDINULUI"
+              } else {
+                val result = try {
+                  TouchTestService.pressVerifiedFollowupDemoSell(
+                    startingBalance, afterBuy, expectedPair
+                  ) { callback ->
+                    if (!shuttingDown) mainHandler.post {
+                      touchProbeStatus?.text =
+                        "TEST SELL DEMO: " + callback.take(108)
+                    }
+                  }
+                } catch (error: Exception) {
+                  android.util.Log.e(
+                    "ScalpAtlasDemo396", "SELL after expiry blocked", error
+                  )
+                  "SELL BLOCAT: EROARE ANDROID • FĂRĂ REPETARE"
+                }
+                touchProbeStatus?.text = "TEST SELL DEMO: " + result.take(108)
+              }
+            }
+          }, untilSell)
+          return
+        }
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now < timeoutAt) {
+          val observed = afterBuy?.toString() ?: "NECITIT"
+          touchProbeStatus?.text =
+            "VERIFIC BUY • SOLD INIȚIAL " + startingBalance +
+              " • ACUM " + observed + " • FĂRĂ ALT CLIC"
+          mainHandler.postDelayed(this, 5_000L)
+        } else {
+          touchProbeStatus?.text =
+            "SELL BLOCAT: BUY NEVALIDAT DUPĂ 70 SEC • FĂRĂ REPETARE"
+        }
+      }
+    }, 7_000L)
   }
 
   override fun onBind(intent: Intent?): IBinder? = null
