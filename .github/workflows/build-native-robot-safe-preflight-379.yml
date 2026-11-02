@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/scalpatlas-motorola-robot-preflight-guard379]
     paths:
-      - '.github/workflows/build-native-accessibility-lifecycle-379.yml'
+      - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
       - '.github/native-overlay/TouchTestService.kt'
       - '.github/native-overlay/touch_test_accessibility.xml'
