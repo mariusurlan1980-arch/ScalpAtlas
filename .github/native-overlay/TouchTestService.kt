@@ -46,7 +46,7 @@ class TouchTestService : AccessibilityService() {
         ).orEmpty().split(':').any { flat ->
           val component = ComponentName.unflattenFromString(flat.trim())
           component?.packageName == context.packageName &&
-            component.className == TouchTestService::class.java.name
+            component?.className == TouchTestService::class.java.name
         }
         if (enabled || enabledSetting)
           "ACCES DEJA PERMIS • SERVICIUL ANDROID NU ESTE CONECTAT"
