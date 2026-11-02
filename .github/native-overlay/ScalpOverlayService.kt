@@ -142,7 +142,7 @@ class ScalpOverlayService : Service() {
   private var demoClickTestUntil = 0L
   private var demoClickTestLastCheck = 0L
   private var demoClickMonitorRunning = false
-  private val demoClickTestPrefs = "scalp_atlas_demo_click_test_391"
+  private val demoClickTestPrefs = "scalp_atlas_demo_click_test_392"
   private var autoDemoLastPreflightAt = 0L
   private var autoDemoArmed = false
   private var autoDemoMarket: String? = null
@@ -476,7 +476,11 @@ class ScalpOverlayService : Service() {
                 if (!persisted) {
                   "BLOCAT: NU POT MEMORA TESTUL • FĂRĂ CLIC"
                 } else {
-                  TouchTestService.pressAnyPairDemoBuyOnce()
+                  TouchTestService.pressAnyPairDemoBuyOnce { callbackText ->
+                    if (!shuttingDown) mainHandler.post {
+                      touchProbeStatus?.text = "TEST BUY DEMO: " + callbackText.take(110)
+                    }
+                  }
                 }
               }
             }
