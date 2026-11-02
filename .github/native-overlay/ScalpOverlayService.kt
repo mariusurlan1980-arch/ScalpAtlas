@@ -457,27 +457,26 @@ class ScalpOverlayService : Service() {
         val diagnostic = try {
           when {
             !TouchTestService.ready() ->
-              "ACCESIBILITATE NECONECTATĂ"
+              TouchTestService.accessDiagnostic(this@ScalpOverlayService)
             else -> {
-              val pair = TouchTestService.readVisibleDemoPair()
-              if (pair == null) {
-                TouchTestService.inspectDemoBrokerReadOnly()
+              // ANY pair was explicitly requested. No signal or pair-name
+              // recognition is required for this isolated UI click test.
+              // The broker, QT Demo, 1 USD, balance, 92% payout and unique
+              // BUY control are still independently verified.
+              val result = TouchTestService.preflightAnyPairDemoBuy()
+              if (!result.startsWith("GATA TEST BUY QT DEMO")) {
+                result
               } else {
-                val result = TouchTestService.preflightOneDollarDemoOrder(pair)
-                if (!result.startsWith("PREGĂTIT AUTO DEMO")) {
-                  result
+                demoClickTestPending = false
+                autoDemoSessionConsumed = true
+                // Commit before any action, so an OS kill cannot repeat it.
+                val persisted = getSharedPreferences(
+                  demoClickTestPrefs, Context.MODE_PRIVATE
+                ).edit().putBoolean("attempted", true).commit()
+                if (!persisted) {
+                  "BLOCAT: NU POT MEMORA TESTUL • FĂRĂ CLIC"
                 } else {
-                  demoClickTestPending = false
-                  autoDemoSessionConsumed = true
-                  // Persist before any action to prevent retries after restart.
-                  val persisted = getSharedPreferences(
-                    demoClickTestPrefs, Context.MODE_PRIVATE
-                  ).edit().putBoolean("attempted", true).commit()
-                  if (!persisted) {
-                    "BLOCAT: NU POT MEMORA TESTUL • FĂRĂ CLIC"
-                  } else {
-                    TouchTestService.pressAutoOneDollarDemoOrderOnce("BUY", pair)
-                  }
+                  TouchTestService.pressAnyPairDemoBuyOnce()
                 }
               }
             }
