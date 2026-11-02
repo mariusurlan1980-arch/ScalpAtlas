@@ -269,7 +269,7 @@ jobs:
           grep -Fq 'actionTop - (h * 0.012f).toInt()' .github/native-overlay/TouchTestService.kt
           grep -Fq 'LIMITA CÂMPULUI SUMĂ NU ESTE CONFIRMATĂ' .github/native-overlay/TouchTestService.kt
           grep -Fq 'SUMĂ AMBIGUĂ' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'val exactOneNodes = numericNearby.filter' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'val exactOneNodes = amountOnlyNumbers.filter' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val echoFromLowerButtons = editableValues.isEmpty()' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val payoutButtonRects = brokerActionLabels.mapNotNull' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val provenPayoutEchoes = numericNearby.filter' .github/native-overlay/TouchTestService.kt
