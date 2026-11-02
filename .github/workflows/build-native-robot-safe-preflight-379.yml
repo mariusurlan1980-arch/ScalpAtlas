@@ -291,7 +291,7 @@ jobs:
           grep -Fq 'touchProbeToggle.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'testBipControl.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '🤖 PORNEȘTE • ON' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'ROBOT OPRIT • LIVE RĂMÂNE ACTIV' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '🤖 DEMO LIVE • VERIFICARE AUTOMATĂ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoArmed = false' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoSessionEndAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'pressAutoOneDollarDemoOrderOnce' .github/native-overlay/ScalpOverlayService.kt
