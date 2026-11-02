@@ -1362,6 +1362,9 @@ class ScalpOverlayService : Service() {
       textSize = 11f
       contentDescription = "Roboțel DEMO: atinge de două ori în 8 secunde pentru un singur ordin automat, doar dacă verificările sunt confirmate"
       setOnClickListener {
+        // A flaky Android Accessibility/WebView tree must never crash LIVE.
+        // Keep AUTO DEMO fail-closed if read-only broker validation throws.
+        try {
         if (autoDemoArmed) {
           autoDemoArmed = false
           autoDemoMarket = null
@@ -1410,6 +1413,16 @@ class ScalpOverlayService : Service() {
             autoArmFirstAt = clockNow
             probeStatus.text = "CONFIRMĂ AUTO DEMO DIN NOU ÎN 8 SECUNDE"
           }
+        }
+        } catch (error: Exception) {
+          autoDemoArmed = false
+          autoDemoMarket = null
+          autoDemoExpiry = 0L
+          autoArmFirstAt = 0L
+          autoArmFirstPair = null
+          text = "🤖 AUTO DEMO OFF"
+          probeStatus.text = "BLOCAT: EROARE VERIFICARE ROBOT • FĂRĂ ORDIN"
+          android.util.Log.e("ScalpAtlasRobot", "AUTO DEMO preflight failed safely", error)
         }
       }
     }
