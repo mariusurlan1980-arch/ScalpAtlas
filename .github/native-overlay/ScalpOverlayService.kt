@@ -332,10 +332,18 @@ class ScalpOverlayService : Service() {
     return START_NOT_STICKY
   }
 
-  // Swiping the ScalpAtlas task away explicitly closes its floating window.
-  // Merely switching to the broker does not remove the app task or interrupt LIVE.
+  // Keep the visible overlay/foreground LIVE session when Android removes the
+  // Scalp Atlas task from Recents. The user explicitly ends it with the
+  // persistent notification's "Oprește LIVE" action. Removing the task MUST
+  // disarm any pending broker order: do not trade unattended after app swipe.
   override fun onTaskRemoved(rootIntent: Intent?) {
-    stopSelf()
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoExpiry = 0L
+    mainHandler.post {
+      autoDemoButton?.text = "🤖 AUTO DEMO OFF"
+      touchProbeStatus?.text = "ROBOT OPRIT • LIVE RĂMÂNE ACTIV"
+    }
     super.onTaskRemoved(rootIntent)
   }
 
@@ -776,8 +784,9 @@ class ScalpOverlayService : Service() {
         touchProbeCommandRow?.visibility = if (visible) View.VISIBLE else View.GONE
         touchProbeStatus?.visibility = if (visible) View.VISIBLE else View.GONE
         onePairEvalRow?.visibility = if (visible) View.VISIBLE else View.GONE
-        // AUTO DEMO is an advanced action and never opens by default.
-        autoDemoRow?.visibility = View.GONE
+        // Keep the one pilot control visible when the diagnostic screen
+        // is toggled, instead of silently cancelling the robot.
+        autoDemoRow?.visibility = View.VISIBLE
         demoBrokerInspectionRow?.visibility = if (visible) View.VISIBLE else View.GONE
         moreTestsRow?.visibility = if (visible) View.VISIBLE else View.GONE
         calculatorTestRow?.visibility = View.GONE
@@ -792,10 +801,7 @@ class ScalpOverlayService : Service() {
           onePairEvalEnabled = false
           onePairEvalPair = null
           onePairEvalButton?.text = "AUTO SIM OFF"
-          autoDemoArmed = false
-          autoDemoMarket = null
-          autoDemoExpiry = 0L
-          autoDemoButton?.text = "AUTO DEMO OFF"
+          // Closing old PROBĂ controls is not the AUTO DEMO OFF action.
         }
         lastRobotConnectionDiagnostic = if (visible)
           TouchTestService.accessDiagnostic(this@ScalpOverlayService) else null
@@ -1013,13 +1019,13 @@ class ScalpOverlayService : Service() {
       setPadding(0, dp(5), 0, 0)
     }
     val probeStatus = TextView(this).apply {
-      text = "TEST LOCAL • FĂRĂ ORDINE"
+      text = "ROBOT OPRIT • TEST EXCLUSIV QT DEMO"
       textSize = 10f
       gravity = Gravity.CENTER
       visibility = View.GONE
       setTextColor(Color.rgb(97, 110, 117))
       maxLines = 3
-      setPadding(0, dp(4), 0, dp(3))
+      setPadding(dp(4), dp(4), dp(4), dp(3))
     }
     var pendingVirtualSide: String? = null
     var touchDownObserved = false
@@ -1213,8 +1219,8 @@ class ScalpOverlayService : Service() {
           if (extraTestControlsVisible) View.VISIBLE else View.GONE
         demoBrokerOrderRow?.visibility =
           if (extraTestControlsVisible) View.VISIBLE else View.GONE
-        autoDemoRow?.visibility =
-          if (extraTestControlsVisible) View.VISIBLE else View.GONE
+        // The robot button is independent of the legacy MORE submenu.
+        autoDemoRow?.visibility = View.VISIBLE
         calculatorTestRow?.visibility =
           if (extraTestControlsVisible) View.VISIBLE else View.GONE
         // Any pending order confirmation times out after 8 seconds.
@@ -1327,12 +1333,13 @@ class ScalpOverlayService : Service() {
     val brokerAutoRow = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER
-      visibility = View.GONE
+      // The ONE relevant robot control is always visible, even when compact.
+      visibility = View.VISIBLE
       setPadding(0, dp(5), 0, 0)
     }
-    val brokerAutoButton = localButton("AUTO DEMO OFF", Color.rgb(88, 62, 115)).apply {
+    val brokerAutoButton = localButton("🤖 AUTO DEMO OFF", Color.rgb(88, 62, 115)).apply {
       textSize = 11f
-      contentDescription = "Activează un singur ordin automat în QT Demo după două confirmări"
+      contentDescription = "Roboțel DEMO: atinge de două ori în 8 secunde pentru un singur ordin automat, doar dacă verificările sunt confirmate"
       setOnClickListener {
         if (autoDemoArmed) {
           autoDemoArmed = false
@@ -1340,7 +1347,7 @@ class ScalpOverlayService : Service() {
           autoDemoExpiry = 0L
           autoArmFirstAt = 0L
           autoArmFirstPair = null
-          text = "AUTO DEMO OFF"
+          text = "🤖 AUTO DEMO OFF"
           probeStatus.text = "AUTO DEMO OPRIT • FĂRĂ ORDINE NOI"
         } else {
           val wallNow = System.currentTimeMillis()
@@ -1374,7 +1381,7 @@ class ScalpOverlayService : Service() {
             autoDemoExpiry = clockNow + 10 * 60_000L
             autoArmFirstAt = 0L
             autoArmFirstPair = null
-            text = "AUTO DEMO ON · 1$"
+            text = "🤖 AUTO DEMO ON · 1$"
             probeStatus.text = "ARMAT: " + pair +
               " • 1 ȘOC CONFIRMAT • 1 USD • PAYOUT MINIM 92%"
           } else {
@@ -1422,8 +1429,13 @@ class ScalpOverlayService : Service() {
       body.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
       trendRow.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
       note.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
-      touchProbeToggle.visibility = if (minimized) View.GONE else View.VISIBLE
-      testBipControl.visibility = if (minimized) View.GONE else View.VISIBLE
+      // Simple pilot: hide every auxiliary/legacy test; retain only
+      // live status, bell, +/−, and the explicit one-shot DEMO button.
+      touchProbeToggle.visibility = View.GONE
+      testBipControl.visibility = View.GONE
+      brokerAutoRow.visibility = View.VISIBLE
+      probeStatus.visibility = View.VISIBLE
+      probeStatus.textSize = if (minimized) 9f else 10f
       compactStatus.visibility = if (minimized) View.VISIBLE else View.GONE
       headerGap.visibility = if (minimized) View.GONE else View.VISIBLE
       if (minimized) {
@@ -1434,7 +1446,7 @@ class ScalpOverlayService : Service() {
         brokerInspectionRow.visibility = View.GONE
         demoOrderRow.visibility = View.GONE
         amountCheckRow.visibility = View.GONE
-        autoDemoRow?.visibility = View.GONE
+        autoDemoRow?.visibility = View.VISIBLE
         moreRow.visibility = View.GONE
         probeModeActive = false
         extraTestControlsVisible = false
@@ -1443,14 +1455,14 @@ class ScalpOverlayService : Service() {
         armedDemoMarket = null
         armedDemoAt = 0L
         calcRow.visibility = View.GONE
-        probeStatus.visibility = View.GONE
+        // Display blocker and arming status even when the panel is small.
+        probeStatus.visibility = View.VISIBLE
         onePairEvalEnabled = false
         onePairEvalPair = null
         evaluationButton.text = "AUTO SIM OFF"
-        autoDemoArmed = false
-        autoDemoMarket = null
-        autoDemoExpiry = 0L
-        autoDemoButton?.text = "AUTO DEMO OFF"
+        // Minimizing never disarms a correctly verified DEMO one-shot.
+        // Expiry, user OFF, pair change, lost service or confirmed SHOCK
+        // still disarm as before.
       }
       minimizeToggle.text = if (minimized) "+" else "−"
       minimizeToggle.contentDescription = if (minimized)
@@ -2746,7 +2758,7 @@ class ScalpOverlayService : Service() {
           (seenPair != "NEIDENTIFICAT" && seenPair != expectedPair)
         val pairLostLong = seenPair == "NEIDENTIFICAT" &&
           latestMarketAt > 0L && now - latestMarketAt > MARKET_STALE_MS
-        val uiClosed = touchProbeRow?.visibility != View.VISIBLE ||
+        val uiClosed = overlayView == null ||
           autoDemoRow?.visibility != View.VISIBLE
         val readyForDemo = brokerConnected && bellEnabled &&
           TouchTestService.ready() && pairReady(now) &&
@@ -2769,7 +2781,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
-          autoDemoButton?.text = "AUTO DEMO OFF"
+          autoDemoButton?.text = "🤖 AUTO DEMO OFF"
           touchProbeStatus?.text =
             "AUTO DEMO OPRIT • PERECHE/SERVICIU/EXPIRARE"
         } else if (newShock) {
@@ -2777,7 +2789,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
-          autoDemoButton?.text = "AUTO DEMO OFF"
+          autoDemoButton?.text = "🤖 AUTO DEMO OFF"
           // Consume this one-shot even when the market data fails the
           // last freshness check. Never retry an expired shock signal.
           touchProbeStatus?.text = if (!readyForDemo)
