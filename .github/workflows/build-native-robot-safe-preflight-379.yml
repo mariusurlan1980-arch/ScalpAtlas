@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 392 QT Demo Real Touch Proof
+name: Build Scalp Atlas 393 Conditional BUY then SELL at 10s
 
 on:
   push:
-    branches: [feature/scalpatlas-motorola-gesture-demo-proof392]
+    branches: [feature/scalpatlas-motorola-verified-buy-then-sell393]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-392
+  group: scalp-atlas-calculator-test-393
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=392
+          expo['android']['versionCode']=393
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -273,15 +273,15 @@ jobs:
           grep -Fq 'val echoFromLowerButtons = editableValues.isEmpty()' .github/native-overlay/TouchTestService.kt
           grep -Fq 'verifiedPayout in 92..100' .github/native-overlay/TouchTestService.kt
           grep -Fq 'canonicalAmount(it.value) == payoutValue' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'scalp_atlas_demo_click_test_392' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'scalp_atlas_demo_click_test_393' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val payoutButtonRects = brokerActionLabels.mapNotNull' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val rawAmountCaptions = labels.filter' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val bestCaption = rawAmountCaptions.minByOrNull' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val separateCaptions = rawAmountCaptions.filter' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'scalp_atlas_demo_click_test_392' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'scalp_atlas_demo_click_test_393' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val provenPayoutEchoes = numericNearby.filter' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val amountOnlyNumbers = numericNearby.filterNot' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'scalp_atlas_demo_click_test_392' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'scalp_atlas_demo_click_test_393' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val buyPercent = sidePayout(true)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'trendHistoryCount:trendHistoryCount' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'trendHistoryCount:candle.trendHistoryCount' scalp-atlas-new/shockNativeEngine.ts
@@ -302,10 +302,16 @@ jobs:
           grep -Fq 'fun preflightAnyPairDemoBuy()' .github/native-overlay/TouchTestService.kt
           grep -Fq '"%.2f".format(java.util.Locale.ROOT, it.toDouble())' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun pressAnyPairDemoBuyOnce(onResult: (String) -> Unit)' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'fun readVerifiedDemoBalance(): Double?' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'fun pressVerifiedFollowupDemoSell(' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'kotlin.math.abs((firstBalance - balanceNow) - 1.0) > 0.03' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'mainHandler.postDelayed({' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '}, 10_000L)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'scalp_atlas_demo_click_test_393' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'svc.dispatchGesture(gesture' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val sell = checkOneDollarDemoTarget("SELL", true)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'GEST BUY TRIMIS • VERIFICĂ TRANZACȚII > DESCHIS' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'scalp_atlas_demo_click_test_392' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'scalp_atlas_demo_click_test_393' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.preflightAnyPairDemoBuy()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.pressAnyPairDemoBuyOnce { callbackText ->' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'startDemoClickMonitor()' .github/native-overlay/ScalpOverlayService.kt
@@ -742,12 +748,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-392-GEST-DEMO-UN-SINGUR-BUY-G24.apk
+          cp "$APK" ScalpAtlas-393-BUY-SELL-CONFIRMAT-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-392
-          path: ScalpAtlas-392-GEST-DEMO-UN-SINGUR-BUY-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-393
+          path: ScalpAtlas-393-BUY-SELL-CONFIRMAT-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -756,13 +762,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-392-GEST-DEMO-UN-SINGUR-BUY-G24.apk"
+          FILE="ScalpAtlas-393-BUY-SELL-CONFIRMAT-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator392-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator393-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 392 TEST BUY DEMO GEST FIZIC PE BROKER · FARA REAL • ${GITHUB_SHA:0:12}" \
+            --title "SCALP ATLAS 393 TEST BUY SI SELL DUPA 10S DOAR CONFIRMAT DEMO · FARA REAL • ${GITHUB_SHA:0:12}" \
             --notes "AUTO DEMO ONE SHOT: Pornirea LIVE poate activa cel mult un ordin automat de 1 USD pe QT Demo, numai la BIP SOC confirmat, pe aceeasi pereche si payout de minimum 92%. Accesibilitatea reverifica QT Demo, suma, soldul, butonul si payout-ul inainte de fiecare clic. Protectie QT Real, pauza 5 minute si expirare armare 10 minute. AUTO SIM ramane doar simulat; nu garanteaza castiguri. Codul nu a fost validat live pe telefon. Build $GITHUB_SHA." \
             --prerelease
