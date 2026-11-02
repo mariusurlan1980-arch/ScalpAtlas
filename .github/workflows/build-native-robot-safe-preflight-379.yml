@@ -296,7 +296,7 @@ jobs:
           grep -Fq 'demoClickTestPending = !alreadyTested' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'private fun startDemoClickMonitor()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fun preflightAnyPairDemoBuy()' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'java.util.Locale.ROOT, verifiedPayout.toDouble()' .github/native-overlay/TouchTestService.kt
+          grep -Fq '"%.2f".format(java.util.Locale.ROOT, it.toDouble())' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun pressAnyPairDemoBuyOnce()' .github/native-overlay/TouchTestService.kt
           grep -Fq 'TouchTestService.preflightAnyPairDemoBuy()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.pressAnyPairDemoBuyOnce()' .github/native-overlay/ScalpOverlayService.kt
