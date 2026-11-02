@@ -342,13 +342,16 @@ class TouchTestService : AccessibilityService() {
         canonicalAmount(it.value) != "1.00"
       }
       val earliestOneY = exactOneNodes.minOfOrNull { it.rect.centerY() }
+      // Formatter %.2f requires floating-point input, not an Int.
+      // This regression caused IllegalFormatConversionException on Moto G24
+      // when the broker duplicated the 92% payout beside the 1 USD input.
       val echoFromLowerButtons = editableValues.isEmpty() &&
         exactOneNodes.isNotEmpty() && otherNodes.isNotEmpty() &&
         earliestOneY != null && verifiedPayout != null &&
         otherNodes.all {
           !it.node.isEditable &&
             canonicalAmount(it.value) == "%.2f".format(
-              java.util.Locale.ROOT, verifiedPayout
+              java.util.Locale.ROOT, verifiedPayout.toDouble()
             ) &&
             it.rect.centerY() > earliestOneY + (h * 0.020f).toInt()
         }
