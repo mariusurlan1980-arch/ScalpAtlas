@@ -307,7 +307,6 @@ class TouchTestService : AccessibilityService() {
         } ?: cleaned
       }
       val numericNearby = nearby.filter { amountNumber.matches(it.value) }
-      val allAmountValues = numericNearby.map { canonicalAmount(it.value) }.distinct()
       // First choice: a uniquely identified editable text field is the
       // actual monetary input; ordinary sibling labels are not.
       val editableValues = numericNearby.filter {
@@ -335,10 +334,46 @@ class TouchTestService : AccessibilityService() {
       val sellPercent = sidePayout(false)
       val verifiedPayout = if (buyPercent != null && buyPercent == sellPercent)
         buyPercent else null
-      val exactOneNodes = numericNearby.filter {
+      // "92" can be exposed both as a number near the Suma field and
+      // as a separate child of the broker's BUY/SELL payout control.
+      // Only discard the numeric echo when BOTH button percentages confirm
+      // the same payout AND its accessibility bounds belong to the clickable
+      // BUY/SELL control. Never discard a conflicting editable amount.
+      val payoutButtonRects = brokerActionLabels.mapNotNull { label ->
+        var clickable: AccessibilityNodeInfo? = label.node
+        var depth = 0
+        while (clickable != null && !clickable.isClickable && depth++ < 4) {
+          clickable = clickable.parent
+        }
+        val r = Rect()
+        clickable?.getBoundsInScreen(r)
+        if (r.width() > 0 && r.height() > 0 &&
+            r.centerY() >= (h * 0.76f).toInt() &&
+            r.centerY() <= (h * 0.97f).toInt() &&
+            r.width() <= (w * 0.58f).toInt()) r else null
+      }
+      val payoutValue = verifiedPayout?.let {
+        "%.2f".format(java.util.Locale.ROOT, it.toDouble())
+      }
+      val provenPayoutEchoes = numericNearby.filter { candidate ->
+        payoutValue != null && canonicalAmount(candidate.value) == payoutValue &&
+          !candidate.node.isEditable &&
+          candidate.node.className?.toString()?.contains("EditText", ignoreCase = true) != true &&
+          payoutButtonRects.any { area ->
+            area.contains(candidate.rect.centerX(), candidate.rect.centerY())
+          }
+      }
+      val amountOnlyNumbers = numericNearby.filterNot { candidate ->
+        provenPayoutEchoes.any { it.node === candidate.node &&
+          it.rect == candidate.rect && it.value == candidate.value }
+      }
+      val allAmountValues = amountOnlyNumbers.map {
+        canonicalAmount(it.value)
+      }.distinct()
+      val exactOneNodes = amountOnlyNumbers.filter {
         canonicalAmount(it.value) == "1.00"
       }
-      val otherNodes = numericNearby.filter {
+      val otherNodes = amountOnlyNumbers.filter {
         canonicalAmount(it.value) != "1.00"
       }
       val earliestOneY = exactOneNodes.minOfOrNull { it.rect.centerY() }
@@ -376,6 +411,7 @@ class TouchTestService : AccessibilityService() {
           amountValues.size > 1 ->
             "BLOCAT: SUMĂ AMBIGUĂ • " + amountValues.size +
               " VALORI: " + amountValues.take(3).joinToString("/") { it.take(6) } +
+              " • ECHO PAYOUT " + provenPayoutEchoes.size +
               " • PAYOUT " + (verifiedPayout?.toString() ?: "NECONFIRMAT") +
               "% • FĂRĂ ORDIN"
           amountValues.isEmpty() ->
