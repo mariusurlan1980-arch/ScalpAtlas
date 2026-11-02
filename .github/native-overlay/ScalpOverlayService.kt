@@ -359,19 +359,16 @@ class ScalpOverlayService : Service() {
         }
 
         if (resultCode != 0 && data != null) {
-          // This explicit diagnostic APK cannot trade from SHOCK at all.
-          autoDemoSessionRequested = false
-          autoDemoSessionConsumed = true
+          // SHOCK AUTO pilot: only the user-approved QT Demo screen-capture
+          // session can arm ONE order after a fresh confirmed SHOCK BIP.
+          // No random test BUY; never starts any real-account trading.
+          demoClickTestPending = false
+          demoClickMonitorRunning = false
+          autoDemoSessionRequested = true
+          autoDemoSessionConsumed = false
           autoDemoArmed = false
-          val alreadyTested = getSharedPreferences(demoClickTestPrefs, Context.MODE_PRIVATE)
-            .getBoolean("attempted", false)
-          demoClickTestPending = !alreadyTested
-          demoClickTestUntil = android.os.SystemClock.elapsedRealtime() + 300_000L
-          demoClickTestLastCheck = 0L
           mainHandler.post {
-            touchProbeStatus?.text = if (alreadyTested)
-              "TEST DEMO DEJA FOLOSIT • FĂRĂ ORDINE NOI"
-            else "🤖 TEST BUY 1 USD • QT DEMO • VERIFICARE 5 MIN"
+            touchProbeStatus?.text = "🤖 DEMO AUTO • VERIFICĂ 1 USD / ȘOC BUY SAU SELL"
           }
           // Stay eligible while the Android-authorized LIVE screen capture
           // exists. Only a user stop, OS capture revocation, or service death
@@ -383,7 +380,8 @@ class ScalpOverlayService : Service() {
           // This is session-local; no user bell preference is overwritten.
           bellEnabled = true
           startProjection(resultCode, data)
-          startDemoClickMonitor()
+          // No standalone test timer: only the fresh confirmed SHOCK lock
+          // inside updateOverlay may request a single guarded DEMO gesture.
         } else {
           updateOverlay("AȘTEAPTĂ", "LIVE • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
         }
@@ -3077,8 +3075,17 @@ class ScalpOverlayService : Service() {
           touchProbeStatus?.text = if (!readyForDemo)
             "BLOCAT: ȘOC CONFIRMAT, DAR CADRU/TF NEACTUAL • FĂRĂ ORDIN"
           else TouchTestService.pressAutoOneDollarDemoOrderOnce(
-            activeSignal, expectedPair ?: "NEIDENTIFICAT"
-          )
+            activeSignal,
+            expectedPair ?: "NEIDENTIFICAT",
+            android.graphics.Rect().also { rect ->
+              if (overlayView?.visibility == View.VISIBLE)
+                overlayView?.getGlobalVisibleRect(rect)
+            }
+          ) { result ->
+            if (!shuttingDown && overlayView != null) mainHandler.post {
+              touchProbeStatus?.text = result.take(120)
+            }
+          }
         } else if (!readyForDemo) {
           // Diagnostic only; keeps the arm alive for the next fresh frame.
           touchProbeStatus?.text =
