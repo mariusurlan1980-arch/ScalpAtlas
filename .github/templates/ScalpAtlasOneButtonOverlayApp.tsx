@@ -13,13 +13,11 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import TouchPracticePanel from './TouchPracticePanel';
 
 type Session = 'OFF' | 'STARTING' | 'ON';
 
 export default function App() {
   const [session, setSession] = useState<Session>('OFF');
-  const [showTouchPractice, setShowTouchPractice] = useState(false);
   const [touchAccessStatus, setTouchAccessStatus] = useState('VERIFICARE…');
   const [status, setStatus] = useState('Pregătit pentru capturare. Semnalele ȘOC necesită validarea datelor live.');
   const busy = useRef(false);
@@ -123,7 +121,7 @@ export default function App() {
             <Text style={styles.pillText}>{active ? 'LIVE' : session === 'STARTING' ? 'PORNIRE' : 'OPRIT'}</Text>
           </View>
 
-          {showTouchPractice ? <TouchPracticePanel onClose={() => setShowTouchPractice(false)} /> : <>
+          <>
           <Text style={styles.timeframe}>ȘOC<Text style={styles.accent}>.</Text></Text>
           <Text style={styles.expiry}>M5  ·  M10  ·  M15  /  AUTO</Text>
           <Text style={styles.direction}>↗  BUY    ↘  SELL</Text>
@@ -143,26 +141,8 @@ export default function App() {
           </Pressable>
 
           <Text style={styles.status}>{status}</Text>
-          <Pressable
-            disabled={session !== 'OFF'}
-            onPress={() => {
-              if (Platform.OS !== 'android' || !NativeModules.ScalpOverlay?.openTouchTest) {
-                setStatus('Testul Android nu este disponibil pe această versiune.');
-                return;
-              }
-              void NativeModules.ScalpOverlay.openTouchTest()
-                .catch((e: unknown) => setStatus('Ecranul de test nu a pornit: ' + String(e)));
-            }}
-            style={[styles.testButton, session !== 'OFF' && styles.disabled]}
-          >
-            <Text style={styles.testButtonText}>TEST ATINGERE VIRTUALĂ ANDROID</Text>
-          </Pressable>
-          <Text style={styles.touchAccess}>ACCESIBILITATE: {touchAccessStatus} · Activarea aparține Android, nu Scalp Atlas.</Text>
-          <Pressable disabled={session !== 'OFF'} onPress={() => setShowTouchPractice(true)}
-            style={[styles.testButton, session !== 'OFF' && styles.disabled]}>
-            <Text style={styles.testButtonText}>TEST MANUAL · NU VERIFICĂ GESTUL VIRTUAL</Text>
-          </Pressable>
-          </>}
+          <Text style={styles.touchAccess}>ACCESIBILITATE: {touchAccessStatus}</Text>
+                    </>
         </View>
 
         <View style={styles.footer}>
