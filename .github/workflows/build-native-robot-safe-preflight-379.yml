@@ -254,7 +254,7 @@ jobs:
           grep -Fq 'payoutValues[0] !in 92..100' .github/native-overlay/TouchTestService.kt
           grep -Fq 'getSharedPreferences("scalp_demo_order_safety"' .github/native-overlay/TouchTestService.kt
           grep -Fq '🤖 ROBOT ON • OPREȘTE' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'autoDemoExpiry = clockNow + 10' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoExpiry = autoDemoSessionEndAt' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val pairLostLong = seenPair ==' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'AȘTEAPTĂ CADRU/TF ACTUAL' .github/native-overlay/ScalpOverlayService.kt
@@ -278,14 +278,18 @@ jobs:
           grep -Fq 'LATERAL • FĂRĂ SEMNAL' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val shockObserved = brokerConnected && opticalFresh' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val shockDisplay = if (percentFromCandle > 0 || shockObserved)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'brokerAutoRow.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'brokerAutoRow.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'close.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'bellControl?.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionConsumed = true // at most ONE attempted order per LIVE session' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.preflightOneDollarDemoOrder(pair)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val uiClosed = overlayView == null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'touchProbeToggle.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'testBipControl.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '🤖 PORNEȘTE • ON' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROBOT OPRIT • LIVE RĂMÂNE ACTIV' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoArmed = false' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'autoDemoExpiry = clockNow + 10 * 60_000L' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionEndAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'pressAutoOneDollarDemoOrderOnce' .github/native-overlay/ScalpOverlayService.kt
           ! grep -q 'override fun onTaskRemoved(rootIntent: Intent?) {[[:space:]]*stopSelf()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'observedTrendHistoryCount' .github/native-overlay/ScalpOverlayService.kt
