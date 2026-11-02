@@ -158,6 +158,8 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastConfirmedShockDurationMs = 0L
   @Volatile private var observedTrendDirection = "NONE"
   @Volatile private var observedTrendMeasured = false
+  // Diagnostic only: verified prior candle bodies, 0..3; no order implication.
+  @Volatile private var observedTrendHistoryCount = 0
   @Volatile private var observedTrendStrengthPercent = 0
   @Volatile private var observedTrendPoints = floatArrayOf()
   @Volatile private var observedTrendAt = 0L
@@ -239,6 +241,7 @@ class ScalpOverlayService : Service() {
     observedShockDurationMs = 0L
     observedTrendDirection = "NONE"
     observedTrendMeasured = false
+    observedTrendHistoryCount = 0
     observedTrendStrengthPercent = 0
     observedTrendPoints = floatArrayOf()
     observedTrendAt = 0L
@@ -2309,6 +2312,8 @@ class ScalpOverlayService : Service() {
     val timeframe = selectedTimeframe
     val tPoints = result.optJSONArray("trendVisualPoints")
     val trendMeasured = result.optBoolean("trendMeasured", false)
+    observedTrendHistoryCount = if (detected)
+      result.optInt("trendHistoryCount", 0).coerceIn(0, 3) else 0
     if (detected && trendMeasured && tPoints != null && tPoints.length() == 3) {
       observedTrendPoints = FloatArray(3) { i ->
         tPoints.optDouble(i, 50.0).coerceIn(0.0, 100.0).toFloat()
@@ -2678,20 +2683,27 @@ class ScalpOverlayService : Service() {
       )
       // Keep the measured percent visible even below the DEMO 50% entry gate;
       // grey means observation only and must not suggest a BUY/SELL alert.
-      trendPercentLabel?.text = if (trendFresh && candleFresh &&
-          observedTrendDirection != "NONE" && !trendContradicted)
-        (if (observedTrendDirection == "SELL") "−" else "+") +
-          observedTrendStrengthPercent.toString() + "%"
+      // Show the measured screen-relative movement even when the THREE
+      // historical candles give no reliable BUY/SELL trend. Neutral text
+      // is an observation only; entry gates remain unchanged.
+      trendPercentLabel?.text = if (trendFresh && candleFresh)
+        (when (observedTrendDirection) {
+          "SELL" -> "−"
+          "BUY" -> "+"
+          else -> ""
+        }) + observedTrendStrengthPercent.toString() + "%"
         else "—%"
       trendPercentLabel?.setTextColor(trendColor)
       trendDirectionLabel?.setTextColor(trendColor)
       trendDirectionLabel?.text = when {
-        !trendFresh || !candleFresh -> "NECONFIRMAT"
+        !candleFresh -> "LUMÂNARE NECITITĂ"
+        !trendFresh -> "ISTORIC " + observedTrendHistoryCount + "/3"
         trendContradicted -> "CONTRA TREND"
+        observedTrendDirection == "NONE" -> "LATERAL • FĂRĂ SEMNAL"
         !trendThresholdMet -> "PANTĂ ≤50%"
         trendDir == "BUY" -> "ASCENDENT"
         trendDir == "SELL" -> "DESCENDENT"
-        else -> "LATERAL"
+        else -> "NECONFIRMAT"
       }
       // A new BUY/SELL is displayed on the first confirmed analysis callback.
       // Animation is gated by a real, unexpired signal lock, never OCR colors.
@@ -2792,10 +2804,15 @@ class ScalpOverlayService : Service() {
           now - observedShockAt in 0L..3000L -> observedShockPercent
         else -> 0
       }
-      qualityText?.text = if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%"
+      // A valid LIVE candle with no qualifying pullback means zero
+      // DETECTED shock, not missing capture. Never portray 0% as entry.
+      val shockObserved = brokerConnected && opticalFresh
+      val shockDisplay = if (percentFromCandle > 0 || shockObserved)
+        percentFromCandle.toString() + "%" else "—%"
+      qualityText?.text = shockDisplay
       compactStatusText?.text = when (activeSignal) {
-        "BUY", "SELL" -> activeSignal + " " + percentFromCandle + "%"
-        else -> "ȘOC " + (if (percentFromCandle > 0) percentFromCandle.toString() + "%" else "—%")
+        "BUY", "SELL" -> activeSignal + " " + shockDisplay
+        else -> "ȘOC " + shockDisplay
       }
       compactStatusText?.setTextColor(when (activeSignal) {
         "BUY" -> Color.rgb(13, 119, 69)
@@ -2862,6 +2879,8 @@ class ScalpOverlayService : Service() {
             .putLong("frames", frameCount)
             .putLong("results", resultCount)
             .putLong("errors", errorCount)
+            .putInt("trendHistoryCount", if (opticalFresh) observedTrendHistoryCount else 0)
+            .putBoolean("trendMeasured", trendFresh)
             .putInt("opticalQuality", if (opticalFresh) observedOpticalQuality else 0)
             .putString("candleDirection", if (opticalFresh) observedCandleDirection else "NONE")
             .putLong("updatedAt", now)
