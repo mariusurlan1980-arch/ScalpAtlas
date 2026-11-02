@@ -141,6 +141,7 @@ class ScalpOverlayService : Service() {
   private var demoClickTestPending = false
   private var demoClickTestUntil = 0L
   private var demoClickTestLastCheck = 0L
+  private var demoClickMonitorRunning = false
   private val demoClickTestPrefs = "scalp_atlas_demo_click_test_386"
   private var autoDemoLastPreflightAt = 0L
   private var autoDemoArmed = false
@@ -365,12 +366,12 @@ class ScalpOverlayService : Service() {
           val alreadyTested = getSharedPreferences(demoClickTestPrefs, Context.MODE_PRIVATE)
             .getBoolean("attempted", false)
           demoClickTestPending = !alreadyTested
-          demoClickTestUntil = android.os.SystemClock.elapsedRealtime() + 60_000L
+          demoClickTestUntil = android.os.SystemClock.elapsedRealtime() + 300_000L
           demoClickTestLastCheck = 0L
           mainHandler.post {
             touchProbeStatus?.text = if (alreadyTested)
               "TEST DEMO DEJA FOLOSIT • FĂRĂ ORDINE NOI"
-            else "🤖 PROBĂ BUY 1 USD • QT DEMO • MAXIM 60 SECUNDE"
+            else "🤖 TEST BUY 1 USD • QT DEMO • VERIFICARE 5 MIN"
           }
           // Stay eligible while the Android-authorized LIVE screen capture
           // exists. Only a user stop, OS capture revocation, or service death
@@ -382,6 +383,7 @@ class ScalpOverlayService : Service() {
           // This is session-local; no user bell preference is overwritten.
           bellEnabled = true
           startProjection(resultCode, data)
+          startDemoClickMonitor()
         } else {
           updateOverlay("AȘTEAPTĂ", "LIVE • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
         }
@@ -414,7 +416,7 @@ class ScalpOverlayService : Service() {
       // the at-most-one-order guard when the user opens the broker.
       mainHandler.post {
         touchProbeStatus?.text = when {
-          demoClickTestPending -> "🤖 TEST DEMO BUY • VERIFICARE 60 SECUNDE"
+          demoClickTestPending -> "🤖 TEST DEMO BUY • VERIFICARE INDEPENDENTĂ"
           autoDemoSessionConsumed -> "🤖 TEST DEMO • VERIFICĂ STAREA"
           autoDemoArmed -> "🤖 DEMO AUTO ACTIV • AȘTEAPTĂ ȘOC"
           autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"
@@ -423,6 +425,77 @@ class ScalpOverlayService : Service() {
       }
     }
     super.onTaskRemoved(rootIntent)
+  }
+
+  /**
+   * Test build only. Check QT Demo accessibility independently of frames,
+   * candle trend and SHOCK. Exactly one BUY attempt, max 5 minutes.
+   * The attempt is persisted before any broker click. Never touches QT Real,
+   * unknown applications, non-1-USD amounts or unverified payout.
+   * A visible reason is shown if any permission/target validation fails.
+   */
+  private fun startDemoClickMonitor() {
+    if (demoClickMonitorRunning || !demoClickTestPending) return
+    demoClickMonitorRunning = true
+    mainHandler.post(object : Runnable {
+      override fun run() {
+        if (shuttingDown || !demoClickTestPending || mediaProjection == null ||
+            overlayView == null) {
+          if (demoClickTestPending && mediaProjection == null)
+            touchProbeStatus?.text = "TEST DEMO: CAPTURĂ LIVE INDISPONIBILĂ"
+          demoClickTestPending = false
+          demoClickMonitorRunning = false
+          return
+        }
+        val tick = android.os.SystemClock.elapsedRealtime()
+        if (tick >= demoClickTestUntil) {
+          demoClickTestPending = false
+          demoClickMonitorRunning = false
+          touchProbeStatus?.text = "TEST DEMO: 5 MINUTE EXPIRATE • FĂRĂ ORDIN"
+          return
+        }
+        val diagnostic = try {
+          when {
+            !TouchTestService.ready() ->
+              "ACCESIBILITATE NECONECTATĂ"
+            else -> {
+              val pair = TouchTestService.readVisibleDemoPair()
+              if (pair == null) {
+                TouchTestService.inspectDemoBrokerReadOnly()
+              } else {
+                val result = TouchTestService.preflightOneDollarDemoOrder(pair)
+                if (!result.startsWith("PREGĂTIT AUTO DEMO")) {
+                  result
+                } else {
+                  demoClickTestPending = false
+                  autoDemoSessionConsumed = true
+                  // Persist before any action to prevent retries after restart.
+                  val persisted = getSharedPreferences(
+                    demoClickTestPrefs, Context.MODE_PRIVATE
+                  ).edit().putBoolean("attempted", true).commit()
+                  if (!persisted) {
+                    "BLOCAT: NU POT MEMORA TESTUL • FĂRĂ CLIC"
+                  } else {
+                    TouchTestService.pressAutoOneDollarDemoOrderOnce("BUY", pair)
+                  }
+                }
+              }
+            }
+          }
+        } catch (error: Exception) {
+          android.util.Log.e("ScalpAtlasDemo387", "DEMO validation failed", error)
+          "BLOCAT: EROARE ANDROID " + error.javaClass.simpleName.take(24)
+        }
+        if (!shuttingDown) {
+          touchProbeStatus?.text = "TEST BUY DEMO: " + diagnostic.take(114)
+        }
+        if (demoClickTestPending && !shuttingDown) {
+          mainHandler.postDelayed(this, 1500L)
+        } else {
+          demoClickMonitorRunning = false
+        }
+      }
+    })
   }
 
   override fun onBind(intent: Intent?): IBinder? = null
@@ -2861,63 +2934,8 @@ class ScalpOverlayService : Service() {
           onePairEvalTouch?.invoke(activeSignal)
         }
       }
-      // DIAGNOSTIC BUILD ONLY: one arbitrary BUY on QT Demo, no market
-      // strategy or candle criteria. The user starts LIVE with Android consent
-      // and navigates to the broker. Accessibility validates package, QT Demo,
-      // explicit 1 USD, balance, both BUY/SELL buttons and payout >= 92%.
-      // If validation fails, no click is sent. At most one attempt in total:
-      // persisted BEFORE handing the click to the Android service.
-      if (demoClickTestPending) {
-        val tick = android.os.SystemClock.elapsedRealtime()
-        if (tick >= demoClickTestUntil) {
-          demoClickTestPending = false
-          touchProbeStatus?.text = "TEST DEMO EXPIRAT • FĂRĂ ORDIN"
-        } else if (demoClickTestLastCheck == 0L ||
-            tick - demoClickTestLastCheck >= 1500L) {
-          demoClickTestLastCheck = tick
-          if (!TouchTestService.ready()) {
-            touchProbeStatus?.text = "TEST DEMO: ACCESIBILITATE NECONECTATĂ"
-          } else {
-            val pair = try {
-              TouchTestService.readVisibleDemoPair()
-            } catch (error: Exception) {
-              android.util.Log.e("ScalpAtlasDemo386", "Read-only pair check failed", error)
-              null
-            }
-            if (pair == null) {
-              touchProbeStatus?.text = "TEST DEMO: QT DEMO/PERECHE NECONFIRMATĂ"
-            } else {
-              val check = try {
-                TouchTestService.preflightOneDollarDemoOrder(pair)
-              } catch (error: Exception) {
-                android.util.Log.e("ScalpAtlasDemo386", "Preflight exception", error)
-                "BLOCAT: VERIFICARE ANDROID " + error.javaClass.simpleName.take(20)
-              }
-              if (!check.startsWith("PREGĂTIT AUTO DEMO")) {
-                touchProbeStatus?.text = "TEST DEMO: " + check.take(92)
-              } else {
-                demoClickTestPending = false
-                autoDemoSessionConsumed = true
-                // Consume before calling any broker control: cannot double tap
-                // on process restart, task removal or repeated LIVE starts.
-                val saved = getSharedPreferences(demoClickTestPrefs, Context.MODE_PRIVATE)
-                  .edit().putBoolean("attempted", true).commit()
-                touchProbeStatus?.text = if (!saved) {
-                  "TEST DEMO BLOCAT: NU POT MEMORA PROBA"
-                } else {
-                  try {
-                    TouchTestService.pressAutoOneDollarDemoOrderOnce("BUY", pair)
-                      .take(105)
-                  } catch (error: Exception) {
-                    android.util.Log.e("ScalpAtlasDemo386", "One-shot click failed", error)
-                    "TEST DEMO BLOCAT: EROARE ANDROID • FĂRĂ REPETARE"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      // Test BUY is driven by its own foreground timer, independently of the
+      // optical analyzer and updateOverlay() callbacks. No SHOCK gates here.
       // No ON/OFF button: the user explicitly starts Android screen capture
       // once in the app. Auto-arming uses EXACTLY the same QT Demo, 1 USD,
       // payout >=92%, visible-pair and unique BUY/SELL checks as the former button.
@@ -3136,6 +3154,7 @@ class ScalpOverlayService : Service() {
 
   override fun onDestroy() {
     demoClickTestPending = false
+    demoClickMonitorRunning = false
     autoDemoSessionRequested = false
     autoDemoSessionConsumed = true
     shuttingDown = true
