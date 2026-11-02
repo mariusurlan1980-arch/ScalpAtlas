@@ -822,31 +822,85 @@ class TouchTestService : AccessibilityService() {
         else "GATA AUTO DEMO " + side + " • 1 USD • PAYOUT ≥92%"
     }
 
+    /**
+     * Single verified SHOCK DEMO gesture: BUY for a confirmed rising SHOCK,
+     * SELL for a confirmed falling SHOCK. Uses a real Android touch instead
+     * of WebView ACTION_CLICK. NEVER touches QT Real or unverified controls.
+     * Android's accepted/completed callback is NOT broker-order confirmation.
+     */
     @Synchronized
-    fun pressAutoOneDollarDemoOrderOnce(side: String, expectedPair: String): String {
-      // Fresh confirmation, not a cached screenshot or a demo flag from
-      // a previous screen. The broker may have switched to QT Real.
+    fun pressAutoOneDollarDemoOrderOnce(
+      side: String,
+      expectedPair: String,
+      blockedOverlayRect: Rect?,
+      onResult: (String) -> Unit
+    ): String {
+      if (side != "BUY" && side != "SELL")
+        return "BLOCAT: DIRECȚIE ȘOC INVALIDĂ"
       if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
           readVisibleDemoPair() != expectedPair)
-        return "BLOCAT: PERECHEA QT DEMO S-A SCHIMBAT"
-      val svc = connected ?: return "ROBOT NECONECTAT"
+        return "BLOCAT: PERECHEA QT DEMO NU ESTE CONFIRMATĂ"
+      val svc = connected ?: return "BLOCAT: ACCESIBILITATE NECONECTATĂ"
       val now = android.os.SystemClock.elapsedRealtime()
       val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
       val last = store.getLong("lastAcceptedAt", 0L)
       if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
-        return "BLOCAT: O SINGURĂ TRANZACȚIE DEMO LA 5 MINUTE"
-      val check = checkOneDollarDemoTarget(side, true)
-      val target = check.target ?: return check.reason
-      // Consume the one-shot allowance BEFORE sending a screen click.
-      if (!store.edit().putLong("lastAcceptedAt", now).commit())
-        return "BLOCAT: BLOCAREA ORDINULUI NU A FOST SALVATĂ"
+        return "BLOCAT: EXISTĂ UN ORDIN DEMO RECENT"
+      // Verify the same-pair QT Demo status, 1 USD, sufficient demo balance,
+      // BUY and SELL buttons, and minimum 92% payout with FRESH Android nodes.
+      val check = preflightOneDollarDemoOrder(expectedPair)
+      if (!check.startsWith("PREGĂTIT AUTO DEMO")) return check
+      val action = checkOneDollarDemoTarget(side, true)
+      val target = action.target ?: return action.reason
+      val rect = Rect()
+      target.node.getBoundsInScreen(rect)
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val manager = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        manager.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Exception) {
+        return "BLOCAT: DIMENSIUNI ECRAN NECONFIRMATE"
+      }
+      val x = rect.exactCenterX()
+      val y = rect.exactCenterY()
+      if (rect.width() < 65 || rect.height() < 35 ||
+          rect.left < 0 || rect.right > metrics.widthPixels ||
+          rect.top < (metrics.heightPixels * 0.76f).toInt() ||
+          rect.bottom > (metrics.heightPixels * 0.96f).toInt() ||
+          (if (side == "BUY") x >= metrics.widthPixels * 0.50f
+           else x <= metrics.widthPixels * 0.50f) ||
+          y <= 0f || y >= metrics.heightPixels)
+        return "BLOCAT: POZIȚIA BUTONULUI " + side + " NU E SIGURĂ"
+      if (blockedOverlayRect?.contains(x.toInt(), y.toInt()) == true)
+        return "BLOCAT: CASETA ROBOȚELULUI ACOPERĂ " + side
       if (readVisibleDemoPair() != expectedPair ||
           svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
-        return "BLOCAT: ECRANUL SAU PERECHEA S-A SCHIMBAT"
-      val accepted = target.node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-      return if (accepted)
-        "AUTO DEMO " + side + ": CLIC ACCEPTAT • VERIFICĂ ISTORICUL"
-      else "AUTO DEMO " + side + ": CLIC REFUZAT DE ANDROID"
+        return "BLOCAT: BROKERUL SAU PERECHEA S-A SCHIMBAT"
+      // Consume allowance BEFORE dispatch to guard against repeated orders.
+      if (!store.edit().putLong("lastAcceptedAt", now).commit())
+        return "BLOCAT: NU POT SALVA LIMITA UNUI SINGUR ORDIN"
+      return try {
+        val path = Path().apply { moveTo(x, y) }
+        val gesture = GestureDescription.Builder()
+          .addStroke(GestureDescription.StrokeDescription(path, 0L, 85L))
+          .build()
+        val submitted = svc.dispatchGesture(gesture, object: GestureResultCallback() {
+          override fun onCompleted(gestureDescription: GestureDescription?) {
+            onResult("ȘOC " + side + ": GEST FINALIZAT • VERIFICĂ TRANZACȚII DEMO")
+          }
+          override fun onCancelled(gestureDescription: GestureDescription?) {
+            onResult("ȘOC " + side + ": GEST ANULAT • FĂRĂ REPETARE")
+          }
+        }, Handler(Looper.getMainLooper()))
+        if (submitted)
+          "ȘOC " + side + ": GEST TRIMIS • VERIFICĂ TRANZACȚIA DEMO"
+        else "ȘOC " + side + ": GEST REFUZAT • FĂRĂ REPETARE"
+      } catch (error: Exception) {
+        android.util.Log.e("ScalpAtlasAuto394", "DEMO SHOCK gesture failed", error)
+        "ȘOC " + side + ": EROARE " + error.javaClass.simpleName.take(24)
+      }
     }
 
     fun previewOneDollarDemoOrder(side: String): String {
