@@ -129,7 +129,7 @@ class ScalpOverlayService : Service() {
   private var demoBrokerOrderRow: LinearLayout? = null
   private var demoAmountCheckRow: LinearLayout? = null
   // Demo automation is requested ONLY by a deliberate Android LIVE capture start.
-  // At most one verified 1 USD QT Demo click per 30-minute LIVE session.
+  // At most one verified 1 USD QT Demo click per user-consented LIVE session.
   // No background rearming, no Real orders, no hidden bypass of preflight.
   private var autoDemoSessionRequested = false
   private var autoDemoSessionConsumed = false
@@ -352,7 +352,10 @@ class ScalpOverlayService : Service() {
         if (resultCode != 0 && data != null) {
           autoDemoSessionRequested = true
           autoDemoSessionConsumed = false
-          autoDemoSessionEndAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
+          // Stay eligible while the Android-authorized LIVE screen capture
+          // exists. Only a user stop, OS capture revocation, or service death
+          // ends it. Never create an unattended new capture permission.
+          autoDemoSessionEndAt = Long.MAX_VALUE
           autoDemoLastPreflightAt = 0L
           autoDemoLockedAt = lockedAt // never trade from a preexisting signal
           // The single automated session uses the same audible confirmed SHOCK alert.
@@ -2842,7 +2845,7 @@ class ScalpOverlayService : Service() {
         if (nowClock >= autoDemoSessionEndAt) {
           autoDemoSessionRequested = false
           autoDemoSessionConsumed = true
-          touchProbeStatus?.text = "DEMO LIVE EXPIRAT • PORNEȘTE LIVE DIN NOU"
+          touchProbeStatus?.text = "SESIUNE ÎNCHEIATĂ • PORNEȘTE LIVE DIN NOU"
         } else if (nowClock - autoDemoLastPreflightAt >= 4500L ||
             autoDemoLastPreflightAt == 0L) {
           autoDemoLastPreflightAt = nowClock
