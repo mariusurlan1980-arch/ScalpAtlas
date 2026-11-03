@@ -321,13 +321,13 @@ jobs:
           grep -Fq 'val sell = checkOneDollarDemoTarget("SELL", true)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'GEST BUY TRIMIS • VERIFICĂ TRANZACȚII > DESCHIS' .github/native-overlay/TouchTestService.kt
           grep -Fq 'scalp_atlas_demo_click_test_397' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'TouchTestService.preflightAnyPairDemoBuy()' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'TouchTestService.pressAnyPairDemoBuyOnce { callbackText ->' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.preflightAnyPairDemoSell()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.pressAnyPairDemoSellOnce { callbackText ->' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'startDemoClickMonitor()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'mainHandler.postDelayed(this, 1500L)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.inspectDemoBrokerReadOnly()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'demoClickTestUntil = android.os.SystemClock.elapsedRealtime() + 300_000L' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'TouchTestService.pressAnyPairDemoBuyOnce { callbackText ->' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.pressAnyPairDemoSellOnce { callbackText ->' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'getBoolean("attempted", false)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'putBoolean("attempted", true).commit()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoSessionRequested = false' .github/native-overlay/ScalpOverlayService.kt
