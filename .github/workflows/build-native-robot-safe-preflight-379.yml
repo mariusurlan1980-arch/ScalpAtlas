@@ -762,7 +762,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ScalpAtlas-LIVE-v3.2.7-COMPACT-397
-          path: ScalpAtlas-397-DEMO-BUY-SELL-VERIFICARE-G24.apk
+          path: ScalpAtlas-397-UN-SINGUR-SELL-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -771,7 +771,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-397-DEMO-BUY-SELL-VERIFICARE-G24.apk"
+          FILE="ScalpAtlas-397-UN-SINGUR-SELL-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-calculator397-${GITHUB_SHA:0:12}"
