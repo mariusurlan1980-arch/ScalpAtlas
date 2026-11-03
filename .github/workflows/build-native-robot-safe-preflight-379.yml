@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 403 PAIR HEADER OCR G24
+name: Build Scalp Atlas 404 CANDLE BODY + DEMO SELL TEST
 
 on:
   push:
-    branches: [feature/scalpatlas-pair-header-ocr403]
+    branches: [feature/scalpatlas-candle-and-demo-pilot404]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-403
+  group: scalp-atlas-calculator-test-404
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=403
+          expo['android']['versionCode']=404
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -544,6 +544,320 @@ jobs:
           grep -Fq 'PERECHE OCR NECITITĂ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
+      - name: Verify 404 candle-body filter and explicit SELL DEMO pilot
+        run: |
+          set -euo pipefail
+          grep -Fq 'Math.ceil(width*.8)' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'longestBodyRun<5' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'TEST SELL DEMO 1
+        run: |
+          set -e
+          test -s scalp-atlas-new/shockNativeEngine.ts
+          grep -q 'window.ScalpAtlasAnalyze' scalp-atlas-new/shockNativeEngine.ts
+          grep -q 'shockOpticalVerified' scalp-atlas-new/shockNativeEngine.ts
+          grep -q 'shockSameCandle' .github/native-overlay/ScalpOverlayService.kt
+          grep -q 'AndroidBridge' scalp-atlas-new/shockNativeEngine.ts
+
+      - name: Generate Android project
+        working-directory: scalp-atlas-new
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --clean
+
+
+      - name: Add ML Kit OCR Android dependency
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/android/app/build.gradle')
+          s=p.read_text(encoding='utf-8')
+          dependency="    implementation 'com.google.mlkit:text-recognition:16.0.1'\n"
+          if 'com.google.mlkit:text-recognition:' not in s:
+              marker='dependencies {'
+              if marker not in s:
+                  raise SystemExit('dependencies block not found in app/build.gradle')
+              s=s.replace(marker, marker+'\n'+dependency, 1)
+              p.write_text(s,encoding='utf-8')
+          PY
+          grep -q "com.google.mlkit:text-recognition:16.0.1" scalp-atlas-new/android/app/build.gradle
+
+      - name: Inject Android live overlay and screen stream
+        run: |
+          set -e
+          JAVA_DIR="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts"
+          mkdir -p "$JAVA_DIR"
+          cp .github/native-overlay/ScalpOverlayPackage.kt "$JAVA_DIR/ScalpOverlayPackage.kt"
+          cp .github/native-overlay/ScalpOverlayModule.kt "$JAVA_DIR/ScalpOverlayModule.kt"
+          cp .github/native-overlay/ScalpOverlayService.kt "$JAVA_DIR/ScalpOverlayService.kt"
+          cp .github/native-overlay/SignalJournal.kt "$JAVA_DIR/SignalJournal.kt"
+          cp .github/native-overlay/LiveTestMonitor.kt "$JAVA_DIR/LiveTestMonitor.kt"
+          cp .github/native-overlay/TouchTestActivity.kt "$JAVA_DIR/TouchTestActivity.kt"
+          cp .github/native-overlay/TouchTestService.kt "$JAVA_DIR/TouchTestService.kt"
+          cp .github/native-overlay/TradePositionGate.kt "$JAVA_DIR/TradePositionGate.kt"
+          cp .github/native-overlay/BrokerAdapterRegistry.kt "$JAVA_DIR/BrokerAdapterRegistry.kt"
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt; do
+            sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
+          done
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          roots=list(Path('scalp-atlas-new/android/app/src/main/java').rglob('MainApplication.kt'))
+          if not roots:
+              raise SystemExit('MainApplication.kt not found')
+          p=roots[0]
+          s=p.read_text(encoding='utf-8')
+          if 'ScalpOverlayPackage()' not in s:
+              needle='PackageList(this).packages.apply {'
+              if needle not in s:
+                  raise SystemExit('PackageList apply block not found')
+              s=s.replace(needle, needle+'\n        add(ScalpOverlayPackage())', 1)
+          p.write_text(s,encoding='utf-8')
+
+          m=Path('scalp-atlas-new/android/app/src/main/AndroidManifest.xml')
+          s=m.read_text(encoding='utf-8')
+          perms=[
+              '<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />',
+              '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+              '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />',
+          ]
+          marker='<application'
+          for perm in perms:
+              if perm not in s:
+                  s=s.replace(marker, perm+'\n  '+marker, 1)
+          service='<service android:name=".ScalpOverlayService" android:exported="false" android:foregroundServiceType="mediaProjection" />'
+          if service not in s:
+              s=s.replace('</application>', '    '+service+'\n  </application>', 1)
+          test_activity='<activity android:name=".TouchTestActivity" android:exported="false" />'
+          if test_activity not in s:
+              s=s.replace('</application>', '    '+test_activity+'\n  </application>', 1)
+          test_service=(
+              '<service android:name=".TouchTestService" '
+              'android:label="Scalp Atlas Test Atingere" '
+              'android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" '
+              'android:exported="true">'
+              '<intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>'
+              '<meta-data android:name="android.accessibilityservice" android:resource="@xml/scalp_touch_test_accessibility" />'
+              '</service>'
+          )
+          if 'android:name=".TouchTestService"' not in s:
+              s=s.replace('</application>', '    '+test_service+'\n  </application>', 1)
+          journal_provider=(
+              '<provider android:name="androidx.core.content.FileProvider" '
+              'android:authorities="${applicationId}.journalfiles" '
+              'android:exported="false" android:grantUriPermissions="true">'
+              '<meta-data android:name="android.support.FILE_PROVIDER_PATHS" '
+              'android:resource="@xml/scalp_journal_paths" />'
+              '</provider>'
+          )
+          if 'android:authorities="${applicationId}.journalfiles"' not in s:
+              s=s.replace('</application>', '    '+journal_provider+'\n  </application>', 1)
+          m.write_text(s,encoding='utf-8')
+          PY
+
+          mkdir -p scalp-atlas-new/android/app/src/main/res/xml
+          cat > scalp-atlas-new/android/app/src/main/res/xml/scalp_journal_paths.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths xmlns:android="http://schemas.android.com/apk/res/android">
+            <cache-path name="journal_shares" path="signal_journal_exports/" />
+          </paths>
+          XML
+          test -s scalp-atlas-new/android/app/src/main/res/xml/scalp_journal_paths.xml
+          cp .github/native-overlay/touch_test_accessibility.xml scalp-atlas-new/android/app/src/main/res/xml/scalp_touch_test_accessibility.xml
+          mkdir -p scalp-atlas-new/android/app/src/main/res/values
+          cat > scalp-atlas-new/android/app/src/main/res/values/scalp_touch_test_strings.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <string name="touch_test_accessibility_description">Poate citi contul QT Demo și perechea selectată din Pocket Option și, numai după două apăsări explicite, poate trimite un singur clic BUY/SELL DEMO de 1 USD. Nu execută ordine pe contul Real.</string>
+          </resources>
+          XML
+          grep -Fq 'TouchTestService' scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+
+          mkdir -p scalp-atlas-new/android/app/src/main/res/raw
+          cp scalp-atlas-new/assets/buy-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
+          cp scalp-atlas-new/assets/sell-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_sell_bip.wav
+
+          rm -rf /tmp/scalp-engine
+          mkdir -p /tmp/scalp-engine
+          (
+            cd scalp-atlas-new
+            npx tsc shockNativeEngine.ts --ignoreConfig --target ES2020 --module commonjs --skipLibCheck --esModuleInterop --outDir /tmp/scalp-engine --noEmitOnError false || true
+          )
+          test -s /tmp/scalp-engine/shockNativeEngine.js
+          mkdir -p scalp-atlas-new/android/app/src/main/assets
+          node - <<'NODE'
+          const fs=require('fs');
+          const engine=require('/tmp/scalp-engine/shockNativeEngine.js');
+          if(!engine.SHOCK_NATIVE_HTML) throw new Error('SHOCK_NATIVE_HTML missing');
+          fs.writeFileSync('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html',engine.SHOCK_NATIVE_HTML);
+          NODE
+
+          grep -q "ScalpOverlayPackage()" "$(find scalp-atlas-new/android/app/src/main/java -name MainApplication.kt | head -1)"
+          grep -q "SYSTEM_ALERT_WINDOW" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          grep -q "ScalpOverlayService" scalp-atlas-new/android/app/src/main/AndroidManifest.xml
+          test -s scalp-atlas-new/android/app/src/main/assets/analysis_engine.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scalp-atlas-new/android/app/src/main/assets/analysis_engine.html')
+          s=p.read_text(encoding='utf-8')
+          if '<\\/script>' in s:
+              raise SystemExit('escaped closing script still present')
+          if '</script></body></html>' not in s:
+              raise SystemExit('valid closing script missing')
+          PY
+          test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
+          test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_sell_bip.wav
+
+      - name: Regression test SHOCK + SCALP TREND M5 on one broker screen
+        run: |
+          node .github/scripts/test_shock_broker_capture.mjs
+          grep -Fq "strategy:'NONE'" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "var strategy=confirmed?'SHOCK'" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "scalpOpticalVerified:scalpConfirmed" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "tf==='M5'" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'minTrendStrengthPercent=50' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "candle.trendStrengthPercent<=minTrendStrengthPercent" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'PANTĂ ≤50%' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'source:' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'JSONObject.quote(pairAtCapture)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'headerLines.joinToString' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'streamRecent -> "ECRAN?"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'candleConnected -> "LIVE"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'maskSelfOverlay(fullFrame, width, 0)' .github/native-overlay/ScalpOverlayService.kt
+
+      - name: Pin Java 17 for native CMake and Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify Java runtime
+        run: java -version
+
+      - name: Build standalone release APK
+        working-directory: scalp-atlas-new/android
+        env:
+          NODE_ENV: production
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Verify APK, analyzer, signature, and app identity
+        run: |
+          set -ex
+          APK="scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -l "$APK" | grep -E "assets/(index\\.android\\.bundle|.*\\.bundle)"
+          unzip -l "$APK" | grep -F "assets/analysis_engine.html"
+          grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
+          # Fail the build if the native overlay still exposes legacy controls.
+          SERVICE="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt"
+          ! grep -q 'text = "Scalp Atlas 3.2.7"' "$SERVICE"
+          grep -Fq 'dp(176)' "$SERVICE"
+          grep -Fq 'fun applyCompactMode()' "$SERVICE"
+          grep -Fq 'compactStatusText?.text' "$SERVICE"
+          grep -q 'override fun onTaskRemoved' "$SERVICE"
+          grep -q 'stopSelf()' "$SERVICE"
+          grep -q 'PendingIntent.getService' "$SERVICE"
+          grep -Fq 'setOnClickListener { stopSelf() }' "$SERVICE"
+          grep -q 'reactContext.stopService(intent)' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
+          grep -Fq 'fun getBuildInfo' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
+          grep -q 'class ShockCandleView' "$SERVICE"
+          grep -q 'scalp_atlas_live_diagnostics' "$SERVICE"
+          grep -q 'fun getLiveDiagnostics' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
+          grep -q 'signalRing' "$SERVICE"
+          grep -q 'ValueAnimator.ofFloat(0.35f, 1f, 0.35f)' "$SERVICE"
+          grep -q 'duration = 1000L' "$SERVICE"
+          grep -q 'if (!safe) stopPulseRing()' "$SERVICE"
+          grep -q 'shockBodyPercent > 50' "$SERVICE"
+          grep -q 'observedTrendStrengthPercent > 50' "$SERVICE"
+          grep -q 'PANTĂ ≤50%' "$SERVICE"
+          grep -q 'val confirmedScalp = rawStrategy == "SCALP_TREND"' "$SERVICE"
+          grep -q 'val confirmedShock = rawStrategy == "SHOCK"' "$SERVICE"
+          grep -q 'candidateStrategy != confirmedStrategy' "$SERVICE"
+          grep -q 'activeStrategy == "SCALP_TREND"' "$SERVICE"
+          grep -q 'Never clear lockedDir/lockedUntil' "$SERVICE"
+          grep -Fq 'lastConfirmedShockPercent = if (confirmedShock) shockBodyPercent else 0' "$SERVICE"
+          grep -q 'setLiveCameraDotActive(scanStatus == "LIVE")' "$SERVICE"
+          grep -q 'duration = 1500L' "$SERVICE"
+          grep -q 'setSignalBlink(activeSignal)' "$SERVICE"
+          grep -q 'shockDropDurationMs in 300L..10000L' "$SERVICE"
+          grep -q 'wickText?.text' "$SERVICE"
+          grep -q 'shockReasonText?.text' "$SERVICE"
+          grep -q 'shockDurationText?.text' "$SERVICE"
+          grep -q 'observedTrendDirection == rawSignal' "$SERVICE"
+          grep -q 'candleGraphic?.updateObserved' "$SERVICE"
+          grep -q 'trendMiniView?.showData' "$SERVICE"
+          grep -q 'trendContradicted = trendFresh && candleFresh' "$SERVICE"
+          grep -q 'trendDir = if (trendAgrees)' "$SERVICE"
+          grep -q 'trendContradicted -> "CONTRA TREND"' "$SERVICE"
+          grep -q 'playTestBip()' "$SERVICE"
+          grep -q 'text = "TEST BIP"' "$SERVICE"
+          grep -q 'signalRing?.addView(signalText)' "$SERVICE"
+          grep -q 'signalRing?.addView(shockDurationText)' "$SERVICE"
+          grep -q 'Color.rgb(141, 73, 214)' "$SERVICE"
+          grep -q 'liveCameraDot?.scaleX = size' "$SERVICE"
+          grep -q 'trendPercentLabel?.text' "$SERVICE"
+          grep -q 'trendVisualPoints' "scalp-atlas-new/shockNativeEngine.ts"
+          grep -q 'PANTĂ TREND' "$SERVICE"
+          ! grep -q 'signalRing?.addView(wickText)' "$SERVICE"
+          ! grep -q 'signalRing?.addView(shockReasonText)' "$SERVICE"
+          grep -q '"AȘTEAPTĂ"' "$SERVICE"
+          grep -q 'shockBlocker = result.optString' "$SERVICE"
+          grep -q 'liveStatusRow.addView(liveCameraDot' "$SERVICE"
+          grep -q 'if (!streamFresh) stopLiveCameraDot()' "$SERVICE"
+          ! grep -q 'CALITATE DETECȚIE' "$SERVICE"
+          grep -q 'ȘOC = RETRAGERE LUMÂNARE' "$SERVICE"
+          grep -q 'lastShockQuality = quality' "$SERVICE"
+          ! grep -q 'GRAFIC 2/3' "$SERVICE"
+          ! grep -q 'TF AUTO ▸' "$SERVICE"
+          grep -q 'shockOpticalVerified' "$SERVICE"
+          grep -q 'shockSameCandle' "$SERVICE"
+          grep -Fq 'brokerPair' "$SERVICE"
+          grep -Fq 'ANDROID_SCREEN_CAPTURE' "$SERVICE"
+          grep -Fq 'JSONObject.quote(pairAtCapture)' "$SERVICE"
+          unzip -p "$APK" assets/analysis_engine.html | grep -q 'shockRecovered'
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
+          if unzip -Z1 "$APK" | grep -E '^lib/(x86|x86_64|armeabi-v7a)/'; then
+            echo "Unexpected non-arm64 native binaries in Motorola APK" >&2
+            exit 1
+          fi
+          unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
+          test "$(stat -c %s "$APK")" -lt 95000000
+          cp "$APK" ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-404
+          path: ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish direct Android APK (no ZIP)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FILE="ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk"
+          test -s "$FILE"
+          # Unique tag per commit: never overwrite or confuse an older installed APK.
+          TAG="scalp-atlas-calculator404-${GITHUB_SHA:0:12}"
+          gh release create "$TAG" "$FILE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "SCALP ATLAS 404 CANDLE + SELL DEMO GESTURE · NO REAL • ${GITHUB_SHA:0:12}" \
+            --notes "404: distingere corp vs fitil pe lumânarea LIVE cu suport de culoare >=80% si cinci randuri consecutive. Test SELL DEMO 1 USD separat de semnalul SOC, pornit doar prin apasare explicita a unui singur buton in suprapunere, o singura incercare per instalare, blocare persistenta. Testul necesita Pocket Option QT Demo identificat, accesibilitate, suma 1 USD si payout >=92%; niciun ordin REAL. Gestul Android NU confirma executia brokerului; verificati istoricul contului Demo. Analiza SOC ramane activa; ordinele succesive nu sunt implementate. Build $GITHUB_SHA." \
+            --prerelease
+ .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private val sell404TestPrefs' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'putBoolean("attempted", true).commit()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.preflightAnyPairDemoSell()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.pressAnyPairDemoSellOnce' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'tradePositionGate.uncertainResult()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
       - name: Verify SHOCK-only native integration
         run: |
           set -e
@@ -821,12 +1135,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-403-OCR-PERECHE-G24.apk
+          cp "$APK" ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-403
-          path: ScalpAtlas-403-OCR-PERECHE-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-404
+          path: ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -835,13 +1149,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-403-OCR-PERECHE-G24.apk"
+          FILE="ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator403-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator404-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 403 OCR PERECHE SELECTOR · DEMO ONLY • ${GITHUB_SHA:0:12}" \
-            --notes "403: Cand OCR pe intreg ecranul nu poate citi perechea OTC din selectorul brokerului, aplica OCR pe selectorul de sus-stanga marit 3x. Ramane obligatorie verificarea de doua ori a identitatii exacte a perechii si stabilizarea graficului. Panoul arata PERECHE OCR NECITITA sau progresul 1/2. Niciun ordin pe cont REAL sau broker nerecunoscut. Modul auto DEMO pastreaza o singura incercare de 1 USD la SOC complet confirmat; fara rearmare automata dupa comanda. Test pe Motorola G24 necesar. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 404 CANDLE + SELL DEMO GESTURE · NO REAL • ${GITHUB_SHA:0:12}" \
+            --notes "404: distingere corp vs fitil pe lumânarea LIVE cu suport de culoare >=80% si cinci randuri consecutive. Test SELL DEMO 1 USD separat de semnalul SOC, pornit doar prin apasare explicita a unui singur buton in suprapunere, o singura incercare per instalare, blocare persistenta. Testul necesita Pocket Option QT Demo identificat, accesibilitate, suma 1 USD si payout >=92%; niciun ordin REAL. Gestul Android NU confirma executia brokerului; verificati istoricul contului Demo. Analiza SOC ramane activa; ordinele succesive nu sunt implementate. Build $GITHUB_SHA." \
             --prerelease
