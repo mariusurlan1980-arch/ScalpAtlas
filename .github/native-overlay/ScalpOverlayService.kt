@@ -142,7 +142,8 @@ class ScalpOverlayService : Service() {
   private var demoClickTestUntil = 0L
   private var demoClickTestLastCheck = 0L
   private var demoClickMonitorRunning = false
-  private val demoClickTestPrefs = "scalp_atlas_demo_click_test_397"
+  private val demoClickTestPrefs = "scalp_atlas_demo_click_test_398"
+  private val tradePositionGate = TradePositionGate()
   private var autoDemoLastPreflightAt = 0L
   private var autoDemoArmed = false
   private var autoDemoMarket: String? = null
@@ -467,6 +468,8 @@ class ScalpOverlayService : Service() {
               val result = TouchTestService.preflightAnyPairDemoSell()
               if (!result.startsWith("GATA TEST SELL QT DEMO")) {
                 result
+              } else if (!tradePositionGate.beginAttempt()) {
+                "BLOCAT: POZIȚIE NECONFIRMATĂ • FĂRĂ ORDIN"
               } else {
                 demoClickTestPending = false
                 autoDemoSessionConsumed = true
@@ -475,9 +478,12 @@ class ScalpOverlayService : Service() {
                   demoClickTestPrefs, Context.MODE_PRIVATE
                 ).edit().putBoolean("attempted", true).commit()
                 if (!persisted) {
+                  tradePositionGate.uncertainResult()
                   "BLOCAT: NU POT MEMORA TESTUL • FĂRĂ CLIC"
                 } else {
                   TouchTestService.pressAnyPairDemoSellOnce { callbackText ->
+                    // Android accepted gesture != broker confirmed trade.
+                    tradePositionGate.uncertainResult()
                     if (!shuttingDown) mainHandler.post {
                       touchProbeStatus?.text = "TEST SELL DEMO: " + callbackText.take(110)
                     }
@@ -487,7 +493,7 @@ class ScalpOverlayService : Service() {
             }
           }
         } catch (error: Exception) {
-          android.util.Log.e("ScalpAtlasDemo397", "SELL DEMO verification failed", error)
+          android.util.Log.e("ScalpAtlasDemo398", "SELL DEMO verification failed", error)
           "BLOCAT: EROARE ANDROID " + error.javaClass.simpleName.take(24)
         }
         if (!shuttingDown) {
@@ -3226,6 +3232,8 @@ class ScalpOverlayService : Service() {
       // Reuse the existing narrow footer; no extra controls, no added panel height.
       // Display a reason, not a false probability of winning.
       signalGateNote?.text = when {
+        tradePositionGate.state() == TradePositionGate.State.UNKNOWN ->
+          "POZIȚIE NECONFIRMATĂ • VERIFICĂ BROKERUL"
         green || red -> "SEMNAL CONFIRMAT • NU EXECUTĂ ORDINE"
         scanStatus != "LIVE" -> "SCAN " + scanStatus + " • FĂRĂ SEMNAL"
         selectedTimeframe == "M5" && shockBlocker == "AȘTEAPTĂ ȘOC" ->
