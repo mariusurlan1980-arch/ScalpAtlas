@@ -2291,7 +2291,12 @@ class ScalpOverlayService : Service() {
         if (visiblePairs.size == 1) {
           recordVisiblePair(visiblePairs[0], observedAt)
         } else {
-          if (pairs.isEmpty() && accessibilityPair == null)
+          // Retry the zoomed selector both when regular OCR sees no pair
+          // and when it disagrees with the broker Accessibility OTC suffix.
+          // Never choose either conflicting sensor without a fresh crop.
+          if ((pairs.isEmpty() && accessibilityPair == null) ||
+              (pairs.size == 1 && accessibilityPair != null &&
+                pairs[0] != accessibilityPair))
             schedulePairHeaderOcr(copy, observedAt)
           if (marketVerified && observedAt - latestMarketAt > MARKET_STALE_MS) {
             marketVerified = false
