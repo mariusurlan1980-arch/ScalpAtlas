@@ -3163,7 +3163,12 @@ class ScalpOverlayService : Service() {
           val diagnostic = when {
             !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
             !pairReady(now) || pair == "NEIDENTIFICAT" ->
-              "PERECHE NECONFIRMATĂ"
+              if (pendingMarket != null)
+                "PERECHE OCR: " + pendingMarket + " • " +
+                  pendingMarketCount.coerceAtMost(MARKET_OCR_CONFIRMATIONS) +
+                  "/" + MARKET_OCR_CONFIRMATIONS +
+                  (if (marketVerified) " • STABILIZARE" else " • VERIFICARE")
+              else "PERECHE OCR NECITITĂ • MĂRESC SELECTORUL"
             !tfReady || !bellEnabled -> "TF / BIP NECONFIRMAT"
             !brokerConnected -> "CADRE LIVE NECONFIRMATE"
             else -> try {
