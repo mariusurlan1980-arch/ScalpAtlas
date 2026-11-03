@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 401 BROKER PACKAGE + SHOCK DIAGNOSTICS
+name: Build Scalp Atlas 402 LIVE DIAGNOSTICS
 
 on:
   push:
-    branches: [feature/scalpatlas-broker-id-shock-diag401]
+    branches: [feature/scalpatlas-auto-diagnostics402]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-401
+  group: scalp-atlas-calculator-test-402
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=401
+          expo['android']['versionCode']=402
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -802,12 +802,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-401-DIAG-BROKER-SOC-G24.apk
+          cp "$APK" ScalpAtlas-402-DIAG-SOC-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-401
-          path: ScalpAtlas-401-DIAG-BROKER-SOC-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-402
+          path: ScalpAtlas-402-DIAG-SOC-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -816,10 +816,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-401-DIAG-BROKER-SOC-G24.apk"
+          FILE="ScalpAtlas-402-DIAG-SOC-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator401-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator402-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
