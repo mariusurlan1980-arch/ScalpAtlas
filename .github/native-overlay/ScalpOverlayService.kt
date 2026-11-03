@@ -3262,6 +3262,12 @@ class ScalpOverlayService : Service() {
       // Reuse the existing narrow footer; no extra controls, no added panel height.
       // Display a reason, not a false probability of winning.
       signalGateNote?.text = when {
+        lastBrokerAccountStatus.contains("QT REAL IDENTIFICAT") ->
+          "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
+        lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
+          "QT DEMO • SCANARE LIVE • AUTO OPRIT"
+        lastBrokerAccountStatus.contains("BROKER NECONFIGURAT") ->
+          "BROKER NECONFIGURAT • NUMAI SCANARE"
         tradePositionGate.state() == TradePositionGate.State.UNKNOWN ->
           "POZIȚIE NECONFIRMATĂ • VERIFICĂ BROKERUL"
         green || red -> "SEMNAL CONFIRMAT • NU EXECUTĂ ORDINE"
