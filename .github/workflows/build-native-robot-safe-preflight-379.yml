@@ -446,7 +446,7 @@ jobs:
           MOD=.github/native-overlay/ScalpOverlayModule.kt
           grep -Fq "scalpBlocker:'AȘTEAPTĂ DATE'" "$ENGINE"
           grep -Fq 'scalpBlocker:scalpBlocker' "$ENGINE"
-          grep -Fq 'minShockFraction=.50' "$ENGINE"
+          grep -Fq 'minShockFraction=.40' "$ENGINE"
           grep -Fq "if(!confirmed && tf==='M5' && strongTrend)" "$ENGINE"
           grep -Fq 'signalGateNote?.text = when {' "$SRV"
           grep -Fq 'scanStatus != "LIVE"' "$SRV"
