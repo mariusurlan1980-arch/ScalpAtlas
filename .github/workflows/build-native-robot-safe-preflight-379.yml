@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 406 SHOCK FLEX DEMO 40 30 35
+name: Build Scalp Atlas 407 FALSE TRADE COUNT FIX
 
 on:
   push:
-    branches: [feature/scalpatlas-shock-flex-demo406]
+    branches: [feature/scalpatlas-fix-false-trade-count407]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-406
+  group: scalp-atlas-calculator-test-407
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=406
+          expo['android']['versionCode']=407
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -580,7 +580,22 @@ jobs:
           grep -Fq 'val sameScalpDirection = sameOpticalDirection' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'REQUIRED_CONFIRMATIONS = 2' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'priorSell404Attempt' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'ȘOC FLEX 40/30/35 • ORDINE BLOCATE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TEST SELL ANTERIOR NECONFIRMAT' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
+      - name: Verify 407 payout 92 cannot masquerade as open trade badge
+        run: |
+          set -euo pipefail
+          T=.github/native-overlay/TouchTestService.kt
+          O=.github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fun inspectVisibleDemoOpenBadgeReadOnly()' "$T"
+          grep -Fq 'it.value.matches(Regex("""^[1-9]$"""))' "$T" || grep -Fq 'item.value.matches(Regex("""^[1-9]$"""))' "$T"
+          ! grep -Fq 'Regex("""^[1-9][0-9]?$""")' "$T"
+          grep -Fq 'item.rect.width() <= w * 0.08f' "$T"
+          grep -Fq 'tab.rect.centerY() - h * 0.065f' "$T"
+          grep -Fq 'NR. TRANZACȚII NEVERIFICAT' "$T"
+          grep -Fq 'TEST SELL ANTERIOR NECONFIRMAT' "$O"
+          grep -Fq 'priorSell404Attempt' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
       - name: Verify SHOCK-only native integration
@@ -860,12 +875,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-406-SOC-FLEX-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-407-FIX-TRANZACTII-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-406
-          path: ScalpAtlas-406-SOC-FLEX-DEMO-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-407
+          path: ScalpAtlas-407-FIX-TRANZACTII-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -874,13 +889,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-406-SOC-FLEX-DEMO-G24.apk"
+          FILE="ScalpAtlas-407-FIX-TRANZACTII-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator406-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator407-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 406 SHOCK FLEX DEMO - ORDINE REAL BLOCATE • ${GITHUB_SHA:0:12}" \
-            --notes "406: conditii soc moderate pe QT Demo: retragere >40% din corp, revenire >=30%, panta vizuala >35%, retragere <=15 secunde, cu verificare de aceeasi lumanare, fitil vizibil si doua confirmari distincte. Programul poate observa mai multe oportunitati dar NU plaseaza automat ordine succesive daca exista un SELL testat sau un ordin anterior fara dovada de inchidere din broker. Pe ecran afiseaza explicit ORDINE BLOCATE. Nu suporta executie REAL sau orice broker generic. Parametrii nu sunt testati ca profitabilitate si pot creste semnalele false. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 407 FIX 92 PAYOUT CONFUNDATE CU TRANZACTII - DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "407: reparat citirea falsa a payout-ului 92% drept 92 tranzactii; indicatorul de pozitii este acceptat doar daca este o singura cifra mica langa tab-ul Tranzactii din bara de jos. Lipsa badge-ului NU confirma inchiderea unui ordin. Panoul compact indica acum explicit BLOCAT dupa testul SELL anterior, fara a raporta numere neconfirmate. Pastreaza SHOCK FLEX 40/30/35 din 406 si verificarea de aceeasi lumanare. Nu se rearmeaza automat la schimbarea perechii si nu plaseaza ordine noi pana la dovada inchiderii trade-ului anterior. REAL si brokerii neconfigurati raman blocati. Build $GITHUB_SHA." \
             --prerelease
