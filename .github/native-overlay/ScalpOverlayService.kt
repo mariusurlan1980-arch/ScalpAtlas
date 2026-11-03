@@ -157,6 +157,10 @@ class ScalpOverlayService : Service() {
   private var brokerAccountMonitorRunning = false
   private var lastBrokerAccountStatus = ""
   private var lastDemoTradeStatus = "ÎNCHIDERE NECONFIRMATĂ"
+  // 409: two separate broker reads of Transactions > Open > explicitly empty.
+  // This is deliberately NOT inferred from a missing badge on the chart.
+  private var demoEmptyReviewReads = 0
+  private var demoEmptyReviewFirstAt = 0L
   private val tradePositionGate = TradePositionGate()
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
@@ -499,18 +503,81 @@ class ScalpOverlayService : Service() {
           lastBrokerAccountStatus = diagnostic
           touchProbeStatus?.text = "🤖 " + diagnostic.take(115)
         }
-        // Keep reading all selected broker charts for the entire authorized
-        // MediaProjection session, including after a submitted DEMO trade.
-        // A visible 'Tranzacții 1' badge proves a position is STILL open,
-        // but a missing badge is NOT evidence that it has closed. Therefore
-        // do not release the persistent guard or start another order here.
+        // Keep reading charts after an attempt. A missing chart badge is
+        // NOT evidence of closure; 409 only accepts an EXPLICIT broker message
+        // under Transactions > Open, on a verified QT DEMO account.
         if (diagnostic.contains("QT DEMO IDENTIFICAT")) {
           lastDemoTradeStatus = try {
             TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
           } catch (_: Exception) {
             "POZIȚIE NECUNOSCUTĂ • FĂRĂ REARMARE"
           }
+          val oldSellAttempt = getSharedPreferences(
+            sell404TestPrefs, Context.MODE_PRIVATE
+          ).getBoolean("attempted", false)
+          val oldShockAttempt = getSharedPreferences(
+            autoShockAttemptPrefs, Context.MODE_PRIVATE
+          ).getBoolean("attempted", false)
+          val eligibleForBrokerEmptyReview = (oldSellAttempt || oldShockAttempt) &&
+            autoDemoSessionConsumed && !autoDemoArmed &&
+            !demoClickTestPending &&
+            TouchTestService.priorDemoGestureCooldownComplete()
+          val explicitZero = eligibleForBrokerEmptyReview && try {
+            TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly()
+          } catch (_: Throwable) { false }
+          if (explicitZero) {
+            val tick = android.os.SystemClock.elapsedRealtime()
+            if (demoEmptyReviewReads == 0 || tick - demoEmptyReviewFirstAt > 20_000L) {
+              demoEmptyReviewReads = 1
+              demoEmptyReviewFirstAt = tick
+              touchProbeStatus?.text =
+                "VERIFICARE QT DEMO 0 POZIȚII • CONFIRM 1/2"
+            } else {
+              demoEmptyReviewReads++
+              if (demoEmptyReviewReads >= 2 &&
+                  tick - demoEmptyReviewFirstAt >= 2_000L &&
+                  tradePositionGate.brokerVerifiedEmptyDemoReview(true)) {
+                // Both writes must succeed. An uncertain broker gesture is
+                // never cleared from persistent storage based on a chart-only
+                // guess, page change, screenshot OCR or elapsed time alone.
+                val savedOldSell = getSharedPreferences(
+                  sell404TestPrefs, Context.MODE_PRIVATE
+                ).edit().putBoolean("attempted", false).commit()
+                val savedOldShock = getSharedPreferences(
+                  autoShockAttemptPrefs, Context.MODE_PRIVATE
+                ).edit().putBoolean("attempted", false).commit()
+                if (savedOldSell && savedOldShock) {
+                  autoDemoSessionRequested = true
+                  autoDemoSessionConsumed = false
+                  autoDemoArmed = false
+                  autoDemoMarket = null
+                  autoDemoExpiry = 0L
+                  autoDemoLastPreflightAt = 0L
+                  autoDemoLockedAt = lockedAt
+                  sell404Diagnostic = null
+                  autoDemoLastPreflightReason =
+                    "0 POZIȚII DEMO CONFIRMATE • REVIN LA GRAFIC"
+                  touchProbeStatus?.text =
+                    "✅ QT DEMO 0 POZIȚII • BLOCATUL VECHI ELIMINAT"
+                  lastDemoTradeStatus =
+                    "QT DEMO • LISTĂ DESCHIS GOALĂ VERIFICATĂ 2/2"
+                } else {
+                  // One failed persistent write still leaves the session
+                  // consumed and no new broker gesture can be attempted.
+                  touchProbeStatus?.text =
+                    "BLOCAT: MEMORARE VERIFICARE INCOMPLETĂ"
+                }
+                demoEmptyReviewReads = 0
+                demoEmptyReviewFirstAt = 0L
+              }
+            }
+          } else {
+            demoEmptyReviewReads = 0
+            demoEmptyReviewFirstAt = 0L
+          }
         } else {
+          demoEmptyReviewReads = 0
+          demoEmptyReviewFirstAt = 0L
           lastDemoTradeStatus = "BROKER/CONT SCHIMBAT • FĂRĂ REARMARE"
           if (autoDemoArmed) {
             autoDemoArmed = false
