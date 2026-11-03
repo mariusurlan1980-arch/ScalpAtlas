@@ -750,7 +750,7 @@ jobs:
           grep -Fq "var strategy=confirmed?'SHOCK'" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "scalpOpticalVerified:scalpConfirmed" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "tf==='M5'" scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq 'minTrendStrengthPercent=50' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'minTrendStrengthPercent=35,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "candle.trendStrengthPercent<=minTrendStrengthPercent" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'PANTĂ ≤50%' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'source:' scalp-atlas-new/shockNativeEngine.ts
