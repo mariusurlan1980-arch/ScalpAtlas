@@ -3627,8 +3627,8 @@ class ScalpOverlayService : Service() {
           sell404TestPrefs, Context.MODE_PRIVATE
         ).getBoolean("attempted", false)
         touchProbeStatus?.text = if (priorSellTest)
-          "🔒 AUTO DEMO BLOCAT • SELL ANTERIOR NECONFIRMAT"
-        else "🔒 AUTO DEMO BLOCAT • ÎNCHIDERE NEVERIFICATĂ"
+          "🔒 DEMO • VERIFICĂ TRANZACȚII > DESCHIS (0)"
+        else "🔒 DEMO • VERIFICĂ TRANZACȚII > DESCHIS (0)"
       }
       sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
       captureStatusText?.text = scanStatus
