@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 399 REAL READINESS ACCOUNT DETECTION
+name: Build Scalp Atlas 400 SHOCK AUTO BUY SELL DEMO ONE SHOT
 
 on:
   push:
-    branches: [feature/scalpatlas-real-account-readiness399]
+    branches: [feature/scalpatlas-auto-demo-shock400]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-399
+  group: scalp-atlas-calculator-test-400
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=399
+          expo['android']['versionCode']=400
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -482,7 +482,7 @@ jobs:
         working-directory: scalp-atlas-new
         run: npx tsc --noEmit
 
-      - name: Verify 399 account identification and read-only REAL safety
+      - name: Verify 400 account identification and REAL-blocking safety
         run: |
           set -euo pipefail
           test -s .github/native-overlay/TradePositionGate.kt
@@ -493,7 +493,7 @@ jobs:
           grep -Fq 'BrokerAdapterRegistry.hasDemoExecutor(pkg)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 399 broker account read-only overlay and no automatic test
+      - name: Verify broker account read-only overlay and no blind test
         run: |
           set -euo pipefail
           grep -Fq 'fun inspectBrokerAccountReadOnly()' .github/native-overlay/TouchTestService.kt
@@ -502,6 +502,20 @@ jobs:
           grep -Fq 'startBrokerAccountMonitor()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'demoClickTestPending = false' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
+      - name: Verify AUTO DEMO 400 starts on overlay and never opens unknown REAL orders
+        run: |
+          set -euo pipefail
+          grep -Fq 'autoDemoSessionRequested = !priorAutoShockAttempt' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private val autoShockAttemptPrefs = "scalp_atlas_demo_shock_400"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'putBoolean("attempted", true).commit()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'tradePositionGate.beginAttempt()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'lastConfirmedShockPercent > 50' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'pressAnyPairDemoBuyOnce { callback ->' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'pressAnyPairDemoSellOnce { callback ->' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          grep -Fq 'QT REAL PE ECRAN' .github/native-overlay/TouchTestService.kt
 
       - name: Verify SHOCK-only native integration
         run: |
@@ -780,12 +794,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-399-SCANARE-CONT-REAL-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-400-AUTO-SOC-BUY-SELL-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-399
-          path: ScalpAtlas-399-SCANARE-CONT-REAL-DEMO-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-400
+          path: ScalpAtlas-400-AUTO-SOC-BUY-SELL-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -794,13 +808,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-399-SCANARE-CONT-REAL-DEMO-G24.apk"
+          FILE="ScalpAtlas-400-AUTO-SOC-BUY-SELL-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator399-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator400-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 399 SCANARE CONT DEMO REAL · FARA ORDINE REAL • ${GITHUB_SHA:0:12}" \
-            --notes "VERSIUNEA 399 - PREGATIRE CONT REAL: analiza graficului continua in SUPRAPUNERE LIVE si incearca identificarea vizuala read-only a contului QT DEMO sau QT REAL in aplicatia brokerului. Pe QT REAL apare EXECUTIE REAL BLOCATA; brokerii necunoscuti raman doar pentru scanare. Acest APK nu lanseaza automat nici macar testul SELL din 398 la deschiderea suprapunerii. Controalele X si Opreste LIVE opresc captura. REGISTRUL de adaptoare nu executa ordine REAL. Nu exista inca comenzi succesive BUY/SELL sau confirmari automate de inchidere. Necesita test pe Motorola G24. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 400 AUTO SHOCK BUY SELL DEMO O INCERCARE · FARA REAL • ${GITHUB_SHA:0:12}" \
+            --notes "VERSIUNEA 400 - AUTO DEMO LA SEMNAL ȘOC: pornirea SUPRAPUNERII LIVE armeaza automat o singura incercare BUY SAU SELL de 1 USD doar pe Pocket Option QT DEMO identificat; trebuie semnal SHOCK proaspat confirmat, pereche/TF/cadre LIVE actuale, payout >=92%, sold suficient si accesibilitate activa. Gestul este fizic si blocat persistent inainte de trimitere: NU urmeaza o alta tranzactie pana la confirmarea independenta a inchiderii; aceasta confirmare NU este inca implementata. Contul QT REAL ramane numAI pentru scanare, fara ordine. Gestul Android nu garanteaza executarea la broker. Test nevalidat pe Motorola G24; foloseste doar cont DEMO. Build $GITHUB_SHA." \
             --prerelease
