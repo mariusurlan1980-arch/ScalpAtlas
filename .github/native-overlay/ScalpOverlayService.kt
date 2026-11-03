@@ -3503,7 +3503,7 @@ class ScalpOverlayService : Service() {
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoSessionConsumed ->
-          "🤖 MONITORIZARE CONTINUĂ • " + lastDemoTradeStatus.take(70)
+          "🔒 ȘOC FLEX • ORDINE BLOCATE • " + lastDemoTradeStatus.take(63)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
           if (autoDemoSessionRequested)
             "DEMO NEARMAT • " + autoDemoLastPreflightReason.take(65)
@@ -3545,8 +3545,8 @@ class ScalpOverlayService : Service() {
       // the frequent account monitor must not hide a possible broker order.
       if (autoDemoSessionConsumed &&
           lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT"))
-        touchProbeStatus?.text = "🤖 SCANARE CONTINUĂ • " +
-          lastDemoTradeStatus.take(100)
+        touchProbeStatus?.text = "🤖 ȘOC FLEX 40/30/35 • ORDINE BLOCATE • " +
+          lastDemoTradeStatus.take(65)
       sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
