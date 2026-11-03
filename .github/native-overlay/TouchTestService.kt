@@ -246,18 +246,25 @@ class TouchTestService : AccessibilityService() {
       }
       if (tradeLabels.isEmpty())
         return "QT DEMO • ISTORICUL NU ESTE VIZIBIL • ÎNCHIDERE NECONFIRMATĂ"
-      val positives = labels.filter {
-        it.value.matches(Regex("""^[1-9][0-9]?$""")) &&
-          it.rect.centerX() < w * 0.38f &&
+      // 407: only read a genuine SMALL single-digit badge immediately
+      // adjacent to the "Tranzacții" bottom-navigation tab. The wide 92%
+      // BUY/SELL payout buttons occupy the panel just ABOVE this nav strip,
+      // and were incorrectly reported as 92 OPEN TRADES in 405/406.
+      // This hint is never authoritative proof that a trade has CLOSED.
+      val positives = labels.filter { item ->
+        item.value.matches(Regex("""^[1-9]$""")) &&
+          item.rect.width() > 0 && item.rect.height() > 0 &&
+          item.rect.width() <= w * 0.08f &&
+          item.rect.height() <= h * 0.045f &&
           tradeLabels.any { tab ->
-            kotlin.math.abs(it.rect.centerX() - tab.rect.centerX()) < w * 0.19f &&
-              it.rect.centerY() >= tab.rect.centerY() - h * 0.11f &&
-              it.rect.centerY() <= tab.rect.centerY() + h * 0.025f
+            kotlin.math.abs(item.rect.centerX() - tab.rect.centerX()) < w * 0.14f &&
+              item.rect.centerY() >= tab.rect.centerY() - h * 0.065f &&
+              item.rect.centerY() <= tab.rect.centerY() + h * 0.015f
           }
       }.mapNotNull { it.value.toIntOrNull() }.distinct()
       return if (positives.size == 1)
-        "QT DEMO • " + positives[0] + " TRANZACȚIE(I) VIZIBILĂ(E) • NU DUBLEZ"
-      else "QT DEMO • ÎNCHIDERE NECONFIRMATĂ • NU DUBLEZ"
+        "QT DEMO • INDICATOR " + positives[0] + " LÂNGĂ TRANZACȚII • ÎNCHIDERE NEVERIFICATĂ"
+      else "QT DEMO • NR. TRANZACȚII NEVERIFICAT • NU DUBLEZ"
     }
 
     fun inspectDemoBrokerReadOnly(): String {
