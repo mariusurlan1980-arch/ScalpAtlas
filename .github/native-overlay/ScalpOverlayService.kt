@@ -3334,6 +3334,20 @@ class ScalpOverlayService : Service() {
           "M5 • " + scalpBlocker
         else -> "ȘOC: " + shockBlocker + " • NU WIN"
       }
+      // 402: compact card shows probeStatus (the note above is hidden in
+      // minimized mode). Keep the exact SHOCK reason visible to the user
+      // without opening PROBĂ and without inventing BUY/SELL orders.
+      if (autoDemoSessionRequested && !autoDemoSessionConsumed &&
+          lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")) {
+        if (autoDemoArmed && activeSignal == "NONE") {
+          touchProbeStatus?.text = if (scanStatus != "LIVE")
+            "🤖 AUTO DEMO • SCAN " + scanStatus
+          else "🤖 AUTO DEMO • ȘOC: " + shockBlocker.take(52)
+        } else if (!autoDemoArmed) {
+          touchProbeStatus?.text =
+            "🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
+        }
+      }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
       captureStatusText?.setTextColor(
