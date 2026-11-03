@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 405 CONTINUOUS SAFE POSITION MONITOR
+name: Build Scalp Atlas 406 SHOCK FLEX DEMO 40 30 35
 
 on:
   push:
-    branches: [feature/scalpatlas-continuous-lifecycle405]
+    branches: [feature/scalpatlas-shock-flex-demo406]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-405
+  group: scalp-atlas-calculator-test-406
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=405
+          expo['android']['versionCode']=406
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -511,7 +511,7 @@ jobs:
           grep -Fq 'putBoolean("attempted", true).commit()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'tradePositionGate.beginAttempt()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'lastConfirmedShockPercent > 50' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'lastConfirmedShockPercent > SHOCK_MIN_DEPTH' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'pressAnyPairDemoBuyOnce { callback ->' .github/native-overlay/TouchTestService.kt
           grep -Fq 'pressAnyPairDemoSellOnce { callback ->' .github/native-overlay/TouchTestService.kt
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
@@ -565,6 +565,22 @@ jobs:
           grep -Fq 'TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'absen' .github/native-overlay/TouchTestService.kt
           grep -Fq 'tradePositionGate.uncertainResult()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
+      - name: Verify 406 moderate DEMO SHOCK and persistent-order safety
+        run: |
+          set -euo pipefail
+          grep -Fq 'minShockFraction=.40,maxDropMs=15000,minRecoveryFraction=.30' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'minTrendStrengthPercent=35,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'var rowSupport=Math.max(2,Math.ceil(width*.8))' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'private const val SHOCK_MIN_DEPTH = 40' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private const val SHOCK_MIN_RECOVERY = 30' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private const val SHOCK_MIN_TREND = 35' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'SHOCK_MAX_DROP_MS = 15_000L' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val sameScalpDirection = sameOpticalDirection' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'REQUIRED_CONFIRMATIONS = 2' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'priorSell404Attempt' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'ȘOC FLEX 40/30/35 • ORDINE BLOCATE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
       - name: Verify SHOCK-only native integration
@@ -844,12 +860,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-405-MONITORIZARE-CONTINUA-G24.apk
+          cp "$APK" ScalpAtlas-406-SOC-FLEX-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-405
-          path: ScalpAtlas-405-MONITORIZARE-CONTINUA-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-406
+          path: ScalpAtlas-406-SOC-FLEX-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -858,13 +874,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-405-MONITORIZARE-CONTINUA-G24.apk"
+          FILE="ScalpAtlas-406-SOC-FLEX-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator405-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator406-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 405 MONITORIZARE CONTINUA POZITII - DEMO ONLY • ${GITHUB_SHA:0:12}" \
-            --notes "405: suprapunerea continua scanarea brokerului cat timp autorizarea Android LIVE este activa, inclusiv dupa prima tranzactie. Citeste in mod pasiv eticheta Tranzactii cu badge pozitiv pe Pocket Option QT Demo, daca este expusa de Android, fara click. Absenta badge-ului NU este dovada inchiderii; nu sunt permise comenzi repetate pana la inchidere verificata cu ID broker. La actualizarea din 404 se pastreaza blocajul dupa TEST SELL 1 USD, pentru a evita ordinul dublu. Brokerii necunoscuti si QT REAL raman exclusiv pentru scanare; NU se plaseaza ordine REAL. Este un pas sigur spre executie continua, NU un robot universal cu tranzactii consecutive. Necesita test pe Motorola G24. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 406 SHOCK FLEX DEMO - ORDINE REAL BLOCATE • ${GITHUB_SHA:0:12}" \
+            --notes "406: conditii soc moderate pe QT Demo: retragere >40% din corp, revenire >=30%, panta vizuala >35%, retragere <=15 secunde, cu verificare de aceeasi lumanare, fitil vizibil si doua confirmari distincte. Programul poate observa mai multe oportunitati dar NU plaseaza automat ordine succesive daca exista un SELL testat sau un ordin anterior fara dovada de inchidere din broker. Pe ecran afiseaza explicit ORDINE BLOCATE. Nu suporta executie REAL sau orice broker generic. Parametrii nu sunt testati ca profitabilitate si pot creste semnalele false. Build $GITHUB_SHA." \
             --prerelease
