@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 407 FALSE TRADE COUNT FIX
+name: Build Scalp Atlas 408 KEEP SESSION AFTER NO-ORDER
 
 on:
   push:
-    branches: [feature/scalpatlas-fix-false-trade-count407]
+    branches: [feature/scalpatlas-no-trade-lock408]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-407
+  group: scalp-atlas-calculator-test-408
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=407
+          expo['android']['versionCode']=408
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -598,6 +598,20 @@ jobs:
           grep -Fq 'priorSell404Attempt' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
+      - name: Verify 408 session remains armed when no broker gesture was sent
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          G=.github/native-overlay/TradePositionGate.kt
+          grep -Fq 'A rejected optical/freshness check is NOT a broker order attempt' "$O"
+          grep -Fq 'autoDemoLockedAt = lockedAt' "$O"
+          grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC' "$O"
+          grep -Fq 'tradePositionGate.cancelBeforeDispatch()' "$O"
+          grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
+          grep -Fq 'fun cancelBeforeDispatch(): Boolean' "$G"
+          grep -Fq 'if (state != State.SUBMITTING) return false' "$G"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
       - name: Verify SHOCK-only native integration
         run: |
           set -e
@@ -875,12 +889,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-407-FIX-TRANZACTII-G24.apk
+          cp "$APK" ScalpAtlas-408-FIX-TRADE-0-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-407
-          path: ScalpAtlas-407-FIX-TRANZACTII-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-408
+          path: ScalpAtlas-408-FIX-TRADE-0-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -889,13 +903,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-407-FIX-TRANZACTII-G24.apk"
+          FILE="ScalpAtlas-408-FIX-TRADE-0-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator407-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator408-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 407 FIX 92 PAYOUT CONFUNDATE CU TRANZACTII - DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "407: reparat citirea falsa a payout-ului 92% drept 92 tranzactii; indicatorul de pozitii este acceptat doar daca este o singura cifra mica langa tab-ul Tranzactii din bara de jos. Lipsa badge-ului NU confirma inchiderea unui ordin. Panoul compact indica acum explicit BLOCAT dupa testul SELL anterior, fara a raporta numere neconfirmate. Pastreaza SHOCK FLEX 40/30/35 din 406 si verificarea de aceeasi lumanare. Nu se rearmeaza automat la schimbarea perechii si nu plaseaza ordine noi pana la dovada inchiderii trade-ului anterior. REAL si brokerii neconfigurati raman blocati. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 408 FIX TRADE 0 FARA ORDIN - DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "408: elimina marcarea sesiunii ca utilizata atunci cand un semnal SHOCK este respins din cauza cadrului/TF neconfirmat si NU s-a trimis niciun gest; urmatorul SHOCK nou poate fi evaluat. In caz de esec al salvarii inainte de gest, revine doar starea SUBMITTING la READY. Pastreaza reparatia 407 pentru confuzia 92% payout/92 tranzactii, nu considera lipsa badge-ului dovada inchiderii, nu repeta tranzactii incert executate, pastreaza limitele QT DEMO 1 USD si blocheaza REAL. Build $GITHUB_SHA." \
             --prerelease
