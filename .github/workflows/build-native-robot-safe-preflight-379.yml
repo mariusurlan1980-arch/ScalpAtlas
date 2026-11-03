@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 402 LIVE DIAGNOSTICS
+name: Build Scalp Atlas 403 PAIR HEADER OCR G24
 
 on:
   push:
-    branches: [feature/scalpatlas-auto-diagnostics402]
+    branches: [feature/scalpatlas-pair-header-ocr403]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-402
+  group: scalp-atlas-calculator-test-403
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=402
+          expo['android']['versionCode']=403
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -533,6 +533,17 @@ jobs:
           grep -Fq '"🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeStatus.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
 
+      - name: Verify 403 independent broker instrument OCR fallback
+        run: |
+          set -euo pipefail
+          grep -Fq 'private val pairCropOcrRecognizer' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'region.width * 3, region.height * 3' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'recordVisiblePair(instruments[0], System.currentTimeMillis())' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'schedulePairHeaderOcr(copy, observedAt)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'MARKET_OCR_CONFIRMATIONS = 2' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'PERECHE OCR NECITITĂ' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
       - name: Verify SHOCK-only native integration
         run: |
           set -e
@@ -810,12 +821,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-402-DIAG-SOC-G24.apk
+          cp "$APK" ScalpAtlas-403-OCR-PERECHE-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-402
-          path: ScalpAtlas-402-DIAG-SOC-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-403
+          path: ScalpAtlas-403-OCR-PERECHE-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -824,13 +835,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-402-DIAG-SOC-G24.apk"
+          FILE="ScalpAtlas-403-OCR-PERECHE-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator402-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator403-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 402 LIVE SHOCK DIAGNOSTICS · DEMO ONLY • ${GITHUB_SHA:0:12}" \
-            --notes "402: Afiseaza in panoul compact motivul blocarii semnalului SOC si al verificarii QT Demo. Nu relaxeaza strategia si nu executa ordine REAL. Aceasta versiune permite cel mult o incercare pe cont Pocket Option QT Demo verificat; nu rearmeaza automat dupa incheiere. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 403 OCR PERECHE SELECTOR · DEMO ONLY • ${GITHUB_SHA:0:12}" \
+            --notes "403: Cand OCR pe intreg ecranul nu poate citi perechea OTC din selectorul brokerului, aplica OCR pe selectorul de sus-stanga marit 3x. Ramane obligatorie verificarea de doua ori a identitatii exacte a perechii si stabilizarea graficului. Panoul arata PERECHE OCR NECITITA sau progresul 1/2. Niciun ordin pe cont REAL sau broker nerecunoscut. Modul auto DEMO pastreaza o singura incercare de 1 USD la SOC complet confirmat; fara rearmare automata dupa comanda. Test pe Motorola G24 necesar. Build $GITHUB_SHA." \
             --prerelease
