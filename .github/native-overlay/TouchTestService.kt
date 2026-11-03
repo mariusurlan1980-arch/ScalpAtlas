@@ -194,7 +194,7 @@ class TouchTestService : AccessibilityService() {
       val pkg = root.packageName?.toString().orEmpty()
       // Known official Android app identifiers; never click a browser, unknown
       // app, copycat or Scalp Atlas's own overlay.
-      if (pkg != "com.pocketoption.broker" && pkg != "com.potradeweb")
+      if (!BrokerAdapterRegistry.hasDemoExecutor(pkg))
         return DemoOrderCheck(reason = "APLICAȚIE NECONFIRMATĂ: " + pkg.take(36))
       // Accessibility bounds are absolute SCREEN coordinates, including the
       // status/navigation regions. resources.displayMetrics.heightPixels may
