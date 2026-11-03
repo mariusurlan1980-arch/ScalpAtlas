@@ -34,6 +34,17 @@ class TradePositionGate {
     return true
   }
 
+  /** No broker call happened, and persistence failed before dispatch.
+   * This is the ONLY case where a SUBMITTING attempt can be rolled back.
+   */
+  @Synchronized
+  fun cancelBeforeDispatch(): Boolean {
+    if (state != State.SUBMITTING) return false
+    currentId = null
+    state = State.READY
+    return true
+  }
+
   @Synchronized
   fun uncertainResult() {
     if (state != State.READY) state = State.UNKNOWN
