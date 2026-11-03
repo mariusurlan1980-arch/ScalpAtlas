@@ -363,16 +363,17 @@ class ScalpOverlayService : Service() {
         }
 
         if (resultCode != 0 && data != null) {
-          // This explicit diagnostic APK cannot trade from SHOCK at all.
-          autoDemoSessionRequested = false
-          autoDemoSessionConsumed = true
+          // 400: Starting authorized LIVE capture automatically arms SHOCK-only
+          // on a strictly verified QT DEMO. It never arms QT REAL.
+          // One gesture maximum per capture because a broker close receipt
+          // cannot yet be read reliably. Unknown order state blocks all repeats.
+          autoDemoSessionRequested = true
+          autoDemoSessionConsumed = false
           autoDemoArmed = false
-          // Version 399 is a safe REAL-readiness diagnostic build.
-          // No attempt is ever initiated merely by opening SUPRAPUNERE LIVE.
           demoClickTestPending = false
           demoClickTestLastCheck = 0L
           mainHandler.post {
-            touchProbeStatus?.text = "🤖 SCANARE LIVE • IDENTIFICĂ DEMO/REAL"
+            touchProbeStatus?.text = "🤖 LIVE • DEMO AUTO LA ȘOC • REAL BLOCAT"
           }
           // Stay eligible while the Android-authorized LIVE screen capture
           // exists. Only a user stop, OS capture revocation, or service death
@@ -3068,7 +3069,8 @@ class ScalpOverlayService : Service() {
       // once in the app. Auto-arming uses EXACTLY the same QT Demo, 1 USD,
       // payout >=92%, visible-pair and unique BUY/SELL checks as the former button.
       // If Android/WebView cannot prove them, NO ORDER is sent.
-      if (autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed) {
+      if (autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
+          tradePositionGate.state() == TradePositionGate.State.READY) {
         val nowClock = android.os.SystemClock.elapsedRealtime()
         if (nowClock >= autoDemoSessionEndAt) {
           autoDemoSessionRequested = false
@@ -3152,9 +3154,20 @@ class ScalpOverlayService : Service() {
           // last freshness check. Never retry an expired shock signal.
           touchProbeStatus?.text = if (!readyForDemo)
             "BLOCAT: ȘOC CONFIRMAT, DAR CADRU/TF NEACTUAL • FĂRĂ ORDIN"
-          else TouchTestService.pressAutoOneDollarDemoOrderOnce(
-            activeSignal, expectedPair ?: "NEIDENTIFICAT"
-          )
+          else if (!tradePositionGate.beginAttempt())
+            "BLOCAT: O POZIȚIE ESTE DEJA ACTIVĂ/NECONFIRMATĂ"
+          else {
+            // Android gesture acceptance does not confirm broker execution.
+            // Without an independently verified broker position ID and CLOSE
+            // receipt, keep UNKNOWN indefinitely: no rearming, no retries.
+            try {
+              TouchTestService.pressAutoOneDollarDemoOrderOnce(
+                activeSignal, expectedPair ?: "NEIDENTIFICAT"
+              )
+            } finally {
+              tradePositionGate.uncertainResult()
+            }
+          }
         } else if (!readyForDemo) {
           // Diagnostic only; keeps the arm alive for the next fresh frame.
           touchProbeStatus?.text =
@@ -3264,8 +3277,14 @@ class ScalpOverlayService : Service() {
       signalGateNote?.text = when {
         lastBrokerAccountStatus.contains("QT REAL IDENTIFICAT") ->
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
+        lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
+          autoDemoArmed && !autoDemoSessionConsumed ->
+          "🤖 DEMO AUTO • AȘTEAPTĂ ȘOC BUY/SELL"
+        lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
+          autoDemoSessionConsumed ->
+          "QT DEMO • TRADE NECONFIRMAT • FĂRĂ REARMĂRI"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
-          "QT DEMO • SCANARE LIVE • AUTO OPRIT"
+          "QT DEMO • VERIFICARE AUTO / TF"
         lastBrokerAccountStatus.contains("BROKER NECONFIGURAT") ->
           "BROKER NECONFIGURAT • NUMAI SCANARE"
         tradePositionGate.state() == TradePositionGate.State.UNKNOWN ->
