@@ -3304,8 +3304,17 @@ class ScalpOverlayService : Service() {
           "QT DEMO • TEST CONSUMAT • FĂRĂ REARMĂRI"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
           "QT DEMO • VERIFICARE AUTO / TF"
-        lastBrokerAccountStatus.contains("BROKER NECONFIGURAT") ->
-          "BROKER NECONFIGURAT • NUMAI SCANARE"
+        lastBrokerAccountStatus.contains("BROKER NECONFIGURAT") -> {
+          // 401: show the actual active Android package and SHOCK gate,
+          // so a screenshot distinguishes Chrome/PWA/overlay from the
+          // verified broker app without sending unsafe orders.
+          val appId = lastBrokerAccountStatus
+            .substringAfter("APP: ", "NECITIT")
+            .substringBefore(" •").take(37)
+          "APP: " + appId + "\n" +
+            (if (activeSignal == "NONE") "FĂRĂ BUY/SELL: " +
+              shockBlocker.take(42) else "SEMNAL • BROKER NECONFIGURAT")
+        }
         tradePositionGate.state() == TradePositionGate.State.UNKNOWN ->
           "POZIȚIE NECONFIRMATĂ • VERIFICĂ BROKERUL"
         green || red -> "SEMNAL CONFIRMAT • NU EXECUTĂ ORDINE"
