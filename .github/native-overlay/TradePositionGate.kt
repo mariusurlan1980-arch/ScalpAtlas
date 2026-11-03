@@ -50,6 +50,20 @@ class TradePositionGate {
     if (state != State.READY) state = State.UNKNOWN
   }
 
+  /** A previously attempted gesture has no position ID. Only permit
+   * an UNKNOWN state to be resolved after the broker itself has EXPLICITLY
+   * shown zero open DEMO positions in two independently sampled reads.
+   * Never reset a known OPEN position without its matching broker receipt.
+   */
+  @Synchronized
+  fun brokerVerifiedEmptyDemoReview(twoIndependentReads: Boolean): Boolean {
+    if (!twoIndependentReads) return false
+    if (state != State.UNKNOWN && state != State.READY) return false
+    currentId = null
+    state = State.READY
+    return true
+  }
+
   @Synchronized
   fun brokerConfirmedClosed(positionId: String, noOpenPositions: Boolean): Boolean {
     if (state != State.OPEN || currentId != positionId || !noOpenPositions) return false
