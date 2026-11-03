@@ -48,10 +48,10 @@ object BrokerAdapterRegistry {
       return AccountObservation(broker.id, Account.UNKNOWN, false, false, false)
     }
     val demo = visibleHeaderLabels.any {
-      Regex("""(?i)\\bQT\\s*Demo\\b""").containsMatchIn(it)
+      Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it)
     }
     val real = visibleHeaderLabels.any {
-      Regex("""(?i)\\bQT\\s*Real\\b""").containsMatchIn(it)
+      Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it)
     }
     val account = when {
       demo == real -> Account.UNKNOWN
