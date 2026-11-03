@@ -67,7 +67,7 @@ class TouchTestService : AccessibilityService() {
       val pkg = root.packageName?.toString().orEmpty()
       val adapter = BrokerAdapterRegistry.forPackage(pkg)
       if (adapter.id == "unrecognized") {
-        return "BROKER NECONFIGURAT • SCANARE ȘOC • FĂRĂ ORDINE"
+        return "BROKER NECONFIGURAT • APP: " + pkg.take(55) + " • FĂRĂ ORDINE"
       }
       val metrics = android.util.DisplayMetrics()
       try {
