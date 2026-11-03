@@ -149,6 +149,8 @@ class ScalpOverlayService : Service() {
   private var lastBrokerAccountStatus = ""
   private val tradePositionGate = TradePositionGate()
   private var autoDemoLastPreflightAt = 0L
+  // Read-only reason shown even while the advanced diagnostics are hidden.
+  private var autoDemoLastPreflightReason = "AȘTEAPTĂ VERIFICAREA"
   private var autoDemoArmed = false
   private var autoDemoMarket: String? = null
   private var autoDemoLockedAt = 0L
@@ -376,6 +378,9 @@ class ScalpOverlayService : Service() {
           autoDemoSessionRequested = !priorAutoShockAttempt
           autoDemoSessionConsumed = priorAutoShockAttempt
           autoDemoArmed = false
+          autoDemoLastPreflightReason =
+            if (priorAutoShockAttempt) "ÎNCERCARE ANTERIOARĂ • FĂRĂ REARMARE"
+            else "AȘTEAPTĂ VERIFICAREA"
           demoClickTestPending = false
           demoClickTestLastCheck = 0L
           mainHandler.post {
@@ -3101,7 +3106,9 @@ class ScalpOverlayService : Service() {
               "EROARE ANDROID " + error.javaClass.simpleName.take(20)
             }
           }
+          autoDemoLastPreflightReason = diagnostic.take(95)
           if (diagnostic.startsWith("PREGĂTIT AUTO DEMO")) {
+            autoDemoLastPreflightReason = "PREGĂTIT"
             autoDemoArmed = true
             autoDemoMarket = pair
             autoDemoLockedAt = lockedAt // must see a NEW SHOCK, never replay an old BIP
@@ -3298,12 +3305,16 @@ class ScalpOverlayService : Service() {
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoArmed && !autoDemoSessionConsumed ->
-          "🤖 DEMO AUTO • AȘTEAPTĂ ȘOC BUY/SELL"
+          "🤖 AUTO DEMO • " + if (activeStrategy == "SHOCK" &&
+              activeSignal != "NONE") "ȘOC CONFIRMAT"
+            else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoSessionConsumed ->
           "QT DEMO • TEST CONSUMAT • FĂRĂ REARMĂRI"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
-          "QT DEMO • VERIFICARE AUTO / TF"
+          if (autoDemoSessionRequested)
+            "DEMO NEARMAT • " + autoDemoLastPreflightReason.take(65)
+          else "DEMO AUTO OPRIT • " + autoDemoLastPreflightReason.take(65)
         lastBrokerAccountStatus.contains("BROKER NECONFIGURAT") -> {
           // 401: show the actual active Android package and SHOCK gate,
           // so a screenshot distinguishes Chrome/PWA/overlay from the
