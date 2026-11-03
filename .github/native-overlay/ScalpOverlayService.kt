@@ -3502,8 +3502,14 @@ class ScalpOverlayService : Service() {
               activeSignal != "NONE") "ȘOC CONFIRMAT"
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
-          autoDemoSessionConsumed ->
-          "🔒 ȘOC FLEX • ORDINE BLOCATE • " + lastDemoTradeStatus.take(63)
+          autoDemoSessionConsumed -> {
+          val priorSellTest = getSharedPreferences(
+            sell404TestPrefs, Context.MODE_PRIVATE
+          ).getBoolean("attempted", false)
+          if (priorSellTest)
+            "🔒 ȘOC FLEX • ORDINE BLOCATE • TEST SELL ANTERIOR NECONFIRMAT"
+          else "🔒 ȘOC FLEX • ORDINE BLOCATE • ÎNCHIDERE NEVERIFICATĂ"
+        }
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
           if (autoDemoSessionRequested)
             "DEMO NEARMAT • " + autoDemoLastPreflightReason.take(65)
@@ -3544,9 +3550,14 @@ class ScalpOverlayService : Service() {
       // Preserve the result of a user-triggered physical DEMO gesture pilot;
       // the frequent account monitor must not hide a possible broker order.
       if (autoDemoSessionConsumed &&
-          lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT"))
-        touchProbeStatus?.text = "🤖 ȘOC FLEX 40/30/35 • ORDINE BLOCATE • " +
-          lastDemoTradeStatus.take(65)
+          lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")) {
+        val priorSellTest = getSharedPreferences(
+          sell404TestPrefs, Context.MODE_PRIVATE
+        ).getBoolean("attempted", false)
+        touchProbeStatus?.text = if (priorSellTest)
+          "🔒 AUTO DEMO BLOCAT • SELL ANTERIOR NECONFIRMAT"
+        else "🔒 AUTO DEMO BLOCAT • ÎNCHIDERE NEVERIFICATĂ"
+      }
       sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
