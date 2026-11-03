@@ -258,7 +258,7 @@ jobs:
           grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val pairLostLong = seenPair ==' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'AȘTEAPTĂ CADRU/TF ACTUAL' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'BLOCAT: ȘOC CONFIRMAT, DAR CADRU/TF NEACTUAL' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'previewAutoOneDollarDemoOrder("BUY", expectedPair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'previewAutoOneDollarDemoOrder("SELL", expectedPair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'activeSignal, expectedPair ?: "NEIDENTIFICAT"' .github/native-overlay/ScalpOverlayService.kt
@@ -290,7 +290,7 @@ jobs:
           grep -Fq 'val shockObserved = brokerConnected && opticalFresh' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val shockDisplay = if (percentFromCandle > 0 || shockObserved)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'brokerAutoRow.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'autoDemoSessionConsumed = true // at most ONE attempted order per LIVE session' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'mediaProjection != null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val liveCaptureActive = mediaProjection != null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (!liveCaptureActive)' .github/native-overlay/ScalpOverlayService.kt
@@ -335,7 +335,7 @@ jobs:
           ! grep -Fq 'setKeepScreenForTest(liveTest.isActive())' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'contentDescription = "Închide suprapunerea și oprește LIVE"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'bellControl?.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'autoDemoSessionConsumed = true // at most ONE attempted order per LIVE session' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.preflightOneDollarDemoOrder(pair)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val uiClosed = overlayView == null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'touchProbeToggle.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
