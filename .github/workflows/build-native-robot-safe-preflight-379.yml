@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 397 SINGLE SELL 1 USD QT Demo
+name: Build Scalp Atlas 398 POSITION GUARD + MULTI-BROKER SCAN
 
 on:
   push:
-    branches: [feature/scalpatlas-motorola-single-demo-sell397]
+    branches: [feature/scalpatlas-universal-demo-shock398]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-397
+  group: scalp-atlas-calculator-test-398
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=397
+          expo['android']['versionCode']=398
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -482,6 +482,17 @@ jobs:
         working-directory: scalp-atlas-new
         run: npx tsc --noEmit
 
+      - name: Verify 398 broker adapters and one-position gate
+        run: |
+          set -euo pipefail
+          test -s .github/native-overlay/TradePositionGate.kt
+          test -s .github/native-overlay/BrokerAdapterRegistry.kt
+          grep -Fq 'private val tradePositionGate = TradePositionGate()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if (!tradePositionGate.beginAttempt())' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'tradePositionGate.uncertainResult()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'BrokerAdapterRegistry.hasDemoExecutor(pkg)' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
       - name: Verify SHOCK-only native integration
         run: |
           set -e
@@ -526,7 +537,9 @@ jobs:
           cp .github/native-overlay/LiveTestMonitor.kt "$JAVA_DIR/LiveTestMonitor.kt"
           cp .github/native-overlay/TouchTestActivity.kt "$JAVA_DIR/TouchTestActivity.kt"
           cp .github/native-overlay/TouchTestService.kt "$JAVA_DIR/TouchTestService.kt"
-          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt; do
+          cp .github/native-overlay/TradePositionGate.kt "$JAVA_DIR/TradePositionGate.kt"
+          cp .github/native-overlay/BrokerAdapterRegistry.kt "$JAVA_DIR/BrokerAdapterRegistry.kt"
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
 
@@ -757,12 +770,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-397-UN-SINGUR-SELL-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-398-CONTROL-POZITIE-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-397
-          path: ScalpAtlas-397-UN-SINGUR-SELL-DEMO-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-398
+          path: ScalpAtlas-398-CONTROL-POZITIE-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -771,13 +784,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-397-UN-SINGUR-SELL-DEMO-G24.apk"
+          FILE="ScalpAtlas-398-CONTROL-POZITIE-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator397-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator398-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 397 UN SINGUR SELL AUTOMAT QT DEMO 1 USD · FARA REAL • ${GITHUB_SHA:0:12}" \
-            --notes "TEST 397: după pornirea explicită SUPRAPUNERE LIVE, roboțelul încearcă numai un SELL de 1 USD pe Pocket Option QT Demo, în maximum 5 minute, fără BUY și fără a aștepta un semnal ȘOC. Sunt obligatorii accesibilitatea, identificarea aplicației oficiale, QT Demo (nu QT Real), suma exact 1 USD, sold suficient, payout >=92% și butoane BUY/SELL identificabile. O singură încercare per instalare/versiune, salvată înainte de gest, fără repetare. Acceptarea gestului de Android nu confirmă că brokerul a executat ordinul. Codul nu a fost testat pe telefon. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 398 CONTROL POZITIE + SCAN MULTI BROKER · DEMO ONLY • ${GITHUB_SHA:0:12}" \
+            --notes "VERSIUNEA 398 - ETAPA 1: integrare control stare poziție, pentru a refuza comenzi suprapuse când prima poziție este necunoscută, plus registru de adaptoare broker. Analiza vizuală LIVE poate rula permanent, dar gestul de tranzacționare rămâne doar testul unic SELL de 1 USD în Pocket Option QT DEMO. Nu există încă monitor de închidere a pozițiilor, comenzi repetate BUY/SELL, suport de execuție pentru alți brokeri sau REAL. Nu interpreta acceptarea gestului Android drept confirmare de ordin. Necesită test pe Motorola G24. Build $GITHUB_SHA." \
             --prerelease
