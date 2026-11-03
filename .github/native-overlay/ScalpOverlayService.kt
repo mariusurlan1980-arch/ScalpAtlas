@@ -3352,42 +3352,47 @@ class ScalpOverlayService : Service() {
           touchProbeStatus?.text =
             "AUTO DEMO OPRIT • PERECHE/SERVICIU/EXPIRARE"
         } else if (newShock) {
-          autoDemoSessionConsumed = true // at most ONE attempted order per LIVE session
-          autoDemoLockedAt = lockedAt
-          autoDemoArmed = false
-          autoDemoMarket = null
-          autoDemoExpiry = 0L
-          autoDemoButton?.text = "🤖 PORNEȘTE • ON"
-          // Consume this one-shot even when the market data fails the
-          // last freshness check. Never retry an expired shock signal.
-          touchProbeStatus?.text = if (!readyForDemo)
-            "BLOCAT: ȘOC CONFIRMAT, DAR CADRU/TF NEACTUAL • FĂRĂ ORDIN"
-          else if (!tradePositionGate.beginAttempt())
-            "BLOCAT: O POZIȚIE ESTE DEJA ACTIVĂ/NECONFIRMATĂ"
-          else {
-            // A broker click may happen even if Android reports cancellation.
-            // Persist the one-shot lock BEFORE any physical gesture; a service
-            // restart cannot cause a second transaction.
-            val saved = getSharedPreferences(
-              autoShockAttemptPrefs, Context.MODE_PRIVATE
-            ).edit().putBoolean("attempted", true).commit()
-            if (!saved) {
-              tradePositionGate.uncertainResult()
-              "BLOCAT: NU POT MEMORA ORDINUL • FĂRĂ CLIC"
-            } else {
-              // Android gesture acceptance does not confirm broker execution.
-              // Without a broker position ID and CLOSE receipt, remain UNKNOWN
-              // indefinitely: no rearming, no automatic retries.
-              try {
+        // 408: A rejected optical/freshness check is NOT a broker order attempt.
+        // Never replay this candle, but keep the DEMO session armed so the
+        // next NEW verified SHOCK can be evaluated. No click in these paths.
+        autoDemoLockedAt = lockedAt
+        if (!readyForDemo) {
+          touchProbeStatus?.text =
+            "FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC"
+        } else if (!tradePositionGate.beginAttempt()) {
+          touchProbeStatus?.text =
+            "FĂRĂ ORDIN NOU • POZIȚIE ANTERIOARĂ NECONFIRMATĂ"
+        } else {
+          // Persist before invoking ANY broker gesture. A crash after an
+          // attempted click must not cause another attempt on restart.
+          val saved = getSharedPreferences(
+            autoShockAttemptPrefs, Context.MODE_PRIVATE
+          ).edit().putBoolean("attempted", true).commit()
+          if (!saved) {
+            // This branch has made NO gesture. Undo the in-memory attempt
+            // without weakening guards for accepted/uncertain gestures.
+            tradePositionGate.cancelBeforeDispatch()
+            touchProbeStatus?.text =
+              "FĂRĂ ORDIN • NU POT SALVA BLOCAREA • AȘTEPT ALT ȘOC"
+          } else {
+            autoDemoSessionConsumed = true // only a persisted attempt consumes session
+            autoDemoArmed = false
+            autoDemoMarket = null
+            autoDemoExpiry = 0L
+            autoDemoButton?.text = "🤖 PORNEȘTE • ON"
+            // Dispatch accepted by Android is NOT a confirmed broker trade.
+            // Remain UNKNOWN until the broker supplies a closure receipt.
+            try {
+              touchProbeStatus?.text =
                 TouchTestService.pressAutoOneDollarDemoOrderOnce(
                   activeSignal, expectedPair ?: "NEIDENTIFICAT"
                 )
-              } finally {
-                tradePositionGate.uncertainResult()
-              }
+            } finally {
+              tradePositionGate.uncertainResult()
             }
           }
-        } else if (!readyForDemo) {
+        }
+      } else if (!readyForDemo) {
           // Diagnostic only; keeps the arm alive for the next fresh frame.
           touchProbeStatus?.text =
             "AUTO DEMO ARMAT • AȘTEAPTĂ CADRU/TF ACTUAL • FĂRĂ ORDIN"
