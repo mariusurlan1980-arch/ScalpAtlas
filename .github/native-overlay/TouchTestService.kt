@@ -969,29 +969,33 @@ class TouchTestService : AccessibilityService() {
 
     @Synchronized
     fun pressAutoOneDollarDemoOrderOnce(side: String, expectedPair: String): String {
-      // Fresh confirmation, not a cached screenshot or a demo flag from
-      // a previous screen. The broker may have switched to QT Real.
+      // 400: physical gesture follows the verified Qt Demo broker controls.
+      // A WebView ACTION_CLICK may be accepted without placing a trade.
+      // No gesture is ever permitted on QT Real or unknown broker packages.
+      if (side != "BUY" && side != "SELL")
+        return "BLOCAT: DIRECȚIE INVALIDĂ"
       if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
           readVisibleDemoPair() != expectedPair)
         return "BLOCAT: PERECHEA QT DEMO S-A SCHIMBAT"
-      val svc = connected ?: return "ROBOT NECONECTAT"
-      val now = android.os.SystemClock.elapsedRealtime()
-      val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
-      val last = store.getLong("lastAcceptedAt", 0L)
-      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
-        return "BLOCAT: O SINGURĂ TRANZACȚIE DEMO LA 5 MINUTE"
-      val check = checkOneDollarDemoTarget(side, true)
-      val target = check.target ?: return check.reason
-      // Consume the one-shot allowance BEFORE sending a screen click.
-      if (!store.edit().putLong("lastAcceptedAt", now).commit())
-        return "BLOCAT: BLOCAREA ORDINULUI NU A FOST SALVATĂ"
-      if (readVisibleDemoPair() != expectedPair ||
-          svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
-        return "BLOCAT: ECRANUL SAU PERECHEA S-A SCHIMBAT"
-      val accepted = target.node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-      return if (accepted)
-        "AUTO DEMO " + side + ": CLIC ACCEPTAT • VERIFICĂ ISTORICUL"
-      else "AUTO DEMO " + side + ": CLIC REFUZAT DE ANDROID"
+      // Both buttons, exact 1 USD and payout >=92% must pass again.
+      val preview = preflightOneDollarDemoOrder(expectedPair)
+      if (!preview.startsWith("PREGĂTIT AUTO DEMO"))
+        return "BLOCAT: " + preview
+      if (readVisibleDemoPair() != expectedPair)
+        return "BLOCAT: PERECHEA S-A SCHIMBAT ÎNAINTE DE GEST"
+      // The existing functions perform another complete preflight, persist
+      // a 5-minute broker gesture lock, and dispatch a single physical tap.
+      // This is not proof of broker acceptance; closure must be validated
+      // from a separate broker order receipt before any further attempt.
+      return if (side == "BUY") {
+        pressAnyPairDemoBuyOnce { callback ->
+          android.util.Log.i("ScalpAtlas400", callback)
+        }
+      } else {
+        pressAnyPairDemoSellOnce { callback ->
+          android.util.Log.i("ScalpAtlas400", callback)
+        }
+      }
     }
 
     fun previewOneDollarDemoOrder(side: String): String {
