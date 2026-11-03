@@ -179,6 +179,87 @@ class TouchTestService : AccessibilityService() {
       return instruments.singleOrNull()
     }
 
+    /**
+     * 405: read-only, broker-specific open-position hint for Pocket Option
+     * DEMO. The blue "Tranzacții 1" badge is evidence of an open item,
+     * but its ABSENCE is NEVER proof of closure. Never place orders here.
+     *
+     * The history panel's position ID + an explicit closed receipt will be
+     * needed before the separate order gate can be safely rearmed. Other
+     * broker applications remain scan-only until validated independently.
+     */
+    fun inspectVisibleDemoOpenBadgeReadOnly(): String {
+      val svc = connected ?: return "CONT NECUNOSCUT • ACCESIBILITATE OPRITĂ"
+      val root = svc.rootInActiveWindow ?: return "CONT NECUNOSCUT • FEREASTRĂ INDISPONIBILĂ"
+      val pkg = root.packageName?.toString().orEmpty()
+      if (!BrokerAdapterRegistry.hasDemoExecutor(pkg))
+        return "BROKER NECUNOSCUT • SCANARE FĂRĂ ORDINE"
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) {
+        return "POZIȚIE NECUNOSCUTĂ • ECRAN NECONFIRMAT"
+      }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      if (w < 300 || h < 600)
+        return "POZIȚIE NECUNOSCUTĂ • DIMENSIUNI ECRAN"
+      data class LabelOnScreen(val value: String, val rect: Rect)
+      val labels = ArrayList<LabelOnScreen>()
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      var visited = 0
+      while (queue.isNotEmpty() && visited++ < 320) {
+        val node = queue.removeFirst()
+        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
+          val rect = Rect()
+          node.getBoundsInScreen(rect)
+          if (!rect.isEmpty && rect.top >= 0 && rect.bottom <= h &&
+              rect.left >= 0 && rect.right <= w) {
+            node.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
+              if (it.length <= 55) labels.add(LabelOnScreen(it, Rect(rect)))
+            }
+            node.contentDescription?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
+              if (it.length <= 55) labels.add(LabelOnScreen(it, Rect(rect)))
+            }
+          }
+        }
+        for (i in 0 until node.childCount.coerceAtMost(40))
+          node.getChild(i)?.let(queue::addLast)
+      }
+      // Require QT Demo explicitly in the upper header and no QT Real marker.
+      val header = labels.filter { it.rect.centerY() < h * 0.28f }
+      val demo = header.any {
+        Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it.value)
+      }
+      val real = header.any {
+        Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.value)
+      }
+      if (!demo || real) return "QT DEMO NECONFIRMAT • NU ARMEZ ORDINE"
+
+      val tradeLabels = labels.filter {
+        it.rect.centerX() < w * 0.36f && it.rect.centerY() > h * 0.83f &&
+          Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""")
+            .matches(it.value.replace(Regex("""\s+"""), " ").trim())
+      }
+      if (tradeLabels.isEmpty())
+        return "QT DEMO • ISTORICUL NU ESTE VIZIBIL • ÎNCHIDERE NECONFIRMATĂ"
+      val positives = labels.filter {
+        it.value.matches(Regex("""^[1-9][0-9]?$""")) &&
+          it.rect.centerX() < w * 0.38f &&
+          tradeLabels.any { tab ->
+            kotlin.math.abs(it.rect.centerX() - tab.rect.centerX()) < w * 0.19f &&
+              it.rect.centerY() >= tab.rect.centerY() - h * 0.11f &&
+              it.rect.centerY() <= tab.rect.centerY() + h * 0.025f
+          }
+      }.mapNotNull { it.value.toIntOrNull() }.distinct()
+      return if (positives.size == 1)
+        "QT DEMO • " + positives[0] + " TRANZACȚIE(I) VIZIBILĂ(E) • NU DUBLEZ"
+      else "QT DEMO • ÎNCHIDERE NECONFIRMATĂ • NU DUBLEZ"
+    }
+
     fun inspectDemoBrokerReadOnly(): String {
       val svc = connected ?: return "ROBOT NECONECTAT • FĂRĂ ACCES LA BROKER"
       val root = svc.rootInActiveWindow
