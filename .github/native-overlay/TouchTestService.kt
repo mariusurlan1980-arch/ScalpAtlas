@@ -57,6 +57,61 @@ class TouchTestService : AccessibilityService() {
       }
     }
     /**
+     * 399: Read-only REAL/DEMO identification from the broker's VISIBLE header.
+     * Never performs gestures or infers a REAL account from prices/balance.
+     * Unknown brokers remain analysis-only until an adapter is validated.
+     */
+    fun inspectBrokerAccountReadOnly(): String {
+      val svc = connected ?: return "ACCESIBILITATE NECONECTATĂ • NUMAI SCANARE"
+      val root = svc.rootInActiveWindow ?: return "FĂRĂ FEREASTRĂ BROKER ACTIVĂ"
+      val pkg = root.packageName?.toString().orEmpty()
+      val adapter = BrokerAdapterRegistry.forPackage(pkg)
+      if (adapter.id == "unrecognized") {
+        return "BROKER NECONFIGURAT • SCANARE ȘOC • FĂRĂ ORDINE"
+      }
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Exception) {
+        return "ECRAN NECONFIRMAT • FĂRĂ ORDINE"
+      }
+      val labels = ArrayList<String>()
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      var visited = 0
+      while (queue.isNotEmpty() && visited++ < 250) {
+        val node = queue.removeFirst()
+        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
+          val rect = Rect()
+          node.getBoundsInScreen(rect)
+          if (!rect.isEmpty && rect.top >= 0 &&
+              rect.bottom <= metrics.heightPixels &&
+              rect.centerY() < metrics.heightPixels * 0.29f) {
+            node.text?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let {
+              labels.add(it.take(100))
+            }
+            node.contentDescription?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let {
+              labels.add(it.take(100))
+            }
+          }
+        }
+        for (i in 0 until node.childCount.coerceAtMost(30))
+          node.getChild(i)?.let(queue::addLast)
+      }
+      val observed = BrokerAdapterRegistry.observeAccount(pkg, labels)
+      return when (observed.account) {
+        BrokerAdapterRegistry.Account.REAL ->
+          "QT REAL IDENTIFICAT • SCANARE ȘOC • EXECUȚIE REAL BLOCATĂ"
+        BrokerAdapterRegistry.Account.DEMO ->
+          "QT DEMO IDENTIFICAT • SCANARE ȘOC • TEST DEMO DISPONIBIL"
+        BrokerAdapterRegistry.Account.UNKNOWN ->
+          "CONT NECLAR • SCANARE ȘOC • FĂRĂ ORDINE"
+      }
+    }
+
+    /**
      * READ-ONLY validation of the visible broker interface for a future
      * explicit DEMO-only test. The service never clicks, dispatches gestures,
      * or captures text/screenshot in this method.
