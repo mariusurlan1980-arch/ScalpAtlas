@@ -143,6 +143,7 @@ class ScalpOverlayService : Service() {
   private var demoClickTestLastCheck = 0L
   private var demoClickMonitorRunning = false
   private val demoClickTestPrefs = "scalp_atlas_demo_click_test_398"
+  private val autoShockAttemptPrefs = "scalp_atlas_demo_shock_400"
   // 399: REAL/DEMO visible-account checks are read-only. No REAL gesture path.
   private var brokerAccountMonitorRunning = false
   private var lastBrokerAccountStatus = ""
@@ -367,13 +368,20 @@ class ScalpOverlayService : Service() {
           // on a strictly verified QT DEMO. It never arms QT REAL.
           // One gesture maximum per capture because a broker close receipt
           // cannot yet be read reliably. Unknown order state blocks all repeats.
-          autoDemoSessionRequested = true
-          autoDemoSessionConsumed = false
+          // A service restart must never bypass an unconfirmed previous
+          // broker trade. This guard survives process death and app updates.
+          val priorAutoShockAttempt = getSharedPreferences(
+            autoShockAttemptPrefs, Context.MODE_PRIVATE
+          ).getBoolean("attempted", false)
+          autoDemoSessionRequested = !priorAutoShockAttempt
+          autoDemoSessionConsumed = priorAutoShockAttempt
           autoDemoArmed = false
           demoClickTestPending = false
           demoClickTestLastCheck = 0L
           mainHandler.post {
-            touchProbeStatus?.text = "🤖 LIVE • DEMO AUTO LA ȘOC • REAL BLOCAT"
+            touchProbeStatus?.text = if (priorAutoShockAttempt)
+              "🤖 TRADE DEMO ANTERIOR NECONFIRMAT • FĂRĂ ORDINE"
+            else "🤖 LIVE • DEMO AUTO LA ȘOC • REAL BLOCAT"
           }
           // Stay eligible while the Android-authorized LIVE screen capture
           // exists. Only a user stop, OS capture revocation, or service death
@@ -3157,15 +3165,26 @@ class ScalpOverlayService : Service() {
           else if (!tradePositionGate.beginAttempt())
             "BLOCAT: O POZIȚIE ESTE DEJA ACTIVĂ/NECONFIRMATĂ"
           else {
-            // Android gesture acceptance does not confirm broker execution.
-            // Without an independently verified broker position ID and CLOSE
-            // receipt, keep UNKNOWN indefinitely: no rearming, no retries.
-            try {
-              TouchTestService.pressAutoOneDollarDemoOrderOnce(
-                activeSignal, expectedPair ?: "NEIDENTIFICAT"
-              )
-            } finally {
+            // A broker click may happen even if Android reports cancellation.
+            // Persist the one-shot lock BEFORE any physical gesture; a service
+            // restart cannot cause a second transaction.
+            val saved = getSharedPreferences(
+              autoShockAttemptPrefs, Context.MODE_PRIVATE
+            ).edit().putBoolean("attempted", true).commit()
+            if (!saved) {
               tradePositionGate.uncertainResult()
+              "BLOCAT: NU POT MEMORA ORDINUL • FĂRĂ CLIC"
+            } else {
+              // Android gesture acceptance does not confirm broker execution.
+              // Without a broker position ID and CLOSE receipt, remain UNKNOWN
+              // indefinitely: no rearming, no automatic retries.
+              try {
+                TouchTestService.pressAutoOneDollarDemoOrderOnce(
+                  activeSignal, expectedPair ?: "NEIDENTIFICAT"
+                )
+              } finally {
+                tradePositionGate.uncertainResult()
+              }
             }
           }
         } else if (!readyForDemo) {
@@ -3282,7 +3301,7 @@ class ScalpOverlayService : Service() {
           "🤖 DEMO AUTO • AȘTEAPTĂ ȘOC BUY/SELL"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoSessionConsumed ->
-          "QT DEMO • TRADE NECONFIRMAT • FĂRĂ REARMĂRI"
+          "QT DEMO • TEST CONSUMAT • FĂRĂ REARMĂRI"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
           "QT DEMO • VERIFICARE AUTO / TF"
         lastBrokerAccountStatus.contains("BROKER NECONFIGURAT") ->
