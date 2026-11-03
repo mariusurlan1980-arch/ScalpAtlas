@@ -90,6 +90,12 @@ class ScalpOverlayService : Service() {
     private const val MAX_ALERT_ANALYSIS_AGE_MS = 3000L
     private const val CONFIRMATION_SPACING_MS = 1500L
     private const val REQUIRED_CONFIRMATIONS = 2
+    // 406: relaxed, still optically verified QT DEMO SHOCK only.
+    private const val SHOCK_MIN_DEPTH = 40
+    private const val SHOCK_MIN_RECOVERY = 30
+    private const val SHOCK_MIN_TREND = 35
+    private const val SHOCK_MAX_DROP_MS = 15_000L
+    private const val SCALP_MIN_TREND = 50
     // If optical evidence disappears, an old candidate must not recover as
     // if it had been continuously confirmed for the past minute.
     private const val CANDIDATE_EVIDENCE_GRACE_MS = 6_000L
@@ -2864,21 +2870,28 @@ class ScalpOverlayService : Service() {
     if (detected && (observed == "BUY" || observed == "SELL") && shockBodyPercent > 0) {
       observedShockPercent = shockBodyPercent
       observedShockAt = now
-      observedShockDurationMs = shockObservedDurationMs.coerceIn(0L, 10000L)
+      observedShockDurationMs = shockObservedDurationMs.coerceIn(0L, SHOCK_MAX_DROP_MS)
     } else {
       observedShockPercent = 0
       observedShockAt = 0L
       observedShockDurationMs = 0L
     }
-    // Independent, strict gates. 50% of chart geometry is NOT win probability.
-    val sameDirection = (rawSignal == "BUY" || rawSignal == "SELL") &&
-      observedTrendMeasured && observedTrendStrengthPercent > 50 &&
+    // 406: SHOCK FLEX on verified demo. Reject any missing candle, wick,
+    // time, market, trend, second confirmation, or pair evidence.
+    // Screen-relative percentages are not win probability.
+    val rawDirectionValid = rawSignal == "BUY" || rawSignal == "SELL"
+    val sameOpticalDirection = rawDirectionValid && observedTrendMeasured &&
       observedTrendDirection == rawSignal && observed == rawSignal
+    val sameShockDirection = sameOpticalDirection &&
+      observedTrendStrengthPercent > SHOCK_MIN_TREND
+    val sameScalpDirection = sameOpticalDirection &&
+      observedTrendStrengthPercent > SCALP_MIN_TREND
     val confirmedShock = rawStrategy == "SHOCK" && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
-      shockFrameFresh && shockBodyPercent > 50 && shockReboundPercent >= 40 &&
-      wickMeasured >= 1 && shockDropDurationMs in 300L..10000L &&
-      sameDirection && result.optString("shockDirection") == rawSignal
+      shockFrameFresh && shockBodyPercent > SHOCK_MIN_DEPTH &&
+      shockReboundPercent >= SHOCK_MIN_RECOVERY &&
+      wickMeasured >= 1 && shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
+      sameShockDirection && result.optString("shockDirection") == rawSignal
     val scalpGate = result.optBoolean("scalpOpticalVerified", false) &&
       result.optBoolean("scalpSameCandle", false)
     val scalpDepth = result.optInt("scalpRetracementPercent", 0).coerceIn(0, 100)
@@ -2887,7 +2900,7 @@ class ScalpOverlayService : Service() {
     val confirmedScalp = rawStrategy == "SCALP_TREND" && timeframe == "M5" &&
       quality >= 55 && shockFrameFresh && scalpGate &&
       scalpDepth in 21..50 && scalpRecovery >= 35 &&
-      scalpPullbackMs in 700L..15000L && sameDirection &&
+      scalpPullbackMs in 700L..15000L && sameScalpDirection &&
       result.optString("scalpDirection") == rawSignal
     val confirmedSignal = if (confirmedShock || confirmedScalp) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK"
@@ -3180,7 +3193,8 @@ class ScalpOverlayService : Service() {
       val trendContradicted = trendFresh && candleFresh &&
         observedTrendDirection != "NONE" &&
         observedTrendDirection != observedCandleDirection
-      val trendThresholdMet = trendFresh && observedTrendStrengthPercent > 50
+      val trendThresholdMet = trendFresh &&
+        observedTrendStrengthPercent > SHOCK_MIN_TREND
       val trendAgrees = trendFresh && candleFresh &&
         observedTrendDirection != "NONE" && !trendContradicted && trendThresholdMet
       val trendDir = if (trendAgrees) observedTrendDirection else "NONE"
@@ -3214,7 +3228,7 @@ class ScalpOverlayService : Service() {
         !trendFresh -> "ISTORIC " + observedTrendHistoryCount + "/3"
         trendContradicted -> "CONTRA TREND"
         observedTrendDirection == "NONE" -> "LATERAL • FĂRĂ SEMNAL"
-        !trendThresholdMet -> "PANTĂ ≤50%"
+        !trendThresholdMet -> "PANTĂ ≤35%"
         trendDir == "BUY" -> "ASCENDENT"
         trendDir == "SELL" -> "DESCENDENT"
         else -> "NECONFIRMAT"
@@ -3320,7 +3334,7 @@ class ScalpOverlayService : Service() {
             now - confirmedTfAt in 0L..TF_STALE_MS))
         val newShock = activeSignal != "NONE" &&
           activeStrategy == "SHOCK" &&
-          lastConfirmedShockPercent > 50 &&
+          lastConfirmedShockPercent > SHOCK_MIN_DEPTH &&
           lockedAt > 0L && now - lockedAt in 0L..2500L &&
           lockedAt != autoDemoLockedAt
         // A transient OCR/capture gap must not cancel the whole arm.
@@ -3387,7 +3401,7 @@ class ScalpOverlayService : Service() {
           activeStrategy == "SCALP_TREND" -> lastConfirmedScalpPercent
         brokerConnected && (green || red) &&
           lockedDir == signal && now < lockedUntil &&
-          lastConfirmedShockPercent > 50 -> lastConfirmedShockPercent
+          lastConfirmedShockPercent > SHOCK_MIN_DEPTH -> lastConfirmedShockPercent
         brokerConnected && observedShockAt > 0L &&
           now - observedShockAt in 0L..3000L -> observedShockPercent
         else -> 0
@@ -3484,7 +3498,7 @@ class ScalpOverlayService : Service() {
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoArmed && !autoDemoSessionConsumed ->
-          "🤖 AUTO DEMO • " + if (activeStrategy == "SHOCK" &&
+          "🤖 ȘOC FLEX 40/30/35 • " + if (activeStrategy == "SHOCK" &&
               activeSignal != "NONE") "ȘOC CONFIRMAT"
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
@@ -3521,7 +3535,7 @@ class ScalpOverlayService : Service() {
         if (autoDemoArmed && activeSignal == "NONE") {
           touchProbeStatus?.text = if (scanStatus != "LIVE")
             "🤖 AUTO DEMO • SCAN " + scanStatus
-          else "🤖 AUTO DEMO • ȘOC: " + shockBlocker.take(52)
+          else "🤖 ȘOC FLEX 40/30/35 • " + shockBlocker.take(39)
         } else if (!autoDemoArmed) {
           touchProbeStatus?.text =
             "🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
