@@ -525,6 +525,14 @@ jobs:
           grep -Fq 'FĂRĂ BUY/SELL: ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
+      - name: Verify 402 diagnostic is visible while compact
+        run: |
+          set -euo pipefail
+          grep -Fq 'private var autoDemoLastPreflightReason' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"🤖 AUTO DEMO • ȘOC: " + shockBlocker.take(52)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'probeStatus.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
+
       - name: Verify SHOCK-only native integration
         run: |
           set -e
@@ -823,6 +831,6 @@ jobs:
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 401 DIAGNOSTIC BROKER + SOC · DEMO ONLY • ${GITHUB_SHA:0:12}" \
-            --notes "VERSIUNEA 401 - REPARATIE DIAGNOSTIC BROKER: la BROKER NECONFIGURAT suprapunerea afiseaza APP (numele pachetului Android identificat) si blocajul de confirmare SHOCK, pentru a distinge un procent observat de un semnal BUY sau SELL. Ramane motorul 400: o singura incercare BUY/SELL automata pe QT DEMO la SHOCK confirmat, doar cu broker verificat, 1 USD, payout cel putin 92 procente. Pe orice broker neidentificat si pe QT REAL comenzile raman BLOCATE. Dupa prima incercare nu se rearmeaza automat fara dovada brokerului pentru inchidere. Nu avem inca dovada ca gestul brokerului se executa pe Motorola G24. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 402 LIVE SHOCK DIAGNOSTICS · DEMO ONLY • ${GITHUB_SHA:0:12}" \
+            --notes "402: Afiseaza in panoul compact motivul blocarii semnalului SOC si al verificarii QT Demo. Nu relaxeaza strategia si nu executa ordine REAL. Aceasta versiune permite cel mult o incercare pe cont Pocket Option QT Demo verificat; nu rearmeaza automat dupa incheiere. Build $GITHUB_SHA." \
             --prerelease
