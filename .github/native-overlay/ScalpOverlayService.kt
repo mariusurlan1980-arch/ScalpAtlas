@@ -257,6 +257,10 @@ class ScalpOverlayService : Service() {
   // A separate recognizer for tiny M5/M10/M15 labels on the right chart axis.
   // The fallback only reads visible pixels; it never guesses a timeframe.
   private val tfCropOcrRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+  // 403: separate enlarged OCR for the visible broker instrument selector.
+  private val pairCropOcrRecognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+  @Volatile private var pairCropBusy = false
+  private var lastPairCropAttemptAt = 0L
   @Volatile private var tfCropBusy = false
   private var lastTfCropAttemptAt = 0L
   @Volatile private var lastTfOcrSource = "NECONFIRMAT"
@@ -2115,6 +2119,106 @@ class ScalpOverlayService : Service() {
       }
   }
 
+  /**
+   * A broker pair is accepted only from its actual visible instrument selector.
+   * Full-frame OCR and enlarged header OCR share this SAME two-sample gate.
+   * Never reuse the previous selected pair after a switch, and never assume OTC.
+   */
+  private fun recordVisiblePair(foundPair: String, observedAt: Long) {
+    val sameBase = foundPair.removeSuffix(" OTC") == latestMarket.removeSuffix(" OTC")
+    val ambiguousMode = marketVerified && sameBase && foundPair != latestMarket
+    if (foundPair != latestMarket && marketVerified) {
+      if (ambiguousMode) {
+        // Never send an alert on uncertain OTC/standard mode.
+        // Do not restart marketStableAt for a single missing OCR suffix.
+        marketLabelAmbiguous = true
+        resetSignalState()
+        updateOverlay("AȘTEAPTĂ", "Verific OTC / standard",
+          "Etichetă OCR neclară • fără bip")
+      } else {
+        marketVerified = false
+        clearOnInstrumentChange()
+        updateOverlay("AȘTEAPTĂ", "Pereche schimbată • verific " + foundPair,
+          "BUY/SELL anterior anulat • aștept identificarea perechii")
+      }
+    } else if (foundPair == latestMarket) {
+      marketLabelAmbiguous = false
+    }
+    if (pendingMarket != foundPair || observedAt - pendingMarketAt > 9_000L) {
+      pendingMarket = foundPair
+      pendingMarketCount = 1
+      pendingMarketSince = observedAt
+    } else {
+      pendingMarketCount += 1
+    }
+    pendingMarketAt = observedAt
+    // Four coherent observations for an OTC/standard mode change.
+    val modeSwitchReady = !ambiguousMode ||
+      (pendingMarketCount >= 4 && observedAt - pendingMarketSince >= 9_000L)
+    if (pendingMarketCount >= MARKET_OCR_CONFIRMATIONS && modeSwitchReady) {
+      if (!marketVerified || latestMarket != foundPair) {
+        latestMarket = foundPair
+        marketVerified = true
+        marketStableAt = observedAt
+        clearOnInstrumentChange()
+        updateOverlay("AȘTEAPTĂ", "Pereche " + foundPair + " confirmată",
+          "Analiză separată • aștept stabilizarea graficului")
+      }
+      latestMarketAt = observedAt
+    }
+  }
+
+  /**
+   * 403: A separate 3x crop makes small three-letter OTC symbols legible on
+   * Motorola G24 when full-screen ML Kit OCR misses "AED/CNY OTC".
+   * This scans only the upper-left broker selector, never chart or trade UI.
+   * It cannot click or arm anything by itself: recordVisiblePair still
+   * requires two consistent independent screenshot observations.
+   */
+  private fun schedulePairHeaderOcr(frame: Bitmap, now: Long) {
+    if (pairCropBusy || now - lastPairCropAttemptAt < OCR_INTERVAL_MS) return
+    if (frame.width < 240 || frame.height < 450) return
+    lastPairCropAttemptAt = now
+    val left = (frame.width * 0.035f).toInt()
+    val right = (frame.width * 0.57f).toInt()
+    val top = (frame.height * 0.125f).toInt()
+    val bottom = (frame.height * 0.27f).toInt()
+    if (right <= left + 80 || bottom <= top + 35) return
+    val enlarged = try {
+      val region = Bitmap.createBitmap(frame, left, top, right - left, bottom - top)
+      val scaled = Bitmap.createScaledBitmap(
+        region, region.width * 3, region.height * 3, true
+      )
+      if (scaled !== region) region.recycle()
+      scaled
+    } catch (_: Throwable) { return }
+    pairCropBusy = true
+    pairCropOcrRecognizer.process(InputImage.fromBitmap(enlarged, 0))
+      .addOnSuccessListener { textResult ->
+        val labels = textResult.textBlocks.flatMap { it.lines }
+          .sortedWith(compareBy({ it.boundingBox?.centerY() ?: 0 },
+                              { it.boundingBox?.left ?: 0 }))
+          .joinToString(" ") { it.text }
+        val pattern = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b""")
+        val otcPattern = Regex("""(?i)(?<![A-Z0-9])O\s*T\s*C(?![A-Z0-9])""")
+        val instruments = pattern.findAll(labels).map { match ->
+          val base = match.groupValues[1].uppercase() + "/" +
+            match.groupValues[2].uppercase()
+          val after = labels.substring(match.range.last + 1).take(22)
+          if (otcPattern.containsMatchIn(after)) "$base OTC" else base
+        }.distinct().toList()
+        val accessibilityPair = TouchTestService.readVisibleDemoPair()
+        if (instruments.size == 1 &&
+            (accessibilityPair == null || accessibilityPair == instruments[0])) {
+          recordVisiblePair(instruments[0], System.currentTimeMillis())
+        }
+      }
+      .addOnCompleteListener {
+        enlarged.recycle()
+        pairCropBusy = false
+      }
+  }
+
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
     if (ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
     ocrBusy = true
@@ -2182,59 +2286,22 @@ class ScalpOverlayService : Service() {
           pairs.isEmpty() && accessibilityPair != null -> listOf(accessibilityPair)
           else -> emptyList()
         }
-        // Never infer pair from chart pixels or an old instrument. Require
-        // two consistent observations and six seconds of chart stability.
+        // Reject conflicting instrument identities. If only the tiny header
+        // was missed, try a 3x zoomed OCR of that same visible header.
         if (visiblePairs.size == 1) {
-          val foundPair = visiblePairs[0]
-          val sameBase = foundPair.removeSuffix(" OTC") == latestMarket.removeSuffix(" OTC")
-          val ambiguousMode = marketVerified && sameBase && foundPair != latestMarket
-          if (foundPair != latestMarket && marketVerified) {
-            if (ambiguousMode) {
-              // Never send an alert on uncertain OTC/standard mode.
-              // Do not restart marketStableAt for a single missing OCR suffix.
-              marketLabelAmbiguous = true
-              resetSignalState()
-              updateOverlay("AȘTEAPTĂ", "Verific OTC / standard",
-                "Etichetă OCR neclară • fără bip")
-            } else {
-              marketVerified = false
-              clearOnInstrumentChange()
-              updateOverlay("AȘTEAPTĂ", "Pereche schimbată • verific " + foundPair,
-                "BUY/SELL anterior anulat • aștept identificarea perechii")
-            }
-          } else if (foundPair == latestMarket) {
+          recordVisiblePair(visiblePairs[0], observedAt)
+        } else {
+          if (pairs.isEmpty() && accessibilityPair == null)
+            schedulePairHeaderOcr(copy, observedAt)
+          if (marketVerified && observedAt - latestMarketAt > MARKET_STALE_MS) {
+            marketVerified = false
             marketLabelAmbiguous = false
+            pendingMarket = null
+            pendingMarketCount = 0
+            resetSignalState()
+            updateOverlay("AȘTEAPTĂ", "Pereche neidentificată",
+              "OCR nu a confirmat instrumentul • fără bip")
           }
-          if (pendingMarket != foundPair || observedAt - pendingMarketAt > 9_000L) {
-            pendingMarket = foundPair
-            pendingMarketCount = 1
-            pendingMarketSince = observedAt
-          } else {
-            pendingMarketCount += 1
-          }
-          pendingMarketAt = observedAt
-          // Four coherent observations for an OTC/standard mode change.
-          val modeSwitchReady = !ambiguousMode ||
-            (pendingMarketCount >= 4 && observedAt - pendingMarketSince >= 9_000L)
-          if (pendingMarketCount >= MARKET_OCR_CONFIRMATIONS && modeSwitchReady) {
-            if (!marketVerified || latestMarket != foundPair) {
-              latestMarket = foundPair
-              marketVerified = true
-              marketStableAt = observedAt
-              clearOnInstrumentChange()
-              updateOverlay("AȘTEAPTĂ", "Pereche " + foundPair + " confirmată",
-                "Analiză separată • aștept stabilizarea graficului")
-            }
-            latestMarketAt = observedAt
-          }
-        } else if (marketVerified && observedAt - latestMarketAt > MARKET_STALE_MS) {
-          marketVerified = false
-          marketLabelAmbiguous = false
-          pendingMarket = null
-          pendingMarketCount = 0
-          resetSignalState()
-          updateOverlay("AȘTEAPTĂ", "Pereche neidentificată",
-            "Fără bip până la reconfirmarea instrumentului")
         }
 
         if (values.size == 1) {
@@ -3394,6 +3461,7 @@ class ScalpOverlayService : Service() {
     try { mediaProjection?.stop() } catch (_: Throwable) {}
     try { ocrRecognizer.close() } catch (_: Throwable) {}
     try { tfCropOcrRecognizer.close() } catch (_: Throwable) {}
+    try { pairCropOcrRecognizer.close() } catch (_: Throwable) {}
     onePairEvalEnabled = false
     onePairEvalPair = null
     onePairEvalTouch = null
