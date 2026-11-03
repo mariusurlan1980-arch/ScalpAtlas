@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 404 CANDLE BODY AND DEMO SELL PILOT
+name: Build Scalp Atlas 405 CONTINUOUS SAFE POSITION MONITOR
 
 on:
   push:
-    branches: [feature/scalpatlas-candle-and-demo-pilot404]
+    branches: [feature/scalpatlas-continuous-lifecycle405]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-404
+  group: scalp-atlas-calculator-test-405
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=404
+          expo['android']['versionCode']=405
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -556,6 +556,17 @@ jobs:
           grep -Fq 'tradePositionGate.uncertainResult()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
+      - name: Verify 405 durable one-position monitoring and REAL block
+        run: |
+          set -euo pipefail
+          grep -Fq 'fun inspectVisibleDemoOpenBadgeReadOnly()' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'priorSell404Attempt' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionRequested = !priorAutoShockAttempt && !priorSell404Attempt' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'absen' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'tradePositionGate.uncertainResult()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
       - name: Verify SHOCK-only native integration
         run: |
           set -e
@@ -833,12 +844,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-405-MONITORIZARE-CONTINUA-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-404
-          path: ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-405
+          path: ScalpAtlas-405-MONITORIZARE-CONTINUA-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -847,13 +858,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-404-LUMANARE-TEST-SELL-DEMO-G24.apk"
+          FILE="ScalpAtlas-405-MONITORIZARE-CONTINUA-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator404-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator405-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 404 CANDLE + SELL DEMO GESTURE - NO REAL • ${GITHUB_SHA:0:12}" \
-            --notes "404: Lumânarea LIVE necesita corp umplut, nu fitil (80% suport de rand si 5 randuri consecutive). Un singur buton TEST SELL DEMO 1 USD, doar actionat voluntar, fara a astepta SOC, cu toate verificarile QT Demo / payout >=92% / accesibilitate / suma 1 USD. Incercarea este memorata permanent si nu se repeta, fara REAL. Gestul Android nu este dovada executiei la broker. Fara comenzi succesive. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 405 MONITORIZARE CONTINUA POZITII - DEMO ONLY • ${GITHUB_SHA:0:12}" \
+            --notes "405: suprapunerea continua scanarea brokerului cat timp autorizarea Android LIVE este activa, inclusiv dupa prima tranzactie. Citeste in mod pasiv eticheta Tranzactii cu badge pozitiv pe Pocket Option QT Demo, daca este expusa de Android, fara click. Absenta badge-ului NU este dovada inchiderii; nu sunt permise comenzi repetate pana la inchidere verificata cu ID broker. La actualizarea din 404 se pastreaza blocajul dupa TEST SELL 1 USD, pentru a evita ordinul dublu. Brokerii necunoscuti si QT REAL raman exclusiv pentru scanare; NU se plaseaza ordine REAL. Este un pas sigur spre executie continua, NU un robot universal cu tranzactii consecutive. Necesita test pe Motorola G24. Build $GITHUB_SHA." \
             --prerelease
