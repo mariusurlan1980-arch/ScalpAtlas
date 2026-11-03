@@ -143,6 +143,9 @@ class ScalpOverlayService : Service() {
   private var demoClickTestLastCheck = 0L
   private var demoClickMonitorRunning = false
   private val demoClickTestPrefs = "scalp_atlas_demo_click_test_398"
+  // 399: REAL/DEMO visible-account checks are read-only. No REAL gesture path.
+  private var brokerAccountMonitorRunning = false
+  private var lastBrokerAccountStatus = ""
   private val tradePositionGate = TradePositionGate()
   private var autoDemoLastPreflightAt = 0L
   private var autoDemoArmed = false
@@ -364,15 +367,12 @@ class ScalpOverlayService : Service() {
           autoDemoSessionRequested = false
           autoDemoSessionConsumed = true
           autoDemoArmed = false
-          val alreadyTested = getSharedPreferences(demoClickTestPrefs, Context.MODE_PRIVATE)
-            .getBoolean("attempted", false)
-          demoClickTestPending = !alreadyTested
-          demoClickTestUntil = android.os.SystemClock.elapsedRealtime() + 300_000L
+          // Version 399 is a safe REAL-readiness diagnostic build.
+          // No attempt is ever initiated merely by opening SUPRAPUNERE LIVE.
+          demoClickTestPending = false
           demoClickTestLastCheck = 0L
           mainHandler.post {
-            touchProbeStatus?.text = if (alreadyTested)
-              "TEST DEMO DEJA FOLOSIT • FĂRĂ ORDINE NOI"
-            else "🤖 PROBĂ QT DEMO • 1 SELL AUTOMAT • 1 USD"
+            touchProbeStatus?.text = "🤖 SCANARE LIVE • IDENTIFICĂ DEMO/REAL"
           }
           // Stay eligible while the Android-authorized LIVE screen capture
           // exists. Only a user stop, OS capture revocation, or service death
@@ -384,7 +384,7 @@ class ScalpOverlayService : Service() {
           // This is session-local; no user bell preference is overwritten.
           bellEnabled = true
           startProjection(resultCode, data)
-          startDemoClickMonitor()
+          startBrokerAccountMonitor()
         } else {
           updateOverlay("AȘTEAPTĂ", "LIVE • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
         }
@@ -417,8 +417,8 @@ class ScalpOverlayService : Service() {
       // the at-most-one-order guard when the user opens the broker.
       mainHandler.post {
         touchProbeStatus?.text = when {
-          demoClickTestPending -> "🤖 TEST DEMO SELL • VERIFICARE INDEPENDENTĂ"
-          autoDemoSessionConsumed -> "🤖 TEST DEMO • VERIFICĂ STAREA"
+          brokerAccountMonitorRunning -> "🤖 SCANARE CONT • FĂRĂ ORDINE"
+          autoDemoSessionConsumed -> "🤖 SCANARE LIVE • FĂRĂ ORDINE"
           autoDemoArmed -> "🤖 DEMO AUTO ACTIV • AȘTEAPTĂ ȘOC"
           autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"
           else -> "🤖 ROBOT BLOCAT • FĂRĂ SESIUNE"
@@ -440,6 +440,36 @@ class ScalpOverlayService : Service() {
    * LIVE capture, which permits one attempt within 5 minutes. Every check is
    * read-only until the final physical gesture; persistent consumption first.
    */
+  /**
+   * 399: The overlay follows any broker chart, while the REAL / DEMO status
+   * is read-only and visible. No order gesture is reachable from this monitor.
+   * Android MediaProjection authorization and the X / STOP control remain
+   * the only way to start and end the foreground screen-reading session.
+   */
+  private fun startBrokerAccountMonitor() {
+    if (brokerAccountMonitorRunning) return
+    brokerAccountMonitorRunning = true
+    mainHandler.post(object : Runnable {
+      override fun run() {
+        if (shuttingDown || mediaProjection == null || overlayView == null) {
+          brokerAccountMonitorRunning = false
+          return
+        }
+        val diagnostic = try {
+          TouchTestService.inspectBrokerAccountReadOnly()
+        } catch (error: Exception) {
+          android.util.Log.e("ScalpAtlas399", "Read-only account check failed", error)
+          "CONT NECONFIRMAT • FĂRĂ ORDINE"
+        }
+        if (diagnostic != lastBrokerAccountStatus) {
+          lastBrokerAccountStatus = diagnostic
+          touchProbeStatus?.text = "🤖 " + diagnostic.take(115)
+        }
+        mainHandler.postDelayed(this, 2500L)
+      }
+    })
+  }
+
   private fun startDemoClickMonitor() {
     if (demoClickMonitorRunning || !demoClickTestPending) return
     demoClickMonitorRunning = true
@@ -3255,6 +3285,7 @@ class ScalpOverlayService : Service() {
   override fun onDestroy() {
     demoClickTestPending = false
     demoClickMonitorRunning = false
+    brokerAccountMonitorRunning = false
     autoDemoSessionRequested = false
     autoDemoSessionConsumed = true
     shuttingDown = true
