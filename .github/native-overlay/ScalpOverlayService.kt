@@ -150,6 +150,7 @@ class ScalpOverlayService : Service() {
   // 399: REAL/DEMO visible-account checks are read-only. No REAL gesture path.
   private var brokerAccountMonitorRunning = false
   private var lastBrokerAccountStatus = ""
+  private var lastDemoTradeStatus = "ÎNCHIDERE NECONFIRMATĂ"
   private val tradePositionGate = TradePositionGate()
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
@@ -382,17 +383,23 @@ class ScalpOverlayService : Service() {
           val priorAutoShockAttempt = getSharedPreferences(
             autoShockAttemptPrefs, Context.MODE_PRIVATE
           ).getBoolean("attempted", false)
-          autoDemoSessionRequested = !priorAutoShockAttempt
-          autoDemoSessionConsumed = priorAutoShockAttempt
+          // 405: a SELL gesture verified on the chart in v404 must not be
+          // forgotten when the APK is upgraded or Android restarts.
+          val priorSell404Attempt = getSharedPreferences(
+            sell404TestPrefs, Context.MODE_PRIVATE
+          ).getBoolean("attempted", false)
+          autoDemoSessionRequested = !priorAutoShockAttempt && !priorSell404Attempt
+          autoDemoSessionConsumed = priorAutoShockAttempt || priorSell404Attempt
           autoDemoArmed = false
           autoDemoLastPreflightReason =
-            if (priorAutoShockAttempt) "ÎNCERCARE ANTERIOARĂ • FĂRĂ REARMARE"
+            if (autoDemoSessionConsumed)
+              "TRANZACȚIE ANTERIOARĂ • ÎNCHIDERE NEVERIFICATĂ"
             else "AȘTEAPTĂ VERIFICAREA"
           demoClickTestPending = false
           demoClickTestLastCheck = 0L
           mainHandler.post {
-            touchProbeStatus?.text = if (priorAutoShockAttempt)
-              "🤖 TRADE DEMO ANTERIOR NECONFIRMAT • FĂRĂ ORDINE"
+            touchProbeStatus?.text = if (autoDemoSessionConsumed)
+              "🤖 TRANZACȚIE DEMO ANTERIOARĂ • VERIFIC ÎNCHIDEREA"
             else "🤖 LIVE • DEMO AUTO LA ȘOC • REAL BLOCAT"
           }
           // Stay eligible while the Android-authorized LIVE screen capture
@@ -485,6 +492,27 @@ class ScalpOverlayService : Service() {
         if (diagnostic != lastBrokerAccountStatus) {
           lastBrokerAccountStatus = diagnostic
           touchProbeStatus?.text = "🤖 " + diagnostic.take(115)
+        }
+        // Keep reading all selected broker charts for the entire authorized
+        // MediaProjection session, including after a submitted DEMO trade.
+        // A visible 'Tranzacții 1' badge proves a position is STILL open,
+        // but a missing badge is NOT evidence that it has closed. Therefore
+        // do not release the persistent guard or start another order here.
+        if (diagnostic.contains("QT DEMO IDENTIFICAT")) {
+          lastDemoTradeStatus = try {
+            TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
+          } catch (_: Exception) {
+            "POZIȚIE NECUNOSCUTĂ • FĂRĂ REARMARE"
+          }
+        } else {
+          lastDemoTradeStatus = "BROKER/CONT SCHIMBAT • FĂRĂ REARMARE"
+          if (autoDemoArmed) {
+            autoDemoArmed = false
+            autoDemoMarket = null
+            autoDemoExpiry = 0L
+            // Scanning stays active; user switching back to verified Demo
+            // will pass fresh independent preflight before any signal order.
+          }
         }
         mainHandler.postDelayed(this, 2500L)
       }
@@ -3461,7 +3489,7 @@ class ScalpOverlayService : Service() {
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoSessionConsumed ->
-          "QT DEMO • TEST CONSUMAT • FĂRĂ REARMĂRI"
+          "🤖 MONITORIZARE CONTINUĂ • " + lastDemoTradeStatus.take(70)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
           if (autoDemoSessionRequested)
             "DEMO NEARMAT • " + autoDemoLastPreflightReason.take(65)
@@ -3501,6 +3529,10 @@ class ScalpOverlayService : Service() {
       }
       // Preserve the result of a user-triggered physical DEMO gesture pilot;
       // the frequent account monitor must not hide a possible broker order.
+      if (autoDemoSessionConsumed &&
+          lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT"))
+        touchProbeStatus?.text = "🤖 SCANARE CONTINUĂ • " +
+          lastDemoTradeStatus.take(100)
       sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
