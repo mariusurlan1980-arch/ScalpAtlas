@@ -188,6 +188,94 @@ class TouchTestService : AccessibilityService() {
      * needed before the separate order gate can be safely rearmed. Other
      * broker applications remain scan-only until validated independently.
      */
+    /**
+     * 409: A POSITIVE read-only confirmation that the user has opened the
+     * broker's Transactions > Open tab and that Pocket Option explicitly
+     * states there are NO placed transactions. Missing a small counter badge
+     * on the chart is NOT enough. This does not click or submit an order.
+     *
+     * Must be polled on two separate checks by ScalpOverlayService; each
+     * check independently identifies QT Demo and the broker package.
+     */
+    fun inspectExplicitEmptyOpenDemoTabReadOnly(): Boolean {
+      val svc = connected ?: return false
+      val root = svc.rootInActiveWindow ?: return false
+      val pkg = root.packageName?.toString().orEmpty()
+      if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      if (w < 300 || h < 600) return false
+
+      data class VisibleLabel(val text: String, val bounds: Rect)
+      val labels = ArrayList<VisibleLabel>()
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      var visited = 0
+      while (queue.isNotEmpty() && visited++ < 350) {
+        val node = queue.removeFirst()
+        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
+          val rect = Rect()
+          node.getBoundsInScreen(rect)
+          if (!rect.isEmpty && rect.left >= 0 && rect.right <= w &&
+              rect.top >= 0 && rect.bottom <= h) {
+            node.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
+              labels.add(VisibleLabel(it.take(120), Rect(rect)))
+            }
+            node.contentDescription?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let {
+              if (it != node.text?.toString()?.trim())
+                labels.add(VisibleLabel(it.take(120), Rect(rect)))
+            }
+          }
+        }
+        for (i in 0 until node.childCount.coerceAtMost(35)) {
+          node.getChild(i)?.let(queue::addLast)
+        }
+      }
+      val header = labels.filter { it.bounds.centerY() < h * 0.25f }
+      val demo = header.any {
+        Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it.text)
+      }
+      val real = header.any {
+        Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.text)
+      }
+      if (!demo || real) return false
+
+      // Require the full-screen Transactions page, not the chart footer.
+      val pageTitle = labels.any {
+        it.bounds.centerY() in (h * 0.095f).toInt()..(h * 0.22f).toInt() &&
+          Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""")
+            .matches(it.text)
+      }
+      val openTab = labels.any {
+        it.bounds.centerY() in (h * 0.15f).toInt()..(h * 0.30f).toInt() &&
+          Regex("""(?i)^(?:Deschis|Open)$""").matches(it.text)
+      }
+      val explicitEmpty = labels.any {
+        it.bounds.centerY() in (h * 0.22f).toInt()..(h * 0.50f).toInt() &&
+          Regex("""(?i)^(?:Nu există tranzacții plasate|Nu exista tranzactii plasate|No trades placed|No open trades)$""")
+            .matches(it.text)
+      }
+      return pageTitle && openTab && explicitEmpty
+    }
+
+    /** A persistent 5-minute guard still applies after any Android gesture.
+     * A missing/ambiguous Android uptime value cannot authorize recovery.
+     */
+    fun priorDemoGestureCooldownComplete(): Boolean {
+      val svc = connected ?: return false
+      val prior = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+        .getLong("lastAcceptedAt", 0L)
+      if (prior == 0L) return true
+      val elapsed = android.os.SystemClock.elapsedRealtime() - prior
+      return elapsed >= 5 * 60_000L
+    }
+
     fun inspectVisibleDemoOpenBadgeReadOnly(): String {
       val svc = connected ?: return "CONT NECUNOSCUT • ACCESIBILITATE OPRITĂ"
       val root = svc.rootInActiveWindow ?: return "CONT NECUNOSCUT • FEREASTRĂ INDISPONIBILĂ"
