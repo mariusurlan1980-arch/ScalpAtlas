@@ -69,7 +69,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     if(!viable.length)return null;
     var candle=viable[viable.length-1];
     var width=candle.end-candle.start+1;
-    var rowSupport=Math.max(2,Math.floor(width*.5));
+    // 404: a 1-2 pixel wick spanning a 3-5 pixel-wide candle must NOT
+    // count as a filled body. Require >=80% horizontal color occupancy
+    // and at least five CONNECTED rows; otherwise the live candle is doji
+    // and no SHOCK signal is allowed. Calibrated on 403 G24 screenshots.
+    var rowSupport=Math.max(2,Math.ceil(width*.8));
     var bodyRows=[],fillPixels=0;
     for(var yy=minY;yy<maxY;yy++){
       var count=0;
@@ -79,6 +83,13 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       if(count>=rowSupport){bodyRows.push(yy);fillPixels+=count;}
     }
     if(bodyRows.length<5)return null;
+    var longestBodyRun=0,bodyRun=0,lastBodyY=-100;
+    for(var ri=0;ri<bodyRows.length;ri++){
+      bodyRun=bodyRows[ri]===lastBodyY+1?bodyRun+1:1;
+      longestBodyRun=Math.max(longestBodyRun,bodyRun);
+      lastBodyY=bodyRows[ri];
+    }
+    if(longestBodyRun<5)return null;
     var top=bodyRows[0],bottom=bodyRows[bodyRows.length-1];
     if(bottom-top>h*.35)return null; // large colored panels are not candles
     var close=candle.dir==='BUY'?top:bottom;
