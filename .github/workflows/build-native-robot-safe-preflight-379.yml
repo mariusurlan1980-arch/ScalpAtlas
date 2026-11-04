@@ -681,7 +681,7 @@ jobs:
           grep -Fq 'TouchTestService.priorDemoGestureCooldownComplete()' "$O"
           grep -Fq 'autoDemoSessionRequested = true' "$O"
           grep -Fq 'autoDemoSessionConsumed = false' "$O"
-          grep -Fq 'VERIFICĂ TRANZACȚII > DESCHIS (0)' "$O"
+          grep -Fq 'TouchTestService.demoEmptyReviewDiagnostic().take(72)' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
       - name: Verify SHOCK-only native integration
