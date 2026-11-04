@@ -618,14 +618,18 @@ jobs:
           T=.github/native-overlay/TouchTestService.kt
           O=.github/native-overlay/ScalpOverlayService.kt
           G=.github/native-overlay/TradePositionGate.kt
-          grep -Fq 'fun inspectExplicitEmptyOpenDemoTabReadOnly(): Boolean' "$T"
+          grep -Fq 'fun inspectExplicitEmptyOpenDemoTabReadOnly(' "$T"
+          grep -Fq 'cachedDemoVerifiedOnChart: Boolean = false' "$T"
+          grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) return false' "$T"
           grep -Fq 'pageTitle && openTab && explicitEmpty' "$T"
           grep -Fq 'fun priorDemoGestureCooldownComplete(): Boolean' "$T"
           grep -Fq 'fun brokerVerifiedEmptyDemoReview(twoIndependentReads: Boolean): Boolean' "$G"
           grep -Fq 'state != State.UNKNOWN && state != State.READY' "$G"
           grep -Fq 'demoEmptyReviewReads >= 2' "$O"
           grep -Fq 'tick - demoEmptyReviewFirstAt >= 2_000L' "$O"
-          grep -Fq 'TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly()' "$O"
+          grep -Fq 'TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(' "$O"
+          grep -Fq 'verifiedDemoAccountAt > 0L' "$O"
+          grep -Fq 'nowReview - verifiedDemoAccountAt in 0L..90_000L' "$O"
           grep -Fq 'TouchTestService.priorDemoGestureCooldownComplete()' "$O"
           grep -Fq 'autoDemoSessionRequested = true' "$O"
           grep -Fq 'autoDemoSessionConsumed = false' "$O"
