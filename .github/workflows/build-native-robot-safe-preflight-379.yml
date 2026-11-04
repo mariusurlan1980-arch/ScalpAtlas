@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 410 RESTORE DEMO OPEN-TAB VALIDATION
+name: Build Scalp Atlas 411 ANDROID UI BROKER WINDOW FIX
 
 on:
   push:
-    branches: [feature/scalpatlas-demo-account-recovery410]
+    branches: [feature/scalpatlas-broker-window411]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-410
+  group: scalp-atlas-calculator-test-411
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=410
+          expo['android']['versionCode']=411
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -163,7 +163,7 @@ jobs:
           from pathlib import Path
           import math,struct,wave
           assets=Path('scalp-atlas-new/assets'); assets.mkdir(parents=True,exist_ok=True)
-          rate=44100; duration=2.3; amp=.36
+          rate=44110; duration=2.3; amp=.36
           for name,freq in [('buy-alert.wav',1220.0),('sell-alert.wav',980.0)]:
               frames=bytearray()
               for i in range(int(rate*duration)):
@@ -183,7 +183,7 @@ jobs:
           for filename in ['buy-alert.wav', 'sell-alert.wav']:
               p=Path('scalp-atlas-new/assets')/filename
               with wave.open(str(p), 'rb') as wav:
-                  assert wav.getframerate()==44100, 'bad beep sample rate'
+                  assert wav.getframerate()==44110, 'bad beep sample rate'
                   seconds=wav.getnframes()/wav.getframerate()
                   assert 2.25 <= seconds <= 2.35, f'Wrong beep length {filename}: {seconds}'
                   print(filename, round(seconds,2), 'seconds')
@@ -201,6 +201,23 @@ jobs:
           ! grep -Fq "TouchPracticePanel" scalp-atlas-new/App.tsx
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
+
+      - name: Verify 411 broker-window read-only fallback cannot authorize gestures
+        run: |
+          set -e
+          T=.github/native-overlay/TouchTestService.kt
+          S=.github/native-overlay/ScalpOverlayService.kt
+          X=.github/native-overlay/touch_test_accessibility.xml
+          grep -Fq 'private fun readOnlyBrokerRoot(svc: TouchTestService)' "$T"
+          grep -Fq 'svc.windows.orEmpty().asSequence()' "$T"
+          grep -Fq 'AccessibilityWindowInfo.TYPE_APPLICATION' "$T"
+          grep -Fq 'flagRetrieveInteractiveWindows' "$X"
+          grep -Fq 'val root = svc.rootInActiveWindow ?: return DemoOrderCheck' "$T"
+          grep -Fq 'if (!BrokerAdapterRegistry.hasDemoExecutor(pkg))' "$T"
+          grep -Fq 'lastConfirmedShockPercent > SHOCK_MIN_DEPTH' "$S"
+          grep -Fq 'tradePositionGate.beginAttempt()' "$S"
+          grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$S"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
       - name: Guard overlay virtual tap against broker order execution
         run: |
@@ -612,7 +629,7 @@ jobs:
           grep -Fq 'if (state != State.SUBMITTING) return false' "$G"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 410 no blind unlocking of old DEMO position guard
+      - name: Verify 411 no blind unlocking of old DEMO position guard
         run: |
           set -euo pipefail
           T=.github/native-overlay/TouchTestService.kt
@@ -913,12 +930,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-410-QT-DEMO-ISTORIC-G24.apk
+          cp "$APK" ScalpAtlas-411-BROKER-WINDOW-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-410
-          path: ScalpAtlas-410-QT-DEMO-ISTORIC-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-411
+          path: ScalpAtlas-411-BROKER-WINDOW-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -927,13 +944,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-410-QT-DEMO-ISTORIC-G24.apk"
+          FILE="ScalpAtlas-411-BROKER-WINDOW-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator410-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator411-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 410 QT DEMO ISTORIC REPARAT - DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "410: verificare istoric corectata: ecranul Tranzactii poate ascunde QT Demo. Acceptam dovada QT Demo vazuta pe grafic in acelasi broker in ultimele 90 secunde numai pentru citirea listei Deschis explicit goale. Numai dupa ce utilizatorul deschide Pocket Option QT Demo > Tranzactii > Deschis si brokerul afiseaza explicit Nu exista tranzactii plasate, confirmat de doua citiri separate si dupa pauza de 5 minute de la ultimul gest, se sterge blocajul vechi pentru urmatorul SOC. Fara butoane noi. Nu exista garantie de semnal/ordin, QT REAL ramane blocat, 1 USD si payout >=92%. Include reparatiile 407 si 408. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 411 FIX FEREASTRA BROKER - DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "411: recunoastere fereastra broker din serviciul de accesibilitate, fara confuzie cu com.android.systemui. Verificare istoric: ecranul Tranzactii poate ascunde QT Demo. Acceptam dovada QT Demo vazuta pe grafic in acelasi broker in ultimele 90 secunde numai pentru citirea listei Deschis explicit goale. Numai dupa ce utilizatorul deschide Pocket Option QT Demo > Tranzactii > Deschis si brokerul afiseaza explicit Nu exista tranzactii plasate, confirmat de doua citiri separate si dupa pauza de 5 minute de la ultimul gest, se sterge blocajul vechi pentru urmatorul SOC. Fara butoane noi. Nu exista garantie de semnal/ordin, QT REAL ramane blocat, 1 USD si payout >=92%. Include reparatiile 407 si 408. Build $GITHUB_SHA." \
             --prerelease
