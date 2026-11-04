@@ -14,12 +14,52 @@ import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 
 /** A user-invoked read-only broker-label probe and isolated test gestures. No broker orders. */
 class TouchTestService : AccessibilityService() {
   companion object {
     @Volatile private var connected: TouchTestService? = null
     fun ready(): Boolean = connected != null
+
+    /**
+     * 411: Android may temporarily focus com.android.systemui while the
+     * Pocket Option chart remains visibly underneath screen-share UI.
+     * Read-only probes may inspect the visible, verified broker application
+     * window. NEVER use this fallback to dispatch gestures or place orders:
+     * the order path still requires rootInActiveWindow and all fresh checks.
+     */
+    private fun readOnlyBrokerRoot(svc: TouchTestService): AccessibilityNodeInfo? {
+      val foreground = svc.rootInActiveWindow
+      val foregroundPkg = foreground?.packageName?.toString().orEmpty()
+      if (BrokerAdapterRegistry.hasDemoExecutor(foregroundPkg)) return foreground
+
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val manager = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        manager.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return null }
+      if (metrics.widthPixels < 300 || metrics.heightPixels < 600) return null
+
+      return try {
+        svc.windows.orEmpty().asSequence()
+          .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+          .filter { window ->
+            val bounds = Rect()
+            window.getBoundsInScreen(bounds)
+            bounds.width() >= metrics.widthPixels * 0.60f &&
+              bounds.height() >= metrics.heightPixels * 0.50f
+          }
+          .mapNotNull { it.root }
+          .firstOrNull { node ->
+            BrokerAdapterRegistry.hasDemoExecutor(
+              node.packageName?.toString().orEmpty()
+            ) && node.isVisibleToUser
+          }
+      } catch (_: Throwable) { null }
+    }
 
     /**
      * Distinguish the user-granted Android accessibility setting from the
@@ -63,7 +103,8 @@ class TouchTestService : AccessibilityService() {
      */
     fun inspectBrokerAccountReadOnly(): String {
       val svc = connected ?: return "ACCESIBILITATE NECONECTATĂ • NUMAI SCANARE"
-      val root = svc.rootInActiveWindow ?: return "FĂRĂ FEREASTRĂ BROKER ACTIVĂ"
+      val root = readOnlyBrokerRoot(svc)
+        ?: return "FEREASTRĂ BROKER INVIZIBILĂ • ANDROID UI / REÎNCERC"
       val pkg = root.packageName?.toString().orEmpty()
       val adapter = BrokerAdapterRegistry.forPackage(pkg)
       if (adapter.id == "unrecognized") {
@@ -127,7 +168,7 @@ class TouchTestService : AccessibilityService() {
      */
     fun readVisibleDemoPair(): String? {
       val svc = connected ?: return null
-      val root = svc.rootInActiveWindow ?: return null
+      val root = readOnlyBrokerRoot(svc) ?: return null
       val pkg = root.packageName?.toString().orEmpty()
       if (pkg.isBlank() || pkg == svc.packageName ||
           pkg.startsWith("com.android.settings") ||
@@ -203,7 +244,7 @@ class TouchTestService : AccessibilityService() {
     // preflight still independently requires QT Demo on the visible chart.
     fun activeDemoExecutorPackageForReview(): String? {
       val svc = connected ?: return null
-      val pkg = svc.rootInActiveWindow?.packageName?.toString().orEmpty()
+      val pkg = readOnlyBrokerRoot(svc)?.packageName?.toString().orEmpty()
       return pkg.takeIf { BrokerAdapterRegistry.hasDemoExecutor(it) }
     }
 
@@ -211,7 +252,7 @@ class TouchTestService : AccessibilityService() {
       cachedDemoVerifiedOnChart: Boolean = false
     ): Boolean {
       val svc = connected ?: return false
-      val root = svc.rootInActiveWindow ?: return false
+      val root = readOnlyBrokerRoot(svc) ?: return false
       val pkg = root.packageName?.toString().orEmpty()
       if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) return false
       val metrics = android.util.DisplayMetrics()
@@ -292,7 +333,8 @@ class TouchTestService : AccessibilityService() {
 
     fun inspectVisibleDemoOpenBadgeReadOnly(): String {
       val svc = connected ?: return "CONT NECUNOSCUT • ACCESIBILITATE OPRITĂ"
-      val root = svc.rootInActiveWindow ?: return "CONT NECUNOSCUT • FEREASTRĂ INDISPONIBILĂ"
+      val root = readOnlyBrokerRoot(svc)
+        ?: return "CONT NECUNOSCUT • FEREASTRĂ INDISPONIBILĂ"
       val pkg = root.packageName?.toString().orEmpty()
       if (!BrokerAdapterRegistry.hasDemoExecutor(pkg))
         return "BROKER NECUNOSCUT • SCANARE FĂRĂ ORDINE"
