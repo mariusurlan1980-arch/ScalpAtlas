@@ -311,9 +311,12 @@ class TouchTestService : AccessibilityService() {
         it.bounds.centerY() in (h * 0.15f).toInt()..(h * 0.30f).toInt() &&
           Regex("""(?i)^(?:Deschis|Open)$""").matches(it.text)
       }
+      // 412: Localized broker UI can express the same EXPLICIT empty
+      // OPEN-position state in several exact phrases. Do not infer closure
+      // from a missing count, a zero price, or chart-only OCR.
       val explicitEmpty = labels.any {
         it.bounds.centerY() in (h * 0.22f).toInt()..(h * 0.50f).toInt() &&
-          Regex("""(?i)^(?:Nu există tranzacții plasate|Nu exista tranzactii plasate|No trades placed|No open trades)$""")
+          Regex("""(?i)^(?:Nu există tranzacții plasate|Nu exista tranzactii plasate|Nu există tranzacții deschise|Nu exista tranzactii deschise|Nu există tranzacții active|Nu exista tranzactii active|Nu sunt tranzacții deschise|Nu sunt tranzactii deschise|No trades placed|No open trades|No open positions)$""")
             .matches(it.text)
       }
       return pageTitle && openTab && explicitEmpty
