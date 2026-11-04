@@ -211,7 +211,7 @@ jobs:
           grep -Fq 'emptyPattern.matches(' "$T"
           grep -Fq 'demoEmptyReviewDiagnostic()' "$O"
           grep -Fq 'pageTitle && openTab && explicitEmpty' "$T"
-          grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) return false' "$T" || grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
+          grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T" || grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
           grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
           grep -Fq 'demoEmptyReviewReads >= 2' "$O"
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
@@ -230,7 +230,7 @@ jobs:
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
           grep -Fq 'Nu există tranzacții deschise' "$T"
           grep -Fq 'No open positions' "$T"
-          grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) return false' "$T"
+          grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
       - name: Verify 413 broker-window read-only fallback cannot authorize gestures
@@ -668,7 +668,7 @@ jobs:
           G=.github/native-overlay/TradePositionGate.kt
           grep -Fq 'fun inspectExplicitEmptyOpenDemoTabReadOnly(' "$T"
           grep -Fq 'cachedDemoVerifiedOnChart: Boolean = false' "$T"
-          grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) return false' "$T"
+          grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
           grep -Fq 'pageTitle && openTab && explicitEmpty' "$T"
           grep -Fq 'fun priorDemoGestureCooldownComplete(): Boolean' "$T"
           grep -Fq 'fun brokerVerifiedEmptyDemoReview(twoIndependentReads: Boolean): Boolean' "$G"
