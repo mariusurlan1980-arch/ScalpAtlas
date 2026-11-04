@@ -166,6 +166,12 @@ class ScalpOverlayService : Service() {
   // Broker ORDER preflight still requires a fresh visible QT Demo header.
   private var verifiedDemoAccountAt = 0L
   private var verifiedDemoAccountPackage: String? = null
+  // 414: Two independent OCR reads of the ACTUAL broker Transactions > Open
+  // screen, with an explicit no-open-trades message and selected Open tab.
+  // A stale screenshot or an unknown broker can never clear old order safety.
+  @Volatile private var lastEmptyOpenOcrAt = 0L
+  @Volatile private var lastEmptyOpenOcrPackage: String? = null
+  @Volatile private var emptyOpenOcrConsecutive = 0
   private val tradePositionGate = TradePositionGate()
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
@@ -549,9 +555,14 @@ class ScalpOverlayService : Service() {
             autoDemoSessionConsumed && !autoDemoArmed &&
             !demoClickTestPending &&
             TouchTestService.priorDemoGestureCooldownComplete()
+          val ocrCurrent = cachedDemoReview &&
+            lastEmptyOpenOcrPackage == reviewPackage &&
+            emptyOpenOcrConsecutive >= 2 &&
+            System.currentTimeMillis() - lastEmptyOpenOcrAt in 0L..4500L
           val explicitZero = eligibleForBrokerEmptyReview && try {
             TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(
-              cachedDemoVerifiedOnChart = cachedDemoReview
+              cachedDemoVerifiedOnChart = cachedDemoReview,
+              ocrVerifiedEmptyOpenTab = ocrCurrent
             )
           } catch (_: Throwable) { false }
           if (explicitZero) {
@@ -2423,6 +2434,82 @@ class ScalpOverlayService : Service() {
       }
   }
 
+  /**
+   * 414: The selected Open tab in Pocket Option's dark theme has a blue
+   * filled background; Inchis is blue instead when CLOSED is selected.
+   * Sample multiple clean interior pixels, not OCR label text, to avoid
+   * confusing "Deschis" (visible tab label) with "Deschis" (selected tab).
+   * If the theme/layout differs or contrast is ambiguous, fail closed.
+   */
+  private fun selectedOpenTabVerifiedOnScreen(frame: Bitmap): Boolean {
+    if (frame.width < 300 || frame.height < 600) return false
+    fun medianLuminance(xs: FloatArray): Double {
+      val values = ArrayList<Double>()
+      val ys = floatArrayOf(0.183f, 0.198f, 0.207f)
+      for (xRatio in xs) for (yRatio in ys) {
+        val px = (frame.width * xRatio).toInt().coerceIn(0, frame.width - 1)
+        val py = (frame.height * yRatio).toInt().coerceIn(0, frame.height - 1)
+        val c = frame.getPixel(px, py)
+        values.add(0.2126 * Color.red(c) +
+          0.7152 * Color.green(c) + 0.0722 * Color.blue(c))
+      }
+      values.sort()
+      return values[values.size / 2]
+    }
+    return try {
+      val openFill = medianLuminance(floatArrayOf(0.10f, 0.14f, 0.38f, 0.42f))
+      val closedFill = medianLuminance(floatArrayOf(0.58f, 0.62f, 0.87f, 0.91f))
+      openFill > 43.0 && openFill - closedFill >= 16.0
+    } catch (_: Throwable) { false }
+  }
+
+  /** A second independent OCR sample is mandatory; never use a chart screenshot
+   * as evidence that a prior physical broker order is closed. */
+  private fun recordExplicitEmptyOpenOcr(
+    result: com.google.mlkit.vision.text.Text,
+    frame: Bitmap,
+    observedAt: Long
+  ) {
+    val lines = result.textBlocks.flatMap { it.lines }
+    fun hasLine(lower: Float, upper: Float, regex: Regex): Boolean =
+      lines.any { line ->
+        val box = line.boundingBox ?: return@any false
+        val centerY = box.centerY().toFloat() / frame.height
+        centerY in lower..upper && regex.matches(line.text.trim())
+      }
+    val title = hasLine(0.09f, 0.24f,
+      Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""))
+    val openTab = hasLine(0.15f, 0.30f,
+      Regex("""(?i)^(?:Deschis|Open)$"""))
+    val closedTab = hasLine(0.15f, 0.30f,
+      Regex("""(?i)^(?:Închis|Inchis|Closed)$"""))
+    val body = lines.filter { line ->
+      val box = line.boundingBox
+      box != null && box.centerY().toFloat() / frame.height in 0.22f..0.89f
+    }.joinToString(" ") { it.text }
+      .replace(Regex("""\s+"""), " ").trim()
+    val emptyMessage = Regex(
+      """(?i)(?:Nu există tranzacții (?:plasate|deschise|active)|Nu exista tranzactii (?:plasate|deschise|active)|Nu sunt tranzacții deschise|Nu sunt tranzactii deschise|Nicio tranzacție (?:deschisă|activă)|Nicio tranzactie (?:deschisa|activa)|No trades placed|No open trades|No open positions)"""
+    ).containsMatchIn(body)
+    val pkg = TouchTestService.activeDemoExecutorPackageForReview()
+    val qualified = title && openTab && closedTab && emptyMessage &&
+      selectedOpenTabVerifiedOnScreen(frame) && pkg != null
+    if (qualified) {
+      if (lastEmptyOpenOcrPackage == pkg &&
+          observedAt - lastEmptyOpenOcrAt in 1000L..12000L) {
+        emptyOpenOcrConsecutive = (emptyOpenOcrConsecutive + 1).coerceAtMost(3)
+      } else {
+        emptyOpenOcrConsecutive = 1
+      }
+      lastEmptyOpenOcrAt = observedAt
+      lastEmptyOpenOcrPackage = pkg
+    } else {
+      emptyOpenOcrConsecutive = 0
+      lastEmptyOpenOcrAt = 0L
+      lastEmptyOpenOcrPackage = null
+    }
+  }
+
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
     if (ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
     ocrBusy = true
@@ -2455,6 +2542,10 @@ class ScalpOverlayService : Service() {
         }.distinct()
 
         val observedAt = System.currentTimeMillis()
+        // Read-only broker history proof, never an order signal. Requires two
+        // separate fresh frames and selected OPEN tab. This runs even though
+        // no candle/timeframe can be detected on the Transactions screen.
+        recordExplicitEmptyOpenOcr(result, copy, observedAt)
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
         // OTC and ordinary charts using the same currency symbols must NOT
