@@ -21,6 +21,8 @@ class TouchTestService : AccessibilityService() {
   companion object {
     @Volatile private var connected: TouchTestService? = null
     fun ready(): Boolean = connected != null
+    @Volatile private var demoEmptyReviewStatus = "DESCHIDE TRANZACȚII > DESCHIS"
+    fun demoEmptyReviewDiagnostic(): String = demoEmptyReviewStatus
 
     /**
      * 411: Android may temporarily focus com.android.systemui while the
@@ -251,10 +253,20 @@ class TouchTestService : AccessibilityService() {
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
       cachedDemoVerifiedOnChart: Boolean = false
     ): Boolean {
-      val svc = connected ?: return false
-      val root = readOnlyBrokerRoot(svc) ?: return false
+      demoEmptyReviewStatus = "VERIFICARE LISTĂ DESCHIS"
+      val svc = connected ?: run {
+        demoEmptyReviewStatus = "ACCESIBILITATE DECONECTATĂ"
+        return false
+      }
+      val root = readOnlyBrokerRoot(svc) ?: run {
+        demoEmptyReviewStatus = "FEREASTRA BROKERULUI NU POATE FI CITITĂ"
+        return false
+      }
       val pkg = root.packageName?.toString().orEmpty()
-      if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) return false
+      if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) {
+        demoEmptyReviewStatus = "BROKER NEIDENTIFICAT"
+        return false
+      }
       val metrics = android.util.DisplayMetrics()
       try {
         val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
@@ -299,7 +311,10 @@ class TouchTestService : AccessibilityService() {
       }
       // A REAL marker always rejects the review. Without a Demo header,
       // the caller must have verified QT Demo recently in this same package.
-      if (real || (!demo && !cachedDemoVerifiedOnChart)) return false
+      if (real || (!demo && !cachedDemoVerifiedOnChart)) {
+        demoEmptyReviewStatus = "QT DEMO NECONFIRMAT • REVINO LA GRAFIC"
+        return false
+      }
 
       // Require the full-screen Transactions page, not the chart footer.
       val pageTitle = labels.any {
@@ -314,10 +329,22 @@ class TouchTestService : AccessibilityService() {
       // 412: Localized broker UI can express the same EXPLICIT empty
       // OPEN-position state in several exact phrases. Do not infer closure
       // from a missing count, a zero price, or chart-only OCR.
+      // 413: On Motorola the empty message may be vertically centered below
+      // half-height, not just in the top half. Require a full broker page,
+      // its Open tab, and an EXPLICIT no-open-trades message; never infer
+      // closure from a blank screen, absent counter or expired timer.
+      val emptyPattern = Regex("""(?i)^(?:Nu există tranzacții plasate|Nu exista tranzactii plasate|Nu există tranzacții deschise|Nu exista tranzactii deschise|Nu există tranzacții active|Nu exista tranzactii active|Nu sunt tranzacții deschise|Nu sunt tranzactii deschise|Nicio tranzacție deschisă|Nicio tranzactie deschisa|Nicio tranzacție activă|Nicio tranzactie activa|No trades placed|No open trades|No open positions)$""")
       val explicitEmpty = labels.any {
-        it.bounds.centerY() in (h * 0.22f).toInt()..(h * 0.50f).toInt() &&
-          Regex("""(?i)^(?:Nu există tranzacții plasate|Nu exista tranzactii plasate|Nu există tranzacții deschise|Nu exista tranzactii deschise|Nu există tranzacții active|Nu exista tranzactii active|Nu sunt tranzacții deschise|Nu sunt tranzactii deschise|No trades placed|No open trades|No open positions)$""")
-            .matches(it.text)
+        it.bounds.centerY() in (h * 0.20f).toInt()..(h * 0.88f).toInt() &&
+          emptyPattern.matches(
+            it.text.replace(Regex("""\\s+"""), " ").trim().trimEnd('.')
+          )
+      }
+      demoEmptyReviewStatus = when {
+        !pageTitle -> "NU IDENTIFIC PAGINA TRANZACȚII"
+        !openTab -> "NU IDENTIFIC FILA DESCHIS"
+        !explicitEmpty -> "MESAJUL LISTĂ GOALĂ NU ESTE CITIT"
+        else -> "LISTĂ GOALĂ DETECTATĂ • VERIFIC 2/2"
       }
       return pageTitle && openTab && explicitEmpty
     }
