@@ -5,5 +5,5 @@
   android:notificationTimeout="100"
   android:canPerformGestures="true"
   android:canRetrieveWindowContent="true"
-  android:accessibilityFlags="flagDefault"
+  android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
   android:description="@string/touch_test_accessibility_description" />
