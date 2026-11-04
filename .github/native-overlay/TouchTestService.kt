@@ -251,7 +251,8 @@ class TouchTestService : AccessibilityService() {
     }
 
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
-      cachedDemoVerifiedOnChart: Boolean = false
+      cachedDemoVerifiedOnChart: Boolean = false,
+      ocrVerifiedEmptyOpenTab: Boolean = false
     ): Boolean {
       demoEmptyReviewStatus = "VERIFICARE LISTĂ DESCHIS"
       val svc = connected ?: run {
@@ -340,13 +341,21 @@ class TouchTestService : AccessibilityService() {
             it.text.replace(Regex("""\s+"""), " ").trim().trimEnd('.')
           )
       }
+      // 414: An independent MediaProjection+ML Kit sensor can prove a
+      // full broker Transactions page, explicitly NO OPEN positions, and
+      // the visually selected OPEN tab. Its caller requires two independent
+      // fresh screen reads and the SAME verified Pocket Option DEMO package.
+      // This fallback never works on chart view or with uncertain tab state.
+      val confirmedByAccessibility = pageTitle && openTab && explicitEmpty
+      val confirmedByOcr = ocrVerifiedEmptyOpenTab && cachedDemoVerifiedOnChart
       demoEmptyReviewStatus = when {
+        confirmedByAccessibility -> "LISTĂ GOALĂ CITITĂ • ACCESIBILITATE 1/2"
+        confirmedByOcr -> "LISTĂ GOALĂ CITITĂ • ECRAN OCR 1/2"
         !pageTitle -> "NU IDENTIFIC PAGINA TRANZACȚII"
         !openTab -> "NU IDENTIFIC FILA DESCHIS"
-        !explicitEmpty -> "MESAJUL LISTĂ GOALĂ NU ESTE CITIT"
-        else -> "LISTĂ GOALĂ DETECTATĂ • VERIFIC 2/2"
+        else -> "MESAJUL LISTĂ GOALĂ NU ESTE CITIT"
       }
-      return pageTitle && openTab && explicitEmpty
+      return confirmedByAccessibility || confirmedByOcr
     }
 
     /** A persistent 5-minute guard still applies after any Android gesture.
