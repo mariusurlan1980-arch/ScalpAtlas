@@ -519,7 +519,10 @@ class ScalpOverlayService : Service() {
           verifiedDemoAccountAt = nowReview
           verifiedDemoAccountPackage = reviewPackage
         } else if (diagnostic.contains("QT REAL IDENTIFICAT") ||
-            reviewPackage == null || reviewPackage != verifiedDemoAccountPackage) {
+            (reviewPackage != null && reviewPackage != verifiedDemoAccountPackage)) {
+          // 411: a transient SystemUI focus must not erase the prior verified
+          // demo identity; the <=90s expiry and SAME-package check still
+          // strictly control whether a read-only review can be accepted.
           verifiedDemoAccountAt = 0L
           verifiedDemoAccountPackage = null
         }
