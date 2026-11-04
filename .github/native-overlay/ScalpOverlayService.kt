@@ -3667,7 +3667,7 @@ class ScalpOverlayService : Service() {
             "🔒 BIP " + activeSignal + " • SCALP M5 • ȘOC NECONFIRMAT"
           activeSignal != "NONE" && activeStrategy == "SHOCK" ->
             "🔒 BIP " + activeSignal + " • ȘOC VALID • ORDIN BLOCAT: ISTORIC"
-          else -> "🔒 DEMO • VERIFICĂ TRANZACȚII > DESCHIS (0)"
+          else -> "🔒 DEMO • " + TouchTestService.demoEmptyReviewDiagnostic().take(72)
         }
       }
       sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
