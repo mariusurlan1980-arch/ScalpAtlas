@@ -161,6 +161,11 @@ class ScalpOverlayService : Service() {
   // This is deliberately NOT inferred from a missing badge on the chart.
   private var demoEmptyReviewReads = 0
   private var demoEmptyReviewFirstAt = 0L
+  // 410: QT Demo can disappear from the header on Transactions > Open.
+  // Retain a short read-only proof for the SAME broker package only.
+  // Broker ORDER preflight still requires a fresh visible QT Demo header.
+  private var verifiedDemoAccountAt = 0L
+  private var verifiedDemoAccountPackage: String? = null
   private val tradePositionGate = TradePositionGate()
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
@@ -503,15 +508,34 @@ class ScalpOverlayService : Service() {
           lastBrokerAccountStatus = diagnostic
           touchProbeStatus?.text = "🤖 " + diagnostic.take(115)
         }
-        // Keep reading charts after an attempt. A missing chart badge is
-        // NOT evidence of closure; 409 only accepts an EXPLICIT broker message
-        // under Transactions > Open, on a verified QT DEMO account.
-        if (diagnostic.contains("QT DEMO IDENTIFICAT")) {
-          lastDemoTradeStatus = try {
+        // 410: On the broker's Transactions page the account header is
+        // sometimes absent, even though QT Demo was confirmed on the chart.
+        // Carry that proof for <=90s ONLY in the SAME broker package, and ONLY
+        // for a read-only explicit empty-Open-tab review, never for an order.
+        val nowReview = android.os.SystemClock.elapsedRealtime()
+        val reviewPackage = TouchTestService.activeDemoExecutorPackageForReview()
+        val demoVisibleNow = diagnostic.contains("QT DEMO IDENTIFICAT")
+        if (demoVisibleNow && reviewPackage != null) {
+          verifiedDemoAccountAt = nowReview
+          verifiedDemoAccountPackage = reviewPackage
+        } else if (diagnostic.contains("QT REAL IDENTIFICAT") ||
+            reviewPackage == null || reviewPackage != verifiedDemoAccountPackage) {
+          verifiedDemoAccountAt = 0L
+          verifiedDemoAccountPackage = null
+        }
+        val cachedDemoReview = !demoVisibleNow &&
+          !diagnostic.contains("QT REAL IDENTIFICAT") &&
+          reviewPackage != null && reviewPackage == verifiedDemoAccountPackage &&
+          verifiedDemoAccountAt > 0L &&
+          nowReview - verifiedDemoAccountAt in 0L..90_000L
+        // A missing transaction badge is NEVER proof that an order closed.
+        // Only a broker page explicitly stating zero OPEN transactions counts.
+        if (demoVisibleNow || cachedDemoReview) {
+          lastDemoTradeStatus = if (demoVisibleNow) try {
             TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
           } catch (_: Exception) {
             "POZIȚIE NECUNOSCUTĂ • FĂRĂ REARMARE"
-          }
+          } else "VERIFICARE QT DEMO • TRANZACȚII DESCHISE"
           val oldSellAttempt = getSharedPreferences(
             sell404TestPrefs, Context.MODE_PRIVATE
           ).getBoolean("attempted", false)
@@ -523,7 +547,9 @@ class ScalpOverlayService : Service() {
             !demoClickTestPending &&
             TouchTestService.priorDemoGestureCooldownComplete()
           val explicitZero = eligibleForBrokerEmptyReview && try {
-            TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly()
+            TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(
+              cachedDemoVerifiedOnChart = cachedDemoReview
+            )
           } catch (_: Throwable) { false }
           if (explicitZero) {
             val tick = android.os.SystemClock.elapsedRealtime()
