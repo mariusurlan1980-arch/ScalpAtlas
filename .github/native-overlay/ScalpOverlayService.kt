@@ -3373,7 +3373,7 @@ class ScalpOverlayService : Service() {
           autoDemoSessionRequested = false
           autoDemoSessionConsumed = true
           touchProbeStatus?.text = "SESIUNE ÎNCHEIATĂ • PORNEȘTE LIVE DIN NOU"
-        } else if (nowClock - autoDemoLastPreflightAt >= 4500L ||
+        } else if (nowClock - autoDemoLastPreflightAt >= 2500L ||
             autoDemoLastPreflightAt == 0L) {
           autoDemoLastPreflightAt = nowClock
           val pair = currentPair(now)
@@ -3639,25 +3639,36 @@ class ScalpOverlayService : Service() {
       // without opening PROBĂ and without inventing BUY/SELL orders.
       if (autoDemoSessionRequested && !autoDemoSessionConsumed &&
           lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")) {
-        if (autoDemoArmed && activeSignal == "NONE") {
-          touchProbeStatus?.text = if (scanStatus != "LIVE")
-            "🤖 AUTO DEMO • SCAN " + scanStatus
-          else "🤖 ȘOC FLEX 40/30/35 • " + shockBlocker.take(39)
-        } else if (!autoDemoArmed) {
-          touchProbeStatus?.text =
+        touchProbeStatus?.text = when {
+          // A real SCALP TREND alert may legitimately BIP on M5; only SHOCK
+          // is permitted to submit a DEMO broker order in this build.
+          activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
+            "🔔 " + activeSignal + " • SCALP M5 • FĂRĂ ORDIN: NU ESTE ȘOC"
+          activeSignal != "NONE" && !autoDemoArmed ->
+            "🔔 " + activeSignal + " • FĂRĂ ORDIN: " +
+              autoDemoLastPreflightReason.take(47)
+          autoDemoArmed && activeSignal == "NONE" ->
+            if (scanStatus != "LIVE")
+              "🤖 AUTO DEMO • SCAN " + scanStatus
+            else "🤖 ȘOC FLEX 40/30/35 • " + shockBlocker.take(39)
+          !autoDemoArmed ->
             "🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
+          else -> touchProbeStatus?.text?.toString().orEmpty()
         }
       }
       // Preserve the result of a user-triggered physical DEMO gesture pilot;
       // the frequent account monitor must not hide a possible broker order.
       if (autoDemoSessionConsumed &&
           lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")) {
-        val priorSellTest = getSharedPreferences(
-          sell404TestPrefs, Context.MODE_PRIVATE
-        ).getBoolean("attempted", false)
-        touchProbeStatus?.text = if (priorSellTest)
-          "🔒 DEMO • VERIFICĂ TRANZACȚII > DESCHIS (0)"
-        else "🔒 DEMO • VERIFICĂ TRANZACȚII > DESCHIS (0)"
+        touchProbeStatus?.text = when {
+          demoEmptyReviewReads == 1 ->
+            "🔒 DEMO • LISTĂ GOALĂ CONFIRMATĂ 1/2 • RĂMÂI PE DESCHIS"
+          activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
+            "🔒 BIP " + activeSignal + " • SCALP M5 • ȘOC NECONFIRMAT"
+          activeSignal != "NONE" && activeStrategy == "SHOCK" ->
+            "🔒 BIP " + activeSignal + " • ȘOC VALID • ORDIN BLOCAT: ISTORIC"
+          else -> "🔒 DEMO • VERIFICĂ TRANZACȚII > DESCHIS (0)"
+        }
       }
       sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
       captureStatusText?.text = scanStatus
