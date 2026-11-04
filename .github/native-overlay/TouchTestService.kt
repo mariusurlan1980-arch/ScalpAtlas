@@ -197,7 +197,19 @@ class TouchTestService : AccessibilityService() {
      * Must be polled on two separate checks by ScalpOverlayService; each
      * check independently identifies QT Demo and the broker package.
      */
-    fun inspectExplicitEmptyOpenDemoTabReadOnly(): Boolean {
+    // 410: The transaction-history screen can hide the QT Demo account header.
+    // Only a fresh, same-package QT Demo proof from the chart may substitute
+    // for that header while READING an explicitly empty Open tab. Actual order
+    // preflight still independently requires QT Demo on the visible chart.
+    fun activeDemoExecutorPackageForReview(): String? {
+      val svc = connected ?: return null
+      val pkg = svc.rootInActiveWindow?.packageName?.toString().orEmpty()
+      return pkg.takeIf { BrokerAdapterRegistry.hasDemoExecutor(it) }
+    }
+
+    fun inspectExplicitEmptyOpenDemoTabReadOnly(
+      cachedDemoVerifiedOnChart: Boolean = false
+    ): Boolean {
       val svc = connected ?: return false
       val root = svc.rootInActiveWindow ?: return false
       val pkg = root.packageName?.toString().orEmpty()
@@ -244,7 +256,9 @@ class TouchTestService : AccessibilityService() {
       val real = header.any {
         Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.text)
       }
-      if (!demo || real) return false
+      // A REAL marker always rejects the review. Without a Demo header,
+      // the caller must have verified QT Demo recently in this same package.
+      if (real || (!demo && !cachedDemoVerifiedOnChart)) return false
 
       // Require the full-screen Transactions page, not the chart footer.
       val pageTitle = labels.any {
