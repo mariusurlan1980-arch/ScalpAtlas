@@ -337,7 +337,7 @@ class TouchTestService : AccessibilityService() {
       val explicitEmpty = labels.any {
         it.bounds.centerY() in (h * 0.20f).toInt()..(h * 0.88f).toInt() &&
           emptyPattern.matches(
-            it.text.replace(Regex("""\\s+"""), " ").trim().trimEnd('.')
+            it.text.replace(Regex("""\s+"""), " ").trim().trimEnd('.')
           )
       }
       demoEmptyReviewStatus = when {
