@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 409 VERIFIED EMPTY DEMO RECOVERY
+name: Build Scalp Atlas 410 RESTORE DEMO OPEN-TAB VALIDATION
 
 on:
   push:
-    branches: [feature/scalpatlas-demo-empty-recovery409]
+    branches: [feature/scalpatlas-demo-account-recovery410]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-409
+  group: scalp-atlas-calculator-test-410
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=409
+          expo['android']['versionCode']=410
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -612,7 +612,7 @@ jobs:
           grep -Fq 'if (state != State.SUBMITTING) return false' "$G"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 409 no blind unlocking of old DEMO position guard
+      - name: Verify 410 no blind unlocking of old DEMO position guard
         run: |
           set -euo pipefail
           T=.github/native-overlay/TouchTestService.kt
@@ -909,12 +909,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-409-QT-DEMO-VERIFICAT-G24.apk
+          cp "$APK" ScalpAtlas-410-QT-DEMO-ISTORIC-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-409
-          path: ScalpAtlas-409-QT-DEMO-VERIFICAT-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-410
+          path: ScalpAtlas-410-QT-DEMO-ISTORIC-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -923,13 +923,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-409-QT-DEMO-VERIFICAT-G24.apk"
+          FILE="ScalpAtlas-410-QT-DEMO-ISTORIC-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator409-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator410-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 409 QT DEMO RECONFIRMAT - DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "409: deblocarea DEMO nu se mai bazeaza pe badge lipsa sau pe schimbarea perechii. Numai dupa ce utilizatorul deschide Pocket Option QT Demo > Tranzactii > Deschis si brokerul afiseaza explicit Nu exista tranzactii plasate, confirmat de doua citiri separate si dupa pauza de 5 minute de la ultimul gest, se sterge blocajul vechi pentru urmatorul SOC. Fara butoane noi. Nu exista garantie de semnal/ordin, QT REAL ramane blocat, 1 USD si payout >=92%. Include reparatiile 407 si 408. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 410 QT DEMO ISTORIC REPARAT - DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "410: verificare istoric corectata: ecranul Tranzactii poate ascunde QT Demo. Acceptam dovada QT Demo vazuta pe grafic in acelasi broker in ultimele 90 secunde numai pentru citirea listei Deschis explicit goale. Numai dupa ce utilizatorul deschide Pocket Option QT Demo > Tranzactii > Deschis si brokerul afiseaza explicit Nu exista tranzactii plasate, confirmat de doua citiri separate si dupa pauza de 5 minute de la ultimul gest, se sterge blocajul vechi pentru urmatorul SOC. Fara butoane noi. Nu exista garantie de semnal/ordin, QT REAL ramane blocat, 1 USD si payout >=92%. Include reparatiile 407 si 408. Build $GITHUB_SHA." \
             --prerelease
