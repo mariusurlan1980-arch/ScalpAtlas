@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 413 EMPTY OPEN TAB RECOVERY
+name: Build Scalp Atlas 414 OCR OPEN TAB SAFE RECOVERY
 
 on:
   push:
-    branches: [feature/scalpatlas-empty-open-review413]
+    branches: [feature/scalpatlas-open-review-ocr414]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-413
+  group: scalp-atlas-calculator-test-414
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=413
+          expo['android']['versionCode']=414
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -163,7 +163,7 @@ jobs:
           from pathlib import Path
           import math,struct,wave
           assets=Path('scalp-atlas-new/assets'); assets.mkdir(parents=True,exist_ok=True)
-          rate=44130; duration=2.3; amp=.36
+          rate=44140; duration=2.3; amp=.36
           for name,freq in [('buy-alert.wav',1220.0),('sell-alert.wav',980.0)]:
               frames=bytearray()
               for i in range(int(rate*duration)):
@@ -183,7 +183,7 @@ jobs:
           for filename in ['buy-alert.wav', 'sell-alert.wav']:
               p=Path('scalp-atlas-new/assets')/filename
               with wave.open(str(p), 'rb') as wav:
-                  assert wav.getframerate()==44130, 'bad beep sample rate'
+                  assert wav.getframerate()==44140, 'bad beep sample rate'
                   seconds=wav.getnframes()/wav.getframerate()
                   assert 2.25 <= seconds <= 2.35, f'Wrong beep length {filename}: {seconds}'
                   print(filename, round(seconds,2), 'seconds')
@@ -202,7 +202,27 @@ jobs:
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
 
-      - name: Verify 413 empty-trade-list recognition does not allow blind unlock
+      - name: Verify 414 OCR evidence is read-only, same-package, and two-frame verified
+        run: |
+          set -e
+          O=.github/native-overlay/ScalpOverlayService.kt
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'private fun selectedOpenTabVerifiedOnScreen(frame: Bitmap): Boolean' "$O"
+          grep -Fq 'openFill - closedFill >= 16.0' "$O"
+          grep -Fq 'recordExplicitEmptyOpenOcr(result, copy, observedAt)' "$O"
+          grep -Fq 'emptyOpenOcrConsecutive >= 2' "$O"
+          grep -Fq 'System.currentTimeMillis() - lastEmptyOpenOcrAt in 0L..4500L' "$O"
+          grep -Fq 'lastEmptyOpenOcrPackage == reviewPackage' "$O"
+          grep -Fq 'cachedDemoReview &&' "$O"
+          grep -Fq 'ocrVerifiedEmptyOpenTab = ocrCurrent' "$O"
+          grep -Fq 'confirmedByOcr = ocrVerifiedEmptyOpenTab && cachedDemoVerifiedOnChart' "$T"
+          grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
+          grep -Fq 'demoEmptyReviewReads >= 2' "$O"
+          grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
+      - name: Verify 414 empty-trade-list recognition does not allow blind unlock
         run: |
           set -e
           T=.github/native-overlay/TouchTestService.kt
@@ -217,7 +237,7 @@ jobs:
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 413 BIP strategy distinction and no duplicate DEMO order
+      - name: Verify 414 BIP strategy distinction and no duplicate DEMO order
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
@@ -233,7 +253,7 @@ jobs:
           grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 413 broker-window read-only fallback cannot authorize gestures
+      - name: Verify 414 broker-window read-only fallback cannot authorize gestures
         run: |
           set -e
           T=.github/native-overlay/TouchTestService.kt
@@ -660,7 +680,7 @@ jobs:
           grep -Fq 'if (state != State.SUBMITTING) return false' "$G"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 413 no blind unlocking of old DEMO position guard
+      - name: Verify 414 no blind unlocking of old DEMO position guard
         run: |
           set -euo pipefail
           T=.github/native-overlay/TouchTestService.kt
@@ -961,12 +981,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-413-ISTORIC-G24.apk
+          cp "$APK" ScalpAtlas-414-OCR-DESCHIS-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-413
-          path: ScalpAtlas-413-ISTORIC-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-414
+          path: ScalpAtlas-414-OCR-DESCHIS-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -975,13 +995,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-413-ISTORIC-G24.apk"
+          FILE="ScalpAtlas-414-OCR-DESCHIS-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator413-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator414-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 413 ISTORIC GOALĂ VERIFICATĂ - DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "413: afișare explicita a motivului pentru care bipul nu plaseaza un ordin: semnal SCALP M5 sau blocaj istoric. Citire mai rapida a verificarii DEMO, recunoastere expresii exacte pentru lista Deschis goala. Recunoastere fereastra broker din serviciul de accesibilitate, fara confuzie cu com.android.systemui. Verificare istoric: ecranul Tranzactii poate ascunde QT Demo. Acceptam dovada QT Demo vazuta pe grafic in acelasi broker in ultimele 90 secunde numai pentru citirea listei Deschis explicit goale. Numai dupa ce utilizatorul deschide Pocket Option QT Demo > Tranzactii > Deschis si brokerul afiseaza explicit Nu exista tranzactii plasate, confirmat de doua citiri separate si dupa pauza de 5 minute de la ultimul gest, se sterge blocajul vechi pentru urmatorul SOC. Fara butoane noi. Nu exista garantie de semnal/ordin, QT REAL ramane blocat, 1 USD si payout >=92%. Include reparatiile 407 si 408. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 414 OCR LISTA DESCHIS DEMO - DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "414: afișare explicita a motivului pentru care bipul nu plaseaza un ordin: semnal SCALP M5 sau blocaj istoric. Citire mai rapida a verificarii DEMO, recunoastere expresii exacte pentru lista Deschis goala. Recunoastere fereastra broker din serviciul de accesibilitate, fara confuzie cu com.android.systemui. Verificare istoric: ecranul Tranzactii poate ascunde QT Demo. Acceptam dovada QT Demo vazuta pe grafic in acelasi broker in ultimele 90 secunde numai pentru citirea listei Deschis explicit goale. Numai dupa ce utilizatorul deschide Pocket Option QT Demo > Tranzactii > Deschis si brokerul afiseaza explicit Nu exista tranzactii plasate, confirmat de doua citiri separate si dupa pauza de 5 minute de la ultimul gest, se sterge blocajul vechi pentru urmatorul SOC. Fara butoane noi. Nu exista garantie de semnal/ordin, QT REAL ramane blocat, 1 USD si payout >=92%. Include reparatiile 407 si 408. Build $GITHUB_SHA." \
             --prerelease
