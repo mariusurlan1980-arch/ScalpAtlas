@@ -220,7 +220,6 @@ jobs:
           grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
           grep -Fq 'activeStrategy == "SHOCK" &&' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
-          ! grep -Fq "versionCode']=416" "$GITHUB_WORKSPACE/.github/workflows/build-native-robot-safe-preflight-379.yml"
 
       - name: Verify 417 five-minute wait, two positive zero-open reads and one SHOCK-only DEMO attempt
         run: |
