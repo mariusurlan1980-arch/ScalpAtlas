@@ -162,6 +162,11 @@ class ScalpOverlayService : Service() {
   private var demoEmptyReviewReads = 0
   private var demoEmptyReviewFirstAt = 0L
   private var lastAutoDemoHistoryNavAt = 0L
+  // 418: Keep the last history-navigation outcome visible in the compact
+  // panel. The analyzer refreshes frequently and otherwise overwrites it
+  // with the generic last read-only page error from the CHART screen.
+  private var lastAutoDemoHistoryNavStatus = ""
+  private var lastAutoDemoHistoryNavStatusAt = 0L
   // 410: QT Demo can disappear from the header on Transactions > Open.
   // Retain a short read-only proof for the SAME broker package only.
   // Broker ORDER preflight still requires a fresh visible QT Demo header.
@@ -613,6 +618,8 @@ class ScalpOverlayService : Service() {
                     "✅ QT DEMO 0 POZIȚII • BLOCATUL VECHI ELIMINAT"
                   lastDemoTradeStatus =
                     "QT DEMO • LISTĂ DESCHIS GOALĂ VERIFICATĂ 2/2"
+                  lastAutoDemoHistoryNavStatus = ""
+                  lastAutoDemoHistoryNavStatusAt = 0L
                   // 417: the same verified broker package must remain active.
                   // Return to chart, then re-read the pair and order controls
                   // from scratch. No action can execute while on history.
@@ -659,7 +666,9 @@ class ScalpOverlayService : Service() {
               val navResult = TouchTestService.advanceDemoHistoryReviewNavigation(
                 cachedDemoVerifiedOnChart = verifiedDemoReview
               )
-              touchProbeStatus?.text = "🤖 " + navResult.take(105)
+              lastAutoDemoHistoryNavStatus = navResult.take(105)
+              lastAutoDemoHistoryNavStatusAt = tick
+              touchProbeStatus?.text = "🤖 " + lastAutoDemoHistoryNavStatus
             }
           }
         } else {
@@ -667,6 +676,8 @@ class ScalpOverlayService : Service() {
           demoEmptyReviewReads = 0
           demoEmptyReviewFirstAt = 0L
           lastDemoTradeStatus = "BROKER/CONT SCHIMBAT • FĂRĂ REARMARE"
+          lastAutoDemoHistoryNavStatus = ""
+          lastAutoDemoHistoryNavStatusAt = 0L
           if (autoDemoArmed) {
             autoDemoArmed = false
             autoDemoMarket = null
@@ -3805,6 +3816,15 @@ class ScalpOverlayService : Service() {
         touchProbeStatus?.text = when {
           demoEmptyReviewReads == 1 ->
             "🔒 DEMO • 0 POZIȚII 1/2 • AȘTEPT A DOUA CITIRE"
+          // The 5-minute broker gesture cooldown is mandatory, even if an
+          // apparently empty chart would otherwise appear executable.
+          !TouchTestService.priorDemoGestureCooldownComplete() ->
+            "🔒 DEMO • PAUZĂ DE SIGURANȚĂ 5 MINUTE"
+          !TouchTestService.ready() ->
+            "🔒 DEMO • ACCESIBILITATE NECONECTATĂ"
+          lastAutoDemoHistoryNavStatus.isNotBlank() &&
+            android.os.SystemClock.elapsedRealtime() - lastAutoDemoHistoryNavStatusAt in 0L..14_000L ->
+            "🔒 DEMO • " + lastAutoDemoHistoryNavStatus.take(90)
           activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
             "🔒 BIP " + activeSignal + " • SCALP M5 • ȘOC NECONFIRMAT"
           activeSignal != "NONE" && activeStrategy == "SHOCK" ->
