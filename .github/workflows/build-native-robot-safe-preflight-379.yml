@@ -281,7 +281,7 @@ jobs:
           T=.github/native-overlay/TouchTestService.kt
           grep -Fq 'SCALP M5 • FĂRĂ ORDIN: NU ESTE ȘOC' "$O"
           grep -Fq 'ȘOC VALID • ORDIN BLOCAT: ISTORIC' "$O"
-          grep -Fq 'LISTĂ GOALĂ CONFIRMATĂ 1/2' "$O"
+          grep -Fq '0 POZIȚII 1/2 • AȘTEPT A DOUA CITIRE' "$O"
           grep -Fq 'activeStrategy == "SHOCK" &&' "$O"
           grep -Fq 'tradePositionGate.beginAttempt()' "$O"
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
