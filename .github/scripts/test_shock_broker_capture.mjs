@@ -137,6 +137,28 @@ assert.ok(buy.shockWickPercent>=20,'BUY must have visible lower wick');
 assert.ok(buy.shockRecoveryPercent>=30,'BUY shock must rebound');
 assert.ok(buy.shockDropDurationMs<=15000,'BUY must occur in <= 15 sec');
 assert.equal(buy.expiry,5);
+// 420: A genuine deep pullback can temporarily reverse the forming
+// candle's color across its opening price. It must still be associated with
+// the SAME live X and must REBOUND into the original trend with a real wick.
+// No single-frame color flip is allowed to authorize a signal.
+let colorFlipBuy;
+for (const [close, direction, wick] of [
+  [110, 'BUY', false],
+  [128, 'BUY', false],
+  [260, 'SELL', false],
+  [172, 'BUY', true],
+  [159, 'BUY', true]
+]) {
+  colorFlipBuy = analyze(close, direction,
+    'EUR/JPY OTC', 6, 'M5', 0, wick, 'BUY');
+}
+assert.equal(colorFlipBuy.trendDirection,'BUY');
+assert.equal(colorFlipBuy.shockDirection,'BUY',
+  'Same-candle retracement crossing the open was incorrectly discarded');
+assert.equal(colorFlipBuy.shockSameCandle,true);
+assert.ok(colorFlipBuy.shockRecoveryPercent>=30);
+assert.ok(colorFlipBuy.shockWickPercent>=20);
+
 // Different asset has identical-looking pixels but must not inherit history.
 assertQuiet(analyze(136,'BUY','GBP/USD OTC',3));
 assertQuiet(analyze(136,'BUY','GBP/USD OTC',4)); // same pair, new epoch
