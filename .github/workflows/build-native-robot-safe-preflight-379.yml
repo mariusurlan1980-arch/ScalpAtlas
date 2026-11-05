@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 419 PRECHECK BEFORE DEMO ORDER
+name: Build Scalp Atlas 420 SAME CANDLE RETRACEMENT
 
 on:
   push:
-    branches: [feature/scalpatlas-preflight-before-lock419]
+    branches: [feature/scalpatlas-shock-reversal420]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-419
+  group: scalp-atlas-calculator-test-420
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=419
+          expo['android']['versionCode']=420
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -202,7 +202,7 @@ jobs:
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
 
-      - name: Verify 419 no permanent DEMO order lock from a read-only preflight failure
+      - name: Verify 420 no permanent DEMO order lock from a read-only preflight failure
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
@@ -232,7 +232,7 @@ jobs:
           print('Safe preflight -> persist -> gesture ordering verified')
           PY
 
-      - name: Verify 419 persistent history reason does not change execution safety
+      - name: Verify 420 persistent history reason does not change execution safety
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
@@ -245,7 +245,7 @@ jobs:
           grep -Fq 'activeStrategy == "SHOCK" &&' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 419 safe automatic read-only history navigation before rearming
+      - name: Verify 420 safe automatic read-only history navigation before rearming
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
@@ -264,7 +264,7 @@ jobs:
           grep -Fq 'activeStrategy == "SHOCK" &&' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 419 five-minute wait, two positive zero-open reads and one SHOCK-only DEMO attempt
+      - name: Verify 420 five-minute wait, two positive zero-open reads and one SHOCK-only DEMO attempt
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
@@ -283,7 +283,7 @@ jobs:
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 419 DEMO auto order depends on confirmed SHOCK and broker, not bell preference
+      - name: Verify 420 DEMO auto order depends on confirmed SHOCK and broker, not bell preference
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
@@ -301,7 +301,7 @@ jobs:
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           grep -Fq 'val real = labels.any' "$T"
 
-      - name: Verify 419 OCR evidence is read-only, same-package, and two-frame verified
+      - name: Verify 420 OCR evidence is read-only, same-package, and two-frame verified
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
@@ -321,7 +321,7 @@ jobs:
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 419 empty-trade-list recognition does not allow blind unlock
+      - name: Verify 420 empty-trade-list recognition does not allow blind unlock
         run: |
           set -e
           T=.github/native-overlay/TouchTestService.kt
@@ -336,7 +336,7 @@ jobs:
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 419 BIP strategy distinction and no duplicate DEMO order
+      - name: Verify 420 BIP strategy distinction and no duplicate DEMO order
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
@@ -352,7 +352,7 @@ jobs:
           grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 419 broker-window read-only fallback cannot authorize gestures
+      - name: Verify 420 broker-window read-only fallback cannot authorize gestures
         run: |
           set -e
           T=.github/native-overlay/TouchTestService.kt
@@ -779,7 +779,7 @@ jobs:
           grep -Fq 'if (state != State.SUBMITTING) return false' "$G"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 419 no blind unlocking of old DEMO position guard
+      - name: Verify 420 no blind unlocking of old DEMO position guard
         run: |
           set -euo pipefail
           T=.github/native-overlay/TouchTestService.kt
@@ -963,6 +963,22 @@ jobs:
           test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
           test -s scalp-atlas-new/android/app/src/main/res/raw/scalp_sell_bip.wav
 
+      - name: Verify 420 same-candle color flip preserves all other entry gates
+        run: |
+          set -e
+          E=scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'Math.abs(bottom.x-start.x)>tolerance' "$E"
+          grep -Fq 'Math.abs(latest.x-start.x)>tolerance' "$E"
+          grep -Fq 'shockRecovered:confirmed' "$E"
+          grep -Fq 'shockSameCandle:confirmed' "$E"
+          grep -Fq 'if(recovery/drop<minRecoveryFraction)continue;' "$E"
+          grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20)continue;' "$E"
+          grep -Fq "candle.trendDirection!==candle.dir" "$E"
+          grep -Fq 'var minBody=Math.max(10,h*.035)' "$E"
+          grep -Fq 'var minMove=Math.max(7,h*.018)' "$E"
+          grep -Fq 'colorFlipBuy.shockDirection' .github/scripts/test_shock_broker_capture.mjs
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
       - name: Regression test SHOCK + SCALP TREND M5 on one broker screen
         run: |
           node .github/scripts/test_shock_broker_capture.mjs
@@ -1080,12 +1096,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-419-SHOC-AUTO-SAFE-G24.apk
+          cp "$APK" ScalpAtlas-420-SHOC-COLOR-REVERSAL-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-419
-          path: ScalpAtlas-419-SHOC-AUTO-SAFE-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-420
+          path: ScalpAtlas-420-SHOC-COLOR-REVERSAL-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1094,13 +1110,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-419-SHOC-AUTO-SAFE-G24.apk"
+          FILE="ScalpAtlas-420-SHOC-COLOR-REVERSAL-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator419-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator420-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 419 PREFLIGHT INAINTE DE GEST DEMO • ${GITHUB_SHA:0:12}" \
+            --title "SCALP ATLAS 420 SOC ACEEASI LUMANARE CU SCHIMBARE CULOARE • ${GITHUB_SHA:0:12}" \
             --notes "417: navigare automata doar in QT Demo catre Tranzactii si Deschis, verificarea a doua citiri independente de 0 pozitii dupa pauza 5 minute, revenire prin Back numai de pe pagina istoric reala; niciun BUY/SELL din navigare. Afisare explicita a motivului pentru care bipul nu plaseaza un ordin: semnal SCALP M5 sau blocaj istoric. Citire mai rapida a verificarii DEMO, recunoastere expresii exacte pentru lista Deschis goala. Recunoastere fereastra broker din serviciul de accesibilitate, fara confuzie cu com.android.systemui. Verificare istoric: ecranul Tranzactii poate ascunde QT Demo. Acceptam dovada QT Demo vazuta pe grafic in acelasi broker in ultimele 90 secunde numai pentru citirea listei Deschis explicit goale. Numai dupa ce utilizatorul deschide Pocket Option QT Demo > Tranzactii > Deschis si brokerul afiseaza explicit Nu exista tranzactii plasate, confirmat de doua citiri separate si dupa pauza de 5 minute de la ultimul gest, se sterge blocajul vechi pentru urmatorul SOC. Fara butoane noi. Nu exista garantie de semnal/ordin, QT REAL ramane blocat, 1 USD si payout >=92%. Include reparatiile 407 si 408. Build $GITHUB_SHA." \
             --prerelease
