@@ -3608,36 +3608,65 @@ class ScalpOverlayService : Service() {
         if (!readyForDemo) {
           touchProbeStatus?.text =
             "FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC"
-        } else if (!tradePositionGate.beginAttempt()) {
-          touchProbeStatus?.text =
-            "FĂRĂ ORDIN NOU • POZIȚIE ANTERIOARĂ NECONFIRMATĂ"
         } else {
-          // Persist before invoking ANY broker gesture. A crash after an
-          // attempted click must not cause another attempt on restart.
-          val saved = getSharedPreferences(
-            autoShockAttemptPrefs, Context.MODE_PRIVATE
-          ).edit().putBoolean("attempted", true).commit()
-          if (!saved) {
-            // This branch has made NO gesture. Undo the in-memory attempt
-            // without weakening guards for accepted/uncertain gestures.
-            tradePositionGate.cancelBeforeDispatch()
+          // 419: CRITICAL ORDERING FIX. In 418 the prior-attempt marker was
+          // committed BEFORE the broker preflight. If WebView rejected an
+          // amount, instrument or payout check, the application nonetheless
+          // consumed the session and could remain locked indefinitely without
+          // even requesting an Android gesture.
+          //
+          // A read-only broker preflight must succeed BEFORE beginAttempt()
+          // or persistent attempted=true. The gesture function still performs
+          // its own fresh preflight after the marker is safely committed.
+          // A rejection before persistence never licenses an automatic retry
+          // of the SAME SHOCK; only a different, new confirmed lock qualifies.
+          val latestPreflight = try {
+            TouchTestService.preflightOneDollarDemoOrder(
+              expectedPair ?: "NEIDENTIFICAT"
+            )
+          } catch (error: Exception) {
+            android.util.Log.e("ScalpAtlasRobot", "419 pre-dispatch DEMO read-only preflight", error)
+            "BLOCAT: VERIFICARE ANDROID " + error.javaClass.simpleName.take(22)
+          }
+          if (!latestPreflight.startsWith("PREGĂTIT AUTO DEMO")) {
+            autoDemoLastPreflightReason = latestPreflight.take(95)
             touchProbeStatus?.text =
-              "FĂRĂ ORDIN • NU POT SALVA BLOCAREA • AȘTEPT ALT ȘOC"
+              "FĂRĂ ORDIN • PREFLIGHT: " + latestPreflight.take(90)
+          } else if (!tradePositionGate.beginAttempt()) {
+            touchProbeStatus?.text =
+              "FĂRĂ ORDIN NOU • POZIȚIE ANTERIOARĂ NECONFIRMATĂ"
           } else {
-            autoDemoSessionConsumed = true // only a persisted attempt consumes session
-            autoDemoArmed = false
-            autoDemoMarket = null
-            autoDemoExpiry = 0L
-            autoDemoButton?.text = "🤖 PORNEȘTE • ON"
-            // Dispatch accepted by Android is NOT a confirmed broker trade.
-            // Remain UNKNOWN until the broker supplies a closure receipt.
-            try {
+            // Once an actual gesture MAY be attempted, persist the global
+            // one-shot marker first. A crash must NEVER duplicate a trade.
+            val saved = getSharedPreferences(
+              autoShockAttemptPrefs, Context.MODE_PRIVATE
+            ).edit().putBoolean("attempted", true).commit()
+            if (!saved) {
+              tradePositionGate.cancelBeforeDispatch()
               touchProbeStatus?.text =
-                TouchTestService.pressAutoOneDollarDemoOrderOnce(
-                  activeSignal, expectedPair ?: "NEIDENTIFICAT"
-                )
-            } finally {
-              tradePositionGate.uncertainResult()
+                "FĂRĂ ORDIN • NU POT SALVA BLOCAREA • AȘTEPT ALT ȘOC"
+            } else {
+              autoDemoSessionConsumed = true // only a persisted attempt consumes session
+              autoDemoArmed = false
+              autoDemoMarket = null
+              autoDemoExpiry = 0L
+              autoDemoButton?.text = "🤖 PORNEȘTE • ON"
+              // An Android gesture is NOT a verified broker order.
+              // If ANY later validation fails, do not blindly replay: the
+              // attempted state stays UNKNOWN until explicit empty review.
+              try {
+                touchProbeStatus?.text =
+                  TouchTestService.pressAutoOneDollarDemoOrderOnce(
+                    activeSignal, expectedPair ?: "NEIDENTIFICAT"
+                  )
+              } catch (error: Exception) {
+                android.util.Log.e("ScalpAtlasRobot", "419 uncertain gesture", error)
+                touchProbeStatus?.text =
+                  "GEST NECONFIRMAT • ANDROID " + error.javaClass.simpleName.take(22) +
+                    " • VERIFICĂ ISTORIC"
+              } finally {
+                tradePositionGate.uncertainResult()
+              }
             }
           }
         }
