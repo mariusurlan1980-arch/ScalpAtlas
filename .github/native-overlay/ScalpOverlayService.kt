@@ -555,27 +555,38 @@ class ScalpOverlayService : Service() {
             autoDemoSessionConsumed && !autoDemoArmed &&
             !demoClickTestPending &&
             TouchTestService.priorDemoGestureCooldownComplete()
-          val ocrCurrent = cachedDemoReview &&
+          // 416: Qt Demo is often VISIBLE on Transactions > Open. The
+          // 414 OCR fallback erroneously required a CACHED identity only,
+          // so it could never count OCR evidence on a page with visible Qt
+          // Demo. A fresh on-screen QT Demo proof is strictly better than
+          // a same-package cached proof. Both are READ-ONLY; order dispatch
+          // still requires the full independent broker preflight on chart.
+          val verifiedDemoReview = demoVisibleNow || cachedDemoReview
+          val ocrCurrent = verifiedDemoReview &&
             lastEmptyOpenOcrPackage == reviewPackage &&
             emptyOpenOcrConsecutive >= 2 &&
             System.currentTimeMillis() - lastEmptyOpenOcrAt in 0L..4500L
           val explicitZero = eligibleForBrokerEmptyReview && try {
             TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(
-              cachedDemoVerifiedOnChart = cachedDemoReview,
+              cachedDemoVerifiedOnChart = verifiedDemoReview,
               ocrVerifiedEmptyOpenTab = ocrCurrent
             )
           } catch (_: Throwable) { false }
           if (explicitZero) {
             val tick = android.os.SystemClock.elapsedRealtime()
+            // Count two POSITIVE reads at least 2 seconds apart, within a
+            // 20-second window. Transient unreadable accessibility frames
+            // are NOT a negative/empty-trade proof; neither reset a verified
+            // first sample nor count as a second one. Any real account
+            // change resets the sample below.
             if (demoEmptyReviewReads == 0 || tick - demoEmptyReviewFirstAt > 20_000L) {
               demoEmptyReviewReads = 1
               demoEmptyReviewFirstAt = tick
               touchProbeStatus?.text =
                 "VERIFICARE QT DEMO 0 POZIȚII • CONFIRM 1/2"
-            } else {
+            } else if (tick - demoEmptyReviewFirstAt >= 2_000L) {
               demoEmptyReviewReads++
               if (demoEmptyReviewReads >= 2 &&
-                  tick - demoEmptyReviewFirstAt >= 2_000L &&
                   tradePositionGate.brokerVerifiedEmptyDemoReview(true)) {
                 // Both writes must succeed. An uncertain broker gesture is
                 // never cleared from persistent storage based on a chart-only
@@ -612,10 +623,18 @@ class ScalpOverlayService : Service() {
               }
             }
           } else {
-            demoEmptyReviewReads = 0
-            demoEmptyReviewFirstAt = 0L
+            // 416: a temporarily unreadable frame is not a second proof;
+            // preserve the first independent positive sample for <=20 sec.
+            // An expired sample must never permit recovery.
+            val tick = android.os.SystemClock.elapsedRealtime()
+            if (demoEmptyReviewReads > 0 &&
+                tick - demoEmptyReviewFirstAt > 20_000L) {
+              demoEmptyReviewReads = 0
+              demoEmptyReviewFirstAt = 0L
+            }
           }
         } else {
+          // Never carry one broker/account's evidence to another.
           demoEmptyReviewReads = 0
           demoEmptyReviewFirstAt = 0L
           lastDemoTradeStatus = "BROKER/CONT SCHIMBAT • FĂRĂ REARMARE"
@@ -3756,7 +3775,7 @@ class ScalpOverlayService : Service() {
           lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")) {
         touchProbeStatus?.text = when {
           demoEmptyReviewReads == 1 ->
-            "🔒 DEMO • LISTĂ GOALĂ CONFIRMATĂ 1/2 • RĂMÂI PE DESCHIS"
+            "🔒 DEMO • 0 POZIȚII 1/2 • AȘTEPT A DOUA CITIRE"
           activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
             "🔒 BIP " + activeSignal + " • SCALP M5 • ȘOC NECONFIRMAT"
           activeSignal != "NONE" && activeStrategy == "SHOCK" ->
