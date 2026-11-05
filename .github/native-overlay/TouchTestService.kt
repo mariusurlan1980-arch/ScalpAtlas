@@ -1415,22 +1415,29 @@ class TouchTestService : AccessibilityService() {
         else "GATA AUTO DEMO " + side + " • 1 USD • PAYOUT ≥92%"
     }
 
+    /**
+     * The PRECHECK_NO_GESTURE prefix is emitted ONLY before entering the
+     * physical Android gesture helper. These are provably read-only rejects
+     * and may safely release ScalpOverlayService's attempt guard. Any return
+     * from pressAnyPairDemo* is uncertain because its guard may have already
+     * persisted an Android gesture token: never automatically retry those.
+     */
     @Synchronized
     fun pressAutoOneDollarDemoOrderOnce(side: String, expectedPair: String): String {
       // 400: physical gesture follows the verified Qt Demo broker controls.
       // A WebView ACTION_CLICK may be accepted without placing a trade.
       // No gesture is ever permitted on QT Real or unknown broker packages.
       if (side != "BUY" && side != "SELL")
-        return "BLOCAT: DIRECȚIE INVALIDĂ"
+        return "PRECHECK_NO_GESTURE: DIRECȚIE INVALIDĂ"
       if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
           readVisibleDemoPair() != expectedPair)
-        return "BLOCAT: PERECHEA QT DEMO S-A SCHIMBAT"
+        return "PRECHECK_NO_GESTURE: PERECHEA QT DEMO S-A SCHIMBAT"
       // Both buttons, exact 1 USD and payout >=92% must pass again.
       val preview = preflightOneDollarDemoOrder(expectedPair)
       if (!preview.startsWith("PREGĂTIT AUTO DEMO"))
-        return "BLOCAT: " + preview
+        return "PRECHECK_NO_GESTURE: " + preview
       if (readVisibleDemoPair() != expectedPair)
-        return "BLOCAT: PERECHEA S-A SCHIMBAT ÎNAINTE DE GEST"
+        return "PRECHECK_NO_GESTURE: PERECHEA S-A SCHIMBAT ÎNAINTE DE GEST"
       // The existing functions perform another complete preflight, persist
       // a 5-minute broker gesture lock, and dispatch a single physical tap.
       // This is not proof of broker acceptance; closure must be validated
