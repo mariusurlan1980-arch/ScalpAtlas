@@ -3651,21 +3651,49 @@ class ScalpOverlayService : Service() {
               autoDemoMarket = null
               autoDemoExpiry = 0L
               autoDemoButton?.text = "🤖 PORNEȘTE • ON"
-              // An Android gesture is NOT a verified broker order.
-              // If ANY later validation fails, do not blindly replay: the
-              // attempted state stays UNKNOWN until explicit empty review.
+              // The exact second preflight runs immediately before the
+              // physical gesture. Its explicit PRECHECK_NO_GESTURE result
+              // proves that no gesture helper was entered and no broker order
+              // was possible. Only THIS case may safely undo a persisted
+              // attempted marker, and never replay the old SHOCK lock.
               try {
-                touchProbeStatus?.text =
-                  TouchTestService.pressAutoOneDollarDemoOrderOnce(
-                    activeSignal, expectedPair ?: "NEIDENTIFICAT"
-                  )
+                val result = TouchTestService.pressAutoOneDollarDemoOrderOnce(
+                  activeSignal, expectedPair ?: "NEIDENTIFICAT"
+                )
+                if (result.startsWith("PRECHECK_NO_GESTURE:")) {
+                  val cleared = getSharedPreferences(
+                    autoShockAttemptPrefs, Context.MODE_PRIVATE
+                  ).edit().putBoolean("attempted", false).commit()
+                  if (cleared && tradePositionGate.cancelBeforeDispatch()) {
+                    autoDemoSessionConsumed = false
+                    autoDemoArmed = false
+                    autoDemoMarket = null
+                    autoDemoExpiry = 0L
+                    autoDemoLastPreflightAt = 0L
+                    autoDemoLastPreflightReason =
+                      result.removePrefix("PRECHECK_NO_GESTURE: ").take(95)
+                    touchProbeStatus?.text =
+                      "FĂRĂ GEST • " + autoDemoLastPreflightReason.take(82) +
+                        " • AȘTEPT ALT ȘOC"
+                  } else {
+                    // Inability to persist the rollback is ambiguous: do
+                    // NOT repeat any action until an explicit broker review.
+                    tradePositionGate.uncertainResult()
+                    touchProbeStatus?.text =
+                      "BLOCAT: NU POT MEMORA ANULAREA • FĂRĂ REPETARE"
+                  }
+                } else {
+                  // Any result from a physical gesture helper is uncertain
+                  // even if Android reported cancellation or rejection.
+                  tradePositionGate.uncertainResult()
+                  touchProbeStatus?.text = result
+                }
               } catch (error: Exception) {
                 android.util.Log.e("ScalpAtlasRobot", "419 uncertain gesture", error)
+                tradePositionGate.uncertainResult()
                 touchProbeStatus?.text =
                   "GEST NECONFIRMAT • ANDROID " + error.javaClass.simpleName.take(22) +
                     " • VERIFICĂ ISTORIC"
-              } finally {
-                tradePositionGate.uncertainResult()
               }
             }
           }
