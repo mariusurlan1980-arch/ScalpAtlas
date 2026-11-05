@@ -161,6 +161,7 @@ class ScalpOverlayService : Service() {
   // This is deliberately NOT inferred from a missing badge on the chart.
   private var demoEmptyReviewReads = 0
   private var demoEmptyReviewFirstAt = 0L
+  private var lastAutoDemoHistoryNavAt = 0L
   // 410: QT Demo can disappear from the header on Transactions > Open.
   // Retain a short read-only proof for the SAME broker package only.
   // Broker ORDER preflight still requires a fresh visible QT Demo header.
@@ -612,6 +613,21 @@ class ScalpOverlayService : Service() {
                     "✅ QT DEMO 0 POZIȚII • BLOCATUL VECHI ELIMINAT"
                   lastDemoTradeStatus =
                     "QT DEMO • LISTĂ DESCHIS GOALĂ VERIFICATĂ 2/2"
+                  // 417: the same verified broker package must remain active.
+                  // Return to chart, then re-read the pair and order controls
+                  // from scratch. No action can execute while on history.
+                  val provenPackage = reviewPackage
+                  mainHandler.postDelayed({
+                    if (!shuttingDown && mediaProjection != null &&
+                        autoDemoSessionRequested && !autoDemoSessionConsumed &&
+                        provenPackage != null &&
+                        TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
+                      touchProbeStatus?.text =
+                        TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+                          cachedDemoVerifiedOnChart = true
+                        )
+                    }
+                  }, 750L)
                 } else {
                   // One failed persistent write still leaves the session
                   // consumed and no new broker gesture can be attempted.
@@ -631,6 +647,19 @@ class ScalpOverlayService : Service() {
                 tick - demoEmptyReviewFirstAt > 20_000L) {
               demoEmptyReviewReads = 0
               demoEmptyReviewFirstAt = 0L
+            }
+            // 417: the user already explicitly enabled this one-shot
+            // autonomous QT Demo session. Do not require them to navigate
+            // Transactions > Deschis over and over: navigate ONLY to safe,
+            // exact text-labelled history controls (never BUY/SELL).
+            // Rate limit to avoid oscillation/reloading a first OCR sample.
+            if (eligibleForBrokerEmptyReview && demoEmptyReviewReads == 0 &&
+                tick - lastAutoDemoHistoryNavAt >= 10_000L) {
+              lastAutoDemoHistoryNavAt = tick
+              val navResult = TouchTestService.advanceDemoHistoryReviewNavigation(
+                cachedDemoVerifiedOnChart = verifiedDemoReview
+              )
+              touchProbeStatus?.text = "🤖 " + navResult.take(105)
             }
           }
         } else {
