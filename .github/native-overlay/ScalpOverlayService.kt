@@ -3477,7 +3477,10 @@ class ScalpOverlayService : Service() {
                   "/" + MARKET_OCR_CONFIRMATIONS +
                   (if (marketVerified) " • STABILIZARE" else " • VERIFICARE")
               else "PERECHE OCR NECITITĂ • MĂRESC SELECTORUL"
-            !tfReady || !bellEnabled -> "TF / BIP NECONFIRMAT"
+            // Audible BIP is a preference, NOT an execution prerequisite.
+            // A verified SHOCK may trigger the one-shot DEMO order with audio
+            // muted; all visual, broker and position safety gates stay on.
+            !tfReady -> "TF NECONFIRMAT"
             !brokerConnected -> "CADRE LIVE NECONFIRMATE"
             else -> try {
               TouchTestService.preflightOneDollarDemoOrder(pair)
@@ -3493,13 +3496,13 @@ class ScalpOverlayService : Service() {
             autoDemoMarket = pair
             autoDemoLockedAt = lockedAt // must see a NEW SHOCK, never replay an old BIP
             autoDemoExpiry = autoDemoSessionEndAt
-            touchProbeStatus?.text = "🤖 DEMO AUTO ACTIV • 1 USD • AȘTEAPTĂ ȘOC"
+            touchProbeStatus?.text = "🤖 DEMO AUTO • 1 USD • AȘTEAPTĂ ȘOC • SUNET OPȚIONAL"
           } else {
             touchProbeStatus?.text = "🤖 DEMO AȘTEAPTĂ: " + diagnostic
           }
         }
       }
-      // One-shot DEMO order ONLY on a NEW SHOCK lock created by a true BIP.
+      // One-shot DEMO order ONLY on a NEW analyzer-confirmed SHOCK lock (sound optional).
       // A five-minute signal display is never a fresh entry instruction.
       if (autoDemoArmed) {
         val expectedPair = autoDemoMarket
@@ -3510,7 +3513,7 @@ class ScalpOverlayService : Service() {
         val pairLostLong = seenPair == "NEIDENTIFICAT" &&
           latestMarketAt > 0L && now - latestMarketAt > MARKET_STALE_MS
         val uiClosed = overlayView == null || !autoDemoSessionRequested
-        val readyForDemo = brokerConnected && bellEnabled &&
+        val readyForDemo = brokerConnected &&
           TouchTestService.ready() && pairReady(now) &&
           !pairMismatch && !pairLostLong &&
           seenPair == expectedPair &&
@@ -3527,7 +3530,7 @@ class ScalpOverlayService : Service() {
         // A transient OCR/capture gap must not cancel the whole arm.
         // Suspend while waiting for evidence; NEVER tap without fresh data.
         if (nowClock >= autoDemoExpiry || pairMismatch || pairLostLong ||
-            uiClosed || !TouchTestService.ready() || !bellEnabled) {
+            uiClosed || !TouchTestService.ready()) {
           if (nowClock >= autoDemoExpiry || uiClosed) {
             autoDemoSessionRequested = false
             autoDemoSessionConsumed = true
@@ -3761,7 +3764,12 @@ class ScalpOverlayService : Service() {
           else -> "🔒 DEMO • " + TouchTestService.demoEmptyReviewDiagnostic().take(72)
         }
       }
-      sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
+      // The old manual SELL pilot must not overwrite current automatic
+      // readiness or lock diagnostics. It is only shown while no automatic
+      // DEMO workflow is in progress and no previous order remains pending.
+      if (!autoDemoSessionRequested && !autoDemoSessionConsumed) {
+        sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
+      }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
       captureStatusText?.setTextColor(
