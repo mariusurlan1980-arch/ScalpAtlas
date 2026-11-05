@@ -250,6 +250,173 @@ class TouchTestService : AccessibilityService() {
       return pkg.takeIf { BrokerAdapterRegistry.hasDemoExecutor(it) }
     }
 
+    // 417: Navigation is restricted to NON-ORDER controls of the already
+    // active, recognized QT Demo broker. The old uncertain order can be
+    // rearmed only by the independent 2/2 explicit empty-Open verification.
+    @Volatile private var demoHistoryNavigationStatus = "ISTORIC NECONSULTAT"
+    fun demoHistoryNavigationDiagnostic(): String = demoHistoryNavigationStatus
+
+    private fun activeDemoHistoryNodes(
+      cachedDemoVerifiedOnChart: Boolean
+    ): Triple<TouchTestService, AccessibilityNodeInfo, List<Pair<AccessibilityNodeInfo, Rect>>>? {
+      val svc = connected ?: return null
+      // For navigation, do NOT use a background window under Android UI.
+      val root = svc.rootInActiveWindow ?: return null
+      val pkg = root.packageName?.toString().orEmpty()
+      if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) return null
+      val display = android.util.DisplayMetrics()
+      try {
+        val manager = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        manager.defaultDisplay.getRealMetrics(display)
+      } catch (_: Throwable) { return null }
+      if (display.widthPixels < 300 || display.heightPixels < 600) return null
+      val result = ArrayList<Pair<AccessibilityNodeInfo, Rect>>()
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      var checked = 0
+      var seenDemo = false
+      var seenReal = false
+      while (queue.isNotEmpty() && checked++ < 350) {
+        val node = queue.removeFirst()
+        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
+          val rect = Rect()
+          node.getBoundsInScreen(rect)
+          if (!rect.isEmpty && rect.left >= 0 && rect.top >= 0 &&
+              rect.right <= display.widthPixels && rect.bottom <= display.heightPixels) {
+            val texts = listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+            if (rect.centerY() < display.heightPixels * 0.29f) {
+              if (texts.any { Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it) })
+                seenReal = true
+              if (texts.any { Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it) })
+                seenDemo = true
+            }
+            if (texts.isNotEmpty()) result.add(node to Rect(rect))
+          }
+        }
+        for (i in 0 until node.childCount.coerceAtMost(35))
+          node.getChild(i)?.let(queue::addLast)
+      }
+      if (seenReal || (!seenDemo && !cachedDemoVerifiedOnChart)) return null
+      return Triple(svc, root, result)
+    }
+
+    private fun clickExactDemoNavigationLabel(
+      svc: TouchTestService,
+      root: AccessibilityNodeInfo,
+      labels: List<Pair<AccessibilityNodeInfo, Rect>>,
+      name: Regex,
+      xMin: Float, xMax: Float, yMin: Float, yMax: Float
+    ): Boolean {
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      val candidates = labels.filter { (node, r) ->
+        r.centerX() in (w * xMin).toInt()..(w * xMax).toInt() &&
+          r.centerY() in (h * yMin).toInt()..(h * yMax).toInt() &&
+          r.width() > 12 && r.height() > 12 &&
+          r.width() < w * 0.42f && r.height() < h * 0.13f &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
+            name.matches(it.replace(Regex("""\s+"""), " ").trim())
+          }
+      }
+      if (candidates.isEmpty()) return false
+      val chosen = candidates.minByOrNull { (_, r) -> r.width() * r.height() }
+        ?: return false
+      // Reject different physical controls with similar labels.
+      if (candidates.any { (_, r) ->
+          kotlin.math.abs(r.centerX() - chosen.second.centerX()) > w * 0.085f ||
+          kotlin.math.abs(r.centerY() - chosen.second.centerY()) > h * 0.035f
+        }) return false
+      if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())
+        return false
+      var current: AccessibilityNodeInfo? = chosen.first
+      for (depth in 0..2) {
+        val node = current ?: break
+        val r = Rect()
+        node.getBoundsInScreen(r)
+        if (node.isClickable && r.width() <= w * 0.48f &&
+            r.height() <= h * 0.14f && r.centerY() in
+            (h * (yMin - 0.04f)).toInt()..(h * (yMax + 0.04f)).toInt() &&
+            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+        current = node.parent
+      }
+      // Fallback is one short touch at the center of the verified NAV LABEL,
+      // never an amount field, BUY or SELL control, or arbitrary coordinate.
+      val rect = chosen.second
+      if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())
+        return false
+      val path = Path().apply { moveTo(rect.exactCenterX(), rect.exactCenterY()) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 80L)).build()
+      return try {
+        svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+      } catch (_: Throwable) { false }
+    }
+
+    fun advanceDemoHistoryReviewNavigation(
+      cachedDemoVerifiedOnChart: Boolean
+    ): String {
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
+        ?: return "ISTORIC AUTO BLOCAT • QT DEMO / FEREASTRĂ NECONFIRMATĂ"
+      val (svc, root, labels) = info
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return "ISTORIC AUTO • ECRAN NECUNOSCUT" }
+      val title = labels.any { (node, r) ->
+        r.centerY() in (metrics.heightPixels * 0.09f).toInt()..
+          (metrics.heightPixels * 0.24f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
+            Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
+          }
+      }
+      val success = if (title) {
+        clickExactDemoNavigationLabel(svc, root, labels,
+          Regex("""(?i)^(?:Deschis|Open)$"""), 0.08f, 0.48f, 0.15f, 0.30f)
+      } else {
+        clickExactDemoNavigationLabel(svc, root, labels,
+          Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""),
+          0.01f, 0.36f, 0.84f, 0.98f)
+      }
+      demoHistoryNavigationStatus = if (!success)
+        "ISTORIC AUTO • CONTROL NECONFIRMAT • FĂRĂ ORDIN"
+      else if (title)
+        "ISTORIC AUTO • FILA DESCHIS • VERIFIC 0 POZIȚII"
+      else
+        "ISTORIC AUTO • DESCHID TRANZACȚII • FĂRĂ ORDIN"
+      return demoHistoryNavigationStatus
+    }
+
+    fun returnToDemoChartAfterVerifiedEmptyReview(
+      cachedDemoVerifiedOnChart: Boolean
+    ): String {
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
+        ?: return "REVINO LA GRAFIC • FEREASTRA DEMO NECONFIRMATĂ"
+      val (svc, root, labels) = info
+      if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())
+        return "REVINO LA GRAFIC • BROKERUL NU ESTE ACTIV"
+      val isHistory = labels.any { (node, _) ->
+        listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
+          Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
+        }
+      }
+      if (!isHistory) return "GRAFIC • VERIFICARE BROKER NECESARĂ"
+      val accepted = try {
+        svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+      } catch (_: Throwable) { false }
+      return if (accepted)
+        "✅ LISTĂ GOALĂ 2/2 • REVIN LA GRAFIC • AȘTEPT ȘOC"
+      else "✅ LISTĂ GOALĂ 2/2 • REVINO LA GRAFIC"
+    }
+
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
       cachedDemoVerifiedOnChart: Boolean = false,
       ocrVerifiedEmptyOpenTab: Boolean = false
