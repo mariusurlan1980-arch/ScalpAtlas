@@ -403,10 +403,20 @@ class TouchTestService : AccessibilityService() {
       val (svc, root, labels) = info
       if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())
         return "REVINO LA GRAFIC • BROKERUL NU ESTE ACTIV"
-      val isHistory = labels.any { (node, _) ->
-        listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
-          Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
-        }
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return "REVINO LA GRAFIC • ECRAN NECUNOSCUT" }
+      // Do not confuse the bottom navigation "Tranzacții" with the actual
+      // history PAGE TITLE. No automatic Back from a live trade chart.
+      val isHistory = labels.any { (node, bounds) ->
+        bounds.centerY() in (metrics.heightPixels * 0.09f).toInt()..
+          (metrics.heightPixels * 0.24f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
+            Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
+          }
       }
       if (!isHistory) return "GRAFIC • VERIFICARE BROKER NECESARĂ"
       val accepted = try {
