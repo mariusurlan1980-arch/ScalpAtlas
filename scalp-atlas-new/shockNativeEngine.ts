@@ -238,7 +238,13 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           for(var j=i+1;j<history.length;j++){
             var bottom=history[j],fallMs=bottom.t-start.t;
             if(fallMs>maxDropMs)break; // slow movement is not a rapid shock
-            if(fallMs<300||bottom.dir!==candle.dir)continue;
+            // A pullback can cross the candle opening price and
+            // temporarily reverse color. Require matching live candle X
+            // across start, intermediate and recovery; all existing
+            // duration, size, wick, trend and second-frame gates stay intact.
+            if(fallMs<300||
+              Math.abs(bottom.x-start.x)>tolerance||
+              Math.abs(latest.x-start.x)>tolerance)continue;
             var drop=candle.dir==='BUY'?bottom.y-start.y:start.y-bottom.y;
             if(drop<minMove)continue;
             var fraction=drop/start.bodyHeight;
