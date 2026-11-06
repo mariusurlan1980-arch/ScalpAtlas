@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 420 SAME CANDLE RETRACEMENT
+name: Build Scalp Atlas 421 SAFE DEMO RECOVERY PLANNER
 
 on:
   push:
-    branches: [feature/scalpatlas-shock-reversal420]
+    branches: [feature/scalpatlas-demo-recovery421]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-420
+  group: scalp-atlas-calculator-test-421
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=420
+          expo['android']['versionCode']=421
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -835,6 +835,35 @@ jobs:
           PY
           grep -q "com.google.mlkit:text-recognition:16.0.1" scalp-atlas-new/android/app/build.gradle
 
+      - name: Validate 421 DEMO recovery calculator safety constraints
+        run: |
+          set -euo pipefail
+          P=.github/native-overlay/DemoRecoveryLedger.kt
+          O=.github/native-overlay/ScalpOverlayService.kt
+          test -s "$P"
+          grep -Fq 'MAX_CYCLE_LOSS_CENTS = 2000L' "$P"
+          grep -Fq 'MAX_SINGLE_STAKE_CENTS = 1000L' "$P"
+          grep -Fq 'onVerifiedDemoOpened(' "$P"
+          grep -Fq 'onVerifiedDemoClosed(' "$P"
+          grep -Fq '!receiptIndependentlyVerified' "$P"
+          grep -Fq 'demoRecoveryLedger.diagnostic(92)' "$O"
+          # Calculation only: no change in the broker's 1 USD execution guards.
+          grep -Fq 'preflightOneDollarDemoOrder(' "$O"
+          grep -Fq 'pressAutoOneDollarDemoOrderOnce(' "$O"
+          python3 - <<'PY'
+          from math import ceil
+          prior=0
+          amounts=[]
+          for _ in range(4):
+              stake=100 if prior==0 else ceil((prior+92)*100/92)
+              amounts.append(stake)
+              prior += stake
+          assert amounts == [100,209,436,910], amounts
+          assert sum(amounts) == 1655
+          assert ceil((1655+92)*100/92) > 1000
+          print("OK: 1.00 / 2.09 / 4.36 / 9.10 then capped")
+          PY
+
       - name: Inject Android live overlay and screen stream
         run: |
           set -e
@@ -848,8 +877,9 @@ jobs:
           cp .github/native-overlay/TouchTestActivity.kt "$JAVA_DIR/TouchTestActivity.kt"
           cp .github/native-overlay/TouchTestService.kt "$JAVA_DIR/TouchTestService.kt"
           cp .github/native-overlay/TradePositionGate.kt "$JAVA_DIR/TradePositionGate.kt"
+          cp .github/native-overlay/DemoRecoveryLedger.kt "$JAVA_DIR/DemoRecoveryLedger.kt"
           cp .github/native-overlay/BrokerAdapterRegistry.kt "$JAVA_DIR/BrokerAdapterRegistry.kt"
-          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt; do
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt DemoRecoveryLedger.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
 
@@ -1096,12 +1126,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-420-SHOC-COLOR-REVERSAL-G24.apk
+          cp "$APK" ScalpAtlas-421-DEMO-RECOVERY-PLAN-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-COMPACT-420
-          path: ScalpAtlas-420-SHOC-COLOR-REVERSAL-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-RECOVERY-PLAN-421
+          path: ScalpAtlas-421-DEMO-RECOVERY-PLAN-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1110,13 +1140,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-420-SHOC-COLOR-REVERSAL-G24.apk"
+          FILE="ScalpAtlas-421-DEMO-RECOVERY-PLAN-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator420-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator421-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 420 SOC ACEEASI LUMANARE CU SCHIMBARE CULOARE • ${GITHUB_SHA:0:12}" \
-            --notes "417: navigare automata doar in QT Demo catre Tranzactii si Deschis, verificarea a doua citiri independente de 0 pozitii dupa pauza 5 minute, revenire prin Back numai de pe pagina istoric reala; niciun BUY/SELL din navigare. Afisare explicita a motivului pentru care bipul nu plaseaza un ordin: semnal SCALP M5 sau blocaj istoric. Citire mai rapida a verificarii DEMO, recunoastere expresii exacte pentru lista Deschis goala. Recunoastere fereastra broker din serviciul de accesibilitate, fara confuzie cu com.android.systemui. Verificare istoric: ecranul Tranzactii poate ascunde QT Demo. Acceptam dovada QT Demo vazuta pe grafic in acelasi broker in ultimele 90 secunde numai pentru citirea listei Deschis explicit goale. Numai dupa ce utilizatorul deschide Pocket Option QT Demo > Tranzactii > Deschis si brokerul afiseaza explicit Nu exista tranzactii plasate, confirmat de doua citiri separate si dupa pauza de 5 minute de la ultimul gest, se sterge blocajul vechi pentru urmatorul SOC. Fara butoane noi. Nu exista garantie de semnal/ordin, QT REAL ramane blocat, 1 USD si payout >=92%. Include reparatiile 407 si 408. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 421 DEMO RECOVERY CALC ONLY • ${GITHUB_SHA:0:12}" \
+            --notes "421: DEMO-only calculator pentru recuperare integrala la payout 92%, prima miza 1 USD, apoi 2.09 / 4.36 / 9.10 daca sunt pierderi VERIFICATE, cu plafon de 20 USD pierdere pe ciclu si 10 USD miza. ACEASTA VARIANTA ESTE READ-ONLY pentru recuperare: nu creste automat suma, deoarece citirea dovezilor WIN/LOSS din istoric nu este inca validata. Mecanismul existent de ordin automat de 1 USD si verificarile QT DEMO sunt neschimbate. Fara promisiune de recuperare, nu LIVE/REAL. Build $GITHUB_SHA." \
             --prerelease
