@@ -660,6 +660,66 @@ class ScalpOverlayService : Service() {
           // a same-package cached proof. Both are READ-ONLY; order dispatch
           // still requires the full independent broker preflight on chart.
           val verifiedDemoReview = demoVisibleNow || cachedDemoReview
+          // 429: After a possibly accepted physical DEMO gesture, inspect
+          // the selected OPEN tab promptly. Waiting for a five-minute
+          // cooldown would miss the only window to capture a live order ID.
+          // A failed/ambiguous OPEN receipt never becomes a LOSS guess.
+          val pendingPrefs429 = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+          val expectedPair429 = pendingPrefs429.getString("expectedPair429", null)
+          val expectedPackage429 = pendingPrefs429.getString("expectedPackage429", null)
+          val expectedStake429 = pendingPrefs429.getLong("expectedStakeCents429", -1L)
+          val expectedPayout429 = pendingPrefs429.getInt("expectedPayout429", -1)
+          val attemptedAt429 = pendingPrefs429.getLong("attemptedAt429", -1L)
+          val pendingReceipt429 = oldShockAttempt && !expectedPair429.isNullOrBlank() &&
+            expectedPackage429 == reviewPackage &&
+            expectedStake429 in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS &&
+            expectedPayout429 in 92..100
+          val openReceiptMissing429 = pendingReceipt429 &&
+            demoRecoveryLedger.verifiedOpenPositionId429() == null
+          if (openReceiptMissing429 && attemptedAt429 > 0L &&
+              nowReview - attemptedAt429 in 0L..110_000L) {
+            val selectedOpenVisual429 =
+              lastOpenTabVisualPackage429 == reviewPackage &&
+              openTabVisualConsecutive429 >= 2 &&
+              System.currentTimeMillis() - lastOpenTabVisualAt429 in 0L..5000L
+            val openReceipt429 = TouchTestService.readDoubleVerifiedDemoReceipt429(
+              expectedPair = expectedPair429!!,
+              cachedDemoVerifiedOnChart = verifiedDemoReview,
+              closed = false,
+              selectedTabVerifiedVisually = selectedOpenVisual429
+            )
+            if (openReceipt429 != null &&
+                openReceipt429.brokerPackage == expectedPackage429 &&
+                openReceipt429.stakeCents == expectedStake429 &&
+                openReceipt429.netProfitCents == null) {
+              val stored = demoRecoveryLedger.onVerifiedDemoOpened(
+                brokerAccountKey = "QT_DEMO:" + expectedPackage429,
+                positionId = openReceipt429.positionId,
+                stakeCents = expectedStake429,
+                payoutPercent = expectedPayout429,
+                receiptIndependentlyVerified = true
+              )
+              if (stored) {
+                touchProbeStatus?.text = "✅ ORDIN DESCHIS DEMO • ID VERIFICAT 2/2"
+                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+              } else {
+                touchProbeStatus?.text =
+                  "BLOCAT: ID OPEN VERIFICAT, DAR REGISTRUL NU ÎL ACCEPTĂ"
+              }
+            } else if (nowReview - lastAutoDemoHistoryNavAt >= 10_000L) {
+              lastAutoDemoHistoryNavAt = nowReview
+              lastAutoDemoHistoryNavStatus =
+                TouchTestService.advanceDemoHistoryReviewNavigation(
+                  cachedDemoVerifiedOnChart = verifiedDemoReview
+                ).take(105)
+              lastAutoDemoHistoryNavStatusAt = nowReview
+              touchProbeStatus?.text = "🔎 DESCHIS DEMO • " +
+                TouchTestService.receiptStatus429().take(65)
+            }
+          } else if (openReceiptMissing429) {
+            touchProbeStatus?.text =
+              "BLOCAT: ID OPEN N-A FOST CONFIRMAT • FĂRĂ RECUPERARE"
+          }
           val ocrCurrent = verifiedDemoReview &&
             lastEmptyOpenOcrPackage == reviewPackage &&
             emptyOpenOcrConsecutive >= 2 &&
