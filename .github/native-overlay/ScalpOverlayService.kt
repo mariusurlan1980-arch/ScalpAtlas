@@ -172,6 +172,10 @@ class ScalpOverlayService : Service() {
   private var lastAutoDemoStakeEditAt = 0L
   private var lastAutoDemoStakeEditResult = ""
   private var lastAutoDemoStakeEditResultAt = 0L
+  // 425: read-only Closed-tab evidence review, never an inferred WIN/LOSS.
+  private var closedHistoryInspectionInProgress = false
+  private var lastClosedInspectionDiagnostic = ""
+  private var lastClosedInspectionAt = 0L
   // 410: QT Demo can disappear from the header on Transactions > Open.
   // Retain a short read-only proof for the SAME broker package only.
   // Broker ORDER preflight still requires a fresh visible QT Demo header.
@@ -183,6 +187,9 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastEmptyOpenOcrAt = 0L
   @Volatile private var lastEmptyOpenOcrPackage: String? = null
   @Volatile private var emptyOpenOcrConsecutive = 0
+  @Volatile private var lastClosedTabVisualAt = 0L
+  @Volatile private var lastClosedTabVisualPackage: String? = null
+  @Volatile private var closedTabVisualConsecutive = 0
   private val tradePositionGate = TradePositionGate()
   // 421: DEMO recovery calculator is read-only until a broker CLOSED receipt
   // with matching position ID and audited WIN/LOSS can be verified.
@@ -682,21 +689,61 @@ class ScalpOverlayService : Service() {
                     "QT DEMO • LISTĂ DESCHIS GOALĂ VERIFICATĂ 2/2"
                   lastAutoDemoHistoryNavStatus = ""
                   lastAutoDemoHistoryNavStatusAt = 0L
-                  // 417: the same verified broker package must remain active.
-                  // Return to chart, then re-read the pair and order controls
-                  // from scratch. No action can execute while on history.
+                  // 425: After independently proving ZERO Open positions,
+                  // inspect the actual CLOSED tab before returning to chart.
+                  // It is diagnostic ONLY: an empty Open tab cannot identify a
+                  // matching WIN/LOSS or authorize any stake increase.
                   val provenPackage = reviewPackage
-                  mainHandler.postDelayed({
-                    if (!shuttingDown && mediaProjection != null &&
+                  closedHistoryInspectionInProgress = true
+                  val navigation = TouchTestService.advanceDemoClosedHistoryNavigation(
+                    cachedDemoVerifiedOnChart = verifiedDemoReview
+                  )
+                  lastAutoDemoHistoryNavStatus = navigation.take(105)
+                  lastAutoDemoHistoryNavStatusAt = tick
+                  if (navigation.startsWith("ISTORIC DEMO • DESCHID FILA ÎNCHIS")) {
+                    mainHandler.postDelayed({
+                      val verifiedSameDemo = !shuttingDown && mediaProjection != null &&
                         autoDemoSessionRequested && !autoDemoSessionConsumed &&
                         provenPackage != null &&
-                        TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
-                      touchProbeStatus?.text =
-                        TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
-                          cachedDemoVerifiedOnChart = true
+                        TouchTestService.activeDemoExecutorPackageForReview() == provenPackage
+                      if (verifiedSameDemo) {
+                        val closedEvidenceFresh =
+                          lastClosedTabVisualPackage == provenPackage &&
+                          closedTabVisualConsecutive >= 2 &&
+                          System.currentTimeMillis() - lastClosedTabVisualAt in 0L..5000L
+                        val inspection = TouchTestService.inspectDemoClosedTradeEvidenceReadOnly(
+                          cachedDemoVerifiedOnChart = true,
+                          visuallySelectedClosedTab = closedEvidenceFresh
                         )
-                    }
-                  }, 750L)
+                        lastClosedInspectionDiagnostic = inspection.take(105)
+                        lastClosedInspectionAt = android.os.SystemClock.elapsedRealtime()
+                        // Save counts only, not broker IDs or account balances.
+                        getSharedPreferences("scalp_atlas_live_diagnostics", Context.MODE_PRIVATE)
+                          .edit().putString("closedHistoryInspection425",
+                            lastClosedInspectionDiagnostic).apply()
+                        touchProbeStatus?.text = "🔎 " + lastClosedInspectionDiagnostic
+                        mainHandler.postDelayed({
+                          if (!shuttingDown && mediaProjection != null &&
+                              provenPackage != null &&
+                              TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
+                            TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                          }
+                          closedHistoryInspectionInProgress = false
+                        }, 800L)
+                      } else {
+                        closedHistoryInspectionInProgress = false
+                      }
+                    }, 7000L)
+                  } else {
+                    mainHandler.postDelayed({
+                      if (!shuttingDown && mediaProjection != null &&
+                          provenPackage != null &&
+                          TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
+                        TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                      }
+                      closedHistoryInspectionInProgress = false
+                    }, 750L)
+                  }
                 } else {
                   // One failed persistent write still leaves the session
                   // consumed and no new broker gesture can be attempted.
@@ -2584,6 +2631,32 @@ class ScalpOverlayService : Service() {
     } catch (_: Throwable) { false }
   }
 
+  /**
+   * 425: Only read the visibly selected CLOSED history tab, never infer
+   * selection from the mere existence of the Închis label.
+   */
+  private fun selectedClosedTabVerifiedOnScreen(frame: Bitmap): Boolean {
+    if (frame.width < 300 || frame.height < 600) return false
+    fun median(xs: FloatArray): Double {
+      val values = ArrayList<Double>()
+      for (x in xs) for (y in floatArrayOf(.183f, .198f, .207f)) {
+        val pixel = frame.getPixel(
+          (frame.width * x).toInt().coerceIn(0, frame.width - 1),
+          (frame.height * y).toInt().coerceIn(0, frame.height - 1)
+        )
+        values.add(.2126 * Color.red(pixel) +
+          .7152 * Color.green(pixel) + .0722 * Color.blue(pixel))
+      }
+      values.sort()
+      return values[values.size / 2]
+    }
+    return try {
+      val openFill = median(floatArrayOf(.10f, .14f, .38f, .42f))
+      val closedFill = median(floatArrayOf(.58f, .62f, .87f, .91f))
+      closedFill > 43.0 && closedFill - openFill >= 16.0
+    } catch (_: Throwable) { false }
+  }
+
   /** A second independent OCR sample is mandatory; never use a chart screenshot
    * as evidence that a prior physical broker order is closed. */
   private fun recordExplicitEmptyOpenOcr(
@@ -2615,6 +2688,24 @@ class ScalpOverlayService : Service() {
     val pkg = TouchTestService.activeDemoExecutorPackageForReview()
     val qualified = title && openTab && closedTab && emptyMessage &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
+    // CLOSED-tab proof is independent from OPEN-tab empty-state evidence.
+    // The result amounts on a generic list are NOT proof of WIN/LOSS.
+    val closedSelected = title && openTab && closedTab &&
+      selectedClosedTabVerifiedOnScreen(frame) && pkg != null
+    if (closedSelected) {
+      if (lastClosedTabVisualPackage == pkg &&
+          observedAt - lastClosedTabVisualAt in 1000L..12000L) {
+        closedTabVisualConsecutive = (closedTabVisualConsecutive + 1).coerceAtMost(3)
+      } else {
+        closedTabVisualConsecutive = 1
+      }
+      lastClosedTabVisualAt = observedAt
+      lastClosedTabVisualPackage = pkg
+    } else {
+      lastClosedTabVisualAt = 0L
+      lastClosedTabVisualPackage = null
+      closedTabVisualConsecutive = 0
+    }
     if (qualified) {
       if (lastEmptyOpenOcrPackage == pkg &&
           observedAt - lastEmptyOpenOcrAt in 1000L..12000L) {
@@ -3579,7 +3670,8 @@ class ScalpOverlayService : Service() {
       // payout >=92%, visible-pair and unique BUY/SELL checks as the former button.
       // If Android/WebView cannot prove them, NO ORDER is sent.
       if (autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
-          tradePositionGate.state() == TradePositionGate.State.READY) {
+          tradePositionGate.state() == TradePositionGate.State.READY &&
+          !closedHistoryInspectionInProgress) {
         val nowClock = android.os.SystemClock.elapsedRealtime()
         if (nowClock >= autoDemoSessionEndAt) {
           autoDemoSessionRequested = false
@@ -3670,7 +3762,9 @@ class ScalpOverlayService : Service() {
         // 424 does not yet have a broker-verified dynamic-stake order path.
         // Never submit a new fixed-1USD order after a verified DEMO loss:
         // preparing the next stake field is NOT permission to trade it.
-        if (demoRecoveryLedger.quote(92).lossCents > 0L) {
+        if (closedHistoryInspectionInProgress) {
+          touchProbeStatus?.text = "ISTORIC ÎNCHIS • VERIFICARE READ-ONLY • FĂRĂ ORDIN"
+        } else if (demoRecoveryLedger.quote(92).lossCents > 0L) {
           touchProbeStatus?.text =
             "RECUPERARE DEMO • SUMĂ PREGĂTITĂ • ORDIN DINAMIC ÎNCĂ BLOCAT"
         } else if (!readyForDemo) {
