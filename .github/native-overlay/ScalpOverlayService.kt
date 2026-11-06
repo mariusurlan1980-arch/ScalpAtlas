@@ -13,6 +13,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.PathMeasure
+import android.graphics.RectF
 import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.PixelFormat
@@ -1346,6 +1348,116 @@ class ScalpOverlayService : Service() {
     }
 
   /**
+   * 434: continuous circular LED motion AROUND the rounded status pill.
+   * Only draws within its own background bounds; never adds a window,
+   * changes touch coordinates, blocks broker controls, or affects SHOCK.
+   * A dim mint ring stays visible for the complete overlay lifetime while
+   * a brighter green-to-cyan arc travels once around the whole perimeter.
+   */
+  private class TravelingNeonEdge434(private val density: Float) :
+    android.graphics.drawable.Drawable() {
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+      style = Paint.Style.FILL
+      color = Color.rgb(249, 250, 250)
+    }
+    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+      style = Paint.Style.STROKE
+      strokeCap = Paint.Cap.ROUND
+      strokeJoin = Paint.Join.ROUND
+    }
+    var progress = 0f
+      set(value) {
+        field = value
+        invalidateSelf()
+      }
+
+    override fun draw(canvas: Canvas) {
+      if (bounds.width() < 12 || bounds.height() < 12) return
+      val outer = RectF(bounds)
+      val radius = 18f * density
+      canvas.drawRoundRect(outer, radius, radius, fill)
+      // Glow is inset, so Android never clips the luminous border outside
+      // the real 176dp overlay window or shifts the user's drag target.
+      val inset = 4f * density
+      val inner = RectF(outer).apply { inset(inset, inset) }
+      val corner = (radius - inset).coerceAtLeast(3f * density)
+      stroke.strokeWidth = 1.5f * density
+      stroke.color = Color.argb(160, 49, 197, 159)
+      canvas.drawRoundRect(inner, corner, corner, stroke)
+
+      val perimeter = Path().apply {
+        addRoundRect(inner, corner, corner, Path.Direction.CW)
+      }
+      val measure = PathMeasure(perimeter, true)
+      val total = measure.length
+      if (total <= 0f) return
+      // Trailing 28% luminous arc with green -> teal highlights, traveling
+      // around ALL four sides and the rounded corners continuously.
+      val tail = total * 0.28f
+      val head = ((progress % 1f) + 1f) % 1f * total
+      val steps = 16
+      for (i in 0 until steps) {
+        val from = ((head - tail + (i.toFloat() / steps) * tail) % total +
+          total) % total
+        val next = from + tail / steps + 0.35f * density
+        val segment = Path()
+        if (next <= total) {
+          measure.getSegment(from, next, segment, true)
+        } else {
+          measure.getSegment(from, total, segment, true)
+          measure.getSegment(0f, next - total, segment, true)
+        }
+        val t = i.toFloat() / (steps - 1)
+        val r = (104f - 68f * t).toInt()
+        val g = (225f - 7f * t).toInt()
+        val b = (88f + 132f * t).toInt()
+        stroke.color = Color.argb((28 + 82 * t).toInt(), r, g, b)
+        stroke.strokeWidth = 7.5f * density
+        canvas.drawPath(segment, stroke)
+        stroke.color = Color.argb((80 + 135 * t).toInt(), r, g, b)
+        stroke.strokeWidth = 3.5f * density
+        canvas.drawPath(segment, stroke)
+        stroke.color = Color.argb((150 + 105 * t).toInt(), r, g, b)
+        stroke.strokeWidth = 1.7f * density
+        canvas.drawPath(segment, stroke)
+      }
+    }
+
+    override fun setAlpha(alpha: Int) {
+      fill.alpha = alpha
+      invalidateSelf()
+    }
+    override fun setColorFilter(colorFilter: ColorFilter?) {
+      fill.colorFilter = colorFilter
+      stroke.colorFilter = colorFilter
+      invalidateSelf()
+    }
+    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+  }
+
+  private var neonEdgeDrawable434: TravelingNeonEdge434? = null
+  private var neonEdgeAnimator434: ValueAnimator? = null
+
+  private fun startNeonEdge434() {
+    neonEdgeAnimator434?.cancel()
+    neonEdgeAnimator434 = ValueAnimator.ofFloat(0f, 1f).apply {
+      duration = 3200L
+      repeatCount = ValueAnimator.INFINITE
+      interpolator = LinearInterpolator()
+      addUpdateListener { frame ->
+        neonEdgeDrawable434?.progress = frame.animatedValue as Float
+      }
+      start()
+    }
+  }
+
+  private fun stopNeonEdge434() {
+    neonEdgeAnimator434?.cancel()
+    neonEdgeAnimator434 = null
+    neonEdgeDrawable434 = null
+  }
+
+  /**
    * Compact white floating overlay approved from the 3.2.7 reference image.
    * Percentage is measured SHOCK RETRACEMENT of the forming candle,
    * NEVER optical detection quality or estimated WIN probability.
@@ -1639,11 +1751,10 @@ class ScalpOverlayService : Service() {
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
       setPadding(dp(9), dp(6), dp(9), dp(8))
-      background = GradientDrawable().apply {
-        setColor(Color.rgb(249, 250, 250))
-        cornerRadius = dp(18).toFloat()
-        setStroke(dp(1), Color.rgb(232, 237, 237))
-      }
+      // 434: border LED stays on in compact and expanded modes.
+      // It replaces only the white CARD drawable, not the broker overlay UI.
+      neonEdgeDrawable434 = TravelingNeonEdge434(resources.displayMetrics.density)
+      background = neonEdgeDrawable434
       elevation = dp(7).toFloat()
     }
 
@@ -2482,6 +2593,7 @@ class ScalpOverlayService : Service() {
     overlayView = root
     overlayWindowParams = params
     windowManager.addView(root, params)
+    startNeonEdge434()
   }
 
   /**
@@ -4470,6 +4582,7 @@ class ScalpOverlayService : Service() {
     mainHandler.post {
       stopLiveCameraDot()
       stopPulseRing()
+      stopNeonEdge434()
       stopSignalBlink()
     }
     try {
