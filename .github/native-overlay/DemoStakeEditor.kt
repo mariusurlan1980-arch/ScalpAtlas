@@ -3,7 +3,6 @@ package com.scalpatlas.app
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect
 import android.os.Bundle
-import android.view.ContextThemeWrapper
 import android.view.accessibility.AccessibilityNodeInfo
 import android.content.Context
 import java.util.Locale
@@ -154,15 +153,16 @@ object DemoStakeEditor {
   @Synchronized
   fun setExactDemoStake(
     svc: AccessibilityService,
-    expectedPairMatches: Boolean,
+    expectedPairMatches: () -> Boolean,
     stakeCents: Long
   ): String {
-    if (!expectedPairMatches || stakeCents !in 100L..8272L)
+    if (!expectedPairMatches() || stakeCents !in 100L..3964L)
       return "BLOCAT: PERECHE SAU MIZĂ NECONFIRMATĂ"
     val (before, reason) = inspect(svc)
     if (before == null) return reason
     if (before.balanceCents < stakeCents)
       return "BLOCAT: SOLD DEMO INSUFICIENT"
+    if (!expectedPairMatches()) return "BLOCAT: PERECHE SCHIMBATĂ ÎNAINTE DE EDITARE"
     val old = centsOf(before.input.value) ?: return "BLOCAT: SUMĂ VECHE NECITITĂ"
     val formatted = String.format(Locale.ROOT, "%d.%02d", stakeCents / 100, stakeCents % 100)
     if (old != stakeCents) {
@@ -176,7 +176,7 @@ object DemoStakeEditor {
     // Never trust Android's boolean alone; the fresh broker UI must echo cents.
     val (after, postReason) = inspect(svc)
     if (after == null) return "SUMĂ NECONFIRMATĂ DUPĂ EDITARE • " + postReason
-    if (after.pkg != before.pkg ||
+    if (!expectedPairMatches() || after.pkg != before.pkg ||
         after.payout != before.payout ||
         centsOf(after.input.value) != stakeCents)
       return "SUMĂ NECONFIRMATĂ DUPĂ EDITARE • FĂRĂ ORDIN"
