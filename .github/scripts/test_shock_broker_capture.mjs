@@ -45,9 +45,9 @@ function screen(close,dir='BUY',verticalShift=0,stickyWick=false,trendDir=dir){
     candle(p,369,188,214,'SELL');
   }else if(trendDir==='BUY_WEAK'){
     // Genuine BUY direction, but slope below new 30% threshold.
-    candle(p,314,256,232,'BUY');
-    candle(p,342,251,227,'BUY');
-    candle(p,369,246,222,'BUY');
+    candle(p,314,262,232,'BUY');
+    candle(p,342,258,228,'BUY');
+    candle(p,369,254,224,'BUY');
   }else if(trendDir==='BUY_FLEX_428'){
     // 11px progress over 24px bodies = ~31%: now eligible with evidence.
     candle(p,314,256,232,'BUY');
@@ -67,9 +67,9 @@ function screen(close,dir='BUY',verticalShift=0,stickyWick=false,trendDir=dir){
     candle(p,369,134,159,'SELL');
   }else if(trendDir==='SELL_WEAK'){
     // Genuine SELL direction, but slope below new 30% threshold.
-    candle(p,314,120,145,'SELL');
-    candle(p,342,125,150,'SELL');
-    candle(p,369,130,155,'SELL');
+    candle(p,314,115,145,'SELL');
+    candle(p,342,119,149,'SELL');
+    candle(p,369,123,153,'SELL');
   }
   const open=(dir==='BUY'?230:165)+verticalShift;
   candle(p,391,open,close+verticalShift,dir);
