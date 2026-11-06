@@ -780,7 +780,7 @@ class TouchTestService : AccessibilityService() {
       val rows = visible.filter { it.rect.centerY() in (h * .29f).toInt()..(h * .91f).toInt() }
       // A history page may list several positions. Without row-to-field
       // grouping we deliberately reject such a screen rather than pick one.
-      val idRx = Regex("""(?i)^(?:Order|Trade|Position|Tranzacție|Tranzactie)\s*(?:ID|Nr\.?|#)\s*[:#]?\s*([A-Z0-9_-]{6,30})$""")
+      val idRx = Regex("""(?i)^(?:Ordin\s*:\s*|(?:Order|Trade|Position|Tranzacție|Tranzactie)\s*(?:ID|Nr\.?|#)\s*[:#]?\s*)([A-Z0-9_-]{6,64})$""")
       val stakeRx = Regex("""(?i)^(?:Stake|Amount|Investment|Investiție|Investitie|Miză|Miza|Sumă|Suma)\s*:?\s*((?:USD\s*)?\$?\s*[0-9]+(?:[.,][0-9]{1,2})?\s*(?:USD)?)$""")
       val resultRx = Regex("""(?i)^(?:P/L|Net Profit|Profit|Rezultat|Result)\s*:?\s*([+-]\s*(?:USD\s*)?\$?\s*[0-9]+(?:[.,][0-9]{1,2})?\s*(?:USD)?)$""")
       val ids = rows.filter { idRx.matches(it.value) }
