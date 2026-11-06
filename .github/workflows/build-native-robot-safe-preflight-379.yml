@@ -1074,7 +1074,7 @@ jobs:
           grep -Fq 'shockRecovered:confirmed' "$E"
           grep -Fq 'shockSameCandle:confirmed' "$E"
           grep -Fq 'if(recovery/drop<minRecoveryFraction)continue;' "$E"
-          grep -Fq 'if(latest.wickPixels<start.bodyHeight*.15)continue;' "$E"
+          grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20)continue;' "$E"
           grep -Fq "candle.trendDirection!==candle.dir" "$E"
           grep -Fq 'var minBody=Math.max(10,h*.035)' "$E"
           grep -Fq 'var minMove=Math.max(7,h*.018)' "$E"
