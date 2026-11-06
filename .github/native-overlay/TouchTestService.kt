@@ -996,7 +996,14 @@ class TouchTestService : AccessibilityService() {
     )
     private const val DEMO_TEST_LOCK_MS = 300_000L
 
-    private fun checkOneDollarDemoTarget(side: String, requirePayout92: Boolean = false): DemoOrderCheck {
+    private fun checkOneDollarDemoTarget(
+      side: String,
+      requirePayout92: Boolean = false,
+      expectedStakeCents: Long = 100L
+    ): DemoOrderCheck {
+      if (expectedStakeCents !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS)
+        return DemoOrderCheck(reason = "BLOCAT: MIZĂ PESTE LIMITA DEMO")
+
       val svc = connected ?: return DemoOrderCheck(reason = "ROBOT NECONECTAT")
       if (side != "BUY" && side != "SELL") return DemoOrderCheck(reason = "DIRECȚIE INVALIDĂ")
       val root = svc.rootInActiveWindow ?: return DemoOrderCheck(reason = "BROKERUL NU ESTE ACTIV")
@@ -1248,9 +1255,18 @@ class TouchTestService : AccessibilityService() {
         Regex("""(?i)^\s*Sum[ăa]\s*:?\s*(?:USD\s*|\$\s*)?1(?:[.,]0{1,2})?(?:\s*(?:USD|\$))?\s*$""")
           .matches(it.value)
       }
-      val hasOneDollar = (amountValues.size == 1 &&
-        strictOne.matches(amountValues.single())) ||
-        (amountValues.isEmpty() && inlineOne)
+      val expectedFormatted = String.format(java.util.Locale.ROOT, "%d.%02d",
+        expectedStakeCents / 100L, expectedStakeCents % 100L)
+      // A stake >1 USD is allowed ONLY from one unique, real editable input.
+      // Never use label-only 1 USD fallback or payout echo for larger stakes.
+      val hasDynamicStake = expectedStakeCents > 100L &&
+        editableValues.size == 1 && editableValues.single() == expectedFormatted &&
+        amountValues.size == 1 && amountValues.single() == expectedFormatted &&
+        try { DemoStakeEditor.verifiedExactDemoStakeReadOnly(svc, expectedStakeCents) }
+        catch (_: Throwable) { false }
+      val hasOneDollar = hasDynamicStake || (expectedStakeCents == 100L &&
+        ((amountValues.size == 1 && strictOne.matches(amountValues.single())) ||
+        (amountValues.isEmpty() && inlineOne)))
       if (!hasOneDollar)
         return DemoOrderCheck(reason = when {
           amountValues.size > 1 ->
@@ -1274,7 +1290,7 @@ class TouchTestService : AccessibilityService() {
         Regex("""(?<!\d)(\d{1,5}[.,]\d{2})(?!\d)""").find(it.value)
           ?.groupValues?.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
       }.distinct()
-      if (balanceValues.size != 1 || balanceValues[0] < 1.0)
+      if (balanceValues.size != 1 || balanceValues[0] < expectedStakeCents / 100.0)
         return DemoOrderCheck(reason = "BLOCAT: SOLD DEMO NECONFIRMAT SAU SUB 1 USD")
 
       val expression = if (side == "BUY")
