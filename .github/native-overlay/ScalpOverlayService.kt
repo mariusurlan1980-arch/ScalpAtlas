@@ -769,7 +769,10 @@ class ScalpOverlayService : Service() {
                 val savedOldShock = if (pendingReceipt429) true
                   else getSharedPreferences(
                     autoShockAttemptPrefs, Context.MODE_PRIVATE
-                  ).edit().putBoolean("attempted", false).commit()
+                  ).edit().putBoolean("attempted", false)
+                    .remove("expectedPair429").remove("expectedPackage429")
+                    .remove("expectedStakeCents429").remove("expectedPayout429")
+                    .remove("attemptedAt429").commit()
                 if (savedOldSell && savedOldShock) {
                   autoDemoSessionRequested = !pendingReceipt429
                   autoDemoSessionConsumed = pendingReceipt429
@@ -4001,12 +4004,25 @@ class ScalpOverlayService : Service() {
           // its own fresh preflight after the marker is safely committed.
           // A rejection before persistence never licenses an automatic retry
           // of the SAME SHOCK; only a different, new confirmed lock qualifies.
+          val tradePair429 = expectedPair ?: "NEIDENTIFICAT"
+          val stake429 = desiredVerifiedDemoStake429(tradePair429)
+          val payout429 = if (stake429 != null)
+            TouchTestService.readVerifiedDemoPayoutForStake429(tradePair429, stake429)
+          else null
+          val package429 = TouchTestService.activeDemoExecutorPackageForReview()
+          val quoteMatches429 = stake429 != null && payout429 != null &&
+            demoRecoveryLedger.quote(payout429).stakeCents == stake429
           val latestPreflight = try {
-            TouchTestService.preflightOneDollarDemoOrder(
-              expectedPair ?: "NEIDENTIFICAT"
-            )
+            when {
+              !quoteMatches429 || package429 == null ->
+                "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
+              stake429 == 100L ->
+                TouchTestService.preflightOneDollarDemoOrder(tradePair429)
+              else ->
+                TouchTestService.preflightVerifiedDemoStake429(tradePair429, stake429!!)
+            }
           } catch (error: Exception) {
-            android.util.Log.e("ScalpAtlasRobot", "419 pre-dispatch DEMO read-only preflight", error)
+            android.util.Log.e("ScalpAtlas429", "Dynamic DEMO read-only preflight", error)
             "BLOCAT: VERIFICARE ANDROID " + error.javaClass.simpleName.take(22)
           }
           if (!latestPreflight.startsWith("PREGĂTIT AUTO DEMO")) {
@@ -4021,7 +4037,14 @@ class ScalpOverlayService : Service() {
             // one-shot marker first. A crash must NEVER duplicate a trade.
             val saved = getSharedPreferences(
               autoShockAttemptPrefs, Context.MODE_PRIVATE
-            ).edit().putBoolean("attempted", true).commit()
+            ).edit()
+              .putBoolean("attempted", true)
+              .putString("expectedPair429", tradePair429)
+              .putString("expectedPackage429", package429)
+              .putLong("expectedStakeCents429", stake429 ?: -1L)
+              .putInt("expectedPayout429", payout429 ?: -1)
+              .putLong("attemptedAt429", android.os.SystemClock.elapsedRealtime())
+              .commit()
             if (!saved) {
               tradePositionGate.cancelBeforeDispatch()
               touchProbeStatus?.text =
@@ -4038,8 +4061,12 @@ class ScalpOverlayService : Service() {
               // was possible. Only THIS case may safely undo a persisted
               // attempted marker, and never replay the old SHOCK lock.
               try {
-                val result = TouchTestService.pressAutoOneDollarDemoOrderOnce(
-                  activeSignal, expectedPair ?: "NEIDENTIFICAT"
+                val result = if (stake429 == 100L)
+                  TouchTestService.pressAutoOneDollarDemoOrderOnce(
+                    activeSignal, tradePair429
+                  )
+                else TouchTestService.pressVerifiedDemoStakeOnce429(
+                  activeSignal, tradePair429, stake429!!
                 )
                 if (result.startsWith("PRECHECK_NO_GESTURE:")) {
                   val cleared = getSharedPreferences(
