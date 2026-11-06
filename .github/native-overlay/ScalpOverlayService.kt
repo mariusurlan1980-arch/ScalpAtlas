@@ -553,21 +553,37 @@ class ScalpOverlayService : Service() {
       ?: return
     val next = demoRecoveryLedger.quote(verifiedPayout)
     val stake = next.stakeCents ?: return
-    if (next.lossCents <= 0L || stake <= 100L) return
+    // 426: A VERIFIED net-profitable recovery must also restore the
+    // broker's amount field to exactly $1.00. Neither a timer nor a UI
+    // gesture may claim success; DemoStakeEditor re-reads the actual field.
+    val resetToBase = demoRecoveryLedger.needsBaseStakeReset()
+    if ((next.lossCents <= 0L || stake <= 100L) && !resetToBase) return
+    if (resetToBase && stake != DemoRecoveryLedger.BASE_STAKE_CENTS) return
     lastAutoDemoStakeEditAt = nowTick
     val result = try {
       TouchTestService.setVerifiedDemoRecoveryStakeOnBroker(pair, stake)
     } catch (error: Exception) {
-      android.util.Log.e("ScalpAtlas424", "DEMO stake update blocked", error)
+      android.util.Log.e("ScalpAtlas426", "DEMO stake update blocked", error)
       "BLOCAT: MODIFICARE SUMĂ ANDROID"
     }
     lastAutoDemoStakeEditResult = result.take(100)
     lastAutoDemoStakeEditResultAt = nowTick
-    // Keep the display clear: the legacy execution path still permits ONLY
-    // exact 1 USD, so no progressive orders will be sent in 424.
-    touchProbeStatus?.text = if (result.startsWith("SUMĂ QT DEMO CONFIRMATĂ"))
-      "SUMĂ MODIFICATĂ ÎN DEMO • TRADE RECUPERARE NEACTIVAT"
-    else result
+    // Record completed reset only AFTER a broker read-back exactly 1.00.
+    val baseResetAcknowledged = resetToBase &&
+      demoRecoveryLedger.acknowledgeVerifiedBaseStakeReset(
+        result.startsWith("SUMĂ QT DEMO CONFIRMATĂ 1.00 USD")
+      )
+    // The existing order executor is still strictly 1 USD and must NOT
+    // place progressively larger orders until a verified receipt bridge and
+    // full dynamic order preflight are implemented and tested on DEMO.
+    touchProbeStatus?.text = when {
+      baseResetAcknowledged ->
+        "RECUPERARE ÎNCHEIATĂ • SUMA DEMO RESTABILITĂ LA 1 USD"
+      resetToBase -> "RESET 1 USD NECONFIRMAT • " + result.take(76)
+      result.startsWith("SUMĂ QT DEMO CONFIRMATĂ") ->
+        "SUMĂ MODIFICATĂ ÎN DEMO • TRADE RECUPERARE NEACTIVAT"
+      else -> result
+    }
   }
 
   private fun startBrokerAccountMonitor() {
