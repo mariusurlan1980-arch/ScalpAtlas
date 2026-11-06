@@ -565,6 +565,142 @@ class TouchTestService : AccessibilityService() {
       return closedEvidenceDiagnostic427
     }
 
+
+    /**
+     * 429: A verified receipt is a real, visible ID + amount on a SELECTED
+     * broker history tab, observed identically in two separate reads.
+     * No inference from green UI, changed balance, a touch or elapsed time.
+     * No broker credentials, amounts or IDs are logged or displayed.
+     */
+    data class DemoTradeReceipt429(
+      val brokerPackage: String,
+      val pair: String,
+      val positionId: String,
+      val stakeCents: Long,
+      val netProfitCents: Long?
+    )
+    private var openReceiptKey429: String? = null
+    private var openReceiptAt429 = 0L
+    private var closedReceiptKey429: String? = null
+    private var closedReceiptAt429 = 0L
+    @Volatile private var receiptStatus429 = "ISTORIC • AȘTEPT ID ȘI MIZĂ"
+    fun receiptStatus429(): String = receiptStatus429
+
+    private fun parseExactCents429(text: String, signed: Boolean): Long? {
+      val compact = text.trim().replace(Regex("""(?i)USD|\$|\s+"""), "")
+        .replace(',', '.')
+      val expr = if (signed)
+        Regex("""^([+-])([0-9]{1,5})(?:\.([0-9]{1,2}))?$""")
+      else Regex("""^([0-9]{1,5})(?:\.([0-9]{1,2}))?$""")
+      val match = expr.matchEntire(compact) ?: return null
+      val sign = if (signed && match.groupValues[1] == "-") -1L else 1L
+      val baseIndex = if (signed) 2 else 1
+      val whole = match.groupValues[baseIndex].toLongOrNull() ?: return null
+      val fractional = match.groupValues[baseIndex + 1]
+      val cents = when (fractional.length) {
+        0 -> 0L
+        1 -> fractional.toLongOrNull()?.times(10L) ?: return null
+        else -> fractional.toLongOrNull() ?: return null
+      }
+      return sign * (whole * 100L + cents)
+    }
+
+    fun readDoubleVerifiedDemoReceipt429(
+      expectedPair: String,
+      cachedDemoVerifiedOnChart: Boolean,
+      closed: Boolean,
+      selectedTabVerifiedVisually: Boolean
+    ): DemoTradeReceipt429? {
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
+        ?: return null.also { receiptStatus429 = "BROKER DEMO NECONFIRMAT" }
+      val (svc, root, labels) = info
+      val display = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(display)
+      } catch (_: Throwable) { return null }
+      val w = display.widthPixels
+      val h = display.heightPixels
+      if (w < 300 || h < 650 ||
+          expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
+          svc.rootInActiveWindow?.packageName != root.packageName)
+        return null
+      data class TextRect(val value: String, val rect: Rect, val selected: Boolean)
+      val visible = labels.flatMap { (node, rect) ->
+        listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+          .map { it.replace(Regex("""\s+"""), " ").trim().take(120) }
+          .filter { it.isNotBlank() }
+          .map { TextRect(it, rect, node.isSelected || node.isChecked) }
+      }.distinctBy { it.value + "@" + it.rect.toShortString() }
+      if (visible.any { Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.value) })
+        return null.also { receiptStatus429 = "CONT REAL • FĂRĂ RECUPERARE" }
+      if (visible.none { it.rect.centerY() in (h * .09f).toInt()..(h * .24f).toInt() &&
+        Regex("""(?i)^(Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.value) })
+        return null
+      val selected = visible.any {
+        it.rect.centerY() in (h * .15f).toInt()..(h * .31f).toInt() &&
+        it.rect.centerX() in (if (closed) (w * .48f).toInt()..w
+          else 0..(w * .52f).toInt()) &&
+        Regex(if (closed) """(?i)^(Închis|Inchis|Closed)$"""
+          else """(?i)^(Deschis|Open)$""").matches(it.value) &&
+        it.selected
+      }
+      if (!selected && !selectedTabVerifiedVisually)
+        return null.also { receiptStatus429 = "FILA ISTORICULUI NU ESTE SELECTATĂ" }
+
+      val rows = visible.filter { it.rect.centerY() in (h * .29f).toInt()..(h * .91f).toInt() }
+      // A history page may list several positions. Without row-to-field
+      // grouping we deliberately reject such a screen rather than pick one.
+      val idRx = Regex("""(?i)^(?:Order|Trade|Position|Tranzacție|Tranzactie)\s*(?:ID|Nr\.?|#)\s*[:#]?\s*([A-Z0-9_-]{6,30})$""")
+      val stakeRx = Regex("""(?i)^(?:Stake|Amount|Investment|Investiție|Investitie|Miză|Miza|Sumă|Suma)\s*:?\s*((?:USD\s*)?\$?\s*[0-9]+(?:[.,][0-9]{1,2})?\s*(?:USD)?)$""")
+      val resultRx = Regex("""(?i)^(?:P/L|Net Profit|Profit|Rezultat|Result)\s*:?\s*([+-]\s*(?:USD\s*)?\$?\s*[0-9]+(?:[.,][0-9]{1,2})?\s*(?:USD)?)$""")
+      val ids = rows.filter { idRx.matches(it.value) }
+      val stakes = rows.filter { stakeRx.matches(it.value) }
+      val pnls = rows.filter { resultRx.matches(it.value) }
+      val fx = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}(?:\s+OTC)?\b""")
+      val pairs = rows.mapNotNull { fx.find(it.value)?.value?.uppercase() }.distinct()
+      if (ids.size != 1 || stakes.size != 1 ||
+          (if (closed) pnls.size != 1 else pnls.isNotEmpty()) ||
+          pairs.size != 1 || pairs.single().replace(Regex("""\s+"""), " ") !=
+          expectedPair.uppercase().replace(Regex("""\s+"""), " ")) {
+        receiptStatus429 = "ID/MIZĂ/P-L/PERECHE NECONFIRMATE • FĂRĂ RECUPERARE"
+        return null
+      }
+      val id = idRx.matchEntire(ids.single().value)?.groupValues?.getOrNull(1)
+        ?: return null
+      val stakeValue = stakeRx.matchEntire(stakes.single().value)?.groupValues?.getOrNull(1)
+        ?.let { parseExactCents429(it, false) } ?: return null
+      val pnlValue = if (closed)
+        resultRx.matchEntire(pnls.single().value)?.groupValues?.getOrNull(1)
+          ?.let { parseExactCents429(it, true) } ?: return null
+        else null
+      if (stakeValue !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
+          (pnlValue != null && (pnlValue < -stakeValue || pnlValue > stakeValue))) {
+        receiptStatus429 = "SUMĂ/P-L NECONFORMĂ • FĂRĂ RECUPERARE"
+        return null
+      }
+      val coordinates = listOf(ids.single().rect.centerY(), stakes.single().rect.centerY()) +
+        (if (closed) listOf(pnls.single().rect.centerY()) else emptyList())
+      if (coordinates.maxOrNull()!! - coordinates.minOrNull()!! > (h * .16f).toInt())
+        return null
+      val key = listOf(root.packageName?.toString(), expectedPair, closed,
+        id, stakeValue, pnlValue).joinToString("|")
+      val now = android.os.SystemClock.elapsedRealtime()
+      val priorKey = if (closed) closedReceiptKey429 else openReceiptKey429
+      val priorAt = if (closed) closedReceiptAt429 else openReceiptAt429
+      if (key != priorKey || now - priorAt !in 1_500L..15_000L) {
+        if (closed) { closedReceiptKey429 = key; closedReceiptAt429 = now }
+        else { openReceiptKey429 = key; openReceiptAt429 = now }
+        receiptStatus429 = if (closed) "ÎNCHIS: ID ȘI P/L 1/2" else "DESCHIS: ID ȘI SUMĂ 1/2"
+        return null
+      }
+      receiptStatus429 = if (closed) "ÎNCHIS: ID ȘI P/L VERIFICATE 2/2"
+        else "DESCHIS: ID ȘI SUMĂ VERIFICATE 2/2"
+      return DemoTradeReceipt429(root.packageName?.toString().orEmpty(),
+        expectedPair, id, stakeValue, pnlValue)
+    }
+
     fun returnToDemoChartAfterVerifiedEmptyReview(
       cachedDemoVerifiedOnChart: Boolean
     ): String {
