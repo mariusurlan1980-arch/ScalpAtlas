@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 424 VERIFIED DEMO STAKE PREPARATION
+name: Build Scalp Atlas 425 DEMO CLOSED TRADE EVIDENCE READONLY
 
 on:
   push:
-    branches: [feature/scalpatlas-auto-demo-amount424]
+    branches: [feature/scalpatlas-closed-result-inspection425]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-424
+  group: scalp-atlas-calculator-test-425
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=424
+          expo['android']['versionCode']=425
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -835,7 +835,7 @@ jobs:
           PY
           grep -q "com.google.mlkit:text-recognition:16.0.1" scalp-atlas-new/android/app/build.gradle
 
-      - name: Validate 424 DEMO recovery calculator safety constraints
+      - name: Validate 425 DEMO recovery calculator safety constraints
         run: |
           set -euo pipefail
           P=.github/native-overlay/DemoRecoveryLedger.kt
@@ -855,6 +855,12 @@ jobs:
           grep -Fq 'readVerifiedDemoPayoutForPair(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'TRADE RECUPERARE NEACTIVAT' "$O"
           grep -Fq 'ORDIN DINAMIC ÎNCĂ BLOCAT' "$O"
+          grep -Fq 'advanceDemoClosedHistoryNavigation(' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'inspectDemoClosedTradeEvidenceReadOnly(' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'lastClosedTabVisualAt' "$O"
+          grep -Fq 'selectedClosedTabVerifiedOnScreen(frame)' "$O"
+          grep -Fq 'closedHistoryInspectionInProgress' "$O"
+          grep -Fq 'FĂRĂ RECUPERARE' .github/native-overlay/TouchTestService.kt
           # Calculation only: no change in the broker's 1 USD execution guards.
           grep -Fq 'preflightOneDollarDemoOrder(' "$O"
           grep -Fq 'pressAutoOneDollarDemoOrderOnce(' "$O"
@@ -1137,12 +1143,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-424-AUTO-DEMO-AMOUNT-G24.apk
+          cp "$APK" ScalpAtlas-425-DEMO-CLOSED-HISTORY-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-AMOUNT-EDITOR-424
-          path: ScalpAtlas-424-AUTO-DEMO-AMOUNT-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-CLOSED-HISTORY-425
+          path: ScalpAtlas-425-DEMO-CLOSED-HISTORY-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1151,13 +1157,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-424-AUTO-DEMO-AMOUNT-G24.apk"
+          FILE="ScalpAtlas-425-DEMO-CLOSED-HISTORY-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator424-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator425-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 424 AUTO SUMA DEMO DUPA LOSS VERIFICAT • ${GITHUB_SHA:0:12}" \
-            --notes "424: legatura AUTO dintre calculatorul DEMO si campul SUMA al brokerului, exclusiv cand un receipt real de inchidere a actualizat ledger-ul cu LOSS. Citesc payout actual, verific QT Demo / pereche / sold, folosesc ACTION_SET_TEXT si confirm prin recitire. IMPORTANT: istoricul WIN/LOSS nu este inca conectat la ledger si brokerul nu furnizeaza inca un receipt verificat in build; rezultatul este un modul automat pregatit, NU recuperare autonoma functionala. Tranzactiile 2.09,4.36,... NU se trimit automat: vechea cale ordin 1 USD ramane neschimbata si este blocata dupa o pierdere verificata. Cont de referinta 82.72 USD, maxim 6 pasi. QT Real blocat. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 425 ISTORIC ÎNCHIS DEMO READ-ONLY • ${GITHUB_SHA:0:12}" \
+            --notes "425: NOUA ETAPA scanare automata a filei Tranzactii > Inchis dupa verificarea 2/2 ca nu sunt pozitii DESCHISE. Noul modul cauta dovezi structurate ID, miza si P/L, dar nu presupune WIN/LOSS pe baza banilor colorati sau a lipsei pozitiilor. Citire READ-ONLY, status fara date personale, revenire automata la grafic. Nu modifica sume automat fara dovada brokerului care asociaza ID-ul deschis cu ID-ul inchis. Motorul AUTO 1 USD anterior ramane compatibil, dar cresterile de miza si ordinele progresive nu sunt activate. QT REAL blocat, sold ipotetic 82.72 USD, maximum sase pasi. Build $GITHUB_SHA." \
             --prerelease
