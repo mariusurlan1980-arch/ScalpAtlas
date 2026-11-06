@@ -1815,6 +1815,103 @@ class TouchTestService : AccessibilityService() {
       }
     }
 
+
+    /**
+     * 429: Dynamic DEMO order preflight. Only the ledger's exact quoted amount
+     * is eligible; the caller must prove the matching OPEN/CLOSED receipts.
+     * No assumption about WIN/LOSS or trade acceptance is made here.
+     */
+    fun preflightVerifiedDemoStake429(
+      expectedPair: String,
+      stakeCents: Long
+    ): String {
+      if (stakeCents !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS)
+        return "BLOCAT: MIZĂ ÎN AFARA LIMITELOR"
+      if (readVisibleDemoPair() != expectedPair)
+        return "BLOCAT: PERECHE DEMO DIFERITĂ"
+      val svc = connected ?: return "BLOCAT: ACCESIBILITATE"
+      val at = android.os.SystemClock.elapsedRealtime()
+      val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+        .getLong("lastAcceptedAt", 0L)
+      if (last > 0L && at - last in 0 until DEMO_TEST_LOCK_MS)
+        return "BLOCAT: COOLDOWN 5 MIN"
+      val buy = checkOneDollarDemoTarget("BUY", true, stakeCents)
+      if (buy.target == null) return buy.reason
+      val sell = checkOneDollarDemoTarget("SELL", true, stakeCents)
+      if (sell.target == null) return sell.reason
+      if (stakeCents > 100L && !DemoStakeEditor.verifiedExactDemoStakeReadOnly(svc, stakeCents))
+        return "BLOCAT: SUMĂ DINAMICĂ NECONFIRMATĂ"
+      return "PREGĂTIT AUTO DEMO • MIZĂ VERIFICATĂ " + stakeCents + " CENȚI"
+    }
+
+    /**
+     * Exactly one physical QT DEMO BUY/SELL tap. The caller must first persist
+     * the attempted order + expected amount + payout; a crash cannot repeat
+     * this order. A gesture response is NOT an OPEN receipt.
+     */
+    @Synchronized
+    fun pressVerifiedDemoStakeOnce429(
+      side: String,
+      expectedPair: String,
+      stakeCents: Long
+    ): String {
+      if (side != "BUY" && side != "SELL")
+        return "PRECHECK_NO_GESTURE: DIRECȚIE INVALIDĂ"
+      val preflight = preflightVerifiedDemoStake429(expectedPair, stakeCents)
+      if (!preflight.startsWith("PREGĂTIT AUTO DEMO"))
+        return "PRECHECK_NO_GESTURE: " + preflight
+      val svc = connected ?: return "PRECHECK_NO_GESTURE: ACCESIBILITATE"
+      val check = checkOneDollarDemoTarget(side, true, stakeCents)
+      val target = check.target
+        ?: return "PRECHECK_NO_GESTURE: " + check.reason
+      val other = checkOneDollarDemoTarget(
+        if (side == "BUY") "SELL" else "BUY", true, stakeCents)
+      if (other.target == null)
+        return "PRECHECK_NO_GESTURE: " + other.reason
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return "PRECHECK_NO_GESTURE: ECRAN NECONFIRMAT" }
+      val rect = Rect()
+      target.node.getBoundsInScreen(rect)
+      val x = rect.exactCenterX()
+      val y = rect.exactCenterY()
+      if (rect.width() < 65 || rect.height() < 35 || rect.left < 0 ||
+          rect.top < (metrics.heightPixels * .76f).toInt() ||
+          rect.bottom > (metrics.heightPixels * .96f).toInt() ||
+          rect.right > metrics.widthPixels ||
+          (if (side == "BUY") x >= metrics.widthPixels * .50f
+            else x <= metrics.widthPixels * .50f))
+        return "PRECHECK_NO_GESTURE: ȚINTĂ NECONFIRMATĂ"
+      if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage ||
+          readVisibleDemoPair() != expectedPair ||
+          (stakeCents > 100L &&
+            !DemoStakeEditor.verifiedExactDemoStakeReadOnly(svc, stakeCents)))
+        return "PRECHECK_NO_GESTURE: BROKER / SUMĂ SCHIMBATĂ"
+      val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
+      val tick = android.os.SystemClock.elapsedRealtime()
+      val last = store.getLong("lastAcceptedAt", 0L)
+      if (last > 0L && tick - last in 0 until DEMO_TEST_LOCK_MS)
+        return "PRECHECK_NO_GESTURE: COOLDOWN 5 MIN"
+      if (!store.edit().putLong("lastAcceptedAt", tick).commit())
+        return "PRECHECK_NO_GESTURE: BLOCARE NESALVATĂ"
+      // The attempt is consumed even when Android rejects the gesture.
+      if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage)
+        return "GEST NECONFIRMAT • BROKER SCHIMBAT • FĂRĂ REPETARE"
+      val path = Path().apply { moveTo(x, y) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 85L)).build()
+      return try {
+        val submitted = svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+        if (submitted) "GEST QT DEMO " + side + " TRANSMIS • AȘTEPT ID OPEN"
+        else "GEST ANDROID RESPINS • REZULTAT NECONFIRMAT"
+      } catch (_: Throwable) {
+        "GEST ANDROID NECONFIRMAT • FĂRĂ REPETARE"
+      }
+    }
+
     fun previewOneDollarDemoOrder(side: String): String {
       val svc = connected ?: return "ROBOT NECONECTAT"
       val at = android.os.SystemClock.elapsedRealtime()
