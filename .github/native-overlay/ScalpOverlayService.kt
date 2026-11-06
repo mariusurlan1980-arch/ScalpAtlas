@@ -752,12 +752,16 @@ class ScalpOverlayService : Service() {
                 val savedOldSell = getSharedPreferences(
                   sell404TestPrefs, Context.MODE_PRIVATE
                 ).edit().putBoolean("attempted", false).commit()
-                val savedOldShock = getSharedPreferences(
-                  autoShockAttemptPrefs, Context.MODE_PRIVATE
-                ).edit().putBoolean("attempted", false).commit()
+                // 429: Never clear the persistent attempted flag just
+                // because OPEN is empty. First match a previously verified
+                // OPEN ID to a uniquely verified CLOSED result.
+                val savedOldShock = if (pendingReceipt429) true
+                  else getSharedPreferences(
+                    autoShockAttemptPrefs, Context.MODE_PRIVATE
+                  ).edit().putBoolean("attempted", false).commit()
                 if (savedOldSell && savedOldShock) {
-                  autoDemoSessionRequested = true
-                  autoDemoSessionConsumed = false
+                  autoDemoSessionRequested = !pendingReceipt429
+                  autoDemoSessionConsumed = pendingReceipt429
                   autoDemoArmed = false
                   autoDemoMarket = null
                   autoDemoExpiry = 0L
@@ -786,7 +790,8 @@ class ScalpOverlayService : Service() {
                   if (navigation.startsWith("ISTORIC DEMO • DESCHID FILA ÎNCHIS")) {
                     mainHandler.postDelayed({
                       val verifiedSameDemo = !shuttingDown && mediaProjection != null &&
-                        autoDemoSessionRequested && !autoDemoSessionConsumed &&
+                        ((autoDemoSessionRequested && !autoDemoSessionConsumed) ||
+                          pendingReceipt429) &&
                         provenPackage != null &&
                         TouchTestService.activeDemoExecutorPackageForReview() == provenPackage
                       if (verifiedSameDemo) {
