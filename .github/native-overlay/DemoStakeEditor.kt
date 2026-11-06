@@ -147,6 +147,13 @@ object DemoStakeEditor {
   }
 
   /**
+   * Read-only actual QT Demo payout. We do not assume a fixed 92 percent
+   * when selecting the next stake: broker payout can change with the pair.
+   */
+  fun verifiedDemoPayoutReadOnly(svc: AccessibilityService): Int? =
+    inspect(svc).first?.payout
+
+  /**
    * Called only by a trusted, broker-receipt-verified recovery workflow.
    * This method does NOT authorize an order. It fails closed on any ambiguity.
    */
