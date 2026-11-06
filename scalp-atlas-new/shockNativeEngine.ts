@@ -224,12 +224,12 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var latest=history[history.length-1];
         var minBody=Math.max(10,h*.035); // still require a measurable pre-shock candle
         var minMove=Math.max(7,h*.018);
-        // 428 DEMO FLEX SHOCK: same-candle retracement >35%,
-        // recovery >=25%, separate measured trend >30%, <=15s pullback.
+        // 430 DEMO FLEX SHOCK: measured same-candle retracement >30%,
+        // recovery >=20%, separate trend >25%, <=18s pullback.
         // The second independent SCALP_TREND strategy keeps its 50% slope.
         // Screen-relative measurements are NOT win probabilities.
-        var minShockFraction=.35,maxDropMs=15000,minRecoveryFraction=.25;
-        var minTrendStrengthPercent=30,scalpTrendThreshold=50;
+        var minShockFraction=.30,maxDropMs=18000,minRecoveryFraction=.20;
+        var minTrendStrengthPercent=25,scalpTrendThreshold=50;
         var displayedDepth=0,displayedDropDuration=0,confirmed=false,dir='NONE';
         var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
         for(var i=0;i<history.length-1;i++){
@@ -255,12 +255,12 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             }
             if(percent<=minShockFraction*100||j>=history.length-2)continue;
             var reboundMs=latest.t-bottom.t;
-            if(reboundMs<300||reboundMs>7000)continue;
+            if(reboundMs<300||reboundMs>9000)continue;
             var recovery=candle.dir==='BUY'?bottom.y-latest.y:latest.y-bottom.y;
             if(recovery/drop<minRecoveryFraction)continue;
             // Require a visible same-candle wick, now >=20% of pre-shock
             // body. Preserve physical evidence; never infer a wick from color.
-            if(latest.wickPixels<start.bodyHeight*.20)continue;
+            if(latest.wickPixels<start.bodyHeight*.15)continue;
             // BOTH the observed trend from closed candles AND current LIVE
             // candle color must agree. Never turn a candle color into a trend.
             if(candle.trendDirection!==candle.dir || !candle.trendMeasured ||
@@ -322,11 +322,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // percentage is NOT an entry. No direction is inferred from color.
         var shockBlocker=confirmed?'ȘOC CONFIRMAT':
           displayedDepth===0?'AȘTEAPTĂ ȘOC':
-          displayedDepth<=35?'ȘOC ≤35%':
+          displayedDepth<=30?'ȘOC ≤30%':
           candle.trendDirection==='NONE'?'TREND NECLAR':
           candle.trendDirection!==candle.dir?'CONTRA TREND':
           !candle.trendMeasured || !Number.isFinite(candle.trendStrengthPercent) ||
-            candle.trendStrengthPercent<=minTrendStrengthPercent?'PANTĂ ≤30%':
+            candle.trendStrengthPercent<=minTrendStrengthPercent?'PANTĂ ≤25%':
           candle.wickPixels<minBody*.20?'FITIL SCURT':
           'REVENIRE/TIMP';
         // Diagnostic only: explain why independent M5 SCALP TREND did NOT
@@ -343,7 +343,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         report(frameId,tf,pair,epoch,
           confirmed?'ȘOC rapid și revenire în aceeași lumânare':
           scalpConfirmed?'SCALP TREND: retragere moderată și reluare pe M5':
-          'Aștept ȘOC FLEX 35/25/30 confirmat sau SCALP M5',
+          'Aștept ȘOC FLEX 30/20/25 confirmat sau SCALP M5',
           quality,{
             strategy:strategy,signal:emittedDirection,
             shockDirection:confirmed?dir:'NONE',
