@@ -290,10 +290,11 @@ assert.ok(newlyAdmittedSell.trendStrengthPercent>25 &&
   newlyAdmittedSell.trendStrengthPercent<=35);
 assert.equal(newlyAdmittedSell.shockDirection,'SELL');
 assert.equal(newlyAdmittedSell.shockOpticalVerified,true);
-// Independent M5 SCALP TREND: a moderate, timed pullback and measured
+// Independent M5 SCALP TREND: warmup does not form a 30% SHOCK;
+// a moderate, timed pullback and measured
 // rebound, not a merely descending or ascending candle.
 let scalpBuy;
-for(let i=0;i<8;i++) assertQuiet(analyze(140,'BUY','SCALP-BUY OTC',71,'M5'));
+for(let i=0;i<8;i++) assertQuiet(analyze(155,'BUY','SCALP-BUY OTC',71,'M5'));
 for(const close of [148,162,170,166,157,150])
   scalpBuy=analyze(close,'BUY','SCALP-BUY OTC',71,'M5',0,
     close===166||close===157||close===150);
@@ -307,7 +308,7 @@ assert.ok(scalpBuy.scalpRecoveryPercent>=35);
 assert.ok(scalpBuy.trendStrengthPercent>50);
 assert.ok(scalpBuy.scalpPullbackDurationMs>=700);
 let scalpSell;
-for(let i=0;i<8;i++) assertQuiet(analyze(240,'SELL','SCALP-SELL OTC',72,'M5'));
+for(let i=0;i<8;i++) assertQuiet(analyze(228,'SELL','SCALP-SELL OTC',72,'M5'));
 for(const close of [234,225,215,220,229,235])
   scalpSell=analyze(close,'SELL','SCALP-SELL OTC',72,'M5',0,
     close===220||close===229||close===235);
@@ -318,7 +319,7 @@ assert.equal(scalpSell.scalpOpticalVerified,true);
 assert.ok(scalpSell.scalpRetracementPercent>20 && scalpSell.scalpRetracementPercent<=50);
 assert.ok(scalpSell.scalpRecoveryPercent>=35);
 // SCALP TREND must not fire on M10, even when the price pattern is identical.
-for(let i=0;i<8;i++) assertQuiet(analyze(140,'BUY','SCALP-M10 OTC',73,'M10'));
+for(let i=0;i<8;i++) assertQuiet(analyze(155,'BUY','SCALP-M10 OTC',73,'M10'));
 for(const close of [148,162,170,166,157,150])
   assertQuiet(analyze(close,'BUY','SCALP-M10 OTC',73,'M10',0,
     close===166||close===157||close===150));
