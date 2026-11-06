@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 423 SAFE QT DEMO STAKE EDITOR
+name: Build Scalp Atlas 424 VERIFIED DEMO STAKE PREPARATION
 
 on:
   push:
-    branches: [feature/scalpatlas-demo-stake-editor423]
+    branches: [feature/scalpatlas-auto-demo-amount424]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-423
+  group: scalp-atlas-calculator-test-424
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.7'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=423
+          expo['android']['versionCode']=424
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -835,7 +835,7 @@ jobs:
           PY
           grep -q "com.google.mlkit:text-recognition:16.0.1" scalp-atlas-new/android/app/build.gradle
 
-      - name: Validate 423 DEMO recovery calculator safety constraints
+      - name: Validate 424 DEMO recovery calculator safety constraints
         run: |
           set -euo pipefail
           P=.github/native-overlay/DemoRecoveryLedger.kt
@@ -851,6 +851,10 @@ jobs:
           grep -Fq 'ACTION_SET_TEXT' .github/native-overlay/DemoStakeEditor.kt
           grep -Fq 'QT\s*Real' .github/native-overlay/DemoStakeEditor.kt
           grep -Fq 'before.balanceCents < stakeCents' .github/native-overlay/DemoStakeEditor.kt
+          grep -Fq 'maybePrepareAutomaticDemoRecoveryStake(' "$O"
+          grep -Fq 'readVerifiedDemoPayoutForPair(' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'TRADE RECUPERARE NEACTIVAT' "$O"
+          grep -Fq 'ORDIN DINAMIC ÎNCĂ BLOCAT' "$O"
           # Calculation only: no change in the broker's 1 USD execution guards.
           grep -Fq 'preflightOneDollarDemoOrder(' "$O"
           grep -Fq 'pressAutoOneDollarDemoOrderOnce(' "$O"
@@ -1133,12 +1137,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-423-DEMO-AMOUNT-EDITOR-G24.apk
+          cp "$APK" ScalpAtlas-424-AUTO-DEMO-AMOUNT-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-AMOUNT-EDITOR-423
-          path: ScalpAtlas-423-DEMO-AMOUNT-EDITOR-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.7-AMOUNT-EDITOR-424
+          path: ScalpAtlas-424-AUTO-DEMO-AMOUNT-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1147,13 +1151,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-423-DEMO-AMOUNT-EDITOR-G24.apk"
+          FILE="ScalpAtlas-424-AUTO-DEMO-AMOUNT-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator423-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-calculator424-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 423 EDITARE SUMĂ DEMO CONTROLATĂ • ${GITHUB_SHA:0:12}" \
-            --notes "423: DEMO 82.72 USD buget IPOTETIC, maxim 6 mize: 1 / 2.09 / 4.36 / 9.10 / 18.99 / 39.64. Pasul 7 de 82.72 nu poate fi sustinut dupa pierderea celor 75.18 anterioare; pentru 7 pasi ar fi necesari minimum 157.90 USD initial. Adaugat editor suma QT DEMO, numai pentru camp editabil unic, cu setare exacta si recitire, verificare QT Demo, pereche, payout >=92 si sold. Editorul ramane neinarmat deoarece istoricul brokerului NU confirma inca sigur rezultatul WIN/LOSS: NU modifica automat sume si NU executa ordine progresive. Robotul de 1 USD ramane neschimbat, QT Real blocat. Acesta nu este un APK de recuperare autonoma gata. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 424 AUTO SUMA DEMO DUPA LOSS VERIFICAT • ${GITHUB_SHA:0:12}" \
+            --notes "424: legatura AUTO dintre calculatorul DEMO si campul SUMA al brokerului, exclusiv cand un receipt real de inchidere a actualizat ledger-ul cu LOSS. Citesc payout actual, verific QT Demo / pereche / sold, folosesc ACTION_SET_TEXT si confirm prin recitire. IMPORTANT: istoricul WIN/LOSS nu este inca conectat la ledger si brokerul nu furnizeaza inca un receipt verificat in build; rezultatul este un modul automat pregatit, NU recuperare autonoma functionala. Tranzactiile 2.09,4.36,... NU se trimit automat: vechea cale ordin 1 USD ramane neschimbata si este blocata dupa o pierdere verificata. Cont de referinta 82.72 USD, maxim 6 pasi. QT Real blocat. Build $GITHUB_SHA." \
             --prerelease
