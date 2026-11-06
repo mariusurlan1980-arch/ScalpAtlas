@@ -901,13 +901,21 @@ class TouchTestService : AccessibilityService() {
     /** A persistent 5-minute guard still applies after any Android gesture.
      * A missing/ambiguous Android uptime value cannot authorize recovery.
      */
+    // 431: elapsedRealtime() starts from zero after an Android restart.
+    // A previously persisted gesture tick can then be LARGER than "now"
+    // for hours. Never allow an immediate order across reboot: require
+    // a full five minutes SINCE BOOT plus the usual verified 0-open review.
+    private fun demoCooldownActive431(nowTick: Long, savedTick: Long): Boolean {
+      if (savedTick <= 0L) return false
+      return if (nowTick < savedTick) nowTick < 300_000L
+        else nowTick - savedTick < 300_000L
+    }
+
     fun priorDemoGestureCooldownComplete(): Boolean {
       val svc = connected ?: return false
       val prior = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
         .getLong("lastAcceptedAt", 0L)
-      if (prior == 0L) return true
-      val elapsed = android.os.SystemClock.elapsedRealtime() - prior
-      return elapsed >= 5 * 60_000L
+      return !demoCooldownActive431(android.os.SystemClock.elapsedRealtime(), prior)
     }
 
     fun inspectVisibleDemoOpenBadgeReadOnly(): String {
@@ -1487,7 +1495,7 @@ class TouchTestService : AccessibilityService() {
       val now = android.os.SystemClock.elapsedRealtime()
       val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
         .getLong("lastAcceptedAt", 0L)
-      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(now, last))
         return "BLOCAT: O PROBĂ DEMO ÎN ULTIMELE 5 MINUTE"
       val buy = checkOneDollarDemoTarget("BUY", true)
       if (buy.target == null) return buy.reason
@@ -1519,7 +1527,7 @@ class TouchTestService : AccessibilityService() {
       val now = android.os.SystemClock.elapsedRealtime()
       val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
         .getLong("lastAcceptedAt", 0L)
-      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(now, last))
         return "BLOCAT: O PROBĂ DEMO ÎN ULTIMELE 5 MINUTE"
       val sell = checkOneDollarDemoTarget("SELL", true)
       if (sell.target == null) return sell.reason
@@ -1534,7 +1542,7 @@ class TouchTestService : AccessibilityService() {
       val now = android.os.SystemClock.elapsedRealtime()
       val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
       val last = store.getLong("lastAcceptedAt", 0L)
-      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(now, last))
         return "BLOCAT: LIMITĂ 5 MINUTE • FĂRĂ GEST"
       // Freshly verify exact broker package, QT Demo and absence of QT Real,
       // readable 1 USD, sufficient Demo balance, payout >=92% and unique BUY.
@@ -1599,7 +1607,7 @@ class TouchTestService : AccessibilityService() {
       val now = android.os.SystemClock.elapsedRealtime()
       val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
       val last = store.getLong("lastAcceptedAt", 0L)
-      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(now, last))
         return "BLOCAT: LIMITĂ 5 MINUTE • FĂRĂ GEST"
       // Freshly verify exact broker package, QT Demo and absence of QT Real,
       // readable 1 USD, sufficient Demo balance, payout >=92% and unique SELL.
@@ -1838,7 +1846,7 @@ class TouchTestService : AccessibilityService() {
       val now = android.os.SystemClock.elapsedRealtime()
       val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
         .getLong("lastAcceptedAt", 0L)
-      if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(now, last))
         return "BLOCAT: TRADE DEMO RECENT • AȘTEAPTĂ 5 MINUTE"
       val check = try {
         checkOneDollarDemoTarget(side, true)
@@ -1907,7 +1915,7 @@ class TouchTestService : AccessibilityService() {
       val at = android.os.SystemClock.elapsedRealtime()
       val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
         .getLong("lastAcceptedAt", 0L)
-      if (last > 0L && at - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(at, last))
         return "BLOCAT: COOLDOWN 5 MIN"
       val buy = checkOneDollarDemoTarget("BUY", true, stakeCents)
       if (buy.target == null) return buy.reason
@@ -1967,7 +1975,7 @@ class TouchTestService : AccessibilityService() {
       val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
       val tick = android.os.SystemClock.elapsedRealtime()
       val last = store.getLong("lastAcceptedAt", 0L)
-      if (last > 0L && tick - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(tick, last))
         return "PRECHECK_NO_GESTURE: COOLDOWN 5 MIN"
       if (!store.edit().putLong("lastAcceptedAt", tick).commit())
         return "PRECHECK_NO_GESTURE: BLOCARE NESALVATĂ"
@@ -1991,7 +1999,7 @@ class TouchTestService : AccessibilityService() {
       val at = android.os.SystemClock.elapsedRealtime()
       val last = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
         .getLong("lastAcceptedAt", 0L)
-      if (last > 0L && at - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(at, last))
         return "BLOCAT: O SINGURĂ PROBĂ LA 5 MINUTE"
       return checkOneDollarDemoTarget(side).reason
     }
@@ -2002,7 +2010,7 @@ class TouchTestService : AccessibilityService() {
       val at = android.os.SystemClock.elapsedRealtime()
       val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
       val last = store.getLong("lastAcceptedAt", 0L)
-      if (last > 0L && at - last in 0 until DEMO_TEST_LOCK_MS)
+      if (demoCooldownActive431(at, last))
         return "BLOCAT: EXISTĂ O PROBĂ ÎN ULTIMELE 5 MINUTE"
       val check = checkOneDollarDemoTarget(side)
       val target = check.target ?: return check.reason
