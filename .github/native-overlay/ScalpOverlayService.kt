@@ -4545,6 +4545,17 @@ class ScalpOverlayService : Service() {
             "🔒 DEMO • PAUZĂ DE SIGURANȚĂ 5 MINUTE"
           !TouchTestService.ready() ->
             "🔒 DEMO • ACCESIBILITATE NECONECTATĂ"
+          // 435: Show the TRUE reason after a missing order-ID timeout.
+          // An empty history page never proves the missing OPEN receipt.
+          getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+            .let { prior ->
+              prior.getBoolean("attempted", false) &&
+                !prior.getString("expectedPair429", null).isNullOrBlank() &&
+                demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+                android.os.SystemClock.elapsedRealtime() -
+                  prior.getLong("attemptedAt429", -1L) !in 0L..110_000L
+            } ->
+            "🔒 DEMO • ID ORDIN ANTERIOR NECONFIRMAT • FĂRĂ ORDIN"
           lastAutoDemoHistoryNavStatus.isNotBlank() &&
             android.os.SystemClock.elapsedRealtime() - lastAutoDemoHistoryNavStatusAt in 0L..14_000L ->
             "🔒 DEMO • " + lastAutoDemoHistoryNavStatus.take(90)
