@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 428 FLEX SHOCK DEMO 35-25-30
+name: Build Scalp Atlas 429 VERIFIED QT DEMO LOSS RECOVERY
 
 on:
   push:
-    branches: [feature/scalpatlas-demo-shock-flex428]
+    branches: [feature/scalpatlas-demo-verified-recovery429]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-428
+  group: scalp-atlas-calculator-test-429
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.8'
+          expo['version']='3.2.9'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=428
+          expo['android']['versionCode']=429
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -835,7 +835,7 @@ jobs:
           PY
           grep -q "com.google.mlkit:text-recognition:16.0.1" scalp-atlas-new/android/app/build.gradle
 
-      - name: Validate 428 FLEX SHOCK and 427 CLOSED evidence plus reset guards
+      - name: Validate 429 verified OPEN/CLOSED and dynamic QT DEMO recovery guards
         run: |
           set -euo pipefail
           P=.github/native-overlay/DemoRecoveryLedger.kt
@@ -854,7 +854,7 @@ jobs:
           grep -Fq 'maybePrepareAutomaticDemoRecoveryStake(' "$O"
           grep -Fq 'readVerifiedDemoPayoutForPair(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'TRADE RECUPERARE NEACTIVAT' "$O"
-          grep -Fq 'ORDIN DINAMIC ÎNCĂ BLOCAT' "$O"
+          grep -Fq 'RECUPERARE DEMO • QUOTE / PAYOUT / SOLD NECONFIRMATE' "$O"
           grep -Fq 'advanceDemoClosedHistoryNavigation(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'inspectDemoClosedTradeEvidenceReadOnly(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'lastClosedTabVisualAt' "$O"
@@ -874,6 +874,29 @@ jobs:
           grep -Fq 'OPEN ID NECONECTAT • FĂRĂ RECUPERARE' .github/native-overlay/TouchTestService.kt
           grep -Fq '}, 1800L)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'closedHistoryInspection427' .github/native-overlay/ScalpOverlayService.kt
+          # 429: stale, missing or mismatched receipts CANNOT authorize a
+          # larger DEMO gesture. Both OPEN and CLOSED must use the same ID.
+          grep -Fq 'readDoubleVerifiedDemoReceipt429(' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'selectedOpen429' "$O"
+          grep -Fq 'openTabVisualConsecutive429 >= 2' "$O"
+          grep -Fq 'onVerifiedDemoOpened(' "$O"
+          grep -Fq 'onVerifiedDemoClosed(' "$O"
+          grep -Fq 'closedReceipt429.positionId ==' "$O"
+          grep -Fq 'demoRecoveryLedger.verifiedOpenPositionId429()' "$O"
+          grep -Fq 'closedReceipt429.stakeCents ==' "$O"
+          grep -Fq 'expectedStake429' "$O"
+          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          grep -Fq 'val cleared429 = pendingPrefs429.edit()' "$O"
+          grep -Fq 'autoDemoSessionRequested = false' "$O"
+          grep -Fq 'verifiedExactDemoStakeReadOnly(' .github/native-overlay/DemoStakeEditor.kt
+          grep -Fq 'readVerifiedDemoPayoutForStake429(' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'pressVerifiedDemoStakeOnce429(' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'TouchTestService.pressVerifiedDemoStakeOnce429(' "$O"
+          grep -Fq 'putLong("expectedStakeCents429",' "$O"
+          grep -Fq 'demoRecoveryLedger.quote(payout429).stakeCents == stake429' "$O"
+          grep -Fq 'tradePositionGate.beginAttempt()' "$O"
+          grep -Fq 'MAX_CYCLE_TRADES = 6' .github/native-overlay/DemoRecoveryLedger.kt
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           # 428: narrow signal relaxation only; never remove the one-position
           # guard or the confirmed QT Demo / amount / payout checks.
           grep -Fq 'private const val SHOCK_MIN_DEPTH = 35' "$O"
@@ -888,7 +911,8 @@ jobs:
           grep -Fq 'preflightOneDollarDemoOrder(' "$O"
           grep -Fq 'activeStrategy == "SHOCK"' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
-          # Calculation only: no change in the broker's 1 USD execution guards.
+          # Legacy $1 ordering stays available; recovery orders use a
+          # separate exact-stake, receipt-verified QT DEMO-only path.
           grep -Fq 'preflightOneDollarDemoOrder(' "$O"
           grep -Fq 'pressAutoOneDollarDemoOrderOnce(' "$O"
           python3 - <<'PY'
@@ -1170,12 +1194,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-428-FLEX-SHOCK-G24.apk
+          cp "$APK" ScalpAtlas-429-VERIFIED-RECOVERY-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.8-FLEX-SHOCK-428
-          path: ScalpAtlas-428-FLEX-SHOCK-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.9-RECOVERY-429
+          path: ScalpAtlas-429-VERIFIED-RECOVERY-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1184,13 +1208,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-428-FLEX-SHOCK-G24.apk"
+          FILE="ScalpAtlas-429-VERIFIED-RECOVERY-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-flex428-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-recovery429-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 428 DEMO ȘOC FLEX 35/25/30 • ${GITHUB_SHA:0:12}" \
-            --notes "428: Demo SHOCK FLEX moderat: retragere >35%, revenire >=25%, panta >30%, in aceeasi lumanare si max 15s. Confirmarea dubla, wick, pereche, TF, suma 1 USD, payout >=92%, cont Demo, lock 5 min si control 0 pozitii verificate raman obligatorii. SCALP M5 nu mai ocupa intervalul de 5 min destinat unui nou SHOCK Demo. Fereastra de semnal proaspat 4s, cadrele se verifica in continuare. Rezultatele WIN/LOSS raman doar inspectate si NU sunt conectate la ID-ul ordinului OPEN, recuperarea cu mize mari ramane inactiva. Real blocat. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 429 DEMO LOSS RECOVERY • ID VERIFICAT • ${GITHUB_SHA:0:12}" \
+            --notes "429: Strategie de recuperare DEMO 1,2.09,4.36,9.10,18.99,39.64 USD la payout 92%; revenire la 1 USD dupa recuperare integrala plus profit net tinta. Robotul monitorizeaza ID-ul OPEN si perechea/miza de doua ori, apoi verifica acelasi ID in CLOSED cu P/L explicit si doar dupa confirmare poate calcula, modifica si incerca urmatoarea miza. Limita maxima 6 trade-uri, fara cont REAL, fara repetare la timeout, lipsa date sau rezultat ambiguu. IMPORTANT: brokerul Pocket Option poate sa nu expuna ID/miza/P-L in Accessibility; fara dovezi exacte ordinul ramane blocat, iar compilarea NU dovedeste tranzactionare autonoma pe telefon. Build $GITHUB_SHA." \
             --prerelease
