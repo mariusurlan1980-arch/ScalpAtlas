@@ -260,7 +260,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             if(recovery/drop<minRecoveryFraction)continue;
             // Require a visible same-candle wick, now >=20% of pre-shock
             // body. Preserve physical evidence; never infer a wick from color.
-            if(latest.wickPixels<start.bodyHeight*.15)continue;
+            if(latest.wickPixels<start.bodyHeight*.20)continue;
             // BOTH the observed trend from closed candles AND current LIVE
             // candle color must agree. Never turn a candle color into a trend.
             if(candle.trendDirection!==candle.dir || !candle.trendMeasured ||
