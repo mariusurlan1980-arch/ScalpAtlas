@@ -38,16 +38,23 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   fun quote(payoutPercent: Int): Quote {
     val lost = prefs.getLong("unrecoveredLossCents", 0L)
     val completed = prefs.getInt("completedCycleTrades", 0)
+    val profitRemaining = prefs.getLong("remainingProfitTargetCents", 0L)
     if (prefs.getString("pendingPositionId", null) != null)
       return Quote(null, lost, "REZULTATUL POZIȚIEI ESTE NECONFIRMAT")
+    if (prefs.getBoolean("pendingBaseStakeReset", false))
+      return Quote(null, lost, "RESET 1 USD NECONFIRMAT PE BROKER")
     if (prefs.getBoolean("halted", false) || completed >= MAX_CYCLE_TRADES)
       return Quote(null, lost, "RECUPERARE OPRITĂ • MAXIMUM 6 TRANZACȚII")
     if (payoutPercent !in MIN_PAYOUT_PERCENT..100)
       return Quote(null, lost, "PAYOUT NECONFIRMAT ≥92%")
     if (lost !in 0L..MAX_CYCLE_LOSS_CENTS)
       return Quote(null, lost, "PIERDERE NECONFORMĂ • OPRIT")
-    val stake = if (lost == 0L) BASE_STAKE_CENTS
-      else ((lost + TARGET_PROFIT_CENTS) * 100L + payoutPercent - 1L) / payoutPercent
+    if (profitRemaining !in 0L..TARGET_PROFIT_CENTS)
+      return Quote(null, lost, "PROFITUL ȚINTĂ NECONFORM • OPRIT")
+    val outstanding = lost + profitRemaining
+    val stake = if (outstanding == 0L) BASE_STAKE_CENTS
+      else ((outstanding * 100L + payoutPercent - 1L) / payoutPercent)
+        .coerceAtLeast(BASE_STAKE_CENTS)
     if (stake > MAX_SINGLE_STAKE_CENTS || lost + stake > PROPOSED_DEMO_BANKROLL_CENTS)
       return Quote(null, lost, "SOLD IPOTETIC 82,72 USD INSUFICIENT • NU MĂRESC MIZA")
     return Quote(stake, lost, "CALCUL DEMO • NECESITĂ DOVADĂ DE LA BROKER")
@@ -107,20 +114,30 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
         netProfitCents > (stake * payout + 99L) / 100L)
       return false
     val priorLoss = prefs.getLong("unrecoveredLossCents", 0L)
+    val priorTarget = prefs.getLong("remainingProfitTargetCents", 0L)
+    if (priorTarget !in 0L..TARGET_PROFIT_CENTS) return false
+    val wasRecovering = priorLoss > 0L || priorTarget > 0L
     val newLoss = if (netProfitCents < 0L) priorLoss - netProfitCents
       else (priorLoss - netProfitCents).coerceAtLeast(0L)
-    val seenUpdated = (seen + closedReceiptId).toList().takeLast(100).toSet()
-    // A verified profitable close that covers ALL accumulated losses starts
-    // a new 1 USD cycle. Otherwise each settled position advances the count.
-    val fullyRecovered = netProfitCents > 0L && newLoss == 0L
-    // Restore exactly 1 USD on the broker only after a REAL, verified
-    // recovery cycle. A first-trade WIN already used the 1 USD base stake.
+    // The first LOSS starts a new recovery cycle with a net-positive target.
+    // A WIN must repay the actual accumulated deficit FIRST; only its
+    // remainder is available to satisfy the 92-cent target. Break-even
+    // is not a profit and MUST NOT reset the stake to one dollar.
+    val targetBeforeSettlement = if (netProfitCents < 0L && !wasRecovering)
+      TARGET_PROFIT_CENTS else priorTarget
+    val excessProfit = if (netProfitCents > 0L)
+      (netProfitCents - priorLoss).coerceAtLeast(0L) else 0L
+    val remainingTarget = (targetBeforeSettlement - excessProfit).coerceAtLeast(0L)
+    val fullyRecovered = wasRecovering && netProfitCents > 0L &&
+      newLoss == 0L && remainingTarget == 0L
     val resetRequired = prefs.getBoolean("pendingBaseStakeReset", false) ||
-      (fullyRecovered && priorLoss > 0L)
-    val completed = if (fullyRecovered) 0 else
-      prefs.getInt("completedCycleTrades", 0) + 1
+      fullyRecovered
+    val completed = if (fullyRecovered || (!wasRecovering && netProfitCents > 0L)) 0
+      else prefs.getInt("completedCycleTrades", 0) + 1
+    val seenUpdated = (seen + closedReceiptId).toList().takeLast(100).toSet()
     return prefs.edit()
       .putLong("unrecoveredLossCents", newLoss)
+      .putLong("remainingProfitTargetCents", remainingTarget)
       .putInt("completedCycleTrades", completed)
       .putBoolean("halted", newLoss >= MAX_CYCLE_LOSS_CENTS || completed >= MAX_CYCLE_TRADES)
       .putBoolean("pendingBaseStakeReset", resetRequired)
@@ -141,6 +158,7 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
     prefs.getBoolean("pendingBaseStakeReset", false) &&
       prefs.getString("pendingPositionId", null) == null &&
       prefs.getLong("unrecoveredLossCents", 0L) == 0L &&
+      prefs.getLong("remainingProfitTargetCents", 0L) == 0L &&
       !prefs.getBoolean("halted", false)
 
   @Synchronized
@@ -160,6 +178,8 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
       (next.stakeCents / 100L) + "." +
       (next.stakeCents % 100L).toString().padStart(2, '0') +
       " USD • PASUL " + (prefs.getInt("completedCycleTrades", 0) + 1) +
-      "/6 • PIERDERI " + next.lossCents + " cenți • NUMAI CU RECEIPT"
+      "/6 • PIERDERI " + next.lossCents + " cenți • PROFIT ȚINTĂ RĂMAS " +
+      prefs.getLong("remainingProfitTargetCents", 0L) +
+      " cenți • NUMAI CU RECEIPT"
   }
 }
