@@ -531,6 +531,17 @@ class ScalpOverlayService : Service() {
    * Without a uniquely matched broker CLOSED receipt, the ledger has no
    * verified loss and this code MUST do nothing.
    */
+  // 429: The next DEMO stake is calculated from the audited ledger and
+  // the actual current payout. The initial 1 USD read can use the existing
+  // verified broker buttons; dynamic stakes require the editable field.
+  private fun desiredVerifiedDemoStake429(pair: String): Long? {
+    if (pair.isBlank() || pair == "NEIDENTIFICAT") return null
+    val payout = TouchTestService.readVerifiedDemoPayoutForPair(pair)
+      ?: TouchTestService.readVerifiedDemoPayoutForStake429(pair, 100L)
+      ?: return null
+    return demoRecoveryLedger.quote(payout).stakeCents
+  }
+
   private fun maybePrepareAutomaticDemoRecoveryStake(nowTick: Long) {
     if (lastAutoDemoStakeEditAt > 0L &&
         nowTick - lastAutoDemoStakeEditAt in 0L..7_000L) return
@@ -861,7 +872,7 @@ class ScalpOverlayService : Service() {
                                 demoRecoveryLedger.onVerifiedDemoClosed(
                                   brokerAccountKey = "QT_DEMO:" + expectedPackage429,
                                   positionId = closedReceipt429!!.positionId,
-                                  closedReceiptId = closedReceipt429.positionId + ":CLOSED",
+                                  closedReceiptId = closedReceipt429!!.positionId + ":CLOSED",
                                   netProfitCents = closedNet429!!,
                                   receiptIndependentlyVerified = true
                                 )
