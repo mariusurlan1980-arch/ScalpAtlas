@@ -513,9 +513,9 @@ class TouchTestService : AccessibilityService() {
       // net P/L on the same visible CLOSED item; multiple orders or
       // missing monetary sign are ambiguous, never a recoverable LOSS.
       fun strictCents(source: String): Long? {
-        val cleaned = source.replace(Regex("""(?i)USD|\\$|\\s+"""), "")
+        val cleaned = source.replace(Regex("""(?i)USD|\$|\s+"""), "")
           .replace(',', '.')
-        val parsed = Regex("""^([+-]?)([0-9]{1,7})(?:\\.([0-9]{1,2}))?$""")
+        val parsed = Regex("""^([+-]?)([0-9]{1,7})(?:\.([0-9]{1,2}))?$""")
           .matchEntire(cleaned) ?: return null
         val dollars = parsed.groupValues[2].toLongOrNull() ?: return null
         val decimal = parsed.groupValues[3].padEnd(2, '0').toLongOrNull() ?: return null
