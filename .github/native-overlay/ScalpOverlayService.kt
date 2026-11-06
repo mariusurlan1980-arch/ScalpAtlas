@@ -742,14 +742,39 @@ class ScalpOverlayService : Service() {
                           .edit().putString("closedHistoryInspection425",
                             lastClosedInspectionDiagnostic).apply()
                         touchProbeStatus?.text = "🔎 " + lastClosedInspectionDiagnostic
+                        // 427: A second independent read of the SAME selected
+                        // CLOSED tab must agree before P/L can be described as
+                        // observed twice. Neither read authorizes a DEMO
+                        // recovery order without a matching verified OPEN ID.
                         mainHandler.postDelayed({
                           if (!shuttingDown && mediaProjection != null &&
                               provenPackage != null &&
                               TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
-                            TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                            val secondFresh =
+                              lastClosedTabVisualPackage == provenPackage &&
+                              closedTabVisualConsecutive >= 2 &&
+                              System.currentTimeMillis() - lastClosedTabVisualAt in 0L..5000L
+                            val second = TouchTestService.inspectDemoClosedTradeEvidenceReadOnly(
+                              cachedDemoVerifiedOnChart = true,
+                              visuallySelectedClosedTab = secondFresh
+                            )
+                            lastClosedInspectionDiagnostic = second.take(105)
+                            lastClosedInspectionAt = android.os.SystemClock.elapsedRealtime()
+                            getSharedPreferences("scalp_atlas_live_diagnostics", Context.MODE_PRIVATE)
+                              .edit().putString("closedHistoryInspection427",
+                                lastClosedInspectionDiagnostic).apply()
+                            touchProbeStatus?.text = "🔎 " + lastClosedInspectionDiagnostic
+                            mainHandler.postDelayed({
+                              if (!shuttingDown && mediaProjection != null &&
+                                  TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
+                                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                              }
+                              closedHistoryInspectionInProgress = false
+                            }, 800L)
+                          } else {
+                            closedHistoryInspectionInProgress = false
                           }
-                          closedHistoryInspectionInProgress = false
-                        }, 800L)
+                        }, 1800L)
                       } else {
                         closedHistoryInspectionInProgress = false
                       }
