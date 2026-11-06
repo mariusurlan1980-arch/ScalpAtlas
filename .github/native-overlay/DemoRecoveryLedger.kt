@@ -113,12 +113,17 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
     // A verified profitable close that covers ALL accumulated losses starts
     // a new 1 USD cycle. Otherwise each settled position advances the count.
     val fullyRecovered = netProfitCents > 0L && newLoss == 0L
+    // Restore exactly 1 USD on the broker only after a REAL, verified
+    // recovery cycle. A first-trade WIN already used the 1 USD base stake.
+    val resetRequired = prefs.getBoolean("pendingBaseStakeReset", false) ||
+      (fullyRecovered && priorLoss > 0L)
     val completed = if (fullyRecovered) 0 else
       prefs.getInt("completedCycleTrades", 0) + 1
     return prefs.edit()
       .putLong("unrecoveredLossCents", newLoss)
       .putInt("completedCycleTrades", completed)
       .putBoolean("halted", newLoss >= MAX_CYCLE_LOSS_CENTS || completed >= MAX_CYCLE_TRADES)
+      .putBoolean("pendingBaseStakeReset", resetRequired)
       .remove("pendingPositionId")
       .remove("pendingStakeCents")
       .remove("pendingPayoutPercent")
@@ -126,8 +131,28 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
       .commit()
   }
 
+  /**
+   * A confirmed profitable CLOSED receipt has repaid the net cycle deficit.
+   * The DEMO broker field must then be read back as exactly $1.00 before
+   * the cycle is considered restored. Never infer this from a gesture.
+   */
+  @Synchronized
+  fun needsBaseStakeReset(): Boolean =
+    prefs.getBoolean("pendingBaseStakeReset", false) &&
+      prefs.getString("pendingPositionId", null) == null &&
+      prefs.getLong("unrecoveredLossCents", 0L) == 0L &&
+      !prefs.getBoolean("halted", false)
+
+  @Synchronized
+  fun acknowledgeVerifiedBaseStakeReset(brokerReadBackOneDollar: Boolean): Boolean {
+    if (!brokerReadBackOneDollar || !needsBaseStakeReset()) return false
+    return prefs.edit().putBoolean("pendingBaseStakeReset", false).commit()
+  }
+
   @Synchronized
   fun diagnostic(payoutPercent: Int): String {
+    if (needsBaseStakeReset())
+      return "RECUPERARE CONFIRMATĂ • RESTABILESC SUMA DEMO 1 USD"
     val next = quote(payoutPercent)
     return if (next.stakeCents == null)
       "RECUPERARE DEMO OPRITĂ: " + next.reason
