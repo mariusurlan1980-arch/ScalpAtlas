@@ -451,6 +451,43 @@ class TouchTestService : AccessibilityService() {
       } catch (_: Throwable) { false }
     }
 
+    // 435: Only when the broker's actual Transactions page and BOTH tabs
+    // have been identified in two independent MediaProjection OCR frames,
+    // tap the visible "Deschis" tab. This never touches order controls and
+    // does not unlock a position without an independent zero-OPEN receipt.
+    fun tapVerifiedDemoOpenTabOcr435(
+      expectedBrokerPackage: String,
+      centerXFraction: Float,
+      centerYFraction: Float,
+      cachedDemoVerifiedOnChart: Boolean
+    ): Boolean {
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart) ?: return false
+      val (svc, root, _) = info
+      if (root.packageName?.toString() != expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage) ||
+          !centerXFraction.isFinite() || !centerYFraction.isFinite() ||
+          centerXFraction !in 0.08f..0.48f ||
+          centerYFraction !in 0.15f..0.31f) return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      if (metrics.widthPixels < 300 || metrics.heightPixels < 600) return false
+      val x = metrics.widthPixels * centerXFraction
+      val y = metrics.heightPixels * centerYFraction
+      if (svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage)
+        return false
+      val path = Path().apply { moveTo(x, y) }
+      return try {
+        val gesture = GestureDescription.Builder()
+          .addStroke(GestureDescription.StrokeDescription(path, 0L, 75L)).build()
+        svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+      } catch (_: Throwable) { false }
+    }
+
     fun advanceDemoHistoryReviewNavigation(
       cachedDemoVerifiedOnChart: Boolean
     ): String {
