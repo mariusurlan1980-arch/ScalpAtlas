@@ -166,6 +166,11 @@ class ScalpOverlayService : Service() {
   // with the generic last read-only page error from the CHART screen.
   private var lastAutoDemoHistoryNavStatus = ""
   private var lastAutoDemoHistoryNavStatusAt = 0L
+  // 431: Navigation attempt != broker page opened. Diagnose the subsequent
+  // screen independently and avoid endless invisible taps on the chart.
+  private var historyNavFailures431 = 0
+  private var lastHistoryPageState431 = "NEVERIFICAT"
+  private var lastHistoryPageStateAt431 = 0L
   // 424: background QT Demo amount preparation. It is eligible only after
   // a broker receipt has updated the independent recovery ledger.
   private var lastAutoDemoStakeEditAt = 0L
@@ -789,6 +794,8 @@ class ScalpOverlayService : Service() {
                     "QT DEMO • LISTĂ DESCHIS GOALĂ VERIFICATĂ 2/2"
                   lastAutoDemoHistoryNavStatus = ""
                   lastAutoDemoHistoryNavStatusAt = 0L
+                  historyNavFailures431 = 0
+                  lastHistoryPageState431 = "ZERO OPEN 2/2 CONFIRMAT"
                   // 425: After independently proving ZERO Open positions,
                   // inspect the actual CLOSED tab before returning to chart.
                   // It is diagnostic ONLY: an empty Open tab cannot identify a
@@ -963,8 +970,13 @@ class ScalpOverlayService : Service() {
             // Transactions > Deschis over and over: navigate ONLY to safe,
             // exact text-labelled history controls (never BUY/SELL).
             // Rate limit to avoid oscillation/reloading a first OCR sample.
+            // An Android touch callback can succeed while WebView stays
+            // on the chart. A following independent Accessibility read MUST
+            // verify that Transactions actually opened; do not claim it did.
+            val historyRetryMs431 = if (historyNavFailures431 >= 3) 25_000L
+              else 10_000L
             if (eligibleForBrokerEmptyReview && demoEmptyReviewReads == 0 &&
-                tick - lastAutoDemoHistoryNavAt >= 10_000L) {
+                tick - lastAutoDemoHistoryNavAt >= historyRetryMs431) {
               lastAutoDemoHistoryNavAt = tick
               val navResult = TouchTestService.advanceDemoHistoryReviewNavigation(
                 cachedDemoVerifiedOnChart = verifiedDemoReview
@@ -972,6 +984,46 @@ class ScalpOverlayService : Service() {
               lastAutoDemoHistoryNavStatus = navResult.take(105)
               lastAutoDemoHistoryNavStatusAt = tick
               touchProbeStatus?.text = "🤖 " + lastAutoDemoHistoryNavStatus
+              val expectedNavPackage431 = reviewPackage
+              mainHandler.postDelayed({
+                if (!shuttingDown && mediaProjection != null &&
+                    autoDemoSessionConsumed && expectedNavPackage431 != null &&
+                    TouchTestService.activeDemoExecutorPackageForReview() ==
+                      expectedNavPackage431) {
+                  val page = TouchTestService.demoHistoryPageState431(
+                    cachedDemoVerifiedOnChart = true
+                  )
+                  val now431 = android.os.SystemClock.elapsedRealtime()
+                  lastHistoryPageState431 = page.take(90)
+                  lastHistoryPageStateAt431 = now431
+                  when {
+                    page.startsWith("PAGINA TRANZACȚII") -> {
+                      historyNavFailures431 = 0
+                      lastAutoDemoHistoryNavStatus =
+                        "ISTORIC AUTO • " + page.take(75) + " • VERIFIC LISTA"
+                    }
+                    page.startsWith("ÎNCĂ PE GRAFIC") -> {
+                      historyNavFailures431 =
+                        (historyNavFailures431 + 1).coerceAtMost(5)
+                      lastAutoDemoHistoryNavStatus =
+                        "ISTORIC NU S-A DESCHIS " +
+                        historyNavFailures431 + "/3 • NU POT PLASA ORDIN"
+                    }
+                    else -> {
+                      lastAutoDemoHistoryNavStatus =
+                        "ISTORIC AUTO • " + page.take(75) + " • FĂRĂ ORDIN"
+                    }
+                  }
+                  lastAutoDemoHistoryNavStatusAt = now431
+                  touchProbeStatus?.text = "🔒 DEMO • " +
+                    lastAutoDemoHistoryNavStatus.take(95)
+                  getSharedPreferences("scalp_atlas_live_diagnostics", Context.MODE_PRIVATE)
+                    .edit()
+                    .putString("historyPageState431", lastHistoryPageState431)
+                    .putInt("historyNavFailures431", historyNavFailures431)
+                    .apply()
+                }
+              }, 1700L)
             }
           }
         } else {
