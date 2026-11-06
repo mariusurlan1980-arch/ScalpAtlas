@@ -187,6 +187,9 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastEmptyOpenOcrAt = 0L
   @Volatile private var lastEmptyOpenOcrPackage: String? = null
   @Volatile private var emptyOpenOcrConsecutive = 0
+  @Volatile private var lastOpenTabVisualAt429 = 0L
+  @Volatile private var lastOpenTabVisualPackage429: String? = null
+  @Volatile private var openTabVisualConsecutive429 = 0
   @Volatile private var lastClosedTabVisualAt = 0L
   @Volatile private var lastClosedTabVisualPackage: String? = null
   @Volatile private var closedTabVisualConsecutive = 0
@@ -2731,8 +2734,22 @@ class ScalpOverlayService : Service() {
       """(?i)(?:Nu există tranzacții (?:plasate|deschise|active)|Nu exista tranzactii (?:plasate|deschise|active)|Nu sunt tranzacții deschise|Nu sunt tranzactii deschise|Nicio tranzacție (?:deschisă|activă)|Nicio tranzactie (?:deschisa|activa)|No trades placed|No open trades|No open positions)"""
     ).containsMatchIn(body)
     val pkg = TouchTestService.activeDemoExecutorPackageForReview()
-    val qualified = title && openTab && closedTab && emptyMessage &&
+    val selectedOpen429 = title && openTab && closedTab &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
+    if (selectedOpen429) {
+      if (lastOpenTabVisualPackage429 == pkg &&
+          observedAt - lastOpenTabVisualAt429 in 1000L..12000L)
+        openTabVisualConsecutive429 = (openTabVisualConsecutive429 + 1).coerceAtMost(3)
+      else openTabVisualConsecutive429 = 1
+      lastOpenTabVisualAt429 = observedAt
+      lastOpenTabVisualPackage429 = pkg
+    } else {
+      lastOpenTabVisualAt429 = 0L
+      lastOpenTabVisualPackage429 = null
+      openTabVisualConsecutive429 = 0
+    }
+    val qualified = title && openTab && closedTab && emptyMessage &&
+      selectedOpen429
     // CLOSED-tab proof is independent from OPEN-tab empty-state evidence.
     // The result amounts on a generic list are NOT proof of WIN/LOSS.
     val closedSelected = title && openTab && closedTab &&
