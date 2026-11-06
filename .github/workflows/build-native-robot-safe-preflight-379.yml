@@ -613,7 +613,7 @@ jobs:
           MOD=.github/native-overlay/ScalpOverlayModule.kt
           grep -Fq "scalpBlocker:'AȘTEAPTĂ DATE'" "$ENGINE"
           grep -Fq 'scalpBlocker:scalpBlocker' "$ENGINE"
-          grep -Fq 'minShockFraction=.35' "$ENGINE"
+          grep -Fq 'minShockFraction=.30' "$ENGINE"
           grep -Fq "if(!confirmed && tf==='M5' && strongTrend)" "$ENGINE"
           grep -Fq 'signalGateNote?.text = when {' "$SRV"
           grep -Fq 'scanStatus != "LIVE"' "$SRV"
@@ -1144,7 +1144,7 @@ jobs:
           grep -q 'if (!safe) stopPulseRing()' "$SERVICE"
           grep -q 'shockBodyPercent > SHOCK_MIN_DEPTH' "$SERVICE"
           grep -q 'observedTrendStrengthPercent > SHOCK_MIN_TREND' "$SERVICE"
-          grep -q 'PANTĂ ≤30%' "$SERVICE"
+          grep -q 'PANTĂ ≤25%' "$SERVICE"
           grep -q 'val confirmedScalp = rawStrategy == "SCALP_TREND"' "$SERVICE"
           grep -q 'val confirmedShock = rawStrategy == "SHOCK"' "$SERVICE"
           grep -q 'candidateStrategy != confirmedStrategy' "$SERVICE"
