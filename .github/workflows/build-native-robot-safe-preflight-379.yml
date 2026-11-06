@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 431 VERIFIED DEMO HISTORY NAVIGATION
+name: Build Scalp Atlas 432 OCR VERIFIED DEMO HISTORY
 
 on:
   push:
-    branches: [feature/scalpatlas-demo-history-navigation431]
+    branches: [feature/scalpatlas-demo-history-ocr432]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-431
+  group: scalp-atlas-calculator-test-432
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.11'
+          expo['version']='3.2.12'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=431
+          expo['android']['versionCode']=432
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1128,6 +1128,28 @@ jobs:
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
 
+      - name: Verify 432 OCR history navigation is screen-grounded and never a trade confirmation
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'recordBrokerHistoryBottomLabelOcr432(' "$O"
+          grep -Fq 'historyNavOcrSamples432 >= 2' "$O"
+          grep -Fq 'historyNavFailed431 >= 1' "$O"
+          grep -Fq 'historyNavOcrX432 in 0.02f..0.35f' "$O"
+          grep -Fq 'historyNavOcrY432 in 0.84f..0.975f' "$O"
+          grep -Fq 'historyNavOcrPackage432' "$O"
+          grep -Fq 'tapVerifiedDemoHistoryOcr432(' "$O"
+          grep -Fq 'fun tapVerifiedDemoHistoryOcr432(' "$T"
+          grep -Fq 'activeDemoHistoryNodes(false)' "$T"
+          grep -Fq 'centerYFraction !in 0.84f..0.975f' "$T"
+          grep -Fq 'confirmedDemoHistoryPageReadOnly431(' "$O"
+          grep -Fq 'historyNavFailed431 >= 3' "$O"
+          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1219,12 +1241,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-431-ISTORIC-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-432-OCR-ISTORIC-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.11-ISTORIC-DEMO-431
-          path: ScalpAtlas-431-ISTORIC-DEMO-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.12-ISTORIC-OCR-DEMO-432
+          path: ScalpAtlas-432-OCR-ISTORIC-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1233,13 +1255,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-431-ISTORIC-DEMO-G24.apk"
+          FILE="ScalpAtlas-432-OCR-ISTORIC-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-istoric431-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-ocr432-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 431 NAVIGARE ISTORIC DEMO • FĂRĂ ORDINE DUBLE • ${GITHUB_SHA:0:12}" \
-            --notes "431: Verificare independenta ca pagina Tranzactii si fila Deschis s-au deschis in brokerul QT DEMO; click pe textul exact in accesibilitate inclusiv stramosi mici pana la 6 niveluri, fara coordonate arbitrare BUY/SELL. Dupa 3 navigari nereusite se afiseaza BLOCAT: ISTORICUL NU SE DESCHIDE, fara ordine si fara bucla continua. Marcajele de ordine vechi raman active pana la dovezi DEMO independente; nu se forteaza reset sau mize crescute. Butonul manual SELL eliminat; SHOCK 30/20/25 cu doua confirmari si fitil, QT Real dezactivat. Build/testele APK nu pot confirma tranzactii reale in broker. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 432 OCR MENIU TRANZACȚII • DOAR DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "432: OCR al etichetei exacte Tranzactii din meniul brokerului QT DEMO, la marginea stanga-jos, confirmata din 2 cadre proaspete cu pozitii concordante. Daca accesibilitatea nu navigheaza, o singura incercare de atingere pe eticheta confirmata OCR si numai in pachetul QT DEMO vizibil; apoi confirma pagina Tranzactii si fila Deschis prin dovezi independente. Dupa 3 nereusite opreste navigarea si afiseaza blocaj. Nicio navigare nu autorizeaza BUY/SELL, nu sterge o tranzactie veche si nu confirma WIN/LOSS. SHOCK 30/20/25 si Real blocat. APK compilat nu dovedeste tranzactii automate reale in broker. Build $GITHUB_SHA." \
             --prerelease
