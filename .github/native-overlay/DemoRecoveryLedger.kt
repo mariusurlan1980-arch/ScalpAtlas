@@ -106,7 +106,7 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
     val priorLoss = prefs.getLong("unrecoveredLossCents", 0L)
     val newLoss = if (netProfitCents < 0L) priorLoss - netProfitCents
       else (priorLoss - netProfitCents).coerceAtLeast(0L)
-    val seenUpdated = (seen + closedReceiptId).takeLast(100).toSet()
+    val seenUpdated = (seen + closedReceiptId).toList().takeLast(100).toSet()
     return prefs.edit()
       .putLong("unrecoveredLossCents", newLoss)
       .putBoolean("halted", newLoss >= MAX_CYCLE_LOSS_CENTS)
