@@ -270,7 +270,7 @@ jobs:
           O=.github/native-overlay/ScalpOverlayService.kt
           T=.github/native-overlay/TouchTestService.kt
           grep -Fq 'TouchTestService.priorDemoGestureCooldownComplete()' "$O"
-          grep -Fq 'elapsed >= 5 * 60_000L' "$T"
+          grep -Fq 'return !demoCooldownActive431(android.os.SystemClock.elapsedRealtime(), prior)' "$T"
           grep -Fq 'val verifiedDemoReview = demoVisibleNow || cachedDemoReview' "$O"
           grep -Fq 'ocrVerifiedEmptyOpenTab = ocrCurrent' "$O"
           grep -Fq 'demoEmptyReviewReads = 1' "$O"
