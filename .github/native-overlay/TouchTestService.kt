@@ -342,12 +342,16 @@ class TouchTestService : AccessibilityService() {
       if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())
         return false
       var current: AccessibilityNodeInfo? = chosen.first
-      for (depth in 0..2) {
+      // 431: On Android WebView the labelled child may have a clickable
+      // grandparent beyond the first two levels. Inspect a bounded chain,
+      // never touch the root window or a giant unlabelled container.
+      for (depth in 0..5) {
         val node = current ?: break
         val r = Rect()
         node.getBoundsInScreen(r)
-        if (node.isClickable && r.width() <= w * 0.48f &&
-            r.height() <= h * 0.14f && r.centerY() in
+        if (node.isClickable && r.contains(chosen.second) &&
+            r.width() <= w * 0.48f && r.height() <= h * 0.14f &&
+            r.centerY() in
             (h * (yMin - 0.04f)).toInt()..(h * (yMax + 0.04f)).toInt() &&
             node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
         current = node.parent
@@ -363,6 +367,42 @@ class TouchTestService : AccessibilityService() {
       return try {
         svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
       } catch (_: Throwable) { false }
+    }
+
+    /**
+     * 431: Observe whether a previous history-navigation gesture ACTUALLY
+     * opened the broker's Transactions page. A returned Android gesture
+     * boolean is not evidence of navigation, and is never trade evidence.
+     */
+    fun demoHistoryPageState431(cachedDemoVerifiedOnChart: Boolean): String {
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
+        ?: return "FEREASTRĂ DEMO NECONFIRMATĂ"
+      val (svc, root, labels) = info
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return "ECRAN NECUNOSCUT" }
+      if (svc.rootInActiveWindow?.packageName != root.packageName)
+        return "BROKER ÎN FUNDAL"
+      val h = metrics.heightPixels
+      fun isTitle(value: String) =
+        Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""")
+          .matches(value.replace(Regex("""\s+"""), " ").trim())
+      val pageTitle = labels.any { (node, rect) ->
+        rect.centerY() in (h * .09f).toInt()..(h * .24f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+            .any(::isTitle)
+      }
+      if (!pageTitle) return "ÎNCĂ PE GRAFIC • ISTORIC NEACCESAT"
+      val open = labels.any { (node, rect) ->
+        rect.centerY() in (h * .15f).toInt()..(h * .31f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+            .any { Regex("""(?i)^(?:Deschis|Open)$""").matches(it.trim()) }
+      }
+      return if (open) "PAGINA TRANZACȚII • FILA DESCHIS VIZIBILĂ"
+        else "PAGINA TRANZACȚII • FILA DESCHIS NECITITĂ"
     }
 
     fun advanceDemoHistoryReviewNavigation(
@@ -384,6 +424,22 @@ class TouchTestService : AccessibilityService() {
             Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
           }
       }
+      // Do not keep tapping a tab that the broker already exposes as
+      // selected; repeated taps can reload the list between two OCR reads.
+      val alreadySelectedOpen = title && labels.any { (node, rect) ->
+        rect.centerY() in (metrics.heightPixels * .15f).toInt()..
+          (metrics.heightPixels * .30f).toInt() &&
+          rect.centerX() in (metrics.widthPixels * .08f).toInt()..
+            (metrics.widthPixels * .48f).toInt() &&
+          (node.isSelected || node.isChecked) &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+            .any { Regex("""(?i)^(?:Deschis|Open)$""").matches(it.trim()) }
+      }
+      if (alreadySelectedOpen) {
+        demoHistoryNavigationStatus =
+          "ISTORIC AUTO • DESCHIS SELECTAT • CITESC 0 POZIȚII"
+        return demoHistoryNavigationStatus
+      }
       val success = if (title) {
         clickExactDemoNavigationLabel(svc, root, labels,
           Regex("""(?i)^(?:Deschis|Open)$"""), 0.08f, 0.48f, 0.15f, 0.30f)
@@ -392,12 +448,13 @@ class TouchTestService : AccessibilityService() {
           Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""),
           0.01f, 0.36f, 0.84f, 0.98f)
       }
+      // Dispatch success alone is only an ATTEMPT, not verified history.
       demoHistoryNavigationStatus = if (!success)
         "ISTORIC AUTO • CONTROL NECONFIRMAT • FĂRĂ ORDIN"
       else if (title)
-        "ISTORIC AUTO • FILA DESCHIS • VERIFIC 0 POZIȚII"
+        "ISTORIC AUTO • APĂSAT DESCHIS • AȘTEPT CONFIRMARE"
       else
-        "ISTORIC AUTO • DESCHID TRANZACȚII • FĂRĂ ORDIN"
+        "ISTORIC AUTO • CLIC TRIMIS • VERIFIC PAGINA"
       return demoHistoryNavigationStatus
     }
 
