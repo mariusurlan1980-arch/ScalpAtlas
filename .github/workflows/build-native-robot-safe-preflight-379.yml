@@ -428,7 +428,7 @@ jobs:
           grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'previewAutoOneDollarDemoOrder("BUY", expectedPair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'previewAutoOneDollarDemoOrder("SELL", expectedPair)' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'activeSignal, expectedPair ?: "NEIDENTIFICAT"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'activeSignal, tradePair429' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.preflightOneDollarDemoOrder(pair)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val fieldBottom = minOf(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val brokerActionLabels = labels.filter' .github/native-overlay/TouchTestService.kt
