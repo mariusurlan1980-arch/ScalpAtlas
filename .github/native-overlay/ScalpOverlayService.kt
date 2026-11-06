@@ -3667,7 +3667,13 @@ class ScalpOverlayService : Service() {
         // Never replay this candle, but keep the DEMO session armed so the
         // next NEW verified SHOCK can be evaluated. No click in these paths.
         autoDemoLockedAt = lockedAt
-        if (!readyForDemo) {
+        // 424 does not yet have a broker-verified dynamic-stake order path.
+        // Never submit a new fixed-1USD order after a verified DEMO loss:
+        // preparing the next stake field is NOT permission to trade it.
+        if (demoRecoveryLedger.quote(92).lossCents > 0L) {
+          touchProbeStatus?.text =
+            "RECUPERARE DEMO • SUMĂ PREGĂTITĂ • ORDIN DINAMIC ÎNCĂ BLOCAT"
+        } else if (!readyForDemo) {
           touchProbeStatus?.text =
             "FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC"
         } else {
