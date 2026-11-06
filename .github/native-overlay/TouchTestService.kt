@@ -992,7 +992,8 @@ class TouchTestService : AccessibilityService() {
     )
     private data class DemoOrderCheck(
       val target: DemoOrderTarget? = null,
-      val reason: String
+      val reason: String,
+      val payoutPercent: Int? = null
     )
     private const val DEMO_TEST_LOCK_MS = 300_000L
 
@@ -1344,7 +1345,23 @@ class TouchTestService : AccessibilityService() {
       if (svc.rootInActiveWindow?.packageName?.toString() != pkg)
         return DemoOrderCheck(reason = "BLOCAT: APLICAȚIA ACTIVĂ S-A SCHIMBAT")
       return DemoOrderCheck(DemoOrderTarget(candidates[0].first, pkg),
-        "GATA " + side + " • QT DEMO • 1 USD")
+        "GATA " + side + " • QT DEMO • SUMĂ VERIFICATĂ", verifiedPayout)
+    }
+
+    // 429: No dependency on an editable amount field for the FIRST $1 order.
+    // Payout must agree on BOTH physically verified BUY and SELL buttons.
+    fun readVerifiedDemoPayoutForStake429(
+      expectedPair: String, expectedStakeCents: Long
+    ): Int? {
+      if (readVisibleDemoPair() != expectedPair) return null
+      val buy = checkOneDollarDemoTarget("BUY", true, expectedStakeCents)
+      val sell = checkOneDollarDemoTarget("SELL", true, expectedStakeCents)
+      val bp = buy.payoutPercent
+      val sp = sell.payoutPercent
+      if (buy.target == null || sell.target == null || bp == null ||
+          bp != sp || bp !in 92..100 || readVisibleDemoPair() != expectedPair)
+        return null
+      return bp
     }
 
     /**
