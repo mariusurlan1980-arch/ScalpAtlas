@@ -90,10 +90,10 @@ class ScalpOverlayService : Service() {
     private const val MAX_ALERT_ANALYSIS_AGE_MS = 3000L
     private const val CONFIRMATION_SPACING_MS = 1500L
     private const val REQUIRED_CONFIRMATIONS = 2
-    // 406: relaxed, still optically verified QT DEMO SHOCK only.
-    private const val SHOCK_MIN_DEPTH = 40
-    private const val SHOCK_MIN_RECOVERY = 30
-    private const val SHOCK_MIN_TREND = 35
+    // 428: moderated optical DEMO SHOCK; maintain two confirmations and broker safety.
+    private const val SHOCK_MIN_DEPTH = 35
+    private const val SHOCK_MIN_RECOVERY = 25
+    private const val SHOCK_MIN_TREND = 30
     private const val SHOCK_MAX_DROP_MS = 15_000L
     private const val SCALP_MIN_TREND = 50
     // If optical evidence disappears, an old candidate must not recover as
@@ -3346,9 +3346,15 @@ class ScalpOverlayService : Service() {
       scalpDepth in 21..50 && scalpRecovery >= 35 &&
       scalpPullbackMs in 700L..15000L && sameScalpDirection &&
       result.optString("scalpDirection") == rawSignal
-    val confirmedSignal = if (confirmedShock || confirmedScalp) rawSignal else "NONE"
+    // 428: A secondary SCALP M5 alert cannot consume the five-minute
+    // demo SHOCK signal lock. The autonomous DEMO executor supports SHOCK
+    // only; otherwise a non-executable SCALP BIP can block real SHOCK
+    // candidates during the following five minutes.
+    val scalpAlertAllowed = confirmedScalp &&
+      !autoDemoSessionRequested && !autoDemoSessionConsumed
+    val confirmedSignal = if (confirmedShock || scalpAlertAllowed) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK"
-      else if (confirmedScalp) "SCALP_TREND" else "NONE"
+      else if (scalpAlertAllowed) "SCALP_TREND" else "NONE"
     val rejectionText = if (rawStrategy == "SCALP_TREND")
       "SCALP TREND neconfirmat" else "ȘOC / SCALP în așteptare"
     val expiry = 5 // five-minute DEMO alert timer, not an automatic broker order
@@ -3672,7 +3678,7 @@ class ScalpOverlayService : Service() {
         !trendFresh -> "ISTORIC " + observedTrendHistoryCount + "/3"
         trendContradicted -> "CONTRA TREND"
         observedTrendDirection == "NONE" -> "LATERAL • FĂRĂ SEMNAL"
-        !trendThresholdMet -> "PANTĂ ≤35%"
+        !trendThresholdMet -> "PANTĂ ≤30%"
         trendDir == "BUY" -> "ASCENDENT"
         trendDir == "SELL" -> "DESCENDENT"
         else -> "NECONFIRMAT"
@@ -3783,7 +3789,7 @@ class ScalpOverlayService : Service() {
         val newShock = activeSignal != "NONE" &&
           activeStrategy == "SHOCK" &&
           lastConfirmedShockPercent > SHOCK_MIN_DEPTH &&
-          lockedAt > 0L && now - lockedAt in 0L..2500L &&
+          lockedAt > 0L && now - lockedAt in 0L..4000L &&
           lockedAt != autoDemoLockedAt
         // A transient OCR/capture gap must not cancel the whole arm.
         // Suspend while waiting for evidence; NEVER tap without fresh data.
@@ -4017,7 +4023,7 @@ class ScalpOverlayService : Service() {
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoArmed && !autoDemoSessionConsumed ->
-          "🤖 ȘOC FLEX 40/30/35 • " + if (activeStrategy == "SHOCK" &&
+          "🤖 ȘOC FLEX 35/25/30 • " + if (activeStrategy == "SHOCK" &&
               activeSignal != "NONE") "ȘOC CONFIRMAT"
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
@@ -4068,7 +4074,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed && activeSignal == "NONE" ->
             if (scanStatus != "LIVE")
               "🤖 AUTO DEMO • SCAN " + scanStatus
-            else "🤖 ȘOC FLEX 40/30/35 • " + shockBlocker.take(39)
+            else "🤖 ȘOC FLEX 35/25/30 • " + shockBlocker.take(39)
           !autoDemoArmed ->
             "🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
           else -> touchProbeStatus?.text?.toString().orEmpty()
