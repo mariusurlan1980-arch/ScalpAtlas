@@ -44,10 +44,19 @@ function screen(close,dir='BUY',verticalShift=0,stickyWick=false,trendDir=dir){
     candle(p,342,155,178,'SELL');
     candle(p,369,188,214,'SELL');
   }else if(trendDir==='BUY_WEAK'){
-    // Genuine BUY direction, but slope below new 35% threshold.
+    // Genuine BUY direction, but slope below new 30% threshold.
     candle(p,314,256,232,'BUY');
     candle(p,342,251,227,'BUY');
     candle(p,369,246,222,'BUY');
+  }else if(trendDir==='BUY_FLEX_428'){
+    // 11px progress over 24px bodies = ~31%: now eligible with evidence.
+    candle(p,314,256,232,'BUY');
+    candle(p,342,250,226,'BUY');
+    candle(p,369,245,221,'BUY');
+  }else if(trendDir==='SELL_FLEX_428'){
+    candle(p,314,120,145,'SELL');
+    candle(p,342,125,150,'SELL');
+    candle(p,369,131,156,'SELL');
   }else if(trendDir==='BUY_MODERATE'){
     candle(p,314,256,232,'BUY');
     candle(p,342,248,224,'BUY');
@@ -57,7 +66,7 @@ function screen(close,dir='BUY',verticalShift=0,stickyWick=false,trendDir=dir){
     candle(p,342,127,152,'SELL');
     candle(p,369,134,159,'SELL');
   }else if(trendDir==='SELL_WEAK'){
-    // Genuine SELL direction, but slope below new 35% threshold.
+    // Genuine SELL direction, but slope below new 30% threshold.
     candle(p,314,120,145,'SELL');
     candle(p,342,125,150,'SELL');
     candle(p,369,130,155,'SELL');
@@ -123,18 +132,18 @@ assert.equal(buy.shockBlocker,'ȘOC CONFIRMAT');
 assert.equal(buy.trendDirection,'BUY','BUY must match measured 3-closed-candle trend');
 assert.equal(buy.trendMeasured,true);
 assert.ok(buy.trendVisualPoints.length===3,'Mini trend has three observed closes');
-assert.ok(buy.trendStrengthPercent>35 && buy.trendStrengthPercent<=100,'BUY trend >35%');
-assert.equal(buy.trendThresholdPercent,35);
+assert.ok(buy.trendStrengthPercent>30 && buy.trendStrengthPercent<=100,'BUY trend >35%');
+assert.equal(buy.trendThresholdPercent,30);
 assert.ok(buy.trendVisualPoints[2]<buy.trendVisualPoints[0],'BUY mini line rises in price');
-assert.equal(buy.shockThresholdPercent,40);
+assert.equal(buy.shockThresholdPercent,35);
 assert.equal(buy.shockObservedDurationMs,buy.shockDropDurationMs,'seconds must come from measured LIVE frames');
 assert.ok(buy.shockObservedDurationMs>=300 && buy.shockObservedDurationMs<=15000);
 assert.equal(buy.shockDirection,'BUY','Green candle down retracement + recovery must be recognized');
 assert.equal(buy.shockSameCandle,true);
 assert.ok(buy.quality>=55);
-assert.ok(buy.shockRetracementPercent>40 && buy.shockRetracementPercent<=100,'BUY % is measured candle retreat');
+assert.ok(buy.shockRetracementPercent>35 && buy.shockRetracementPercent<=100,'BUY % is measured candle retreat');
 assert.ok(buy.shockWickPercent>=20,'BUY must have visible lower wick');
-assert.ok(buy.shockRecoveryPercent>=30,'BUY shock must rebound');
+assert.ok(buy.shockRecoveryPercent>=25,'BUY shock must rebound');
 assert.ok(buy.shockDropDurationMs<=15000,'BUY must occur in <= 15 sec');
 assert.equal(buy.expiry,5);
 // 420: A genuine deep pullback can temporarily reverse the forming
@@ -156,7 +165,7 @@ assert.equal(colorFlipBuy.trendDirection,'BUY');
 assert.equal(colorFlipBuy.shockDirection,'BUY',
   'Same-candle retracement crossing the open was incorrectly discarded');
 assert.equal(colorFlipBuy.shockSameCandle,true);
-assert.ok(colorFlipBuy.shockRecoveryPercent>=30);
+assert.ok(colorFlipBuy.shockRecoveryPercent>=25);
 assert.ok(colorFlipBuy.shockWickPercent>=20);
 
 // Different asset has identical-looking pixels but must not inherit history.
@@ -171,13 +180,13 @@ assert.equal(sell.shockBlocker,'ȘOC CONFIRMAT');
 assert.equal(sell.trendDirection,'SELL','SELL must match measured 3-closed-candle trend');
 assert.equal(sell.trendMeasured,true);
 assert.ok(sell.trendVisualPoints.length===3);
-assert.ok(sell.trendStrengthPercent>35 && sell.trendStrengthPercent<=100,'SELL trend >35%');
-assert.equal(sell.trendThresholdPercent,35);
+assert.ok(sell.trendStrengthPercent>30 && sell.trendStrengthPercent<=100,'SELL trend >35%');
+assert.equal(sell.trendThresholdPercent,30);
 assert.ok(sell.trendVisualPoints[2]>sell.trendVisualPoints[0],'SELL mini line falls in price');
 assert.ok(sell.shockObservedDurationMs>=300 && sell.shockObservedDurationMs<=15000);
 assert.equal(sell.shockDirection,'SELL','Red candle upward retracement + recovery must be recognized');
 assert.equal(sell.shockOpticalVerified,true);
-assert.ok(sell.shockRetracementPercent>40 && sell.shockRecoveryPercent>=30);
+assert.ok(sell.shockRetracementPercent>35 && sell.shockRecoveryPercent>=25);
 assert.ok(sell.shockDropDurationMs<=15000);
 assert.ok(sell.shockWickPercent>=20,'SELL must have upper wick');
 // Loss of optical pixels disables alerts. This also drops old history.
@@ -197,8 +206,8 @@ assert.equal(bottom.shockDirection,'NONE','Color and optical percentage are NOT 
 for(const close of [110,128,181,219,211,172,159])
   bottom=analyze(close,'BUY','AUD/NZD OTC',40,'M10',120,close===172||close===159);
 assert.equal(bottom.shockDirection,'BUY','Latest low M10 candle shock detected');
-assert.ok(bottom.shockRetracementPercent>40);
-assert.ok(bottom.shockRecoveryPercent>=30);
+assert.ok(bottom.shockRetracementPercent>35);
+assert.ok(bottom.shockRecoveryPercent>=25);
 // Monotonic movement without a recovery must not count as SHOCK.
 for(let n=0;n<13;n++){
   const gradual=analyze(110+n*8,'BUY','SLOW/TEST OTC',44,'M10');
@@ -227,42 +236,60 @@ assert.equal(againstTrend.trendDirection,'SELL');
 assert.equal(againstTrend.trendMeasured,true);
 assert.equal(againstTrend.trendVisualPoints.length,3);
 assert.equal(againstTrend.shockBlocker,'CONTRA TREND');
-// Even a large retreat cannot signal if trend is below 35%.
- // Both directions have genuine 3-candle slopes below 35%.
+// Even a large retreat cannot signal if trend is below 30%.
+ // Both directions have genuine 3-candle slopes below 30%.
 let weakBuy;
 for(const close of [110,128,181,219,211,172,159])
   weakBuy=analyze(close,'BUY','WEAK-TREND-BUY OTC',60,'M10',0,close===172||close===159,'BUY_WEAK');
 assert.equal(weakBuy.trendMeasured,true);
 assert.equal(weakBuy.trendDirection,'BUY');
-assert.ok(weakBuy.trendStrengthPercent>0 && weakBuy.trendStrengthPercent<=35);
+assert.ok(weakBuy.trendStrengthPercent>0 && weakBuy.trendStrengthPercent<=30);
 assert.ok(weakBuy.shockRetracementPercent>50);
-assert.equal(weakBuy.shockBlocker,'PANTĂ ≤35%');
+assert.equal(weakBuy.shockBlocker,'PANTĂ ≤30%');
 assertQuiet(weakBuy);
 let weakSell;
 for(const close of [280,262,215,174,181,220,235])
   weakSell=analyze(close,'SELL','WEAK-TREND-SELL OTC',61,'M10',0,close===220||close===235,'SELL_WEAK');
 assert.equal(weakSell.trendMeasured,true);
 assert.equal(weakSell.trendDirection,'SELL');
-assert.ok(weakSell.trendStrengthPercent>0 && weakSell.trendStrengthPercent<=35);
+assert.ok(weakSell.trendStrengthPercent>0 && weakSell.trendStrengthPercent<=30);
 assert.ok(weakSell.shockRetracementPercent>50);
-assert.equal(weakSell.shockBlocker,'PANTĂ ≤35%');
+assert.equal(weakSell.shockBlocker,'PANTĂ ≤30%');
 assertQuiet(weakSell);
-// A measured slope between 35% and 50% qualifies only with complete
+// A measured slope between 30% and 50% qualifies only with complete
 // same-candle shock evidence; weaker trends remain rejected.
 let flexBuy;
 for(const close of [110,128,181,219,211,172,159])
   flexBuy=analyze(close,'BUY','FLEX-BUY OTC',63,'M10',0,
     close===172||close===159,'BUY_MODERATE');
 assert.equal(flexBuy.shockDirection,'BUY');
-assert.ok(flexBuy.trendStrengthPercent>35 && flexBuy.trendStrengthPercent<=50);
-assert.ok(flexBuy.shockRetracementPercent>40 && flexBuy.shockRecoveryPercent>=30);
+assert.ok(flexBuy.trendStrengthPercent>30 && flexBuy.trendStrengthPercent<=50);
+assert.ok(flexBuy.shockRetracementPercent>35 && flexBuy.shockRecoveryPercent>=25);
 let flexSell;
 for(const close of [280,262,215,174,181,220,235])
   flexSell=analyze(close,'SELL','FLEX-SELL OTC',64,'M10',0,
     close===220||close===235,'SELL_MODERATE');
 assert.equal(flexSell.shockDirection,'SELL');
-assert.ok(flexSell.trendStrengthPercent>35 && flexSell.trendStrengthPercent<=50);
-assert.ok(flexSell.shockRetracementPercent>40 && flexSell.shockRecoveryPercent>=30);
+assert.ok(flexSell.trendStrengthPercent>30 && flexSell.trendStrengthPercent<=50);
+assert.ok(flexSell.shockRetracementPercent>35 && flexSell.shockRecoveryPercent>=25);
+// FLEX 428: trend strengths between 30% and 35% now qualify
+// only when the complete same-candle SHOCK evidence is present.
+let newlyAdmittedBuy;
+for(const close of [110,128,181,219,211,172,159])
+  newlyAdmittedBuy=analyze(close,'BUY','FLEX428-BUY OTC',81,'M5',0,
+    close===172||close===159,'BUY_FLEX_428');
+assert.ok(newlyAdmittedBuy.trendStrengthPercent>30 &&
+  newlyAdmittedBuy.trendStrengthPercent<=35);
+assert.equal(newlyAdmittedBuy.shockDirection,'BUY');
+assert.equal(newlyAdmittedBuy.shockOpticalVerified,true);
+let newlyAdmittedSell;
+for(const close of [280,262,215,174,181,220,235])
+  newlyAdmittedSell=analyze(close,'SELL','FLEX428-SELL OTC',82,'M5',0,
+    close===220||close===235,'SELL_FLEX_428');
+assert.ok(newlyAdmittedSell.trendStrengthPercent>30 &&
+  newlyAdmittedSell.trendStrengthPercent<=35);
+assert.equal(newlyAdmittedSell.shockDirection,'SELL');
+assert.equal(newlyAdmittedSell.shockOpticalVerified,true);
 // Independent M5 SCALP TREND: a moderate, timed pullback and measured
 // rebound, not a merely descending or ascending candle.
 let scalpBuy;
@@ -297,4 +324,4 @@ for(const close of [148,162,170,166,157,150])
     close===166||close===157||close===150));
 // Trend-line without an observed pullback and recovery is NOT a scalp signal.
 for(let i=0;i<9;i++) assertQuiet(analyze(140,'BUY','TREND-ONLY OTC',74,'M5'));
-console.log('PASS DEMO 406: moderate trend SHOCK BUY/SELL, weak-trend veto, SCALP M5 unchanged');
+console.log('PASS DEMO 406: FLEX 428 SHOCK BUY/SELL, weak-trend veto, M5 SCALP still separate');
