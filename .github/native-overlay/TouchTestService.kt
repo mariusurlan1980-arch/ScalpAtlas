@@ -395,6 +395,116 @@ class TouchTestService : AccessibilityService() {
       return demoHistoryNavigationStatus
     }
 
+    /**
+     * 425: Navigate only to the broker's labelled CLOSED history tab.
+     * The method never touches BUY/SELL or changes a monetary amount.
+     */
+    fun advanceDemoClosedHistoryNavigation(
+      cachedDemoVerifiedOnChart: Boolean
+    ): String {
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
+        ?: return "ÎNCHIS • QT DEMO/FEREASTRĂ NECONFIRMATĂ"
+      val (svc, root, labels) = info
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return "ÎNCHIS • ECRAN NECUNOSCUT" }
+      val title = labels.any { (node, rect) ->
+        rect.centerY() in (metrics.heightPixels * .09f).toInt()..
+          (metrics.heightPixels * .24f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
+            Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""")
+              .matches(it.trim())
+          }
+      }
+      if (!title) return "ÎNCHIS • PAGINA TRANZACȚII NU ESTE DESCHISĂ"
+      val clicked = clickExactDemoNavigationLabel(
+        svc, root, labels,
+        Regex("""(?i)^(?:Închis|Inchis|Closed)$"""),
+        .50f, .96f, .15f, .31f
+      )
+      return if (clicked) "ISTORIC DEMO • DESCHID FILA ÎNCHIS"
+        else "ISTORIC DEMO • FILA ÎNCHIS NECONFIRMATĂ"
+    }
+
+    /**
+     * Strictly read-only inspection of CLOSED trades. Never infer WIN/LOSS
+     * from an empty Open tab, a green color, or a balance delta. The broker
+     * must expose a unique order ID and unambiguous result on a selected
+     * CLOSED tab before a future version can connect this data to the ledger.
+     *
+     * In 425 it ONLY returns counts/diagnostics, never IDs or user balances.
+     */
+    fun inspectDemoClosedTradeEvidenceReadOnly(
+      cachedDemoVerifiedOnChart: Boolean,
+      visuallySelectedClosedTab: Boolean
+    ): String {
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
+        ?: return "ÎNCHIS • QT DEMO NECONFIRMAT • FĂRĂ WIN/LOSS"
+      val (svc, root, labels) = info
+      val dimensions = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(dimensions)
+      } catch (_: Throwable) { return "ÎNCHIS • ECRAN NECUNOSCUT" }
+      val w = dimensions.widthPixels
+      val h = dimensions.heightPixels
+      if (w < 300 || h < 600) return "ÎNCHIS • ECRAN NECONFIRMAT"
+
+      data class Visible(val value: String, val rect: Rect, val selected: Boolean)
+      val readable = labels.flatMap { (node, rect) ->
+        val texts = listOfNotNull(node.text?.toString(),
+          node.contentDescription?.toString()).map { it.trim() }
+          .filter { it.isNotBlank() }.distinct()
+        texts.map { Visible(it.take(120), rect, node.isSelected || node.isChecked) }
+      }.distinctBy { it.rect.toShortString() + "|" + it.value }
+      val realVisible = readable.any {
+        Regex("""(?i)\\bQT\\s*Real\\b""").containsMatchIn(it.value)
+      }
+      if (realVisible || svc.rootInActiveWindow?.packageName != root.packageName)
+        return "ÎNCHIS • CONT REAL/NECUNOSCUT • FĂRĂ REZULTAT"
+
+      val title = readable.any {
+        it.rect.centerY() in (h * .09f).toInt()..(h * .24f).toInt() &&
+          Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""")
+            .matches(it.value)
+      }
+      val closed = readable.filter {
+        it.rect.centerY() in (h * .15f).toInt()..(h * .31f).toInt() &&
+          it.rect.centerX() > w * .48f &&
+          Regex("""(?i)^(?:Închis|Inchis|Closed)$""").matches(it.value)
+      }
+      if (!title || closed.isEmpty()) return "ÎNCHIS • FILA TRANZACȚII LIPSEȘTE"
+      if (!visuallySelectedClosedTab && closed.none { it.selected })
+        return "ÎNCHIS • SELECTAREA FILEI NU ESTE CONFIRMATĂ"
+
+      // Count exact-field evidence only. The unlabelled green payout and
+      // $0 rows on Pocket Option are NOT unambiguous WIN/LOSS receipts.
+      val body = readable.filter { it.rect.centerY() in
+        (h * .29f).toInt()..(h * .91f).toInt() }
+      val fx = Regex("""(?i)\\b[A-Z]{3}\\s*/\\s*[A-Z]{3}\\b""")
+      val identifiedPairs = body.filter { fx.containsMatchIn(it.value) }
+      val idRx = Regex("""(?i)^(?:Order|Trade|Position|Tranzacție|Tranzactie)\\s*(?:ID|Nr\\.?|#)\\s*[:#]?\\s*([A-Z0-9_-]{6,30})$""")
+      val ids = body.mapNotNull { idRx.matchEntire(it.value)?.groupValues?.getOrNull(1) }
+        .distinct()
+      val stakeRx = Regex("""(?i)^(?:Stake|Amount|Investment|Investiție|Investitie|Miză|Miza|Sumă|Suma)\\s*:?\\s*(?:USD\\s*)?\\$?\\s*([0-9]+(?:[.,][0-9]{1,2})?)\\s*(?:USD)?$""")
+      val stakes = body.mapNotNull {
+        stakeRx.matchEntire(it.value)?.groupValues?.getOrNull(1)
+      }.distinct()
+      val resultRx = Regex("""(?i)^(?:P/L|Net Profit|Profit|Rezultat|Result)\\s*:?\\s*([+-]\\s*(?:USD\\s*)?\\$?\\s*[0-9]+(?:[.,][0-9]{1,2})?)\\s*(?:USD)?$""")
+      val results = body.mapNotNull {
+        resultRx.matchEntire(it.value)?.groupValues?.getOrNull(1)
+      }.distinct()
+      return "ÎNCHIS DEMO • PERECHI " + identifiedPairs.size +
+        " • ID " + ids.size + " • MIZE " + stakes.size +
+        " • P/L " + results.size + " • FĂRĂ RECUPERARE"
+    }
+
     fun returnToDemoChartAfterVerifiedEmptyReview(
       cachedDemoVerifiedOnChart: Boolean
     ): String {
