@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 430 SIMPLIFIED AUTO DEMO
+name: Build Scalp Atlas 431 FIX QT DEMO HISTORY NAVIGATION
 
 on:
   push:
-    branches: [feature/scalpatlas-demo-shock-simplified430]
+    branches: [feature/scalpatlas-demo-history-autofix431]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-430
+  group: scalp-atlas-calculator-test-431
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.10'
+          expo['version']='3.2.11'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=430
+          expo['android']['versionCode']=431
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1024,7 +1024,7 @@ jobs:
           cat > scalp-atlas-new/android/app/src/main/res/values/scalp_touch_test_strings.xml <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-            <string name="touch_test_accessibility_description">Poate citi contul QT Demo și perechea selectată din Pocket Option și, numai după două apăsări explicite, poate trimite un singur clic BUY/SELL DEMO de 1 USD. Nu execută ordine pe contul Real.</string>
+            <string name="touch_test_accessibility_description">Poate citi QT Demo, naviga în istoricul tranzacțiilor și încerca automat BUY/SELL numai după un semnal ȘOC confirmat și verificări independente. Nu trimite ordine pe contul Real.</string>
           </resources>
           XML
           grep -Fq 'TouchTestService' scalp-atlas-new/android/app/src/main/AndroidManifest.xml
@@ -1106,6 +1106,31 @@ jobs:
 
       - name: Verify Java runtime
         run: java -version
+
+      - name: Validate 431 navigation proof, reboot cooldown and one-order safety
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'fun demoHistoryPageState431(cachedDemoVerifiedOnChart: Boolean)' "$T"
+          grep -Fq 'for (depth in 0..5)' "$T"
+          grep -Fq 'r.contains(chosen.second)' "$T"
+          grep -Fq 'val alreadySelectedOpen = title && labels.any' "$T"
+          grep -Fq 'ISTORIC AUTO • CLIC TRIMIS • VERIFIC PAGINA' "$T"
+          grep -Fq 'val page = TouchTestService.demoHistoryPageState431(' "$O"
+          grep -Fq 'page.startsWith("ÎNCĂ PE GRAFIC")' "$O"
+          grep -Fq 'historyNavFailures431 >= 3' "$O"
+          grep -Fq 'ISTORIC NU S-A DESCHIS ' "$O"
+          grep -Fq 'private fun demoCooldownActive431(nowTick: Long, savedTick: Long)' "$T"
+          grep -Fq 'if (nowTick < savedTick) nowTick < 300_000L' "$T"
+          grep -Fq 'return !demoCooldownActive431(android.os.SystemClock.elapsedRealtime(), prior)' "$T"
+          grep -Fq 'demoCooldownActive431(tick, last)' "$T"
+          grep -Fq 'TouchTestService.priorDemoGestureCooldownComplete()' "$O"
+          grep -Fq 'demoEmptyReviewReads >= 2' "$O"
+          grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
@@ -1198,12 +1223,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-430-AUTO-DEMO-SIMPLU-G24.apk
+          cp "$APK" ScalpAtlas-431-ISTORIC-AUTO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.10-AUTO-DEMO-430
-          path: ScalpAtlas-430-AUTO-DEMO-SIMPLU-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.11-ISTORIC-AUTO-431
+          path: ScalpAtlas-431-ISTORIC-AUTO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1212,13 +1237,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-430-AUTO-DEMO-SIMPLU-G24.apk"
+          FILE="ScalpAtlas-431-ISTORIC-AUTO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-auto430-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-istoric431-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 430 DEMO AUTO SIMPLIFICAT • FĂRĂ BUTON SELL • ${GITHUB_SHA:0:12}" \
-            --notes "430: Butonul manual TEST SELL DEMO a fost eliminat din suprapunere. SHOCK DEMO FLEX cu praguri moderate 30% retragere, 20% revenire, 25% panta trend, maximum 18 secunde; raman doua confirmari, fitil real, o singura pozitie si preflight QT DEMO 1 USD sau miza de recuperare verificata. Se pastreaza detectia receipt-urilor OPEN/CLOSED din 429 si blocarea in lipsa unei dovezi independente. Tranzactii QT REAL dezactivate. Compilarea APK nu confirma ca Pocket Option va accepta automat tranzactii; testarea reala in DEMO si dovada istoricului sunt necesare. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 431 DEMO ISTORIC AUTO • FIX NAVIGARE • ${GITHUB_SHA:0:12}" \
+            --notes "431: Reparat istoricul automat QT Demo: cauta parintele clickable sigur al etichetei Tranzactii, verifica separat daca pagina s-a deschis dupa atingere si nu mai confunda gestul Android cu dovada paginii. Arata motivul cand istoricul ramane pe grafic si rareste incercarile dupa trei esecuri. O fila Deschis deja selectata nu mai este atinsa inutil. Dupa restart Android, cooldown-ul vechi nu se blocheaza pe timpul de uptime anterior: se asteapta minimum cinci minute de la repornire plus verificarea independenta a 0 pozitii deschise de doua ori. Macheta fara buton de test SELL, SHOCK FLEX 30/20/25, QT Real blocat, nicio reluare a unui ordin cu rezultat incert. Build APK nu este dovada executiei automate pe broker. Build $GITHUB_SHA." \
             --prerelease
