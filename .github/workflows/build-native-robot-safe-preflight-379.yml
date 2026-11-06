@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 434 CONTINUOUS NEON BORDER
+name: Build Scalp Atlas 435 HISTORY READ-ONLY STABILITY
 
 on:
   push:
-    branches: [feature/scalpatlas-neon-border434]
+    branches: [feature/scalpatlas-history-ocr-open435]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-434
+  group: scalp-atlas-calculator-test-435
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.14'
+          expo['version']='3.2.15'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=434
+          expo['android']['versionCode']=435
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1191,6 +1191,23 @@ jobs:
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
 
+      - name: Verify 435 history read-only evidence never clears an unknown order
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'val openPageSeen435 = verifiedDemoReview' "$O"
+          grep -Fq 'openTabVisualConsecutive429 >= 2' "$O"
+          grep -Fq 'historyNavStalled431 = false' "$O"
+          grep -Fq 'ID ORDIN ANTERIOR NECONFIRMAT' "$O"
+          grep -Fq 'demoRecoveryLedger.verifiedOpenPositionId429() == null' "$O"
+          grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'fun tapVerifiedDemoOpenTabOcr435(' "$T"
+          grep -Fq 'centerYFraction !in 0.15f..0.31f' "$T"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          grep -Fq 'private class TravelingNeonEdge434(' "$O"
+          ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1282,12 +1299,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-434-LED-CIRCULAR-G24.apk
+          cp "$APK" ScalpAtlas-435-ISTORIC-READONLY-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.14-LED-CIRCULAR-434
-          path: ScalpAtlas-434-LED-CIRCULAR-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.15-ISTORIC-READONLY-435
+          path: ScalpAtlas-435-ISTORIC-READONLY-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1296,13 +1313,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-434-LED-CIRCULAR-G24.apk"
+          FILE="ScalpAtlas-435-ISTORIC-READONLY-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-led434-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-istoric435-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 434 LUMINĂ LED CIRCULARĂ • DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "434: Lumina LED verde-turcoaz continua pe INTREG conturul rotunjit al machetei Scalp Atlas, cu un arc luminos care circula permanent, o tura la 3,2 secunde. Ramane activa si in modul compact. Animatia este desenata strict in interiorul chenarului de 176dp, fara butoane noi, fara extinderea ferestrei si fara modificari de tranzactionare. Se opreste odata cu inchiderea suprapunerii. Strategia SHOCK si protectiile de istoricul brokerului DEMO sunt neschimbate; REAL ramane blocat. Compilarea nu dovedeste functionarea comenzilor automate pe telefon. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 435 ISTORIC DEMO • DIAGNOSTIC EXACT • ${GITHUB_SHA:0:12}" \
+            --notes "435: Corectia de navigare recunoaste doua observatii vizuale independente ale filei Deschis pe pagina de istoric, chiar daca Android Accessibility nu expune titlul brokerului; evita raportarea falsa ISTORICUL NU SE DESCHIDE cand pagina exista. Daca ID-ul ordinului anterior nu a fost confirmat, mesajul arata explicit ID ORDIN ANTERIOR NECONFIRMAT, fara a forta ordine sau a debloca automat miza. Lumina LED din 434 ramane. Nu se sterg marcaje de ordine si nu se modifica strategia SHOCK, conturile Real ramase dezactivate. Compilarea nu confirma posibilitatea tranzactionarii pe telefon. Build $GITHUB_SHA." \
             --prerelease
