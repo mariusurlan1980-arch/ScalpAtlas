@@ -152,7 +152,6 @@ class ScalpOverlayService : Service() {
   private val autoShockAttemptPrefs = "scalp_atlas_demo_shock_400"
   private val sell404TestPrefs = "scalp_atlas_sell_pilot_404"
   private var sell404Diagnostic: String? = null
-  private var sell404Button: TextView? = null
   // 399: REAL/DEMO visible-account checks are read-only. No REAL gesture path.
   private var brokerAccountMonitorRunning = false
   private var lastBrokerAccountStatus = ""
@@ -2218,77 +2217,10 @@ class ScalpOverlayService : Service() {
     calcRow.addView(calcOne, LinearLayout.LayoutParams(-1, dp(31)))
     root.addView(calcRow)
     root.addView(probeStatus)
-    // 404: one explicit optional SELL DEMO 1 USD gesture pilot. This is NOT
-    // automatic trading and is NEVER triggered by opening SUPRAPUNERE LIVE.
-    // Deliberate user tap only; no SHOCK signal required. Every broker preflight
-    // remains fail-closed: exact QT Demo, balance, stake, payout >=92%, unique
-    // BUY/SELL controls, verified accessibility and one global active attempt.
-    val sellPilot = localButton("TEST SELL DEMO 1$", Color.rgb(95, 64, 117)).apply {
-      textSize = 10f
-      contentDescription =
-        "Test de o singură apăsare SELL de 1 dolar numai pe cont Pocket Option QT Demo"
-      setOnClickListener {
-        val prefs = getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
-        val previouslyAttempted = prefs.getBoolean("attempted", false)
-        val priorAutoShockAttempt = getSharedPreferences(
-          autoShockAttemptPrefs, Context.MODE_PRIVATE
-        ).getBoolean("attempted", false)
-        val reason = when {
-          previouslyAttempted -> "TEST SELL DEJA ÎNCERCAT • FĂRĂ REPETARE"
-          priorAutoShockAttempt -> "BLOCAT: ORDIN ȘOC ANTERIOR NECONFIRMAT"
-          mediaProjection == null -> "BLOCAT: SUPRAPUNERE LIVE NU ESTE ACTIVĂ"
-          !TouchTestService.ready() -> TouchTestService.accessDiagnostic(this@ScalpOverlayService)
-          !TouchTestService.inspectBrokerAccountReadOnly()
-            .startsWith("QT DEMO IDENTIFICAT") ->
-            "BLOCAT: QT DEMO / APLICAȚIE NECONFIRMATĂ"
-          else -> try {
-            val preflight = TouchTestService.preflightAnyPairDemoSell()
-            if (!preflight.startsWith("GATA TEST SELL QT DEMO")) {
-              preflight
-            } else if (!tradePositionGate.beginAttempt()) {
-              "BLOCAT: POZIȚIE ACTIVĂ SAU NECONFIRMATĂ"
-            } else if (!prefs.edit().putBoolean("attempted", true).commit()) {
-              tradePositionGate.uncertainResult()
-              "BLOCAT: NU AM PUTUT MEMORA TESTUL • FĂRĂ CLIC"
-            } else {
-              // Disable SHOCK order mode BEFORE the diagnostic gesture.
-              autoDemoSessionRequested = false
-              autoDemoSessionConsumed = true
-              autoDemoArmed = false
-              autoDemoMarket = null
-              autoDemoExpiry = 0L
-              visibility = View.GONE
-              try {
-                val sent = TouchTestService.pressAnyPairDemoSellOnce { callback ->
-                  mainHandler.post {
-                    sell404Diagnostic = "TEST SELL DEMO: " + callback.take(100)
-                    touchProbeStatus?.text = sell404Diagnostic
-                  }
-                }
-                // Android may accept a gesture without broker confirmation.
-                // Never retry automatically after any possible dispatch.
-                tradePositionGate.uncertainResult()
-                "TEST SELL DEMO: " + sent
-              } catch (error: Exception) {
-                tradePositionGate.uncertainResult()
-                "GEST TEST BLOCAT: " + error.javaClass.simpleName.take(24)
-              }
-            }
-          } catch (error: Exception) {
-            "TEST BLOCAT: " + error.javaClass.simpleName.take(24)
-          }
-        }
-        sell404Diagnostic = reason
-        touchProbeStatus?.text = reason
-      }
-      visibility = if (getSharedPreferences(
-          sell404TestPrefs, Context.MODE_PRIVATE
-        ).getBoolean("attempted", false)) View.GONE else View.VISIBLE
-    }
-    root.addView(sellPilot, LinearLayout.LayoutParams(-1, dp(30)).apply {
-      topMargin = dp(3)
-    })
-    sell404Button = sellPilot
+    // 430: The manual "TEST SELL DEMO 1$" control has been removed from
+    // the overlay. SHOCK DEMO remains autonomous after the user starts LIVE.
+    // Legacy previous-attempt preferences are deliberately retained so an
+    // ambiguous earlier broker gesture cannot be retried or bypassed.
     calculatorTestRow = calcRow
     touchProbeCommandRow = commandRow
     touchProbeRow = probeRow
@@ -2301,8 +2233,8 @@ class ScalpOverlayService : Service() {
       body.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
       trendRow.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
       note.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
-      // Simple pilot: hide every auxiliary/legacy test; retain only
-      // live status, bell, +/−, and the explicit one-shot DEMO button.
+      // Minimal autonomous overlay: only status and live indicators.
+      // No manual SELL test button and no additional gesture controls.
       touchProbeToggle.visibility = View.GONE
       testBipControl.visibility = View.GONE
       brokerAutoRow.visibility = View.GONE // Session auto-arms after Android LIVE consent.
@@ -4320,7 +4252,6 @@ class ScalpOverlayService : Service() {
     demoClickTestPending = false
     demoClickMonitorRunning = false
     brokerAccountMonitorRunning = false
-    sell404Button = null
     sell404Diagnostic = null
     autoDemoSessionRequested = false
     autoDemoSessionConsumed = true
