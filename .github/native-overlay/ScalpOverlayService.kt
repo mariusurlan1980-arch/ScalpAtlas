@@ -551,14 +551,14 @@ class ScalpOverlayService : Service() {
     // is no manual/optical/timeout shortcut to change the amount.
     val verifiedPayout = TouchTestService.readVerifiedDemoPayoutForPair(pair)
       ?: return
-    val next = demoRecoveryLedger.quote(verifiedPayout)
-    val stake = next.stakeCents ?: return
-    // 426: A VERIFIED net-profitable recovery must also restore the
-    // broker's amount field to exactly $1.00. Neither a timer nor a UI
-    // gesture may claim success; DemoStakeEditor re-reads the actual field.
+    // A finished recovery blocks new orders until the actual broker
+    // displays 1 USD again. This reset is allowed even while quote() is
+    // intentionally blocked by pendingBaseStakeReset.
     val resetToBase = demoRecoveryLedger.needsBaseStakeReset()
-    if ((next.lossCents <= 0L || stake <= 100L) && !resetToBase) return
-    if (resetToBase && stake != DemoRecoveryLedger.BASE_STAKE_CENTS) return
+    val next = demoRecoveryLedger.quote(verifiedPayout)
+    val stake = if (resetToBase) DemoRecoveryLedger.BASE_STAKE_CENTS
+      else next.stakeCents ?: return
+    if (!resetToBase && (next.lossCents <= 0L || stake <= 100L)) return
     lastAutoDemoStakeEditAt = nowTick
     val result = try {
       TouchTestService.setVerifiedDemoRecoveryStakeOnBroker(pair, stake)
