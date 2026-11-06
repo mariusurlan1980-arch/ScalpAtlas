@@ -3908,7 +3908,13 @@ class ScalpOverlayService : Service() {
             !tfReady -> "TF NECONFIRMAT"
             !brokerConnected -> "CADRE LIVE NECONFIRMATE"
             else -> try {
-              TouchTestService.preflightOneDollarDemoOrder(pair)
+              val nextStake429 = desiredVerifiedDemoStake429(pair)
+              when {
+                nextStake429 == null -> "BLOCAT: REZULTAT / MIZĂ DEMO NECONFIRMATĂ"
+                nextStake429 == 100L ->
+                  TouchTestService.preflightOneDollarDemoOrder(pair)
+                else -> TouchTestService.preflightVerifiedDemoStake429(pair, nextStake429)
+              }
             } catch (error: Exception) {
               android.util.Log.e("ScalpAtlasRobot", "Auto start DEMO preflight failed", error)
               "EROARE ANDROID " + error.javaClass.simpleName.take(20)
@@ -3921,7 +3927,7 @@ class ScalpOverlayService : Service() {
             autoDemoMarket = pair
             autoDemoLockedAt = lockedAt // must see a NEW SHOCK, never replay an old BIP
             autoDemoExpiry = autoDemoSessionEndAt
-            touchProbeStatus?.text = "🤖 DEMO AUTO • 1 USD • AȘTEAPTĂ ȘOC • SUNET OPȚIONAL"
+            touchProbeStatus?.text = "🤖 DEMO AUTO • MIZĂ VERIFICATĂ • AȘTEAPTĂ ȘOC"
           } else {
             touchProbeStatus?.text = "🤖 DEMO AȘTEAPTĂ: " + diagnostic
           }
@@ -3976,9 +3982,10 @@ class ScalpOverlayService : Service() {
         // preparing the next stake field is NOT permission to trade it.
         if (closedHistoryInspectionInProgress) {
           touchProbeStatus?.text = "ISTORIC ÎNCHIS • VERIFICARE READ-ONLY • FĂRĂ ORDIN"
-        } else if (demoRecoveryLedger.quote(92).lossCents > 0L) {
+        } else if (demoRecoveryLedger.isRecovering429() &&
+            desiredVerifiedDemoStake429(expectedPair ?: "NEIDENTIFICAT") == null) {
           touchProbeStatus?.text =
-            "RECUPERARE DEMO • SUMĂ PREGĂTITĂ • ORDIN DINAMIC ÎNCĂ BLOCAT"
+            "RECUPERARE DEMO • QUOTE / PAYOUT / SOLD NECONFIRMATE"
         } else if (!readyForDemo) {
           touchProbeStatus?.text =
             "FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC"
