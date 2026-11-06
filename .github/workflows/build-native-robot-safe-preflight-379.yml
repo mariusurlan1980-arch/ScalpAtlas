@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 427 VERIFIED DEMO CLOSED PNL EVIDENCE
+name: Build Scalp Atlas 428 FLEX SHOCK DEMO 35-25-30
 
 on:
   push:
-    branches: [feature/scalpatlas-demo-closed-receipts427]
+    branches: [feature/scalpatlas-demo-shock-flex428]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-427
+  group: scalp-atlas-calculator-test-428
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.7'
+          expo['version']='3.2.8'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=427
+          expo['android']['versionCode']=428
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -613,7 +613,7 @@ jobs:
           MOD=.github/native-overlay/ScalpOverlayModule.kt
           grep -Fq "scalpBlocker:'AȘTEAPTĂ DATE'" "$ENGINE"
           grep -Fq 'scalpBlocker:scalpBlocker' "$ENGINE"
-          grep -Fq 'minShockFraction=.40' "$ENGINE"
+          grep -Fq 'minShockFraction=.35' "$ENGINE"
           grep -Fq "if(!confirmed && tf==='M5' && strongTrend)" "$ENGINE"
           grep -Fq 'signalGateNote?.text = when {' "$SRV"
           grep -Fq 'scanStatus != "LIVE"' "$SRV"
@@ -696,7 +696,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'private var autoDemoLastPreflightReason' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '"🤖 ȘOC FLEX 40/30/35 • " + shockBlocker.take(39)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"🤖 ȘOC FLEX 35/25/30 • " + shockBlocker.take(39)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '"🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeStatus.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
 
@@ -737,12 +737,12 @@ jobs:
       - name: Verify 406 moderate DEMO SHOCK and persistent-order safety
         run: |
           set -euo pipefail
-          grep -Fq 'minShockFraction=.40,maxDropMs=15000,minRecoveryFraction=.30' scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq 'minTrendStrengthPercent=35,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'minShockFraction=.35,maxDropMs=15000,minRecoveryFraction=.25' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'minTrendStrengthPercent=30,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'var rowSupport=Math.max(2,Math.ceil(width*.8))' scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq 'private const val SHOCK_MIN_DEPTH = 40' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'private const val SHOCK_MIN_RECOVERY = 30' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'private const val SHOCK_MIN_TREND = 35' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private const val SHOCK_MIN_DEPTH = 35' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private const val SHOCK_MIN_RECOVERY = 25' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private const val SHOCK_MIN_TREND = 30' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SHOCK_MAX_DROP_MS = 15_000L' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val sameScalpDirection = sameOpticalDirection' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'REQUIRED_CONFIRMATIONS = 2' .github/native-overlay/ScalpOverlayService.kt
@@ -835,7 +835,7 @@ jobs:
           PY
           grep -q "com.google.mlkit:text-recognition:16.0.1" scalp-atlas-new/android/app/build.gradle
 
-      - name: Validate 427 double-read CLOSED evidence and net-profit reset constraints
+      - name: Validate 428 FLEX SHOCK and 427 CLOSED evidence plus reset guards
         run: |
           set -euo pipefail
           P=.github/native-overlay/DemoRecoveryLedger.kt
@@ -874,6 +874,20 @@ jobs:
           grep -Fq 'OPEN ID NECONECTAT • FĂRĂ RECUPERARE' .github/native-overlay/TouchTestService.kt
           grep -Fq '}, 1800L)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'closedHistoryInspection427' .github/native-overlay/ScalpOverlayService.kt
+          # 428: narrow signal relaxation only; never remove the one-position
+          # guard or the confirmed QT Demo / amount / payout checks.
+          grep -Fq 'private const val SHOCK_MIN_DEPTH = 35' "$O"
+          grep -Fq 'private const val SHOCK_MIN_RECOVERY = 25' "$O"
+          grep -Fq 'private const val SHOCK_MIN_TREND = 30' "$O"
+          grep -Fq 'val scalpAlertAllowed = confirmedScalp &&' "$O"
+          grep -Fq '!autoDemoSessionRequested && !autoDemoSessionConsumed' "$O"
+          grep -Fq 'now - lockedAt in 0L..4000L' "$O"
+          grep -Fq 'REQUIRED_CONFIRMATIONS = 2' "$O"
+          grep -Fq 'tradePositionGate.beginAttempt()' "$O"
+          grep -Fq 'brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'preflightOneDollarDemoOrder(' "$O"
+          grep -Fq 'activeStrategy == "SHOCK"' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           # Calculation only: no change in the broker's 1 USD execution guards.
           grep -Fq 'preflightOneDollarDemoOrder(' "$O"
           grep -Fq 'pressAutoOneDollarDemoOrderOnce(' "$O"
@@ -1046,7 +1060,7 @@ jobs:
           grep -Fq "var strategy=confirmed?'SHOCK'" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "scalpOpticalVerified:scalpConfirmed" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "tf==='M5'" scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq 'minTrendStrengthPercent=35,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'minTrendStrengthPercent=30,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "candle.trendStrengthPercent<=minTrendStrengthPercent" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'PANTĂ ≤50%' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'source:' scalp-atlas-new/shockNativeEngine.ts
@@ -1102,7 +1116,7 @@ jobs:
           grep -q 'if (!safe) stopPulseRing()' "$SERVICE"
           grep -q 'shockBodyPercent > SHOCK_MIN_DEPTH' "$SERVICE"
           grep -q 'observedTrendStrengthPercent > SHOCK_MIN_TREND' "$SERVICE"
-          grep -q 'PANTĂ ≤35%' "$SERVICE"
+          grep -q 'PANTĂ ≤30%' "$SERVICE"
           grep -q 'val confirmedScalp = rawStrategy == "SCALP_TREND"' "$SERVICE"
           grep -q 'val confirmedShock = rawStrategy == "SHOCK"' "$SERVICE"
           grep -q 'candidateStrategy != confirmedStrategy' "$SERVICE"
@@ -1156,12 +1170,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-427-DEMO-RESULT-READONLY-G24.apk
+          cp "$APK" ScalpAtlas-428-FLEX-SHOCK-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.7-RESULT-READONLY-427
-          path: ScalpAtlas-427-DEMO-RESULT-READONLY-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.8-FLEX-SHOCK-428
+          path: ScalpAtlas-428-FLEX-SHOCK-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1170,13 +1184,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-427-DEMO-RESULT-READONLY-G24.apk"
+          FILE="ScalpAtlas-428-FLEX-SHOCK-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-calculator427-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-flex428-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 427 DEMO RESULT P/L STRICT • NUMAI CITIRE • ${GITHUB_SHA:0:12}" \
-            --notes "427: In QT Demo, citirea CLOSED cauta exact un ID, o miza si un P/L explicit semnat, pe acelasi rand/card si pe doua verificari consecutive ale filei selectate. Un rezultat doar din culoare, sold sau absenta ordinelor ramane NECONFIRMAT. Motorul urmareste net profit tinta 0.92 USD si nu revine la 1 USD doar la break-even. OPEN receipt ID nu este inca conectat la CLOSED, astfel citirea este READ ONLY si NU activeaza automat majorarea mizei ori ordine progresive. Cont Real blocat, limita 6 tranzactii. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 428 DEMO ȘOC FLEX 35/25/30 • ${GITHUB_SHA:0:12}" \
+            --notes "428: Demo SHOCK FLEX moderat: retragere >35%, revenire >=25%, panta >30%, in aceeasi lumanare si max 15s. Confirmarea dubla, wick, pereche, TF, suma 1 USD, payout >=92%, cont Demo, lock 5 min si control 0 pozitii verificate raman obligatorii. SCALP M5 nu mai ocupa intervalul de 5 min destinat unui nou SHOCK Demo. Fereastra de semnal proaspat 4s, cadrele se verifica in continuare. Rezultatele WIN/LOSS raman doar inspectate si NU sunt conectate la ID-ul ordinului OPEN, recuperarea cu mize mari ramane inactiva. Real blocat. Build $GITHUB_SHA." \
             --prerelease
