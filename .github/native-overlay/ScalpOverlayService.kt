@@ -167,6 +167,11 @@ class ScalpOverlayService : Service() {
   // with the generic last read-only page error from the CHART screen.
   private var lastAutoDemoHistoryNavStatus = ""
   private var lastAutoDemoHistoryNavStatusAt = 0L
+  // 424: background QT Demo amount preparation. It is eligible only after
+  // a broker receipt has updated the independent recovery ledger.
+  private var lastAutoDemoStakeEditAt = 0L
+  private var lastAutoDemoStakeEditResult = ""
+  private var lastAutoDemoStakeEditResultAt = 0L
   // 410: QT Demo can disappear from the header on Transactions > Open.
   // Retain a short read-only proof for the SAME broker package only.
   // Broker ORDER preflight still requires a fresh visible QT Demo header.
@@ -507,6 +512,53 @@ class ScalpOverlayService : Service() {
    * Android MediaProjection authorization and the X / STOP control remain
    * the only way to start and end the foreground screen-reading session.
    */
+  /**
+   * 424: Connect the verified-loss recovery QUOTE to Pocket Option's actual
+   * DEMO amount field, using Android Accessibility ACTION_SET_TEXT and a fresh
+   * broker UI read-back. It does NOT submit orders, does NOT read a WIN/LOSS,
+   * and never alters the current 1 USD broker order path.
+   *
+   * Without a uniquely matched broker CLOSED receipt, the ledger has no
+   * verified loss and this code MUST do nothing.
+   */
+  private fun maybePrepareAutomaticDemoRecoveryStake(nowTick: Long) {
+    if (lastAutoDemoStakeEditAt > 0L &&
+        nowTick - lastAutoDemoStakeEditAt in 0L..7_000L) return
+    if (!autoDemoSessionRequested || autoDemoSessionConsumed ||
+        !TouchTestService.ready() ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        mediaProjection == null || !brokerConnected ||
+        activeSignal != "NONE" ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT")) return
+    val now = System.currentTimeMillis()
+    if (!pairReady(now)) return
+    val pair = currentPair(now)
+    if (pair == "NEIDENTIFICAT") return
+
+    // In 424, the only source of a recovery loss is a verified broker
+    // opening receipt followed by its corresponding closed receipt. There
+    // is no manual/optical/timeout shortcut to change the amount.
+    val verifiedPayout = TouchTestService.readVerifiedDemoPayoutForPair(pair)
+      ?: return
+    val next = demoRecoveryLedger.quote(verifiedPayout)
+    val stake = next.stakeCents ?: return
+    if (next.lossCents <= 0L || stake <= 100L) return
+    lastAutoDemoStakeEditAt = nowTick
+    val result = try {
+      TouchTestService.setVerifiedDemoRecoveryStakeOnBroker(pair, stake)
+    } catch (error: Exception) {
+      android.util.Log.e("ScalpAtlas424", "DEMO stake update blocked", error)
+      "BLOCAT: MODIFICARE SUMĂ ANDROID"
+    }
+    lastAutoDemoStakeEditResult = result.take(100)
+    lastAutoDemoStakeEditResultAt = nowTick
+    // Keep the display clear: the legacy execution path still permits ONLY
+    // exact 1 USD, so no progressive orders will be sent in 424.
+    touchProbeStatus?.text = if (result.startsWith("SUMĂ QT DEMO CONFIRMATĂ"))
+      "SUMĂ MODIFICATĂ ÎN DEMO • TRADE RECUPERARE NEACTIVAT"
+    else result
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -526,6 +578,10 @@ class ScalpOverlayService : Service() {
           lastBrokerAccountStatus = diagnostic
           touchProbeStatus?.text = "🤖 " + diagnostic.take(115)
         }
+        // Amount edits depend on broker-verified settled trade receipts;
+        // the existing 424 build has no automatic receipt reader, so this
+        // event cannot be produced by Android gesture callbacks or SHOCK.
+        maybePrepareAutomaticDemoRecoveryStake(android.os.SystemClock.elapsedRealtime())
         // 410: On the broker's Transactions page the account header is
         // sometimes absent, even though QT Demo was confirmed on the chart.
         // Carry that proof for <=90s ONLY in the SAME broker package, and ONLY
