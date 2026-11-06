@@ -1026,6 +1026,30 @@ class TouchTestService : AccessibilityService() {
     }
 
     /**
+     * 423: Secure DEMO stake-field editing only, never an order.
+     * Call ONLY after the matching broker CLOSED receipt is independently
+     * verified by a future history adapter and the ledger authorizes a quote.
+     * Currently no unverified visual signal or timer can invoke this method.
+     */
+    fun setVerifiedDemoRecoveryStakeOnBroker(
+      expectedPair: String,
+      stakeCents: Long
+    ): String {
+      val svc = connected ?: return "ACCESIBILITATE NECONECTATĂ • FĂRĂ MODIFICARE"
+      if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT")
+        return "PERECHE NECONFIRMATĂ • FĂRĂ MODIFICARE"
+      val matches = {
+        try {
+          connected === svc && readVisibleDemoPair() == expectedPair &&
+            BrokerAdapterRegistry.hasDemoExecutor(
+              svc.rootInActiveWindow?.packageName?.toString().orEmpty()
+            )
+        } catch (_: Throwable) { false }
+      }
+      return DemoStakeEditor.setExactDemoStake(svc, matches, stakeCents)
+    }
+
+    /**
      * Read-only diagnostic for the amount widget. It only reports if Android
      * exposes the exact 1 USD value; never returns the user's account data or
      * performs any action. The same validation gates are used by the pilot.
