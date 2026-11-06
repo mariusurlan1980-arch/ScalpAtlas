@@ -1233,11 +1233,9 @@ jobs:
           const assert = require('node:assert/strict');
           const uuid='387595e2-b930-4648-b31f-903e15197d47';
           const rx=/^(?:Ordin\s*:\s*|(?:Order|Trade|Position|Tranzacție|Tranzactie)\s*(?:ID|Nr\.?|#)\s*[:#]?\s*)([A-Z0-9_-]{6,64})$/i;
-          assert.equal('Ordin: '+uuid.match?.name,undefined);
           assert.equal(('Ordin: '+uuid).match(rx)?.[1], uuid);
           assert.equal(('Trade ID: ABCDEF123456').match(rx)?.[1], 'ABCDEF123456');
           assert.equal('Ordin: '.match(rx),null);
-          assert.equal((100+92)*100/92,208.69565217391303);
           assert.equal(Math.ceil((100+92)*100/92),209);
           console.log('UUID 36 chars accepted; initial DEMO loss 1.00 => next 2.09 at payout 92%');
           NODE
