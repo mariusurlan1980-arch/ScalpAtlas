@@ -810,6 +810,13 @@ class ScalpOverlayService : Service() {
                           .edit().putString("closedHistoryInspection425",
                             lastClosedInspectionDiagnostic).apply()
                         touchProbeStatus?.text = "🔎 " + lastClosedInspectionDiagnostic
+                        if (pendingReceipt429 && expectedPair429 != null)
+                          TouchTestService.readDoubleVerifiedDemoReceipt429(
+                            expectedPair = expectedPair429,
+                            cachedDemoVerifiedOnChart = true,
+                            closed = true,
+                            selectedTabVerifiedVisually = closedEvidenceFresh
+                          )
                         // 427: A second independent read of the SAME selected
                         // CLOSED tab must agree before P/L can be described as
                         // observed twice. Neither read authorizes a DEMO
@@ -832,6 +839,67 @@ class ScalpOverlayService : Service() {
                               .edit().putString("closedHistoryInspection427",
                                 lastClosedInspectionDiagnostic).apply()
                             touchProbeStatus?.text = "🔎 " + lastClosedInspectionDiagnostic
+                            if (pendingReceipt429 && expectedPair429 != null &&
+                                expectedPackage429 == provenPackage) {
+                              val closedReceipt429 =
+                                TouchTestService.readDoubleVerifiedDemoReceipt429(
+                                  expectedPair = expectedPair429,
+                                  cachedDemoVerifiedOnChart = true,
+                                  closed = true,
+                                  selectedTabVerifiedVisually = secondFresh
+                                )
+                              val closedNet429 = closedReceipt429?.netProfitCents
+                              val sameVerifiedOpen429 =
+                                closedReceipt429 != null && closedNet429 != null &&
+                                closedReceipt429.brokerPackage == expectedPackage429 &&
+                                closedReceipt429.positionId ==
+                                  demoRecoveryLedger.verifiedOpenPositionId429() &&
+                                closedReceipt429.stakeCents ==
+                                  demoRecoveryLedger.verifiedOpenStakeCents429() &&
+                                closedReceipt429.stakeCents == expectedStake429
+                              val ledgerUpdated429 = if (sameVerifiedOpen429)
+                                demoRecoveryLedger.onVerifiedDemoClosed(
+                                  brokerAccountKey = "QT_DEMO:" + expectedPackage429,
+                                  positionId = closedReceipt429!!.positionId,
+                                  closedReceiptId = closedReceipt429.positionId + ":CLOSED",
+                                  netProfitCents = closedNet429!!,
+                                  receiptIndependentlyVerified = true
+                                )
+                              else false
+                              if (ledgerUpdated429) {
+                                // Persist exactly once; a restart must never
+                                // replay the last physical Android order.
+                                val cleared429 = pendingPrefs429.edit()
+                                  .putBoolean("attempted", false)
+                                  .remove("expectedPair429")
+                                  .remove("expectedPackage429")
+                                  .remove("expectedStakeCents429")
+                                  .remove("expectedPayout429")
+                                  .remove("attemptedAt429")
+                                  .commit()
+                                if (cleared429) {
+                                  autoDemoSessionRequested = true
+                                  autoDemoSessionConsumed = false
+                                  autoDemoArmed = false
+                                  autoDemoMarket = null
+                                  autoDemoLastPreflightAt = 0L
+                                  autoDemoLockedAt = lockedAt
+                                  touchProbeStatus?.text = if (closedNet429!! < 0L)
+                                    "✅ LOSS DEMO VERIFICAT • CALCULEZ MIZA URMĂTOARE"
+                                  else "✅ WIN DEMO VERIFICAT • ACTUALIZEZ RECUPERAREA"
+                                } else {
+                                  autoDemoSessionRequested = false
+                                  autoDemoSessionConsumed = true
+                                  touchProbeStatus?.text =
+                                    "BLOCAT: REZULTAT VERIFICAT, DAR BLOCAREA NU S-A SALVAT"
+                                }
+                              } else {
+                                autoDemoSessionRequested = false
+                                autoDemoSessionConsumed = true
+                                touchProbeStatus?.text =
+                                  "BLOCAT: ID OPEN/CLOSED SAU P/L NECONFIRMATE"
+                              }
+                            }
                             mainHandler.postDelayed({
                               if (!shuttingDown && mediaProjection != null &&
                                   TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
