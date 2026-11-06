@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 430 SIMPLIFIED AUTO DEMO
+name: Build Scalp Atlas 431 VERIFIED DEMO HISTORY NAVIGATION
 
 on:
   push:
-    branches: [feature/scalpatlas-demo-shock-simplified430]
+    branches: [feature/scalpatlas-demo-history-navigation431]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-430
+  group: scalp-atlas-calculator-test-431
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.10'
+          expo['version']='3.2.11'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=430
+          expo['android']['versionCode']=431
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1107,6 +1107,27 @@ jobs:
       - name: Verify Java runtime
         run: java -version
 
+      - name: Verify 431 confirmed history navigation never silently releases old broker orders
+        run: |
+          set -euo pipefail
+          T=.github/native-overlay/TouchTestService.kt
+          O=.github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'for (depth in 0..6)' "$T"
+          grep -Fq 'val safeNavRegion = ' "$T"
+          grep -Fq 'node.performAction(AccessibilityNodeInfo.ACTION_CLICK)' "$T"
+          grep -Fq 'fun confirmedDemoHistoryPageReadOnly431(' "$T"
+          grep -Fq 'return title && open' "$T"
+          grep -Fq 'private fun navigateVerifiedDemoHistory431(' "$O"
+          grep -Fq 'historyNavFailed431 >= 3' "$O"
+          grep -Fq 'ISTORICUL NU SE DESCHIDE' "$O"
+          grep -Fq 'confirmedDemoHistoryPageReadOnly431(verifiedDemoReview)' "$O"
+          grep -Fq 'eligibleForBrokerEmptyReview && demoEmptyReviewReads == 0' "$O"
+          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'demoRecoveryLedger.verifiedOpenPositionId429()' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1198,12 +1219,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-430-AUTO-DEMO-SIMPLU-G24.apk
+          cp "$APK" ScalpAtlas-431-ISTORIC-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.10-AUTO-DEMO-430
-          path: ScalpAtlas-430-AUTO-DEMO-SIMPLU-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.11-ISTORIC-DEMO-431
+          path: ScalpAtlas-431-ISTORIC-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1212,13 +1233,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-430-AUTO-DEMO-SIMPLU-G24.apk"
+          FILE="ScalpAtlas-431-ISTORIC-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-auto430-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-istoric431-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 430 DEMO AUTO SIMPLIFICAT • FĂRĂ BUTON SELL • ${GITHUB_SHA:0:12}" \
-            --notes "430: Butonul manual TEST SELL DEMO a fost eliminat din suprapunere. SHOCK DEMO FLEX cu praguri moderate 30% retragere, 20% revenire, 25% panta trend, maximum 18 secunde; raman doua confirmari, fitil real, o singura pozitie si preflight QT DEMO 1 USD sau miza de recuperare verificata. Se pastreaza detectia receipt-urilor OPEN/CLOSED din 429 si blocarea in lipsa unei dovezi independente. Tranzactii QT REAL dezactivate. Compilarea APK nu confirma ca Pocket Option va accepta automat tranzactii; testarea reala in DEMO si dovada istoricului sunt necesare. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 431 NAVIGARE ISTORIC DEMO • FĂRĂ ORDINE DUBLE • ${GITHUB_SHA:0:12}" \
+            --notes "431: Verificare independenta ca pagina Tranzactii si fila Deschis s-au deschis in brokerul QT DEMO; click pe textul exact in accesibilitate inclusiv stramosi mici pana la 6 niveluri, fara coordonate arbitrare BUY/SELL. Dupa 3 navigari nereusite se afiseaza BLOCAT: ISTORICUL NU SE DESCHIDE, fara ordine si fara bucla continua. Marcajele de ordine vechi raman active pana la dovezi DEMO independente; nu se forteaza reset sau mize crescute. Butonul manual SELL eliminat; SHOCK 30/20/25 cu doua confirmari si fitil, QT Real dezactivat. Build/testele APK nu pot confirma tranzactii reale in broker. Build $GITHUB_SHA." \
             --prerelease
