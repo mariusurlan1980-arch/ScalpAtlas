@@ -174,6 +174,13 @@ class ScalpOverlayService : Service() {
   private var historyNavPendingAt431 = 0L
   private var historyNavFailed431 = 0
   private var historyNavStalled431 = false
+  // 432: two independent LIVE OCR reads of the lower-left broker
+  // "Tranzacții" NAV LABEL. Never infer a control from fixed coordinates.
+  @Volatile private var historyNavOcrAt432 = 0L
+  @Volatile private var historyNavOcrPackage432: String? = null
+  @Volatile private var historyNavOcrX432 = -1f
+  @Volatile private var historyNavOcrY432 = -1f
+  @Volatile private var historyNavOcrSamples432 = 0
   // 424: background QT Demo amount preparation. It is eligible only after
   // a broker receipt has updated the independent recovery ledger.
   private var lastAutoDemoStakeEditAt = 0L
@@ -610,6 +617,59 @@ class ScalpOverlayService : Service() {
   // History navigation is a read-only recovery step for a POSSIBLE prior
   // broker order. A touch being accepted by Android cannot be counted as a
   // page transition or authorization for a new broker gesture.
+  private fun recordBrokerHistoryBottomLabelOcr432(
+    result: com.google.mlkit.vision.text.Text,
+    image: Bitmap,
+    observedAt: Long
+  ) {
+    // OCR is only an auxiliary navigation sensor, never authorization for
+    // a financial order or for clearing a previous uncertain trade.
+    val chartVerified = lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") &&
+      !lastBrokerAccountStatus.contains("QT REAL") &&
+      autoDemoSessionConsumed && mediaProjection != null
+    val pkg = if (chartVerified)
+      TouchTestService.activeDemoExecutorPackageForReview() else null
+    if (!chartVerified || pkg == null ||
+        pkg != verifiedDemoAccountPackage ||
+        android.os.SystemClock.elapsedRealtime() - verifiedDemoAccountAt !in 0L..90_000L) {
+      historyNavOcrSamples432 = 0
+      historyNavOcrPackage432 = null
+      return
+    }
+    val possible = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+      val rect = line.boundingBox ?: return@mapNotNull null
+      val text = line.text.trim().replace(Regex("""\s+"""), " ")
+      if (!Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(text))
+        return@mapNotNull null
+      val x = rect.centerX().toFloat() / image.width
+      val y = rect.centerY().toFloat() / image.height
+      val rw = rect.width().toFloat() / image.width
+      val rh = rect.height().toFloat() / image.height
+      if (x !in 0.02f..0.35f || y !in 0.84f..0.975f ||
+          rw <= 0f || rw > 0.27f || rh <= 0f || rh > 0.055f)
+        return@mapNotNull null
+      Pair(x, y)
+    }
+    if (possible.size != 1) {
+      historyNavOcrSamples432 = 0
+      historyNavOcrPackage432 = null
+      return
+    }
+    val loc = possible.single()
+    if (historyNavOcrPackage432 == pkg &&
+        observedAt - historyNavOcrAt432 in 1_000L..6_500L &&
+        kotlin.math.abs(loc.first - historyNavOcrX432) <= 0.028f &&
+        kotlin.math.abs(loc.second - historyNavOcrY432) <= 0.018f) {
+      historyNavOcrSamples432 = (historyNavOcrSamples432 + 1).coerceAtMost(3)
+    } else {
+      historyNavOcrSamples432 = 1
+    }
+    historyNavOcrX432 = loc.first
+    historyNavOcrY432 = loc.second
+    historyNavOcrAt432 = observedAt
+    historyNavOcrPackage432 = pkg
+  }
+
   private fun navigateVerifiedDemoHistory431(
     verifiedDemoReview: Boolean,
     nowElapsed: Long
@@ -637,7 +697,24 @@ class ScalpOverlayService : Service() {
         nowElapsed - lastAutoDemoHistoryNavAt in 0L..9_999L)
       return lastAutoDemoHistoryNavStatus
     lastAutoDemoHistoryNavAt = nowElapsed
-    val navigation = TouchTestService.advanceDemoHistoryReviewNavigation(
+    val brokerPkg432 = TouchTestService.activeDemoExecutorPackageForReview()
+    val ocrReady432 = historyNavFailed431 >= 1 &&
+      lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") &&
+      brokerPkg432 != null && brokerPkg432 == verifiedDemoAccountPackage &&
+      brokerPkg432 == historyNavOcrPackage432 &&
+      historyNavOcrSamples432 >= 2 &&
+      System.currentTimeMillis() - historyNavOcrAt432 in 0L..6_000L &&
+      historyNavOcrX432 in 0.02f..0.35f &&
+      historyNavOcrY432 in 0.84f..0.975f
+    val navigation = if (ocrReady432) {
+      val wasSent432 = TouchTestService.tapVerifiedDemoHistoryOcr432(
+        brokerPkg432!!, historyNavOcrX432, historyNavOcrY432
+      )
+      // The OCR result is one-shot per location and may not be reused.
+      historyNavOcrSamples432 = 0
+      if (wasSent432) "ISTORIC AUTO • DESCHID TRANZACȚII • OCR 432"
+      else "ISTORIC AUTO • CONTROL NECONFIRMAT • OCR 432"
+    } else TouchTestService.advanceDemoHistoryReviewNavigation(
       cachedDemoVerifiedOnChart = verifiedDemoReview
     )
     if (navigation.startsWith("ISTORIC AUTO • DESCHID TRANZACȚII")) {
@@ -2956,6 +3033,7 @@ class ScalpOverlayService : Service() {
         // separate fresh frames and selected OPEN tab. This runs even though
         // no candle/timeframe can be detected on the Transactions screen.
         recordExplicitEmptyOpenOcr(result, copy, observedAt)
+        recordBrokerHistoryBottomLabelOcr432(result, copy, observedAt)
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
         // OTC and ordinary charts using the same currency symbols must NOT
