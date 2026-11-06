@@ -464,7 +464,7 @@ class TouchTestService : AccessibilityService() {
         texts.map { Visible(it.take(120), rect, node.isSelected || node.isChecked) }
       }.distinctBy { it.rect.toShortString() + "|" + it.value }
       val realVisible = readable.any {
-        Regex("""(?i)\\bQT\\s*Real\\b""").containsMatchIn(it.value)
+        Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.value)
       }
       if (realVisible || svc.rootInActiveWindow?.packageName != root.packageName)
         return "ÎNCHIS • CONT REAL/NECUNOSCUT • FĂRĂ REZULTAT"
@@ -487,16 +487,16 @@ class TouchTestService : AccessibilityService() {
       // $0 rows on Pocket Option are NOT unambiguous WIN/LOSS receipts.
       val body = readable.filter { it.rect.centerY() in
         (h * .29f).toInt()..(h * .91f).toInt() }
-      val fx = Regex("""(?i)\\b[A-Z]{3}\\s*/\\s*[A-Z]{3}\\b""")
+      val fx = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\b""")
       val identifiedPairs = body.filter { fx.containsMatchIn(it.value) }
-      val idRx = Regex("""(?i)^(?:Order|Trade|Position|Tranzacție|Tranzactie)\\s*(?:ID|Nr\\.?|#)\\s*[:#]?\\s*([A-Z0-9_-]{6,30})$""")
+      val idRx = Regex("""(?i)^(?:Order|Trade|Position|Tranzacție|Tranzactie)\s*(?:ID|Nr\.?|#)\s*[:#]?\s*([A-Z0-9_-]{6,30})$""")
       val ids = body.mapNotNull { idRx.matchEntire(it.value)?.groupValues?.getOrNull(1) }
         .distinct()
-      val stakeRx = Regex("""(?i)^(?:Stake|Amount|Investment|Investiție|Investitie|Miză|Miza|Sumă|Suma)\\s*:?\\s*(?:USD\\s*)?\\$?\\s*([0-9]+(?:[.,][0-9]{1,2})?)\\s*(?:USD)?$""")
+      val stakeRx = Regex("""(?i)^(?:Stake|Amount|Investment|Investiție|Investitie|Miză|Miza|Sumă|Suma)\s*:?\s*(?:USD\s*)?\$?\s*([0-9]+(?:[.,][0-9]{1,2})?)\s*(?:USD)?$""")
       val stakes = body.mapNotNull {
         stakeRx.matchEntire(it.value)?.groupValues?.getOrNull(1)
       }.distinct()
-      val resultRx = Regex("""(?i)^(?:P/L|Net Profit|Profit|Rezultat|Result)\\s*:?\\s*([+-]\\s*(?:USD\\s*)?\\$?\\s*[0-9]+(?:[.,][0-9]{1,2})?)\\s*(?:USD)?$""")
+      val resultRx = Regex("""(?i)^(?:P/L|Net Profit|Profit|Rezultat|Result)\s*:?\s*([+-]\s*(?:USD\s*)?\$?\s*[0-9]+(?:[.,][0-9]{1,2})?)\s*(?:USD)?$""")
       val results = body.mapNotNull {
         resultRx.matchEntire(it.value)?.groupValues?.getOrNull(1)
       }.distinct()
