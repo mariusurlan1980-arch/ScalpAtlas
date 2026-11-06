@@ -179,6 +179,12 @@ class ScalpOverlayService : Service() {
   @Volatile private var lastEmptyOpenOcrPackage: String? = null
   @Volatile private var emptyOpenOcrConsecutive = 0
   private val tradePositionGate = TradePositionGate()
+  // 421: DEMO recovery calculator is read-only until a broker CLOSED receipt
+  // with matching position ID and audited WIN/LOSS can be verified.
+  // Never turn an Android gesture or an empty Open tab into a trade result.
+  private val demoRecoveryLedger by lazy {
+    DemoRecoveryLedger(getSharedPreferences("scalp_atlas_demo_recovery_421", Context.MODE_PRIVATE))
+  }
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
   private var autoDemoLastPreflightReason = "AȘTEAPTĂ VERIFICAREA"
@@ -3789,6 +3795,7 @@ class ScalpOverlayService : Service() {
             .putString("tfOcrSource", if (tfReady) lastTfOcrSource else "NECONFIRMAT")
             .putString("shockBlocker", if (brokerConnected) shockBlocker else "NECONFIRMAT")
             .putString("scalpBlocker", if (brokerConnected) scalpBlocker else "NECONFIRMAT")
+            .putString("demoRecoveryPlan92ReadOnly", demoRecoveryLedger.diagnostic(92))
             .putLong("frames", frameCount)
             .putLong("results", resultCount)
             .putLong("errors", errorCount)
