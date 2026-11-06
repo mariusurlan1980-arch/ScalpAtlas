@@ -181,6 +181,13 @@ class ScalpOverlayService : Service() {
   @Volatile private var historyNavOcrX432 = -1f
   @Volatile private var historyNavOcrY432 = -1f
   @Volatile private var historyNavOcrSamples432 = 0
+  // 433: Distinguish the broker's history page from an active price chart.
+  // History pairs are OLD trades, never a current broker instrument.
+  // Only MediaProjection OCR of the page title AND both history tabs
+  // can set this. The history mode expires without fresh visual evidence.
+  @Volatile private var historyPageVisible433 = false
+  @Volatile private var historyPageLastSeen433 = 0L
+  @Volatile private var historyPageTab433 = "NECUNOSCUT"
   // 424: background QT Demo amount preparation. It is eligible only after
   // a broker receipt has updated the independent recovery ledger.
   private var lastAutoDemoStakeEditAt = 0L
@@ -2668,6 +2675,8 @@ class ScalpOverlayService : Service() {
    * An isolated "M5" observation is never enough to unlock analysis or BIP.
    */
   private fun recordVisibleTimeframe(found: String, at: Long, source: String) {
+    // 433: No timeframe is identifiable on a broker history screen.
+    if (historyPageVisible433) return
     if (found != "M5" && found != "M10" && found != "M15") return
     lastTfOcrSource = source + " " + found
     if (!tfAutomatic) {
@@ -2747,6 +2756,7 @@ class ScalpOverlayService : Service() {
     tfCropBusy = true
     tfCropOcrRecognizer.process(InputImage.fromBitmap(enlarged, 0))
       .addOnSuccessListener { result ->
+        if (historyPageVisible433) return@addOnSuccessListener
         // The crop excludes the expiry controls, app header, and broker orders.
         // Require a line beginning with the exact broker TF caption.
         val pattern = Regex("""(?i)^\s*M\s*(5|10|15)(?:\s+\d{1,2}:\d{2})?\s*$""")
@@ -2769,6 +2779,8 @@ class ScalpOverlayService : Service() {
    * Never reuse the previous selected pair after a switch, and never assume OTC.
    */
   private fun recordVisiblePair(foundPair: String, observedAt: Long) {
+    // 433: Never accept a CLOSED trade row as the active market.
+    if (historyPageVisible433) return
     val sameBase = foundPair.removeSuffix(" OTC") == latestMarket.removeSuffix(" OTC")
     val ambiguousMode = marketVerified && sameBase && foundPair != latestMarket
     if (foundPair != latestMarket && marketVerified) {
@@ -2839,6 +2851,7 @@ class ScalpOverlayService : Service() {
     pairCropBusy = true
     pairCropOcrRecognizer.process(InputImage.fromBitmap(enlarged, 0))
       .addOnSuccessListener { textResult ->
+        if (historyPageVisible433) return@addOnSuccessListener
         val labels = textResult.textBlocks.flatMap { it.lines }
           .sortedWith(compareBy({ it.boundingBox?.centerY() ?: 0 },
                               { it.boundingBox?.left ?: 0 }))
@@ -2947,6 +2960,33 @@ class ScalpOverlayService : Service() {
       """(?i)(?:Nu există tranzacții (?:plasate|deschise|active)|Nu exista tranzactii (?:plasate|deschise|active)|Nu sunt tranzacții deschise|Nu sunt tranzactii deschise|Nicio tranzacție (?:deschisă|activă)|Nicio tranzactie (?:deschisa|activa)|No trades placed|No open trades|No open positions)"""
     ).containsMatchIn(body)
     val pkg = TouchTestService.activeDemoExecutorPackageForReview()
+    // 433: Page identity must come from actual history TITLE and both tabs,
+    // not the chart footer "Tranzacții" or any historical FX row.
+    val trueHistoryPage433 = title && openTab && closedTab && pkg != null
+    if (trueHistoryPage433) {
+      if (!historyPageVisible433) {
+        // Invalidate only CHART analysis. Do not clear persisted broker
+        // attempts, history receipts, trade gates or recovery accounting.
+        tfVerified = false
+        pendingTf = null
+        pendingTfCount = 0
+        marketVerified = false
+        pendingMarket = null
+        pendingMarketCount = 0
+        clearOnInstrumentChange()
+      }
+      historyPageVisible433 = true
+      historyPageLastSeen433 = observedAt
+      historyPageTab433 = when {
+        selectedOpenTabVerifiedOnScreen(frame) -> "DESCHIS"
+        selectedClosedTabVerifiedOnScreen(frame) -> "ÎNCHIS"
+        else -> "FILA NECONFIRMATĂ"
+      }
+    } else if (historyPageVisible433 &&
+               observedAt - historyPageLastSeen433 > 6_000L) {
+      historyPageVisible433 = false
+      historyPageTab433 = "NECUNOSCUT"
+    }
     val selectedOpen429 = title && openTab && closedTab &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
     if (selectedOpen429) {
@@ -3034,6 +3074,10 @@ class ScalpOverlayService : Service() {
         // no candle/timeframe can be detected on the Transactions screen.
         recordExplicitEmptyOpenOcr(result, copy, observedAt)
         recordBrokerHistoryBottomLabelOcr432(result, copy, observedAt)
+        // 433: On history, M5 and the active FX selector do not exist.
+        // Continue the independent OPEN/CLOSED evidence checker above,
+        // but NEVER parse past trade rows as live chart identity.
+        if (historyPageVisible433) return@addOnSuccessListener
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
         // OTC and ordinary charts using the same currency symbols must NOT
@@ -3319,6 +3363,20 @@ class ScalpOverlayService : Service() {
       // OCR reads the BROKER SCREEN, not the reduced chart crop.
       // No signal is permitted in AUTO until timeframe is confirmed.
       scheduleTimeframeOcr(fullFrame, now)
+      // 433: The transaction-history screen is not a chart. Prevent all
+      // new optical trade analysis until the chart is independently
+      // re-identified after navigating back.
+      if (historyPageVisible433 &&
+          now - historyPageLastSeen433 in 0L..6_000L) {
+        fullFrame.recycle()
+        resetSignalState()
+        if (now - lastTfStatusAt >= 2_000L) {
+          lastTfStatusAt = now
+          updateOverlay("AȘTEAPTĂ", "ISTORIC DEMO",
+            "Fără semnale pe istoricul tranzacțiilor")
+        }
+        return
+      }
       if (tfAutomatic && (!tfVerified || now - confirmedTfAt > TF_STALE_MS)) {
         if (tfVerified) {
           tfVerified = false
@@ -4363,6 +4421,23 @@ class ScalpOverlayService : Service() {
           activeSignal != "NONE" && activeStrategy == "SHOCK" ->
             "🔒 BIP " + activeSignal + " • ȘOC VALID • ORDIN BLOCAT: ISTORIC"
           else -> "🔒 DEMO • " + TouchTestService.demoEmptyReviewDiagnostic().take(72)
+        }
+      }
+      // 433: Present a stable history-mode explanation, not the chart
+      // errors "TF NECONFIRMAT" or "PERECHE OCR" when browsing old trades.
+      // Important broker safety / verified-zero status must remain visible.
+      if (historyPageVisible433 && now - historyPageLastSeen433 in 0L..6_000L) {
+        val oldLabel433 = touchProbeStatus?.text?.toString().orEmpty()
+        val chartOnlyMessage433 =
+          oldLabel433.contains("TF NECONFIRMAT") ||
+          oldLabel433.contains("PERECHE OCR") ||
+          oldLabel433.contains("DEMO NEARMAT") ||
+          oldLabel433.contains("SCAN TF") ||
+          oldLabel433.contains("AȘTEAPTĂ ȘOC") ||
+          oldLabel433.contains("LUMÂNARE?")
+        if (chartOnlyMessage433) {
+          touchProbeStatus?.text = "📋 ISTORIC DEMO • " +
+            historyPageTab433 + " • FĂRĂ ANALIZĂ ȘOC"
         }
       }
       // The old manual SELL pilot must not overwrite current automatic
