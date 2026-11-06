@@ -166,6 +166,14 @@ class ScalpOverlayService : Service() {
   // with the generic last read-only page error from the CHART screen.
   private var lastAutoDemoHistoryNavStatus = ""
   private var lastAutoDemoHistoryNavStatusAt = 0L
+  // 431: Do not mistake an Android-accepted navigation tap for a broker
+  // page transition. Three failed page transitions stop automatic attempts
+  // at opening history; only a verified QT Demo history page resets this.
+  // This NEVER clears an old trade marker or unlocks an order.
+  private var historyNavPending431 = false
+  private var historyNavPendingAt431 = 0L
+  private var historyNavFailed431 = 0
+  private var historyNavStalled431 = false
   // 424: background QT Demo amount preparation. It is eligible only after
   // a broker receipt has updated the independent recovery ledger.
   private var lastAutoDemoStakeEditAt = 0L
@@ -599,6 +607,54 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  // History navigation is a read-only recovery step for a POSSIBLE prior
+  // broker order. A touch being accepted by Android cannot be counted as a
+  // page transition or authorization for a new broker gesture.
+  private fun navigateVerifiedDemoHistory431(
+    verifiedDemoReview: Boolean,
+    nowElapsed: Long
+  ): String {
+    if (TouchTestService.confirmedDemoHistoryPageReadOnly431(verifiedDemoReview)) {
+      historyNavPending431 = false
+      historyNavPendingAt431 = 0L
+      historyNavFailed431 = 0
+      historyNavStalled431 = false
+      return "ISTORIC DESCHIS • VERIFIC TRANZACȚII DEMO"
+    }
+    if (historyNavPending431 &&
+        nowElapsed - historyNavPendingAt431 >= 7_000L) {
+      historyNavPending431 = false
+      historyNavFailed431++
+    }
+    if (historyNavFailed431 >= 3) historyNavStalled431 = true
+    if (historyNavStalled431) {
+      val stalled = "BLOCAT: ISTORICUL NU SE DESCHIDE • FĂRĂ ORDIN"
+      lastAutoDemoHistoryNavStatus = stalled
+      lastAutoDemoHistoryNavStatusAt = nowElapsed
+      return stalled
+    }
+    if (lastAutoDemoHistoryNavAt > 0L &&
+        nowElapsed - lastAutoDemoHistoryNavAt in 0L..9_999L)
+      return lastAutoDemoHistoryNavStatus
+    lastAutoDemoHistoryNavAt = nowElapsed
+    val navigation = TouchTestService.advanceDemoHistoryReviewNavigation(
+      cachedDemoVerifiedOnChart = verifiedDemoReview
+    )
+    if (navigation.startsWith("ISTORIC AUTO • DESCHID TRANZACȚII")) {
+      historyNavPending431 = true
+      historyNavPendingAt431 = nowElapsed
+    } else if (navigation.contains("CONTROL NECONFIRMAT") ||
+               navigation.contains("BLOCAT")) {
+      historyNavFailed431++
+    }
+    if (historyNavFailed431 >= 3) historyNavStalled431 = true
+    lastAutoDemoHistoryNavStatus = if (historyNavStalled431)
+      "BLOCAT: ISTORICUL NU SE DESCHIDE • FĂRĂ ORDIN"
+    else navigation.take(105)
+    lastAutoDemoHistoryNavStatusAt = nowElapsed
+    return lastAutoDemoHistoryNavStatus
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -716,15 +772,15 @@ class ScalpOverlayService : Service() {
                 touchProbeStatus?.text =
                   "BLOCAT: ID OPEN VERIFICAT, DAR REGISTRUL NU ÎL ACCEPTĂ"
               }
-            } else if (nowReview - lastAutoDemoHistoryNavAt >= 10_000L) {
-              lastAutoDemoHistoryNavAt = nowReview
-              lastAutoDemoHistoryNavStatus =
-                TouchTestService.advanceDemoHistoryReviewNavigation(
-                  cachedDemoVerifiedOnChart = verifiedDemoReview
-                ).take(105)
-              lastAutoDemoHistoryNavStatusAt = nowReview
-              touchProbeStatus?.text = "🔎 DESCHIS DEMO • " +
-                TouchTestService.receiptStatus429().take(65)
+            } else {
+              val navigation431 = navigateVerifiedDemoHistory431(
+                verifiedDemoReview, nowReview
+              )
+              if (navigation431.contains("BLOCAT: ISTORICUL"))
+                touchProbeStatus?.text = navigation431
+              else
+                touchProbeStatus?.text = "🔎 DESCHIS DEMO • " +
+                  TouchTestService.receiptStatus429().take(65)
             }
           } else if (openReceiptMissing429) {
             touchProbeStatus?.text =
@@ -789,6 +845,10 @@ class ScalpOverlayService : Service() {
                     "QT DEMO • LISTĂ DESCHIS GOALĂ VERIFICATĂ 2/2"
                   lastAutoDemoHistoryNavStatus = ""
                   lastAutoDemoHistoryNavStatusAt = 0L
+                  historyNavPending431 = false
+                  historyNavPendingAt431 = 0L
+                  historyNavFailed431 = 0
+                  historyNavStalled431 = false
                   // 425: After independently proving ZERO Open positions,
                   // inspect the actual CLOSED tab before returning to chart.
                   // It is diagnostic ONLY: an empty Open tab cannot identify a
@@ -963,15 +1023,12 @@ class ScalpOverlayService : Service() {
             // Transactions > Deschis over and over: navigate ONLY to safe,
             // exact text-labelled history controls (never BUY/SELL).
             // Rate limit to avoid oscillation/reloading a first OCR sample.
-            if (eligibleForBrokerEmptyReview && demoEmptyReviewReads == 0 &&
-                tick - lastAutoDemoHistoryNavAt >= 10_000L) {
-              lastAutoDemoHistoryNavAt = tick
-              val navResult = TouchTestService.advanceDemoHistoryReviewNavigation(
-                cachedDemoVerifiedOnChart = verifiedDemoReview
+            if (eligibleForBrokerEmptyReview && demoEmptyReviewReads == 0) {
+              val navResult431 = navigateVerifiedDemoHistory431(
+                verifiedDemoReview, tick
               )
-              lastAutoDemoHistoryNavStatus = navResult.take(105)
-              lastAutoDemoHistoryNavStatusAt = tick
-              touchProbeStatus?.text = "🤖 " + lastAutoDemoHistoryNavStatus
+              if (navResult431.isNotBlank())
+                touchProbeStatus?.text = "🤖 " + navResult431.take(105)
             }
           }
         } else {
