@@ -236,8 +236,8 @@ jobs:
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'lastAutoDemoHistoryNavStatus = navResult.take(105)' "$O"
-          grep -Fq 'lastAutoDemoHistoryNavStatusAt = tick' "$O"
+          grep -Fq 'lastAutoDemoHistoryNavStatus = if (historyNavStalled431)' "$O"
+          grep -Fq 'lastAutoDemoHistoryNavStatusAt = nowElapsed' "$O"
           grep -Fq 'lastAutoDemoHistoryNavStatus.isNotBlank() &&' "$O"
           grep -Fq 'TouchTestService.priorDemoGestureCooldownComplete()' "$O"
           grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
