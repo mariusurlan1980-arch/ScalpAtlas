@@ -3,7 +3,7 @@ package com.scalpatlas.app
 import android.content.SharedPreferences
 
 /**
- * Scalp Atlas 421: DEMO-only recovery accounting. This class NEVER touches
+ * Scalp Atlas 422: DEMO-only recovery accounting for proposed $100 bankroll. This class NEVER touches
  * broker controls. It cannot infer WIN/LOSS from SHOCK %, a gesture callback,
  * a timer, or an empty Open tab.
  *
@@ -22,8 +22,10 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   companion object {
     const val BASE_STAKE_CENTS = 100L
     const val TARGET_PROFIT_CENTS = 92L
-    const val MAX_CYCLE_LOSS_CENTS = 2000L // DEMO: maximum $20 per cycle
-    const val MAX_SINGLE_STAKE_CENTS = 1000L // DEMO: maximum $10 per order
+    const val PROPOSED_DEMO_BANKROLL_CENTS = 10000L // User's hypothetical $100 balance
+    const val MAX_CYCLE_LOSS_CENTS = 10000L // NEVER assume broker balance is verified
+    const val MAX_SINGLE_STAKE_CENTS = 10000L // DEMO planner ceiling, not an order limit
+    const val MAX_CYCLE_TRADES = 6 // After six losses, $100 cannot fund step seven
     const val MIN_PAYOUT_PERCENT = 92
   }
 
@@ -35,18 +37,19 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   @Synchronized
   fun quote(payoutPercent: Int): Quote {
     val lost = prefs.getLong("unrecoveredLossCents", 0L)
+    val completed = prefs.getInt("completedCycleTrades", 0)
     if (prefs.getString("pendingPositionId", null) != null)
       return Quote(null, lost, "REZULTATUL POZIȚIEI ESTE NECONFIRMAT")
-    if (prefs.getBoolean("halted", false))
-      return Quote(null, lost, "RECUPERARE OPRITĂ • LIMITĂ ATINSĂ")
+    if (prefs.getBoolean("halted", false) || completed >= MAX_CYCLE_TRADES)
+      return Quote(null, lost, "RECUPERARE OPRITĂ • MAXIMUM 6 TRANZACȚII")
     if (payoutPercent !in MIN_PAYOUT_PERCENT..100)
       return Quote(null, lost, "PAYOUT NECONFIRMAT ≥92%")
     if (lost !in 0L..MAX_CYCLE_LOSS_CENTS)
       return Quote(null, lost, "PIERDERE NECONFORMĂ • OPRIT")
     val stake = if (lost == 0L) BASE_STAKE_CENTS
       else ((lost + TARGET_PROFIT_CENTS) * 100L + payoutPercent - 1L) / payoutPercent
-    if (stake > MAX_SINGLE_STAKE_CENTS || lost + stake > MAX_CYCLE_LOSS_CENTS)
-      return Quote(null, lost, "LIMITĂ RISC 20 USD • NU MĂRESC MIZA")
+    if (stake > MAX_SINGLE_STAKE_CENTS || lost + stake > PROPOSED_DEMO_BANKROLL_CENTS)
+      return Quote(null, lost, "SOLD IPOTETIC 100 USD INSUFICIENT • NU MĂRESC MIZA")
     return Quote(stake, lost, "CALCUL DEMO • NECESITĂ DOVADĂ DE LA BROKER")
   }
 
@@ -107,9 +110,15 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
     val newLoss = if (netProfitCents < 0L) priorLoss - netProfitCents
       else (priorLoss - netProfitCents).coerceAtLeast(0L)
     val seenUpdated = (seen + closedReceiptId).toList().takeLast(100).toSet()
+    // A verified profitable close that covers ALL accumulated losses starts
+    // a new 1 USD cycle. Otherwise each settled position advances the count.
+    val fullyRecovered = netProfitCents > 0L && newLoss == 0L
+    val completed = if (fullyRecovered) 0 else
+      prefs.getInt("completedCycleTrades", 0) + 1
     return prefs.edit()
       .putLong("unrecoveredLossCents", newLoss)
-      .putBoolean("halted", newLoss >= MAX_CYCLE_LOSS_CENTS)
+      .putInt("completedCycleTrades", completed)
+      .putBoolean("halted", newLoss >= MAX_CYCLE_LOSS_CENTS || completed >= MAX_CYCLE_TRADES)
       .remove("pendingPositionId")
       .remove("pendingStakeCents")
       .remove("pendingPayoutPercent")
@@ -125,6 +134,7 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
     else "RECUPERARE DEMO PLAN: " +
       (next.stakeCents / 100L) + "." +
       (next.stakeCents % 100L).toString().padStart(2, '0') +
-      " USD • PIERDERI " + next.lossCents + " cenți • NUMAI CU RECEIPT"
+      " USD • PASUL " + (prefs.getInt("completedCycleTrades", 0) + 1) +
+      "/6 • PIERDERI " + next.lossCents + " cenți • NUMAI CU RECEIPT"
   }
 }
