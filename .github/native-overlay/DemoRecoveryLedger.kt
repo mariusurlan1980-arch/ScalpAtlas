@@ -3,7 +3,7 @@ package com.scalpatlas.app
 import android.content.SharedPreferences
 
 /**
- * Scalp Atlas 422: DEMO-only recovery accounting for proposed $100 bankroll. This class NEVER touches
+ * Scalp Atlas 422: DEMO-only recovery accounting for proposed $82.72 bankroll. This class NEVER touches
  * broker controls. It cannot infer WIN/LOSS from SHOCK %, a gesture callback,
  * a timer, or an empty Open tab.
  *
@@ -22,9 +22,9 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   companion object {
     const val BASE_STAKE_CENTS = 100L
     const val TARGET_PROFIT_CENTS = 92L
-    const val PROPOSED_DEMO_BANKROLL_CENTS = 10000L // User's hypothetical $100 balance
-    const val MAX_CYCLE_LOSS_CENTS = 10000L // NEVER assume broker balance is verified
-    const val MAX_SINGLE_STAKE_CENTS = 10000L // DEMO planner ceiling, not an order limit
+    const val PROPOSED_DEMO_BANKROLL_CENTS = 8272L // Hypothetical DEMO bankroll; not broker funding
+    const val MAX_CYCLE_LOSS_CENTS = 8272L // Never assume broker balance is verified
+    const val MAX_SINGLE_STAKE_CENTS = 3964L // Sixth step only, never 82.72 USD seventh step
     const val MAX_CYCLE_TRADES = 6 // After six losses, $100 cannot fund step seven
     const val MIN_PAYOUT_PERCENT = 92
   }
@@ -49,7 +49,7 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
     val stake = if (lost == 0L) BASE_STAKE_CENTS
       else ((lost + TARGET_PROFIT_CENTS) * 100L + payoutPercent - 1L) / payoutPercent
     if (stake > MAX_SINGLE_STAKE_CENTS || lost + stake > PROPOSED_DEMO_BANKROLL_CENTS)
-      return Quote(null, lost, "SOLD IPOTETIC 100 USD INSUFICIENT • NU MĂRESC MIZA")
+      return Quote(null, lost, "SOLD IPOTETIC 82,72 USD INSUFICIENT • NU MĂRESC MIZA")
     return Quote(stake, lost, "CALCUL DEMO • NECESITĂ DOVADĂ DE LA BROKER")
   }
 
