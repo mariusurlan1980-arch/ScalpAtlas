@@ -849,7 +849,7 @@ jobs:
           grep -Fq 'demoRecoveryLedger.diagnostic(92)' "$O"
           grep -Fq 'setVerifiedDemoRecoveryStakeOnBroker(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'ACTION_SET_TEXT' .github/native-overlay/DemoStakeEditor.kt
-          grep -Fq 'QT\\s*Real' .github/native-overlay/DemoStakeEditor.kt
+          grep -Fq 'QT\s*Real' .github/native-overlay/DemoStakeEditor.kt
           grep -Fq 'before.balanceCents < stakeCents' .github/native-overlay/DemoStakeEditor.kt
           # Calculation only: no change in the broker's 1 USD execution guards.
           grep -Fq 'preflightOneDollarDemoOrder(' "$O"
