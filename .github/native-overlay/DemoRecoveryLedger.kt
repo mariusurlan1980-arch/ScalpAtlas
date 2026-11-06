@@ -149,6 +149,25 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   }
 
   /**
+   * Trusted receipt correlation only. These are persisted by the ledger,
+   * not guessed from a gesture, the clock or a changed demo balance.
+   */
+  @Synchronized
+  fun verifiedOpenPositionId429(): String? =
+    prefs.getString("pendingPositionId", null)
+
+  @Synchronized
+  fun verifiedOpenStakeCents429(): Long? =
+    if (verifiedOpenPositionId429() != null)
+      prefs.getLong("pendingStakeCents", -1L).takeIf { it > 0L }
+    else null
+
+  @Synchronized
+  fun isRecovering429(): Boolean =
+    prefs.getLong("unrecoveredLossCents", 0L) > 0L ||
+      prefs.getLong("remainingProfitTargetCents", 0L) > 0L
+
+  /**
    * A confirmed profitable CLOSED receipt has repaid the net cycle deficit.
    * The DEMO broker field must then be read back as exactly $1.00 before
    * the cycle is considered restored. Never infer this from a gesture.
