@@ -224,12 +224,12 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var latest=history[history.length-1];
         var minBody=Math.max(10,h*.035); // still require a measurable pre-shock candle
         var minMove=Math.max(7,h*.018);
-        // 406 moderate SHOCK on QT DEMO: measured same-candle drop >40%,
-        // recovery >=30%, separate measured trend >35%, <=15s pullback.
+        // 428 DEMO FLEX SHOCK: same-candle retracement >35%,
+        // recovery >=25%, separate measured trend >30%, <=15s pullback.
         // The second independent SCALP_TREND strategy keeps its 50% slope.
         // Screen-relative measurements are NOT win probabilities.
-        var minShockFraction=.40,maxDropMs=15000,minRecoveryFraction=.30;
-        var minTrendStrengthPercent=35,scalpTrendThreshold=50;
+        var minShockFraction=.35,maxDropMs=15000,minRecoveryFraction=.25;
+        var minTrendStrengthPercent=30,scalpTrendThreshold=50;
         var displayedDepth=0,displayedDropDuration=0,confirmed=false,dir='NONE';
         var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
         for(var i=0;i<history.length-1;i++){
@@ -322,11 +322,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // percentage is NOT an entry. No direction is inferred from color.
         var shockBlocker=confirmed?'ȘOC CONFIRMAT':
           displayedDepth===0?'AȘTEAPTĂ ȘOC':
-          displayedDepth<=40?'ȘOC ≤40%':
+          displayedDepth<=35?'ȘOC ≤35%':
           candle.trendDirection==='NONE'?'TREND NECLAR':
           candle.trendDirection!==candle.dir?'CONTRA TREND':
           !candle.trendMeasured || !Number.isFinite(candle.trendStrengthPercent) ||
-            candle.trendStrengthPercent<=minTrendStrengthPercent?'PANTĂ ≤35%':
+            candle.trendStrengthPercent<=minTrendStrengthPercent?'PANTĂ ≤30%':
           candle.wickPixels<minBody*.20?'FITIL SCURT':
           'REVENIRE/TIMP';
         // Diagnostic only: explain why independent M5 SCALP TREND did NOT
@@ -343,7 +343,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         report(frameId,tf,pair,epoch,
           confirmed?'ȘOC rapid și revenire în aceeași lumânare':
           scalpConfirmed?'SCALP TREND: retragere moderată și reluare pe M5':
-          'Aștept ȘOC FLEX 40/30/35 confirmat sau SCALP M5',
+          'Aștept ȘOC FLEX 35/25/30 confirmat sau SCALP M5',
           quality,{
             strategy:strategy,signal:emittedDirection,
             shockDirection:confirmed?dir:'NONE',
