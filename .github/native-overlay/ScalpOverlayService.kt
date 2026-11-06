@@ -531,13 +531,17 @@ class ScalpOverlayService : Service() {
   private fun maybePrepareAutomaticDemoRecoveryStake(nowTick: Long) {
     if (lastAutoDemoStakeEditAt > 0L &&
         nowTick - lastAutoDemoStakeEditAt in 0L..7_000L) return
-    if (!autoDemoSessionRequested || autoDemoSessionConsumed ||
-        !TouchTestService.ready() ||
-        tradePositionGate.state() != TradePositionGate.State.READY ||
-        mediaProjection == null || !brokerConnected ||
-        activeSignal != "NONE" ||
-        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT")) return
     val now = System.currentTimeMillis()
+    if (!autoDemoSessionRequested || autoDemoSessionConsumed ||
+        !TouchTestService.ready() || closedHistoryInspectionInProgress ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        mediaProjection == null || !analyzerReady ||
+        lastCapturedImageAt <= 0L ||
+        now - lastCapturedImageAt !in 0L..3500L ||
+        lastAnalysisResultAt <= 0L ||
+        now - lastAnalysisResultAt !in 0L..5000L ||
+        (lockedAt > 0L && now - lockedAt in 0L..5000L) ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT")) return
     if (!pairReady(now)) return
     val pair = currentPair(now)
     if (pair == "NEIDENTIFICAT") return
