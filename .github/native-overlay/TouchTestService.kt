@@ -1026,6 +1026,22 @@ class TouchTestService : AccessibilityService() {
     }
 
     /**
+     * 424: Check broker DEMO payout for the current confirmed pair, twice.
+     * This never edits fields or submits a transaction.
+     */
+    fun readVerifiedDemoPayoutForPair(expectedPair: String): Int? {
+      val svc = connected ?: return null
+      if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT")
+        return null
+      if (readVisibleDemoPair() != expectedPair) return null
+      val payout = DemoStakeEditor.verifiedDemoPayoutReadOnly(svc)
+        ?: return null
+      if (connected !== svc || readVisibleDemoPair() != expectedPair)
+        return null
+      return payout
+    }
+
+    /**
      * 423: Secure DEMO stake-field editing only, never an order.
      * Call ONLY after the matching broker CLOSED receipt is independently
      * verified by a future history adapter and the ledger authorizes a quote.
