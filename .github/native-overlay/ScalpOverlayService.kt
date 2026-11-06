@@ -190,6 +190,11 @@ class ScalpOverlayService : Service() {
   @Volatile private var historyPageVisible433 = false
   @Volatile private var historyPageLastSeen433 = 0L
   @Volatile private var historyPageTab433 = "NECUNOSCUT"
+  // 435: independently observed OPEN-tab LABEL, not a fixed touch point.
+  @Volatile private var historyOpenOcrAt435 = 0L
+  @Volatile private var historyOpenOcrX435 = -1f
+  @Volatile private var historyOpenOcrY435 = -1f
+  @Volatile private var historyOpenOcrCount435 = 0
   // 424: background QT Demo amount preparation. It is eligible only after
   // a broker receipt has updated the independent recovery ledger.
   private var lastAutoDemoStakeEditAt = 0L
