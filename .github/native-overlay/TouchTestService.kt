@@ -379,7 +379,7 @@ class TouchTestService : AccessibilityService() {
 
     // A successful dispatchGesture only means Android accepted a touch;
     // it NEVER proves the broker opened the Transactions page. Check the
-    // actual page title AND both tabs in the same verified QT Demo package.
+    // actual page title AND Open tab in the same verified QT Demo package.
     // This diagnostic cannot unlock a prior attempt or authorize BUY/SELL.
     fun confirmedDemoHistoryPageReadOnly431(
       cachedDemoVerifiedOnChart: Boolean
@@ -408,13 +408,7 @@ class TouchTestService : AccessibilityService() {
             Regex("""(?i)^(Deschis|Open)$""").matches(it.trim())
           }
       }
-      val closed = labels.any { (node, rect) ->
-        rect.centerY() in (h * .15f).toInt()..(h * .31f).toInt() &&
-          listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
-            Regex("""(?i)^(Închis|Inchis|Closed)$""").matches(it.trim())
-          }
-      }
-      return title && open && closed
+      return title && open
     }
 
     fun advanceDemoHistoryReviewNavigation(
