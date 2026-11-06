@@ -618,7 +618,12 @@ class TouchTestService : AccessibilityService() {
         (h * .29f).toInt()..(h * .91f).toInt() }
       val fx = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\b""")
       val identifiedPairs = body.filter { fx.containsMatchIn(it.value) }
-      val idRx = Regex("""(?i)^(?:Order|Trade|Position|Tranzacție|Tranzactie)\s*(?:ID|Nr\.?|#)\s*[:#]?\s*([A-Z0-9_-]{6,30})$""")
+      // 436: Pocket Option detail uses "Ordin: " followed by a 36-char
+      // UUID (e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). The older
+      // 6..30-character ID expression silently rejected a real receipt.
+      // Keep the ID anchored and require a visible label, never accept a
+      // bare number, pair, broker balance or order-button text as an ID.
+      val idRx = Regex("""(?i)^(?:Ordin\s*:\s*|(?:Order|Trade|Position|Tranzacție|Tranzactie)\s*(?:ID|Nr\.?|#)\s*[:#]?\s*)([A-Z0-9_-]{6,64})$""")
       val ids = body.mapNotNull { idRx.matchEntire(it.value)?.groupValues?.getOrNull(1) }
         .distinct()
       val stakeRx = Regex("""(?i)^(?:Stake|Amount|Investment|Investiție|Investitie|Miză|Miza|Sumă|Suma)\s*:?\s*(?:USD\s*)?\$?\s*([0-9]+(?:[.,][0-9]{1,2})?)\s*(?:USD)?$""")
@@ -781,10 +786,36 @@ class TouchTestService : AccessibilityService() {
       val ids = rows.filter { idRx.matches(it.value) }
       val stakes = rows.filter { stakeRx.matches(it.value) }
       val pnls = rows.filter { resultRx.matches(it.value) }
+      // On the single-order details screen, the stake may be a lone
+      // "$1" beside separate "Ora deschiderii", "Plată", and "Profit"
+      // labels, rather than a combined "Miză: $1" accessibility node.
+      // This fallback is accepted ONLY with one uniquely labelled order ID
+      // and an independently visible broker detail context. A multi-order
+      // summary cannot supply a recovery receipt this way.
+      val detailPage436 = rows.any {
+        Regex("""(?i)^Ora\s+deschiderii\s*:?$""").matches(it.value)
+      } && rows.any {
+        Regex("""(?i)^Ora\s+închiderii\s*:?$""").matches(it.value)
+      } && rows.any {
+        Regex("""(?i)^Plată\s*:?\s*.*$""").matches(it.value)
+      } && ids.size == 1 && closed
+      val bareStake436 = if (detailPage436 && stakes.isEmpty()) rows.filter {
+        Regex("""^\$[0-9]{1,5}(?:[.,][0-9]{1,2})?$""").matches(it.value)
+      } else emptyList()
+      val bareProfit436 = if (detailPage436 && pnls.isEmpty() &&
+          rows.any { Regex("""(?i)^Profit\s*:?$""").matches(it.value) })
+        rows.filter {
+          Regex("""^[+-]\s*\$[0-9]{1,5}(?:[.,][0-9]{1,2})?$""")
+            .matches(it.value)
+        } else emptyList()
       val fx = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}(?:\s+OTC)?\b""")
       val pairs = rows.mapNotNull { fx.find(it.value)?.value?.uppercase() }.distinct()
-      if (ids.size != 1 || stakes.size != 1 ||
-          (if (closed) pnls.size != 1 else pnls.isNotEmpty()) ||
+      val verifiedStake436 = if (stakes.size == 1) stakes.single()
+        else bareStake436.singleOrNull()
+      val verifiedProfit436 = if (pnls.size == 1) pnls.single()
+        else bareProfit436.singleOrNull()
+      if (ids.size != 1 || verifiedStake436 == null ||
+          (if (closed) verifiedProfit436 == null else pnls.isNotEmpty()) ||
           pairs.size != 1 || pairs.single().replace(Regex("""\s+"""), " ") !=
           expectedPair.uppercase().replace(Regex("""\s+"""), " ")) {
         receiptStatus429 = "ID/MIZĂ/P-L/PERECHE NECONFIRMATE • FĂRĂ RECUPERARE"
@@ -792,20 +823,28 @@ class TouchTestService : AccessibilityService() {
       }
       val id = idRx.matchEntire(ids.single().value)?.groupValues?.getOrNull(1)
         ?: return null
-      val stakeValue = stakeRx.matchEntire(stakes.single().value)?.groupValues?.getOrNull(1)
-        ?.let { parseExactCents429(it, false) } ?: return null
-      val pnlValue = if (closed)
+      val stakeText436 = if (stakes.size == 1)
+        stakeRx.matchEntire(stakes.single().value)?.groupValues?.getOrNull(1)
+      else bareStake436.singleOrNull()?.value
+      val stakeValue = stakeText436?.let { parseExactCents429(it, false) } ?: return null
+      val pnlText436 = if (pnls.size == 1)
         resultRx.matchEntire(pnls.single().value)?.groupValues?.getOrNull(1)
-          ?.let { parseExactCents429(it, true) } ?: return null
+      else bareProfit436.singleOrNull()?.value
+      val pnlValue = if (closed)
+        pnlText436?.let { parseExactCents429(it, true) } ?: return null
         else null
       if (stakeValue !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
           (pnlValue != null && (pnlValue < -stakeValue || pnlValue > stakeValue))) {
         receiptStatus429 = "SUMĂ/P-L NECONFORMĂ • FĂRĂ RECUPERARE"
         return null
       }
-      val coordinates = listOf(ids.single().rect.centerY(), stakes.single().rect.centerY()) +
-        (if (closed) listOf(pnls.single().rect.centerY()) else emptyList())
-      if (coordinates.maxOrNull()!! - coordinates.minOrNull()!! > (h * .16f).toInt())
+      val coordinates = listOf(ids.single().rect.centerY(), verifiedStake436.rect.centerY()) +
+        (if (closed) listOf(verifiedProfit436!!.rect.centerY()) else emptyList())
+      // A uniquely identified CLOSED detail sheet may distribute fields
+      // vertically. Keep the narrow same-row check for summary/list pages;
+      // only a verified detail with explicit broker labels may be taller.
+      if (!detailPage436 &&
+          coordinates.maxOrNull()!! - coordinates.minOrNull()!! > (h * .16f).toInt())
         return null
       val key = listOf(root.packageName?.toString(), expectedPair, closed,
         id, stakeValue, pnlValue).joinToString("|")
