@@ -411,6 +411,46 @@ class TouchTestService : AccessibilityService() {
       return title && open
     }
 
+    // 432: The broker draws the bottom "Tranzacții" label in a WebView
+    // that may not export any clickable Accessibility child. This narrow
+    // fallback may touch ONLY the coordinates of that text, independently
+    // read from two fresh screen OCR frames. It is not a BUY/SELL executor.
+    // A gesture being accepted cannot resolve prior positions: the caller
+    // must re-read and confirm the real Transactions page after this tap.
+    fun tapVerifiedDemoHistoryOcr432(
+      expectedBrokerPackage: String,
+      centerXFraction: Float,
+      centerYFraction: Float
+    ): Boolean {
+      val info = activeDemoHistoryNodes(false) ?: return false
+      val (svc, root, _) = info
+      if (root.packageName?.toString() != expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage) ||
+          !centerXFraction.isFinite() || !centerYFraction.isFinite() ||
+          centerXFraction !in 0.02f..0.35f ||
+          centerYFraction !in 0.84f..0.975f) return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      if (metrics.widthPixels < 300 || metrics.heightPixels < 600) return false
+      // Never aim the OCR fallback near the chart trade buttons: only the
+      // bottom-left Transactions navigation label is eligible.
+      val x = metrics.widthPixels * centerXFraction
+      val y = metrics.heightPixels * centerYFraction
+      if (svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage)
+        return false
+      val path = Path().apply { moveTo(x, y) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 75L)).build()
+      return try {
+        svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+      } catch (_: Throwable) { false }
+    }
+
     fun advanceDemoHistoryReviewNavigation(
       cachedDemoVerifiedOnChart: Boolean
     ): String {
