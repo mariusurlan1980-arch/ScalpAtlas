@@ -683,6 +683,26 @@ class ScalpOverlayService : Service() {
     verifiedDemoReview: Boolean,
     nowElapsed: Long
   ): String {
+    // 435: A visually selected OPEN tab verified twice by independent
+    // MediaProjection frames proves that the history page IS open even
+    // when broker WebView accessibility exposes no page-title nodes.
+    val brokerNow435 = TouchTestService.activeDemoExecutorPackageForReview()
+    val openPageSeen435 = verifiedDemoReview && historyPageVisible433 &&
+      historyPageTab433 == "DESCHIS" && brokerNow435 != null &&
+      brokerNow435 == lastOpenTabVisualPackage429 &&
+      openTabVisualConsecutive429 >= 2 &&
+      System.currentTimeMillis() - lastOpenTabVisualAt429 in 0L..5000L &&
+      System.currentTimeMillis() - historyPageLastSeen433 in 0L..5000L
+    if (openPageSeen435) {
+      historyNavPending431 = false
+      historyNavPendingAt431 = 0L
+      historyNavFailed431 = 0
+      historyNavStalled431 = false
+      lastAutoDemoHistoryNavStatus =
+        "ISTORIC DESCHIS OCR 2/2 • VERIFIC POZIȚII DEMO"
+      lastAutoDemoHistoryNavStatusAt = nowElapsed
+      return lastAutoDemoHistoryNavStatus
+    }
     if (TouchTestService.confirmedDemoHistoryPageReadOnly431(verifiedDemoReview)) {
       historyNavPending431 = false
       historyNavPendingAt431 = 0L
