@@ -253,6 +253,12 @@ class TouchTestService : AccessibilityService() {
     // 417: Navigation is restricted to NON-ORDER controls of the already
     // active, recognized QT Demo broker. The old uncertain order can be
     // rearmed only by the independent 2/2 explicit empty-Open verification.
+    // 427: Two separate, stable CLOSED receipt reads. IDs/P&L stay in
+    // memory only; neither a colour nor the empty OPEN tab proves LOSS.
+    private var closedCandidateKey427: String? = null
+    private var closedCandidateFirstAt427 = 0L
+    @Volatile private var closedEvidenceDiagnostic427 = "ÎNCHIS • AȘTEPT DATE EXPLICITE"
+    fun closedEvidenceDiagnostic427(): String = closedEvidenceDiagnostic427
     @Volatile private var demoHistoryNavigationStatus = "ISTORIC NECONSULTAT"
     fun demoHistoryNavigationDiagnostic(): String = demoHistoryNavigationStatus
 
@@ -500,9 +506,63 @@ class TouchTestService : AccessibilityService() {
       val results = body.mapNotNull {
         resultRx.matchEntire(it.value)?.groupValues?.getOrNull(1)
       }.distinct()
-      return "ÎNCHIS DEMO • PERECHI " + identifiedPairs.size +
+      val counts = "ÎNCHIS DEMO • PERECHI " + identifiedPairs.size +
         " • ID " + ids.size + " • MIZE " + stakes.size +
-        " • P/L " + results.size + " • FĂRĂ RECUPERARE"
+        " • P/L " + results.size
+      // Require EXACTLY one independently labelled ID, stake and signed
+      // net P/L on the same visible CLOSED item; multiple orders or
+      // missing monetary sign are ambiguous, never a recoverable LOSS.
+      fun strictCents(source: String): Long? {
+        val cleaned = source.replace(Regex("""(?i)USD|\\$|\\s+"""), "")
+          .replace(',', '.')
+        val parsed = Regex("""^([+-]?)([0-9]{1,7})(?:\\.([0-9]{1,2}))?$""")
+          .matchEntire(cleaned) ?: return null
+        val dollars = parsed.groupValues[2].toLongOrNull() ?: return null
+        val decimal = parsed.groupValues[3].padEnd(2, '0').toLongOrNull() ?: return null
+        val cents = dollars * 100L + decimal
+        return if (parsed.groupValues[1] == "-") -cents else cents
+      }
+      val idItems = body.filter { idRx.matches(it.value) }
+      val stakeItems = body.filter { stakeRx.matches(it.value) }
+      val pnlItems = body.filter { resultRx.matches(it.value) }
+      val singleCandidate = if (ids.size == 1 && stakes.size == 1 &&
+          results.size == 1 && idItems.size == 1 && stakeItems.size == 1 &&
+          pnlItems.size == 1 &&
+          identifiedPairs.mapNotNull { fx.find(it.value)?.value }.distinct().size <= 1) {
+        val id = idRx.matchEntire(idItems[0].value)?.groupValues?.getOrNull(1)
+        val stakeRaw = stakeRx.matchEntire(stakeItems[0].value)?.groupValues?.getOrNull(1)
+        val pnlRaw = resultRx.matchEntire(pnlItems[0].value)?.groupValues?.getOrNull(1)
+        val stake = stakeRaw?.let(::strictCents)
+        val pnl = pnlRaw?.let(::strictCents)
+        val ys = listOf(idItems[0].rect.centerY(),
+          stakeItems[0].rect.centerY(), pnlItems[0].rect.centerY())
+        if (id != null && stake != null && pnl != null &&
+            stake in 100L..3964L && pnl in -stake..stake &&
+            (ys.maxOrNull()!! - ys.minOrNull()!!) <= (h * 0.16f).toInt())
+          listOf(root.packageName?.toString().orEmpty(), id,
+            stake.toString(), pnl.toString()).joinToString("|")
+        else null
+      } else null
+      val tick = android.os.SystemClock.elapsedRealtime()
+      if (singleCandidate == null) {
+        closedCandidateKey427 = null
+        closedCandidateFirstAt427 = 0L
+        closedEvidenceDiagnostic427 = counts + " • DATE AMBIGUE • FĂRĂ RECUPERARE"
+      } else if (singleCandidate != closedCandidateKey427 ||
+          tick - closedCandidateFirstAt427 !in 1200L..15_000L) {
+        closedCandidateKey427 = singleCandidate
+        closedCandidateFirstAt427 = tick
+        closedEvidenceDiagnostic427 = counts + " • DOVADĂ 1/2 • FĂRĂ RECUPERARE"
+      } else {
+        val netCents = singleCandidate.substringAfterLast('|').toLongOrNull()
+        closedEvidenceDiagnostic427 = counts + when {
+          netCents == null -> " • REZULTAT NECLAR • FĂRĂ RECUPERARE"
+          netCents < 0L -> " • PIERDERE CITITĂ 2/2 • OPEN ID NECONECTAT • FĂRĂ RECUPERARE"
+          netCents > 0L -> " • PROFIT CITIT 2/2 • OPEN ID NECONECTAT • FĂRĂ RECUPERARE"
+          else -> " • REZULTAT 0 CITIT 2/2 • OPEN ID NECONECTAT • FĂRĂ RECUPERARE"
+        }
+      }
+      return closedEvidenceDiagnostic427
     }
 
     fun returnToDemoChartAfterVerifiedEmptyReview(
