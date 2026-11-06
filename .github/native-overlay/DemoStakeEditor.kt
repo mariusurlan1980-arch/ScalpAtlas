@@ -154,6 +154,22 @@ object DemoStakeEditor {
     inspect(svc).first?.payout
 
   /**
+   * 429: Read back the current QT Demo stake, payout and actual balance.
+   * Never authorizes a gesture; returns false on missing/ambiguous nodes.
+   */
+  fun verifiedExactDemoStakeReadOnly(
+    svc: AccessibilityService,
+    stakeCents: Long
+  ): Boolean {
+    if (stakeCents !in 100L..3964L) return false
+    val (screen, _) = inspect(svc)
+    return screen != null &&
+      centsOf(screen.input.value) == stakeCents &&
+      screen.balanceCents >= stakeCents &&
+      screen.payout in 92..100
+  }
+
+  /**
    * Called only by a trusted, broker-receipt-verified recovery workflow.
    * This method does NOT authorize an order. It fails closed on any ambiguity.
    */
