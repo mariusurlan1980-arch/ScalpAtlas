@@ -644,6 +644,31 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  /**
+   * Match OPEN time written by the broker against the physical gesture's
+   * original Android monotonic timestamp. A process restart cannot make
+   * another day's same-pair/order row a valid match. A device reboot
+   * invalidates the elapsed-time proof, so the app fails closed.
+   */
+  private fun brokerOpenTimeMatchesAttempt437(
+    openedSecondsOfDay: Int,
+    attemptedElapsed: Long
+  ): Boolean {
+    val nowElapsed = android.os.SystemClock.elapsedRealtime()
+    val sinceGesture = nowElapsed - attemptedElapsed
+    if (attemptedElapsed <= 0L || sinceGesture !in 300_000L..86_400_000L)
+      return false
+    val gestureWallTime = System.currentTimeMillis() - sinceGesture
+    val calendar = java.util.Calendar.getInstance().apply {
+      timeInMillis = gestureWallTime
+    }
+    val expectedSeconds = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 3600 +
+      calendar.get(java.util.Calendar.MINUTE) * 60 +
+      calendar.get(java.util.Calendar.SECOND)
+    val distance = kotlin.math.abs(expectedSeconds - openedSecondsOfDay)
+    return minOf(distance, 86400 - distance) <= 150
+  }
+
   // History navigation is a read-only recovery step for a POSSIBLE prior
   // broker order. A touch being accepted by Android cannot be counted as a
   // page transition or authorization for a new broker gesture.
