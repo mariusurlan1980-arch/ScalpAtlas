@@ -3355,7 +3355,22 @@ class ScalpOverlayService : Service() {
       observedAt - lastClosedTabVisualAt in 0L..6_000L
     if (!validPage) { reset(); return }
     val payoutRegex = Regex("""\+\s*""" + expectedPayout + """\s*%""")
-    val options = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+    val lines = result.textBlocks.flatMap { it.lines }
+    data class ClosedRow438(val x: Float, val y: Float, val closedMinute: Int?)
+    val times = lines.mapNotNull { line ->
+      val rect = line.boundingBox ?: return@mapNotNull null
+      val x = rect.centerX().toFloat() / frame.width
+      val y = rect.centerY().toFloat() / frame.height
+      val value = line.text.trim()
+      if (x !in 0.74f..0.99f || y !in 0.25f..0.86f ||
+          !Regex("""^\d{1,2}:\d{2}$""").matches(value))
+        return@mapNotNull null
+      val hm = value.split(':').mapNotNull { it.toIntOrNull() }
+      if (hm.size != 2 || hm[0] !in 0..23 || hm[1] !in 0..59)
+        return@mapNotNull null
+      Pair(y, hm[0] * 60 + hm[1])
+    }
+    val options = lines.mapNotNull { line ->
       val rect = line.boundingBox ?: return@mapNotNull null
       val x = rect.centerX().toFloat() / frame.width
       val y = rect.centerY().toFloat() / frame.height
@@ -3363,10 +3378,36 @@ class ScalpOverlayService : Service() {
       if (x !in 0.08f..0.72f || y !in 0.25f..0.86f ||
           !label.contains(expectedPair!!.uppercase()) ||
           !payoutRegex.containsMatchIn(label)) return@mapNotNull null
-      Pair(x, y)
+      val sameRowTimes = times.filter { kotlin.math.abs(it.first - y) <= 0.029f }
+      ClosedRow438(x, y,
+        if (sameRowTimes.size == 1) sameRowTimes.single().second else null)
     }
-    if (options.size != 1) { reset(); return }
-    val row = options.single()
+    // The list may contain multiple historical orders for the same pair.
+    // Prefer the unique CLOSE clock of the persisted 5-min attempt.
+    // This clock is only a navigation hint; a later full UUID proof is still
+    // mandatory and cannot be inferred from this list.
+    val attemptedElapsed = prior.getLong("attemptedAt429", -1L)
+    val age = android.os.SystemClock.elapsedRealtime() - attemptedElapsed
+    val expectedCloseMinute = if (attemptedElapsed > 0L &&
+        age in 300_000L..86_400_000L) {
+      val cal = java.util.Calendar.getInstance(
+        java.util.TimeZone.getTimeZone("GMT+03:00")
+      ).apply { timeInMillis = System.currentTimeMillis() - age + 300_000L }
+      cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 +
+        cal.get(java.util.Calendar.MINUTE)
+    } else null
+    val timeMatched = if (expectedCloseMinute != null) options.filter { candidate ->
+      val minute = candidate.closedMinute ?: return@filter false
+      val gap = kotlin.math.abs(minute - expectedCloseMinute)
+      minOf(gap, 1440 - gap) <= 3
+    } else emptyList()
+    val unique = if (timeMatched.size == 1) timeMatched
+      else if (options.size == 1 && options.single().closedMinute == null)
+        options
+      else emptyList()
+    if (unique.size != 1) { reset(); return }
+    val selected438 = unique.single()
+    val row = Pair(selected438.x, selected438.y)
     if (closedRowSamples438 > 0 &&
         observedAt - closedRowAt438 in 1_200L..12_000L &&
         kotlin.math.abs(row.first - closedRowX438) <= 0.035f &&
