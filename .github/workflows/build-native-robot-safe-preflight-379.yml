@@ -1094,7 +1094,8 @@ jobs:
           grep -Fq "scalpOpticalVerified:scalpConfirmed" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "tf==='M5'" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'minTrendStrengthPercent=25,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq "candle.trendStrengthPercent<=minTrendStrengthPercent" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "if(firstRebound<=0||secondRebound<=0)continue;" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "candle.trendMeasured && candle.trendDirection!=='NONE'" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'PANTĂ ≤50%' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'source:' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'JSONObject.quote(pairAtCapture)' .github/native-overlay/ScalpOverlayService.kt
