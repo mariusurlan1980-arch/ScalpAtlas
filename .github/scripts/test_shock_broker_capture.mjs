@@ -133,7 +133,7 @@ assert.equal(buy.trendDirection,'BUY','BUY must match measured 3-closed-candle t
 assert.equal(buy.trendMeasured,true);
 assert.ok(buy.trendVisualPoints.length===3,'Mini trend has three observed closes');
 assert.ok(buy.trendStrengthPercent>25 && buy.trendStrengthPercent<=100,'BUY trend >25%');
-assert.equal(buy.trendThresholdPercent,25);
+assert.equal(buy.trendThresholdPercent,0,'450 trend is diagnostic, not a mandatory SHOCK gate');
 assert.ok(buy.trendVisualPoints[2]<buy.trendVisualPoints[0],'BUY mini line rises in price');
 assert.equal(buy.shockThresholdPercent,30);
 assert.equal(buy.shockObservedDurationMs,buy.shockDropDurationMs,'seconds must come from measured LIVE frames');
@@ -236,8 +236,8 @@ assert.equal(againstTrend.trendDirection,'SELL');
 assert.equal(againstTrend.trendMeasured,true);
 assert.equal(againstTrend.trendVisualPoints.length,3);
 assert.equal(againstTrend.shockBlocker,'CONTRA TREND');
-// Even a large retreat cannot signal if trend is below 25%.
- // Both directions have genuine 3-candle slopes below 25%.
+// 450: a weak measured trend no longer vetoes a real two-frame shock.
+ // A clearly CONTRADICTORY trend is still rejected (asserted above).
 let weakBuy;
 for(const close of [110,128,181,219,211,172,159])
   weakBuy=analyze(close,'BUY','WEAK-TREND-BUY OTC',60,'M10',0,close===172||close===159,'BUY_WEAK');
@@ -245,8 +245,7 @@ assert.equal(weakBuy.trendMeasured,true);
 assert.equal(weakBuy.trendDirection,'BUY');
 assert.ok(weakBuy.trendStrengthPercent>0 && weakBuy.trendStrengthPercent<=25);
 assert.ok(weakBuy.shockRetracementPercent>50);
-assert.equal(weakBuy.shockBlocker,'PANTĂ ≤25%');
-assertQuiet(weakBuy);
+assert.equal(weakBuy.shockDirection,'BUY','Weak slope must not hide a verified same-candle BUY shock');
 let weakSell;
 for(const close of [280,262,215,174,181,220,235])
   weakSell=analyze(close,'SELL','WEAK-TREND-SELL OTC',61,'M10',0,close===220||close===235,'SELL_WEAK');
@@ -254,8 +253,7 @@ assert.equal(weakSell.trendMeasured,true);
 assert.equal(weakSell.trendDirection,'SELL');
 assert.ok(weakSell.trendStrengthPercent>0 && weakSell.trendStrengthPercent<=25);
 assert.ok(weakSell.shockRetracementPercent>50);
-assert.equal(weakSell.shockBlocker,'PANTĂ ≤25%');
-assertQuiet(weakSell);
+assert.equal(weakSell.shockDirection,'SELL','Weak slope must not hide a verified same-candle SELL shock');
 // A measured slope between 25% and 50% qualifies only with complete
 // same-candle shock evidence; weaker trends remain rejected.
 let flexBuy;
@@ -325,4 +323,24 @@ for(const close of [148,162,170,166,157,150])
     close===166||close===157||close===150));
 // Trend-line without an observed pullback and recovery is NOT a scalp signal.
 for(let i=0;i<9;i++) assertQuiet(analyze(140,'BUY','TREND-ONLY OTC',74,'M5'));
-console.log('PASS DEMO 406: FLEX 430 SHOCK BUY/SELL, weak-trend veto, M5 SCALP still separate');
+// 450: optical shock must still be detectable when three old candle
+// bodies are hidden by the broker's screen layout; never invent a slope.
+let noTrendShock;
+for(const close of [110,128,181,219,211,172,159]){
+  noTrendShock=analyze(close,'BUY','NO-3-CANDLES OTC',88,'M10',0,
+    close===172||close===159,'NONE');
+}
+assert.equal(noTrendShock.trendMeasured,false);
+assert.equal(noTrendShock.shockDirection,'BUY');
+assert.equal(noTrendShock.shockSameCandle,true);
+assert.ok(noTrendShock.shockWickPixels>0);
+
+// 450: one single rebound frame, even with a very long wick, must
+// NEVER produce a signal. Two consecutive genuine recovery frames required.
+let singleRebound;
+for(const close of [110,128,181,219,219,219,159]){
+  singleRebound=analyze(close,'BUY','ONE-REBOUND OTC',89,'M10',0,
+    close===159,'NONE');
+}
+assertQuiet(singleRebound);
+console.log('PASS DEMO 450: simple same-candle SHOCK, two-frame rebound, wick and opposite-trend veto');
