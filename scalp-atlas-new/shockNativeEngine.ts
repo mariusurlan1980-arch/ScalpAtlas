@@ -222,8 +222,17 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // retracement: opposed movement / body BEFORE the shock, in pixels.
         // It is NOT visual OCR quality, model confidence or a WIN forecast.
         var latest=history[history.length-1];
-        var minBody=Math.max(10,h*.035); // still require a measurable pre-shock candle
-        var minMove=Math.max(7,h*.018);
+        // 452 G24: after the 520px chart downscale, genuine forming bodies
+        // are often 8-16px tall. The previous 3.5% of crop height rejected
+        // those observed candles before the SHOCK sequence was examined.
+        // Keep an 8px hard floor: noise/one-pixel wicks still fail the
+        // full-body, same-X, two-rebound-frame and real-wick safeguards.
+        var minBody=Math.max(8,Math.min(16,h*.018));
+        // A 30% retreat of a 12px body is just a few pixels after scaling.
+        // Require at least FIVE physically measured pixels to avoid
+        // generating signals from JPEG flicker; do not require 2% of
+        // the entire crop, which silently excludes small candles.
+        var minMove=Math.max(5,Math.min(10,h*.008));
         // 450 SIMPLE SHOCK: a measured quick retreat, a REAL rebound in
         // TWO successive LIVE samples, and a visible wick on the SAME candle.
         // No three-candle trend is required: this optical input proved too
