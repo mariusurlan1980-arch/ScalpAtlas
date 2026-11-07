@@ -1344,7 +1344,7 @@ jobs:
           grep -Fq 'historyPageVisible433) return@post' "$O"
           grep -Fq 'current.x = targetX' "$O"
           grep -Fq 'current.y = targetY' "$O"
-          grep -Fq 'Regex("""(?i)\\bQT\\s*Demo\\b""").containsMatchIn(accountHeader440)' "$O"
+          grep -Fq 'Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(accountHeader440)' "$O"
           grep -Fq 'val savedReconciled437 = reconciled437 &&' "$O"
           grep -Fq 'if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())' "$T"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
