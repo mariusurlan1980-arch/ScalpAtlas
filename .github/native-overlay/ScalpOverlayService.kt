@@ -206,6 +206,14 @@ class ScalpOverlayService : Service() {
   private var firstClosedDetailAt437 = 0L
   @Volatile private var verifiedClosedDetail437: ClosedDetail437? = null
   @Volatile private var verifiedClosedDetailAt437 = 0L
+  // 438: OCR-derived CLOSED row coordinates are navigation hints only.
+  // They cannot count as a transaction receipt or release a prior lock.
+  @Volatile private var closedRowAt438 = 0L
+  @Volatile private var closedRowX438 = -1f
+  @Volatile private var closedRowY438 = -1f
+  @Volatile private var closedRowSamples438 = 0
+  private var lastClosedRowTapAt438 = 0L
+  private var lastVerifiedDetailBackId438: String? = null
 
   // 435: independently observed OPEN-tab LABEL, not a fixed touch point.
   @Volatile private var historyOpenOcrAt435 = 0L
@@ -660,7 +668,12 @@ class ScalpOverlayService : Service() {
     if (attemptedElapsed <= 0L || sinceGesture !in 300_000L..86_400_000L)
       return false
     val gestureWallTime = System.currentTimeMillis() - sinceGesture
-    val calendar = java.util.Calendar.getInstance().apply {
+    // Pocket Option's displayed trade-history clock in the G24 QT DEMO
+    // screen is UTC+3, while the device can be UTC+2 in winter.
+    // Comparing against the phone-local zone caused false ID mismatches.
+    val calendar = java.util.Calendar.getInstance(
+      java.util.TimeZone.getTimeZone("GMT+03:00")
+    ).apply {
       timeInMillis = gestureWallTime
     }
     val expectedSeconds = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 3600 +
@@ -896,7 +909,9 @@ class ScalpOverlayService : Service() {
           val openReceiptMissing429 = pendingReceipt429 &&
             demoRecoveryLedger.verifiedOpenPositionId429() == null
           if (openReceiptMissing429 && attemptedAt429 > 0L &&
-              nowReview - attemptedAt429 in 0L..110_000L) {
+              nowReview - attemptedAt429 in 0L..110_000L &&
+              historyPageTab433 != "ÎNCHIS" &&
+              historyPageTab433 != "DETALIU ÎNCHIS") {
             val selectedOpenVisual429 =
               lastOpenTabVisualPackage429 == reviewPackage &&
               openTabVisualConsecutive429 >= 2 &&
@@ -938,6 +953,42 @@ class ScalpOverlayService : Service() {
           } else if (openReceiptMissing429) {
             touchProbeStatus?.text =
               "BLOCAT: ID OPEN N-A FOST CONFIRMAT • FĂRĂ RECUPERARE"
+          }
+          // A CLOSED list row is only a navigation target; the full UUID,
+          // opened time, side, payout and signed result must still be checked
+          // twice inside its detail sheet before a prior lock can be cleared.
+          val closedList438 = pendingReceipt429 && openReceiptMissing429 &&
+            verifiedDemoReview && historyPageTab433 == "ÎNCHIS" &&
+            historyPageVisible433 && verifiedClosedDetail437 == null &&
+            reviewPackage != null && reviewPackage == expectedPackage429
+          if (closedList438 && closedRowSamples438 >= 2 &&
+              System.currentTimeMillis() - closedRowAt438 in 0L..6_000L &&
+              nowReview - lastClosedRowTapAt438 > 20_000L) {
+            lastClosedRowTapAt438 = nowReview
+            val sent438 = TouchTestService.tapVerifiedDemoClosedRowOcr438(
+              reviewPackage!!, closedRowX438, closedRowY438
+            )
+            closedRowSamples438 = 0
+            touchProbeStatus?.text = if (sent438)
+              "🔎 ÎNCHIS DEMO • DESCHID DETALIU • VERIFIC ID 2/2"
+            else "🔒 ÎNCHIS DEMO • RÂND NECONFIRMAT • FĂRĂ ORDIN"
+          }
+          val closedDetail438 = verifiedClosedDetail437
+          if (closedDetail438 != null && pendingReceipt429 &&
+              historyPageTab433 == "DETALIU ÎNCHIS" &&
+              closedDetail438.brokerPackage == expectedPackage429 &&
+              lastVerifiedDetailBackId438 != closedDetail438.positionId &&
+              System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..20_000L) {
+            // The proof stays in memory; navigate to the OPEN list to obtain
+            // two independent zero-position reads before reconciliation.
+            val backed438 = TouchTestService.returnFromVerifiedDemoClosedDetail438(
+              expectedPackage429!!
+            )
+            if (backed438) {
+              lastVerifiedDetailBackId438 = closedDetail438.positionId
+              touchProbeStatus?.text =
+                "🔎 ID ÎNCHIS 2/2 • REVIN LA DESCHIS • CONFIRM 0 POZIȚII"
+            }
           }
           val ocrCurrent = verifiedDemoReview &&
             lastEmptyOpenOcrPackage == reviewPackage &&
@@ -1174,7 +1225,8 @@ class ScalpOverlayService : Service() {
                             mainHandler.postDelayed({
                               if (!shuttingDown && mediaProjection != null &&
                                   TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
-                                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                                if (!pendingReceipt429)
+                                  TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
                               }
                               closedHistoryInspectionInProgress = false
                             }, 800L)
@@ -1191,7 +1243,8 @@ class ScalpOverlayService : Service() {
                       if (!shuttingDown && mediaProjection != null &&
                           provenPackage != null &&
                           TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
-                        TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                        if (!pendingReceipt429)
+                          TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
                       }
                       closedHistoryInspectionInProgress = false
                     }, 750L)
@@ -1221,7 +1274,10 @@ class ScalpOverlayService : Service() {
             // Transactions > Deschis over and over: navigate ONLY to safe,
             // exact text-labelled history controls (never BUY/SELL).
             // Rate limit to avoid oscillation/reloading a first OCR sample.
-            if (eligibleForBrokerEmptyReview && demoEmptyReviewReads == 0) {
+            if (eligibleForBrokerEmptyReview && demoEmptyReviewReads == 0 &&
+                !(pendingReceipt429 && historyPageTab433 == "ÎNCHIS" &&
+                  verifiedClosedDetail437 == null) &&
+                !(pendingReceipt429 && historyPageTab433 == "DETALIU ÎNCHIS")) {
               val navResult431 = navigateVerifiedDemoHistory431(
                 verifiedDemoReview, tick
               )
@@ -3265,6 +3321,65 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  /**
+   * 438: On a visually selected CLOSED history tab, locate exactly ONE row
+   * bearing the pending DEMO pair and payout. Two independent OCR frames are
+   * required before a bounded navigation-only tap; row matching is NOT
+   * settlement proof. A duplicate pair (or unreadable row) fails closed.
+   */
+  private fun recordClosedListRowOcr438(
+    result: com.google.mlkit.vision.text.Text,
+    frame: Bitmap,
+    observedAt: Long
+  ) {
+    fun reset() {
+      closedRowSamples438 = 0
+      closedRowAt438 = 0L
+      closedRowX438 = -1f
+      closedRowY438 = -1f
+    }
+    val pkg = TouchTestService.activeDemoExecutorPackageForReview()
+    val prior = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val expectedPair = prior.getString("expectedPair429", null)
+    val expectedPkg = prior.getString("expectedPackage429", null)
+    val expectedPayout = prior.getInt("expectedPayout429", -1)
+    val validPage = mediaProjection != null && pkg != null &&
+      pkg == expectedPkg && pkg == verifiedDemoAccountPackage &&
+      prior.getBoolean("attempted", false) &&
+      !expectedPair.isNullOrBlank() && expectedPayout in 92..100 &&
+      verifiedClosedDetail437 == null && historyPageVisible433 &&
+      historyPageTab433 == "ÎNCHIS" &&
+      selectedClosedTabVerifiedOnScreen(frame) &&
+      lastClosedTabVisualPackage == pkg &&
+      closedTabVisualConsecutive >= 2 &&
+      observedAt - lastClosedTabVisualAt in 0L..6_000L
+    if (!validPage) { reset(); return }
+    val payoutRegex = Regex("""\+\s*""" + expectedPayout + """\s*%""")
+    val options = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+      val rect = line.boundingBox ?: return@mapNotNull null
+      val x = rect.centerX().toFloat() / frame.width
+      val y = rect.centerY().toFloat() / frame.height
+      val label = line.text.uppercase().replace(Regex("""\s+"""), " ").trim()
+      if (x !in 0.08f..0.72f || y !in 0.25f..0.86f ||
+          !label.contains(expectedPair!!.uppercase()) ||
+          !payoutRegex.containsMatchIn(label)) return@mapNotNull null
+      Pair(x, y)
+    }
+    if (options.size != 1) { reset(); return }
+    val row = options.single()
+    if (closedRowSamples438 > 0 &&
+        observedAt - closedRowAt438 in 1_200L..12_000L &&
+        kotlin.math.abs(row.first - closedRowX438) <= 0.035f &&
+        kotlin.math.abs(row.second - closedRowY438) <= 0.025f) {
+      closedRowSamples438 = (closedRowSamples438 + 1).coerceAtMost(3)
+    } else {
+      closedRowSamples438 = 1
+    }
+    closedRowX438 = row.first
+    closedRowY438 = row.second
+    closedRowAt438 = observedAt
+  }
+
   /** A second independent OCR sample is mandatory; never use a chart screenshot
    * as evidence that a prior physical broker order is closed. */
   private fun recordExplicitEmptyOpenOcr(
@@ -3410,6 +3525,7 @@ class ScalpOverlayService : Service() {
         // 437: read a uniquely identified CLOSED trade detail in two
         // independent frames. Does not itself rearm or submit an order.
         recordClosedDetailOcr437(result, copy, observedAt)
+        recordClosedListRowOcr438(result, copy, observedAt)
         recordBrokerHistoryBottomLabelOcr432(result, copy, observedAt)
         // 433: On history, M5 and the active FX selector do not exist.
         // Continue the independent OPEN/CLOSED evidence checker above,
