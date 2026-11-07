@@ -488,6 +488,57 @@ class TouchTestService : AccessibilityService() {
       } catch (_: Throwable) { false }
     }
 
+    /**
+     * 438: Navigation ONLY. Open a CLOSED history list row selected from two
+     * consistent MediaProjection OCR frames. This tap is not an order,
+     * a receipt, or permission to clear a pending DEMO gesture.
+     */
+    fun tapVerifiedDemoClosedRowOcr438(
+      expectedBrokerPackage: String,
+      centerXFraction: Float,
+      centerYFraction: Float
+    ): Boolean {
+      val info = activeDemoHistoryNodes(true) ?: return false
+      val (svc, root, _) = info
+      if (root.packageName?.toString() != expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage) ||
+          !centerXFraction.isFinite() || !centerYFraction.isFinite() ||
+          centerXFraction !in 0.08f..0.72f ||
+          centerYFraction !in 0.25f..0.86f) return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      if (metrics.widthPixels < 300 || metrics.heightPixels < 600) return false
+      if (svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage)
+        return false
+      val path = Path().apply {
+        moveTo(metrics.widthPixels * centerXFraction,
+          metrics.heightPixels * centerYFraction)
+      }
+      return try {
+        val gesture = GestureDescription.Builder()
+          .addStroke(GestureDescription.StrokeDescription(path, 0L, 75L)).build()
+        svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+      } catch (_: Throwable) { false }
+    }
+
+    /** Only after a full, twice-verified CLOSED detail may we navigate Back. */
+    fun returnFromVerifiedDemoClosedDetail438(expectedBrokerPackage: String): Boolean {
+      val svc = connected ?: return false
+      val root = svc.rootInActiveWindow ?: return false
+      if (root.packageName?.toString() != expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage) ||
+          svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage)
+        return false
+      return try {
+        svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+      } catch (_: Throwable) { false }
+    }
+
     fun advanceDemoHistoryReviewNavigation(
       cachedDemoVerifiedOnChart: Boolean
     ): String {
