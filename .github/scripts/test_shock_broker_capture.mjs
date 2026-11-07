@@ -231,11 +231,12 @@ assertQuiet(noWick);
 let againstTrend;
 for(const close of [110,128,181,219,211,172,159])
   againstTrend=analyze(close,'BUY','COUNTER-TREND OTC',51,'M10',0,close===172||close===159,'SELL');
-assertQuiet(againstTrend);
+assert.equal(againstTrend.shockDirection,'BUY',
+  'SHOCK SIMPLE does not veto live pullback+rebound because of prior trend');
 assert.equal(againstTrend.trendDirection,'SELL');
 assert.equal(againstTrend.trendMeasured,true);
 assert.equal(againstTrend.trendVisualPoints.length,3);
-assert.equal(againstTrend.shockBlocker,'CONTRA TREND');
+assert.equal(againstTrend.shockBlocker,'ȘOC CONFIRMAT');
 // Even a large retreat cannot signal if trend is below 25%.
  // Both directions have genuine 3-candle slopes below 25%.
 let weakBuy;
@@ -245,8 +246,8 @@ assert.equal(weakBuy.trendMeasured,true);
 assert.equal(weakBuy.trendDirection,'BUY');
 assert.ok(weakBuy.trendStrengthPercent>0 && weakBuy.trendStrengthPercent<=25);
 assert.ok(weakBuy.shockRetracementPercent>50);
-assert.equal(weakBuy.shockBlocker,'PANTĂ ≤25%');
-assertQuiet(weakBuy);
+assert.equal(weakBuy.shockBlocker,'ȘOC CONFIRMAT');
+assert.equal(weakBuy.shockDirection,'BUY');
 let weakSell;
 for(const close of [280,262,215,174,181,220,235])
   weakSell=analyze(close,'SELL','WEAK-TREND-SELL OTC',61,'M10',0,close===220||close===235,'SELL_WEAK');
@@ -254,8 +255,8 @@ assert.equal(weakSell.trendMeasured,true);
 assert.equal(weakSell.trendDirection,'SELL');
 assert.ok(weakSell.trendStrengthPercent>0 && weakSell.trendStrengthPercent<=25);
 assert.ok(weakSell.shockRetracementPercent>50);
-assert.equal(weakSell.shockBlocker,'PANTĂ ≤25%');
-assertQuiet(weakSell);
+assert.equal(weakSell.shockBlocker,'ȘOC CONFIRMAT');
+assert.equal(weakSell.shockDirection,'SELL');
 // A measured slope between 25% and 50% qualifies only with complete
 // same-candle shock evidence; weaker trends remain rejected.
 let flexBuy;
@@ -290,39 +291,23 @@ assert.ok(newlyAdmittedSell.trendStrengthPercent>25 &&
   newlyAdmittedSell.trendStrengthPercent<=35);
 assert.equal(newlyAdmittedSell.shockDirection,'SELL');
 assert.equal(newlyAdmittedSell.shockOpticalVerified,true);
-// Independent M5 SCALP TREND: warmup does not form a 30% SHOCK;
-// a moderate, timed pullback and measured
-// rebound, not a merely descending or ascending candle.
-let scalpBuy;
+// 450 single strategy: a moderate M5 pullback must not activate the
+// former secondary SCALP strategy or compete with SHOCK signals.
 for(let i=0;i<8;i++) assertQuiet(analyze(155,'BUY','SCALP-BUY OTC',71,'M5'));
 for(const close of [148,162,170,166,157,150])
-  scalpBuy=analyze(close,'BUY','SCALP-BUY OTC',71,'M5',0,
-    close===166||close===157||close===150);
-assert.equal(scalpBuy.strategy,'SCALP_TREND');
-assert.equal(scalpBuy.signal,'BUY');
-assert.equal(scalpBuy.shockDirection,'NONE');
-assert.equal(scalpBuy.scalpOpticalVerified,true);
-assert.equal(scalpBuy.scalpSameCandle,true);
-assert.ok(scalpBuy.scalpRetracementPercent>20 && scalpBuy.scalpRetracementPercent<=50);
-assert.ok(scalpBuy.scalpRecoveryPercent>=35);
-assert.ok(scalpBuy.trendStrengthPercent>50);
-assert.ok(scalpBuy.scalpPullbackDurationMs>=700);
-let scalpSell;
+  assertQuiet(analyze(close,'BUY','SCALP-BUY OTC',71,'M5',0,
+    close===166||close===157||close===150));
 for(let i=0;i<8;i++) assertQuiet(analyze(228,'SELL','SCALP-SELL OTC',72,'M5'));
 for(const close of [234,225,215,220,229,235])
-  scalpSell=analyze(close,'SELL','SCALP-SELL OTC',72,'M5',0,
-    close===220||close===229||close===235);
-assert.equal(scalpSell.strategy,'SCALP_TREND');
-assert.equal(scalpSell.signal,'SELL');
-assert.equal(scalpSell.shockDirection,'NONE');
-assert.equal(scalpSell.scalpOpticalVerified,true);
-assert.ok(scalpSell.scalpRetracementPercent>20 && scalpSell.scalpRetracementPercent<=50);
-assert.ok(scalpSell.scalpRecoveryPercent>=35);
-// SCALP TREND must not fire on M10, even when the price pattern is identical.
-for(let i=0;i<8;i++) assertQuiet(analyze(155,'BUY','SCALP-M10 OTC',73,'M10'));
-for(const close of [148,162,170,166,157,150])
-  assertQuiet(analyze(close,'BUY','SCALP-M10 OTC',73,'M10',0,
-    close===166||close===157||close===150));
-// Trend-line without an observed pullback and recovery is NOT a scalp signal.
-for(let i=0;i<9;i++) assertQuiet(analyze(140,'BUY','TREND-ONLY OTC',74,'M5'));
-console.log('PASS DEMO 406: FLEX 430 SHOCK BUY/SELL, weak-trend veto, M5 SCALP still separate');
+  assertQuiet(analyze(close,'SELL','SCALP-SELL OTC',72,'M5',0,
+    close===220||close===229||close===235));
+// Strong temporal SHOCK may be detected even if prior three candles are
+// missing from a cropped broker chart, but never from a static wick alone.
+let noPriorTrend;
+for(const close of [110,128,181,219,211,172,159])
+  noPriorTrend=analyze(close,'BUY','NO-HISTORY OTC',90,'M5',0,
+    close===172||close===159,'NONE');
+assert.equal(noPriorTrend.trendMeasured,false);
+assert.equal(noPriorTrend.shockDirection,'BUY');
+assert.equal(noPriorTrend.strategy,'SHOCK');
+console.log('PASS DEMO 450: SHOCK only, same-candle retrace/rebound/wick; no prior trend gate or competing SCALP');
