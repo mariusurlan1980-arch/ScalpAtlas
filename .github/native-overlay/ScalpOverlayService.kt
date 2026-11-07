@@ -136,9 +136,10 @@ class ScalpOverlayService : Service() {
   private var demoBrokerInspectionRow: LinearLayout? = null
   private var demoBrokerOrderRow: LinearLayout? = null
   private var demoAmountCheckRow: LinearLayout? = null
-  // Demo automation is requested ONLY by a deliberate Android LIVE capture start.
-  // At most one verified 1 USD QT Demo click per user-consented LIVE session.
-  // No background rearming, no Real orders, no hidden bypass of preflight.
+  // 448: ONE active QT Demo position at any time, never overlapping.
+  // The next independent SHOCK can be considered only AFTER the preceding
+  // order has an exact authenticated CLOSED receipt and two ZERO-OPEN reads.
+  // The session stays user-approved; QT Real and duplicate orders stay blocked.
   private var autoDemoSessionRequested = false
   private var autoDemoSessionConsumed = false
   private var autoDemoSessionEndAt = 0L
@@ -1180,19 +1181,29 @@ class ScalpOverlayService : Service() {
                 // Both writes must succeed. An uncertain broker gesture is
                 // never cleared from persistent storage based on a chart-only
                 // guess, page change, screenshot OCR or elapsed time alone.
-                val savedOldSell = getSharedPreferences(
-                  sell404TestPrefs, Context.MODE_PRIVATE
-                ).edit().putBoolean("attempted", false).commit()
-                // 429: Never clear the persistent attempted flag just
-                // because OPEN is empty. First match a previously verified
-                // OPEN ID to a uniquely verified CLOSED result.
-                val savedOldShock = if (pendingReceipt429) true
-                  else getSharedPreferences(
+                // 448: A screenshot showing ZERO open trades is NOT proof
+                // that the historical Android gesture succeeded or failed.
+                // Never erase a legacy SELL 404 attempt merely because the
+                // OPEN tab is empty. It has no authenticated CLOSED receipt
+                // in this flow; a genuine receipt-review must resolve it.
+                val savedOldSell = !oldSellAttempt
+                // 448: The older code cleared an incomplete/stale prior
+                // SHOCK attempt whenever pendingReceipt429 was false (for
+                // example, a missing expected pair or payout). That could
+                // trigger a SECOND order without a verified WIN/LOSS.
+                // Keep that attempt locked until the exact matching CLOSED
+                // receipt is confirmed twice and persisted by the ledger.
+                val savedOldShock = when {
+                  pendingReceipt429 -> true
+                  oldShockAttempt && !savedReconciled437 -> false
+                  oldShockAttempt -> getSharedPreferences(
                     autoShockAttemptPrefs, Context.MODE_PRIVATE
                   ).edit().putBoolean("attempted", false)
                     .remove("expectedPair429").remove("expectedPackage429")
                     .remove("expectedStakeCents429").remove("expectedPayout429")
                     .remove("expectedSide437").remove("attemptedAt429").commit()
+                  else -> true
+                }
                 if (savedOldSell && savedOldShock) {
                   autoDemoSessionRequested = !pendingReceipt429
                   autoDemoSessionConsumed = pendingReceipt429
@@ -1396,10 +1407,18 @@ class ScalpOverlayService : Service() {
                     }, 750L)
                   }
                 } else {
-                  // One failed persistent write still leaves the session
-                  // consumed and no new broker gesture can be attempted.
-                  touchProbeStatus?.text =
-                    "BLOCAT: MEMORARE VERIFICARE INCOMPLETĂ"
+                  // 448: Only an authenticated, persisted settlement permits
+                  // the NEXT independent SHOCK to submit another QT Demo
+                  // order. Any legacy/incomplete prior attempt stays locked.
+                  autoDemoSessionRequested = false
+                  autoDemoSessionConsumed = true
+                  autoDemoArmed = false
+                  touchProbeStatus?.text = when {
+                    oldSellAttempt -> "🔒 TEST SELL VECHI NECONFIRMAT • FĂRĂ ORDIN"
+                    oldShockAttempt && !savedReconciled437 ->
+                      "🔒 ID VECHI NECONFIRMAT • FĂRĂ ORDIN NOU"
+                    else -> "BLOCAT: MEMORARE VERIFICARE INCOMPLETĂ"
+                  }
                 }
                 demoEmptyReviewReads = 0
                 demoEmptyReviewFirstAt = 0L

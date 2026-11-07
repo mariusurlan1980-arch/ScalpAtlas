@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.27'
+          expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=447
+          expo['android']['versionCode']=448
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -889,7 +889,10 @@ jobs:
           grep -Fq 'demoRecoveryLedger.verifiedOpenPositionId429()' "$O"
           grep -Fq 'closedReceipt429.stakeCents ==' "$O"
           grep -Fq 'expectedStake429' "$O"
-          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          # 448: a missing historic receipt must never clear a prior gesture.
+          grep -Fq 'val savedOldShock = when {' "$O"
+          grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
+          grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'val cleared429 = pendingPrefs429.edit()' "$O"
           grep -Fq 'autoDemoSessionRequested = false' "$O"
           grep -Fq 'verifiedExactDemoStakeReadOnly(' .github/native-overlay/DemoStakeEditor.kt
@@ -1122,7 +1125,10 @@ jobs:
           grep -Fq 'ISTORICUL NU SE DESCHIDE' "$O"
           grep -Fq 'confirmedDemoHistoryPageReadOnly431(verifiedDemoReview)' "$O"
           grep -Fq 'eligibleForBrokerEmptyReview && demoEmptyReviewReads == 0' "$O"
-          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          # 448: a missing historic receipt must never clear a prior gesture.
+          grep -Fq 'val savedOldShock = when {' "$O"
+          grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
+          grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
           grep -Fq 'demoRecoveryLedger.verifiedOpenPositionId429()' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
@@ -1148,7 +1154,10 @@ jobs:
           grep -Fq 'centerYFraction !in 0.84f..0.975f' "$T"
           grep -Fq 'confirmedDemoHistoryPageReadOnly431(' "$O"
           grep -Fq 'historyNavFailed431 >= 3' "$O"
-          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          # 448: a missing historic receipt must never clear a prior gesture.
+          grep -Fq 'val savedOldShock = when {' "$O"
+          grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
+          grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
@@ -1169,7 +1178,10 @@ jobs:
           grep -Fq 'FĂRĂ ANALIZĂ ȘOC' "$O"
           grep -Fq 'recordExplicitEmptyOpenOcr(result, copy, observedAt)' "$O"
           grep -Fq 'TouchTestService.readDoubleVerifiedDemoReceipt429(' "$O"
-          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          # 448: a missing historic receipt must never clear a prior gesture.
+          grep -Fq 'val savedOldShock = when {' "$O"
+          grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
+          grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
@@ -1189,7 +1201,10 @@ jobs:
           grep -Fq 'startNeonEdge434()' "$O"
           grep -Fq 'stopNeonEdge434()' "$O"
           grep -Fq 'window.width = dp(if (minimized) 176 else 224)' "$O"
-          grep -Fq 'val savedOldShock = if (pendingReceipt429) true' "$O"
+          # 448: a missing historic receipt must never clear a prior gesture.
+          grep -Fq 'val savedOldShock = when {' "$O"
+          grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
+          grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
@@ -1330,6 +1345,45 @@ jobs:
           grep -Fq 'uniqueClosedDetailReadTwice = true' "$O"
           grep -Fq 'zeroOpenReadTwice = true' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
+      - name: Verify 448 sequential DEMO only after exact CLOSED settlement
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          L=.github/native-overlay/DemoRecoveryLedger.kt
+          grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
+          grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
+          grep -Fq 'oldShockAttempt -> getSharedPreferences(' "$O"
+          grep -Fq 'autoDemoSessionRequested = !pendingReceipt429' "$O"
+          grep -Fq 'autoDemoSessionRequested = true' "$O"
+          grep -Fq 'autoDemoSessionConsumed = false' "$O"
+          grep -Fq 'val matchingAttempt437 = pendingReceipt429 &&' "$O"
+          grep -Fq 'verifiedOpenId445 == closedProof437.positionId' "$O"
+          grep -Fq 'brokerOpenTimeMatchesAttempt437(' "$O"
+          grep -Fq 'uniqueClosedDetailReadTwice = true' "$O"
+          grep -Fq 'zeroOpenReadTwice = true' "$O"
+          grep -Fq 'if (!tradePositionGate.beginAttempt())' "$O"
+          grep -Fq 'val saved = getSharedPreferences(' "$O"
+          grep -Fq 'fun alreadySettledClosedReceipt444(' "$L"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const mayRearm=(pending,verifiedClosed,legacySell,payout,ready,hasActive)=>
+            !pending&&verifiedClosed&&!legacySell&&payout>=92&&ready&&!hasActive;
+          assert.equal(mayRearm(false,true,false,92,true,false),true);
+          assert.equal(mayRearm(false,false,false,92,true,false),false);
+          assert.equal(mayRearm(true,false,false,92,true,false),false);
+          assert.equal(mayRearm(false,true,true,92,true,false),false);
+          assert.equal(mayRearm(false,true,false,54,true,false),false);
+          assert.equal(mayRearm(false,true,false,92,true,true),false);
+          assert.equal(mayRearm(false,true,false,92,false,false),false);
+          const mayClearStale=(prior,matchingClosedTwice,zeroOpenTwice)=>
+            !prior || (matchingClosedTwice && zeroOpenTwice);
+          assert.equal(mayClearStale(true,false,true),false);
+          assert.equal(mayClearStale(true,true,false),false);
+          assert.equal(mayClearStale(true,true,true),true);
+          console.log('448: one-open-at-a-time and verified-settlement-only rearm checked');
+          NODE
 
       - name: Verify 447 QT Demo header unobscured during history OCR
         run: |
@@ -1680,12 +1734,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-447-CI-DOAR-TEST-ANDROID.apk
+          cp "$APK" ScalpAtlas-448-CI-DOAR-TEST-ANDROID.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-447-CI-FARA-RELEASE
-          path: ScalpAtlas-447-CI-DOAR-TEST-ANDROID.apk
+          name: ScalpAtlas-448-CI-FARA-RELEASE
+          path: ScalpAtlas-448-CI-DOAR-TEST-ANDROID.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1695,7 +1749,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-447-CI-DOAR-TEST-ANDROID.apk"
+          FILE="ScalpAtlas-448-CI-DOAR-TEST-ANDROID.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-closed-proof442-${GITHUB_SHA:0:12}"
