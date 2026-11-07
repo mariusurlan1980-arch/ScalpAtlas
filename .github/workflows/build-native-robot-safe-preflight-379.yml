@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 437 VERIFIED CLOSED RECEIPT RECONCILIATION
+name: Build Scalp Atlas 438 UTC+3 VERIFIED CLOSED HISTORY NAVIGATION
 
 on:
   push:
-    branches: [feature/scalpatlas-settlement-reconcile437]
+    branches: [feature/scalpatlas-history-recovery438]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-437
+  group: scalp-atlas-calculator-test-438
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.17'
+          expo['version']='3.2.18'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=437
+          expo['android']['versionCode']=438
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1283,6 +1283,36 @@ jobs:
           console.log('Broker UUID, timestamp, signed payout, 1->2.09 recovery fixture checked');
           NODE
 
+      - name: Verify 438 broker-clock and read-only closed-row safeguards
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'java.util.TimeZone.getTimeZone("GMT+03:00")' "$O"
+          grep -Fq 'recordClosedListRowOcr438(result, copy, observedAt)' "$O"
+          grep -Fq 'closedRowSamples438 >= 2' "$O"
+          grep -Fq 'options.size != 1' "$O"
+          grep -Fq 'historyPageTab433 == "ÎNCHIS"' "$O"
+          grep -Fq 'tapVerifiedDemoClosedRowOcr438(' "$T"
+          grep -Fq 'returnFromVerifiedDemoClosedDetail438(' "$T"
+          grep -Fq 'closedProof437.pair == expectedPair429' "$O"
+          grep -Fq 'uniqueClosedDetailReadTwice = true' "$O"
+          grep -Fq 'zeroOpenReadTwice = true' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const utc=new Date(Date.UTC(2026,10,7,1,15,0));
+          const broker=new Intl.DateTimeFormat('en-GB',{
+            timeZone:'Etc/GMT-3', hour:'2-digit',minute:'2-digit',
+            second:'2-digit',hourCycle:'h23'}).format(utc);
+          const device=new Intl.DateTimeFormat('en-GB',{
+            timeZone:'Europe/Bucharest',hour:'2-digit',minute:'2-digit',
+            second:'2-digit',hourCycle:'h23'}).format(utc);
+          assert.equal(broker,'04:15:00');
+          assert.equal(device,'03:15:00');
+          console.log('Broker UTC+3 and November device UTC+2 verified');
+          NODE
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1374,12 +1404,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-437-DEMO-INCHIDERE-G24.apk
+          cp "$APK" ScalpAtlas-438-ISTORIC-ID-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.17-RECONCILIERE-437
-          path: ScalpAtlas-437-DEMO-INCHIDERE-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.18-ISTORIC-438
+          path: ScalpAtlas-438-ISTORIC-ID-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1388,13 +1418,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-437-DEMO-INCHIDERE-G24.apk"
+          FILE="ScalpAtlas-438-ISTORIC-ID-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-reconcile437-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-history438-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 437 RECONCILIERE ORDIN ÎNCHIS DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "437: Reconciliere strict DEMO pentru o tranzactie inchisa al carei ID de deschidere nu a putut fi citit la timp. Citeste detaliul individual direct din doua cadre live distincte: cont QT Demo, UUID Ordin, pereche OTC, ora deschiderii/inchiderii, directie BUY/SELL, suma, payout si rezultat semnat. Asociaza numai daca perechea, miza, payout, directia salvata si ora deschiderii corespund gestului original salvat, apoi confirma separat 0 pozitii Deschis din doua citiri ale istoricului. Numai atunci registrul actualizeaza WIN/LOSS, curata blocarea persistenta si poate rearma automat strategia SHOC pentru urmatorul ordin DEMO. In lipsa oricarei dovezi nu executa nimic si nu dubleaza. Lumina LED pastrata; QT Real interzis. APK compilat nu dovedeste citirea efectiva sau tranzactionarea autonoma pe Motorola. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 438 ISTORIC UTC+3 SI ID DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "438: Corecteaza fusul orar al istoricului Pocket Option UTC+3 fata de telefonul UTC+2, identifica in doua cadre OCR o singura linie din fila Inchis cu perechea si payoutul ordinului DEMO, deschide exclusiv acea linie pentru a citi detaliul UUID si rezultatul 2/2, apoi incearca verificarea separata 0 pozitii Deschis 2/2. Niciun rand sau clic nu este dovada de WIN/LOSS. Un ordin vechi necunoscut ramane blocat daca lipseste oricare dintre probe. Niciun ordin QT Real; nu se activeaza auto pe Real. Este un APK construit, nu un test dovedit pe Motorola G24. Build $GITHUB_SHA." \
             --prerelease
