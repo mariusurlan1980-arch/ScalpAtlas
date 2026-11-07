@@ -3250,6 +3250,11 @@ class ScalpOverlayService : Service() {
     if (elapsed !in 240..960) return // never mistake an old list row for an M5 close
     val candidate = ClosedDetail437(packageId, pair, ids.single(),
       stake, payoutValues.single(), net, side437, openingSeconds)
+    // The broker's opened CLOSED-detail sheet is not a live price chart:
+    // never turn its historical pair/candles into new SHOCK signals.
+    historyPageVisible433 = true
+    historyPageLastSeen433 = observedAt
+    historyPageTab433 = "DETALIU ÎNCHIS"
     if (candidate == firstClosedDetail437 &&
         observedAt - firstClosedDetailAt437 in 1_500L..15_000L) {
       verifiedClosedDetail437 = candidate
