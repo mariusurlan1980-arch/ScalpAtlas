@@ -1336,6 +1336,15 @@ jobs:
           set -euo pipefail
           O=.github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val rowText446 = lines.mapNotNull siblingRow446@' "$O"
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'fun brokerWindowDiagnostic446()' "$T"
+          grep -Fq 'ACT:" + app + " W:" + windows.size' "$T"
+          grep -Fq 'brokerWindowDiagnostic446() +' "$T"
+          grep -Fq 'return "ISTORIC BLOCAT • "' "$T"
+          grep -Fq 'return "BROKER INVIZIBIL • "' "$T"
+          grep -Fq 'svc.rootInActiveWindow?.packageName?.toString()' "$T"
+          grep -Fq 'readOnlyBrokerRoot(svc) != null' "$T"
+          grep -Fq 'if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())' "$T"
           grep -Fq 'kotlin.math.abs(siblingY - y) > 0.019f' "$O"
           grep -Fq 'instruments446.size != 1' "$O"
           grep -Fq 'payoutValues446.size != 1' "$O"
