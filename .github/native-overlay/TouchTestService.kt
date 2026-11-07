@@ -24,6 +24,40 @@ class TouchTestService : AccessibilityService() {
     @Volatile private var demoEmptyReviewStatus = "DESCHIDE TRANZACȚII > DESCHIS"
     fun demoEmptyReviewDiagnostic(): String = demoEmptyReviewStatus
 
+    // 446 diagnostic: Android 14 may focus SystemUI while Pocket Option
+    // remains visibly underneath. Report only package/window visibility,
+    // never a screenshot, account balance, UUID or an order instruction.
+    // Diagnostic readings NEVER authorize broker gestures.
+    fun brokerWindowDiagnostic446(): String {
+      val svc = connected ?: return "ACC:OFF"
+      val activePackage = try {
+        svc.rootInActiveWindow?.packageName?.toString().orEmpty()
+      } catch (_: Throwable) { "" }
+      val windows = try { svc.windows.orEmpty() } catch (_: Throwable) {
+        emptyList<AccessibilityWindowInfo>()
+      }
+      val appWindows = windows.filter {
+        it.type == AccessibilityWindowInfo.TYPE_APPLICATION
+      }
+      val foundBrokerWindow = appWindows.any {
+        try {
+          BrokerAdapterRegistry.hasDemoExecutor(it.root?.packageName?.toString().orEmpty())
+        } catch (_: Throwable) { false }
+      }
+      val readableBroker = try { readOnlyBrokerRoot(svc) != null }
+        catch (_: Throwable) { false }
+      val app = when {
+        activePackage.isBlank() -> "NUL"
+        BrokerAdapterRegistry.hasDemoExecutor(activePackage) -> "BROKER"
+        activePackage == svc.packageName -> "SCALP"
+        activePackage.contains("systemui", ignoreCase = true) -> "SYSTEMUI"
+        else -> activePackage.substringAfterLast('.').take(16)
+      }
+      return "ACT:" + app + " W:" + windows.size +
+        " B:" + (if (foundBrokerWindow) "DA" else "NU") +
+        " R:" + (if (readableBroker) "DA" else "NU")
+    }
+
     /**
      * 411: Android may temporarily focus com.android.systemui while the
      * Pocket Option chart remains visibly underneath screen-share UI.
@@ -133,7 +167,8 @@ class TouchTestService : AccessibilityService() {
     fun inspectBrokerAccountReadOnly(): String {
       val svc = connected ?: return "ACCESIBILITATE NECONECTATĂ • NUMAI SCANARE"
       val root = readOnlyBrokerRoot(svc)
-        ?: return "FEREASTRĂ BROKER INVIZIBILĂ • ANDROID UI / REÎNCERC"
+        ?: return "BROKER INVIZIBIL • " + brokerWindowDiagnostic446() +
+          " • FĂRĂ ORDIN"
       val pkg = root.packageName?.toString().orEmpty()
       val adapter = BrokerAdapterRegistry.forPackage(pkg)
       if (adapter.id == "unrecognized") {
@@ -600,7 +635,8 @@ class TouchTestService : AccessibilityService() {
       cachedDemoVerifiedOnChart: Boolean
     ): String {
       val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
-        ?: return "ISTORIC AUTO BLOCAT • QT DEMO / FEREASTRĂ NECONFIRMATĂ"
+        ?: return "ISTORIC BLOCAT • " + brokerWindowDiagnostic446() +
+          " • FĂRĂ ORDIN"
       val (svc, root, labels) = info
       val metrics = android.util.DisplayMetrics()
       try {
