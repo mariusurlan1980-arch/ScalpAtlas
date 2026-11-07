@@ -149,6 +149,48 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   }
 
   /**
+   * 437: Strict reconciliation for a previous DEMO gesture whose OPEN
+   * accessibility receipt could not be captured before its 5-minute close.
+   * CLOSED proof alone is insufficient: the caller must separately verify
+   * the same broker account, matching pair/stake/payout, the opening time
+   * against the persisted original gesture, two independent matching
+   * detail reads and two explicit NO-OPEN history reads.
+   * No shortcut for QT REAL or for a stale/unknown attempt.
+   */
+  @Synchronized
+  fun reconcileSettledDemoWithMissingOpen437(
+    brokerAccountKey: String,
+    positionId: String,
+    stakeCents: Long,
+    payoutPercent: Int,
+    netProfitCents: Long,
+    uniqueClosedDetailReadTwice: Boolean,
+    zeroOpenReadTwice: Boolean,
+    exactPriorGestureTimeMatched: Boolean
+  ): Boolean {
+    if (!uniqueClosedDetailReadTwice || !zeroOpenReadTwice ||
+        !exactPriorGestureTimeMatched ||
+        !brokerAccountKey.startsWith("QT_DEMO:") ||
+        positionId.isBlank() ||
+        prefs.getString("pendingPositionId", null) != null ||
+        prefs.getStringSet("seenClosedReceipts", emptySet()).orEmpty()
+          .contains(positionId + ":CLOSED") ||
+        quote(payoutPercent).stakeCents != stakeCents)
+      return false
+    val savedOpen = onVerifiedDemoOpened(
+      brokerAccountKey, positionId, stakeCents, payoutPercent,
+      receiptIndependentlyVerified = true
+    )
+    if (!savedOpen) return false
+    // Only a fully verified matching CLOSED receipt may change the next
+    // stake. If persistence fails, keep the pending OPEN ID and block.
+    return onVerifiedDemoClosed(
+      brokerAccountKey, positionId, positionId + ":CLOSED", netProfitCents,
+      receiptIndependentlyVerified = true
+    )
+  }
+
+  /**
    * Trusted receipt correlation only. These are persisted by the ledger,
    * not guessed from a gesture, the clock or a changed demo balance.
    */
