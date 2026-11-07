@@ -4476,21 +4476,22 @@ class ScalpOverlayService : Service() {
       observedShockAt = 0L
       observedShockDurationMs = 0L
     }
-    // 406: SHOCK FLEX on verified demo. Reject any missing candle, wick,
-    // time, market, trend, second confirmation, or pair evidence.
-    // Screen-relative percentages are not win probability.
+    // 450: SHOCK SIMPLE requires the visible forming candle, a measured
+    // same-candle pullback and rebound, a real wick and 2 independent signal
+    // frames. The 3-prior-candle TREND line is informative, not a gate.
+    // Screen-relative percentages are NOT win probabilities. Order acceptance
+    // still requires a separately verified QT DEMO, amount, payout and no
+    // unresolved previous broker attempt.
     val rawDirectionValid = rawSignal == "BUY" || rawSignal == "SELL"
-    val sameOpticalDirection = rawDirectionValid && observedTrendMeasured &&
-      observedTrendDirection == rawSignal && observed == rawSignal
-    val sameShockDirection = sameOpticalDirection &&
-      observedTrendStrengthPercent > SHOCK_MIN_TREND
-    val sameScalpDirection = sameOpticalDirection &&
-      observedTrendStrengthPercent > SCALP_MIN_TREND
+    val sameOpticalDirection = rawDirectionValid && detected &&
+      opticalQuality >= 70 && observed == rawSignal
+    val sameShockDirection = sameOpticalDirection
+    val sameScalpDirection = false // secondary M5 scalp disabled in 450
     val confirmedShock = rawStrategy == "SHOCK" && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
       shockFrameFresh && shockBodyPercent > SHOCK_MIN_DEPTH &&
       shockReboundPercent >= SHOCK_MIN_RECOVERY &&
-      wickMeasured >= 1 && shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
+      wickMeasured >= 15 && shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
       sameShockDirection && result.optString("shockDirection") == rawSignal
     val scalpGate = result.optBoolean("scalpOpticalVerified", false) &&
       result.optBoolean("scalpSameCandle", false)
@@ -4506,13 +4507,11 @@ class ScalpOverlayService : Service() {
     // demo SHOCK signal lock. The autonomous DEMO executor supports SHOCK
     // only; otherwise a non-executable SCALP BIP can block real SHOCK
     // candidates during the following five minutes.
-    val scalpAlertAllowed = confirmedScalp &&
-      !autoDemoSessionRequested && !autoDemoSessionConsumed
+    val scalpAlertAllowed = false // 450: only SHOCK may alert or enter QT DEMO
     val confirmedSignal = if (confirmedShock || scalpAlertAllowed) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK"
       else if (scalpAlertAllowed) "SCALP_TREND" else "NONE"
-    val rejectionText = if (rawStrategy == "SCALP_TREND")
-      "SCALP TREND neconfirmat" else "ȘOC / SCALP în așteptare"
+    val rejectionText = "ȘOC simplu în așteptare"
     val expiry = 5 // five-minute DEMO alert timer, not an automatic broker order
     val directionMax = result.optInt("directionMax", 0)
     val pattern = if (confirmedScalp) "SCALP TREND • M5" else "ȘOC • o lumânare"
@@ -4832,9 +4831,9 @@ class ScalpOverlayService : Service() {
       trendDirectionLabel?.text = when {
         !candleFresh -> "LUMÂNARE NECITITĂ"
         !trendFresh -> "ISTORIC " + observedTrendHistoryCount + "/3"
-        trendContradicted -> "CONTRA TREND"
+        trendContradicted -> "TREND DIFERIT • ȘOC SEPARAT"
         observedTrendDirection == "NONE" -> "LATERAL • FĂRĂ SEMNAL"
-        !trendThresholdMet -> "PANTĂ ≤25%"
+        !trendThresholdMet -> "TREND SLAB • INFORMATIV"
         trendDir == "BUY" -> "ASCENDENT"
         trendDir == "SELL" -> "DESCENDENT"
         else -> "NECONFIRMAT"
@@ -5211,7 +5210,7 @@ class ScalpOverlayService : Service() {
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoArmed && !autoDemoSessionConsumed ->
-          "🤖 ȘOC FLEX 30/20/25 • " + if (activeStrategy == "SHOCK" &&
+          "🤖 ȘOC SIMPLU 30/20 + FITIL • " + if (activeStrategy == "SHOCK" &&
               activeSignal != "NONE") "ȘOC CONFIRMAT"
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
