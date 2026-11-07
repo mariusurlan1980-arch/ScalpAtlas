@@ -1543,28 +1543,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-CANDIDAT-442-NEPUBLICAT-G24.apk
+          cp "$APK" ScalpAtlas-442-ISTORIC-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-TEST-442-NERELEASE
-          path: ScalpAtlas-CANDIDAT-442-NEPUBLICAT-G24.apk
+          name: ScalpAtlas-442-TEST-ISTORIC-DEMO
+          path: ScalpAtlas-442-ISTORIC-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/feature/scalpatlas-history-timeout441'
+        if: github.ref == 'refs/heads/fix/scalpatlas-closed-history-loop'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-CANDIDAT-442-NEPUBLICAT-G24.apk"
+          FILE="ScalpAtlas-442-ISTORIC-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-late-history441-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-closed-proof442-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 441 RECUPERARE ISTORIC DUPA TIMEOUT • ${GITHUB_SHA:0:12}" \
-            --notes "441: Reparatie verificare istoric dupa expirarea celor 110 secunde de captura ID OPEN. Continua navigarea READ-ONLY catre Tranzactii/Deschis chiar si pentru ordin vechi, fara a presupune rezultatul. Dupa trei esecuri navigarea face pauza 30 secunde si poate reincearca numai in QT Demo verificat; doua cadre OCR pentru unicul buton real Tranzactii pot ajuta inca de la prima incercare. Raman obligatorii ID unic, ore, pereche, miza, payout, rezultat 2/2 si 0 pozitii Deschis 2/2 inainte de rearmare. FARA auto-deblocare la 100% SOC si FARA ordin Real. Build valid nu certifica functionalitatea pe Motorola. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 442 CANDIDAT VERIFICARE ID ÎNCHIS DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "442 CANDIDAT DE TEST QT DEMO: limiteaza bucla repetata Deschis/Inchis, revine la grafic fara sa deblocheze tranzactia neconfirmata si citeste detaliile extinse doar din randul ordinului unic deasupra ID-ului, fara a confunda perechile istorice de dedesubt. Include reparatiile anterioare ale orei UTC+3 si navigarea read-only dupa expirarea timpului de captura a ordinului OPEN. Pastreaza obligatorii ID-ul unic, side, ora, perechea, miza, payoutul, WIN/LOSS verificat de doua ori si 0 pozitii active verificat de doua ori; fara deblocare la bip sau SOC 100%. Comenzile reale raman dezactivate. APK compilat si verificat prin CI, DAR NU TESTAT PE MOTOROLA G24, deci nu este demonstrat ca poate relua tranzactii automate. Build $GITHUB_SHA." \
             --prerelease
