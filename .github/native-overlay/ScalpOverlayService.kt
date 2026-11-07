@@ -995,9 +995,20 @@ class ScalpOverlayService : Service() {
               System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..20_000L) {
             // The proof stays in memory; navigate to the OPEN list to obtain
             // two independent zero-position reads before reconciliation.
-            val backed438 = TouchTestService.returnFromVerifiedDemoClosedDetail438(
-              expectedPackage429!!
-            )
+            val openedByAccessibility440 =
+              TouchTestService.returnFromVerifiedDemoClosedDetail438(
+                expectedPackage429!!
+              )
+            val openedByOcr440 = if (!openedByAccessibility440 &&
+                historyOpenOcrCount435 >= 2 &&
+                System.currentTimeMillis() - historyOpenOcrAt435 in 0L..6_000L)
+              TouchTestService.tapVerifiedDemoOpenTabOcr435(
+                expectedPackage429!!,
+                historyOpenOcrX435, historyOpenOcrY435,
+                cachedDemoVerifiedOnChart = true
+              )
+            else false
+            val backed438 = openedByAccessibility440 || openedByOcr440
             if (backed438) {
               lastVerifiedDetailBackId438 = closedDetail438.positionId
               touchProbeStatus?.text =
@@ -3492,6 +3503,33 @@ class ScalpOverlayService : Service() {
     // 433: Page identity must come from actual history TITLE and both tabs,
     // not the chart footer "Tranzacții" or any historical FX row.
     val trueHistoryPage433 = title && openTab && closedTab && pkg != null
+    // 440: The broker WebView sometimes hides tab text from Android
+    // Accessibility. Independently capture the exact visible "Deschis"
+    // label twice; this is a navigation coordinate, not a position receipt.
+    val openLabels440 = if (trueHistoryPage433) lines.mapNotNull { line ->
+      val rect = line.boundingBox ?: return@mapNotNull null
+      val x = rect.centerX().toFloat() / frame.width
+      val y = rect.centerY().toFloat() / frame.height
+      if (x !in 0.08f..0.48f || y !in 0.15f..0.30f ||
+          !Regex("""(?i)^(?:Deschis|Open)$""").matches(line.text.trim()))
+        return@mapNotNull null
+      Pair(x, y)
+    } else emptyList()
+    if (openLabels440.size == 1 && pkg != null) {
+      val xy = openLabels440.single()
+      if (historyOpenOcrCount435 > 0 &&
+          observedAt - historyOpenOcrAt435 in 1_000L..12_000L &&
+          kotlin.math.abs(xy.first - historyOpenOcrX435) <= 0.035f &&
+          kotlin.math.abs(xy.second - historyOpenOcrY435) <= 0.025f) {
+        historyOpenOcrCount435 = (historyOpenOcrCount435 + 1).coerceAtMost(3)
+      } else historyOpenOcrCount435 = 1
+      historyOpenOcrX435 = xy.first
+      historyOpenOcrY435 = xy.second
+      historyOpenOcrAt435 = observedAt
+    } else {
+      historyOpenOcrCount435 = 0
+      historyOpenOcrAt435 = 0L
+    }
     if (trueHistoryPage433) {
       // 440: This is a VERIFIED history page, even when the currently
       // selected tab is CLOSED. A previous failed navigation must not
