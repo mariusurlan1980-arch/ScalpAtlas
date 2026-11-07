@@ -343,4 +343,29 @@ for(const close of [110,128,181,219,219,219,159]){
     close===159,'NONE');
 }
 assertQuiet(singleRebound);
+// 452: Small, REALISTIC scaled G24 candle: 13px filled body / 6px
+// retreat. The former image-relative 3.5% body and 1.8% move floors
+// discarded this despite two live rebound observations and a real wick.
+let smallG24;
+for(const close of [217,217,217,217,219,223,220,217]){
+  smallG24=analyze(close,'BUY','G24-SMALL-CANDLE OTC',95,'M10',0,
+    close===220 || (close===217 && frameId>0),'NONE');
+}
+assert.equal(smallG24.shockDirection,'BUY',
+  'G24 13px candle with real 6px retreat/rebound should be seen');
+assert.ok(smallG24.shockRetracementPercent>30);
+assert.ok(smallG24.shockWickPixels>0);
+// The already-verified two-rebound-frame SHOCK stays visible just long
+// enough for Android to independently re-read it 1.5 sec later.
+const heldFrame1=analyze(217,'BUY','G24-SMALL-CANDLE OTC',95,'M10',0,true,'NONE');
+const heldFrame2=analyze(217,'BUY','G24-SMALL-CANDLE OTC',95,'M10',0,true,'NONE');
+assert.equal(heldFrame1.shockDirection,'BUY');
+assert.equal(heldFrame2.shockDirection,'BUY');
+const expiredHold=analyze(217,'BUY','G24-SMALL-CANDLE OTC',95,'M10',0,true,'NONE');
+assert.equal(expiredHold.shockDirection,'BUY','Hold remains bounded to 3s');
+const goneHold=analyze(217,'BUY','G24-SMALL-CANDLE OTC',95,'M10',0,true,'NONE');
+assertQuiet(goneHold);
+// Static small candle with wick is NOT evidence of an observed retracement.
+for(let n=0;n<6;n++)assertQuiet(
+  analyze(217,'BUY','G24-STATIC-WICK OTC',96,'M10',0,true,'NONE'));
 console.log('PASS DEMO 450: simple same-candle SHOCK, two-frame rebound, wick and opposite-trend veto');
