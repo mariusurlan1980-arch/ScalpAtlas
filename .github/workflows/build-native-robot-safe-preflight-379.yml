@@ -1144,7 +1144,7 @@ jobs:
           grep -Fq 'historyNavOcrPackage432' "$O"
           grep -Fq 'tapVerifiedDemoHistoryOcr432(' "$O"
           grep -Fq 'fun tapVerifiedDemoHistoryOcr432(' "$T"
-          grep -Fq 'activeDemoHistoryNodes(false)' "$T"
+          grep -Fq 'activeDemoHistoryNodes(cachedDemoVerifiedOnChart)' "$T"
           grep -Fq 'centerYFraction !in 0.84f..0.975f' "$T"
           grep -Fq 'confirmedDemoHistoryPageReadOnly431(' "$O"
           grep -Fq 'historyNavFailed431 >= 3' "$O"
