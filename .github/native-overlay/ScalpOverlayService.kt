@@ -5013,7 +5013,7 @@ class ScalpOverlayService : Service() {
                 android.os.SystemClock.elapsedRealtime() -
                   prior.getLong("attemptedAt429", -1L) !in 0L..110_000L
             } ->
-            "🔒 DEMO • RECUPEREZ ID ÎNCHIS • FĂRĂ ORDINE NOI"
+            "🔒 DEMO • ID ORDIN ANTERIOR NECONFIRMAT • CAUT ÎNCHIS"
           activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
             "🔒 BIP " + activeSignal + " • SCALP M5 • ȘOC NECONFIRMAT"
           activeSignal != "NONE" && activeStrategy == "SHOCK" ->
