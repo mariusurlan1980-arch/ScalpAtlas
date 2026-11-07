@@ -199,6 +199,7 @@ class ScalpOverlayService : Service() {
     val stakeCents: Long,
     val payoutPercent: Int,
     val netProfitCents: Long,
+    val side: String,
     val openedSecondsOfDay: Int
   )
   private var firstClosedDetail437: ClosedDetail437? = null
@@ -980,6 +981,9 @@ class ScalpOverlayService : Service() {
                   closedProof437.pair == expectedPair429 &&
                   closedProof437.stakeCents == expectedStake429 &&
                   closedProof437.payoutPercent == expectedPayout429 &&
+                  (pendingPrefs429.getString("expectedSide437", null) == null ||
+                    pendingPrefs429.getString("expectedSide437", null) ==
+                      closedProof437.side) &&
                   brokerOpenTimeMatchesAttempt437(
                     closedProof437.openedSecondsOfDay, attemptedAt429
                   )
@@ -999,7 +1003,7 @@ class ScalpOverlayService : Service() {
                   pendingPrefs429.edit().putBoolean("attempted", false)
                     .remove("expectedPair429").remove("expectedPackage429")
                     .remove("expectedStakeCents429").remove("expectedPayout429")
-                    .remove("attemptedAt429").commit()
+                    .remove("expectedSide437").remove("attemptedAt429").commit()
                 if (savedReconciled437) {
                   pendingReceipt429 = false
                   verifiedClosedDetail437 = null
@@ -1020,7 +1024,7 @@ class ScalpOverlayService : Service() {
                   ).edit().putBoolean("attempted", false)
                     .remove("expectedPair429").remove("expectedPackage429")
                     .remove("expectedStakeCents429").remove("expectedPayout429")
-                    .remove("attemptedAt429").commit()
+                    .remove("expectedSide437").remove("attemptedAt429").commit()
                 if (savedOldSell && savedOldShock) {
                   autoDemoSessionRequested = !pendingReceipt429
                   autoDemoSessionConsumed = pendingReceipt429
@@ -3197,6 +3201,10 @@ class ScalpOverlayService : Service() {
       .find(content)?.groupValues?.getOrNull(1)
     val closeLabel = Regex("""(?i)Ora\s+(?:închiderii|inchiderii)\s*:\s*(\d{1,2}:\d{2}:\d{2}(?:\.\d{1,3})?)""")
       .find(content)?.groupValues?.getOrNull(1)
+    val directionLabel437 = Regex("""(?i)\bPrognoza\s+ta\s*:\s*(VINDEȚI|SELL|CUMPĂRAȚI|BUY)""")
+      .find(content)?.groupValues?.getOrNull(1) ?: return
+    val side437 = if (directionLabel437.uppercase().startsWith("VINDE") ||
+        directionLabel437.uppercase() == "SELL") "SELL" else "BUY"
     val netRaw = Regex("""(?i)\bProfit\s*:\s*([+-]\s*\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
       .find(content)?.groupValues?.getOrNull(1)
     val paidRaw = Regex("""(?i)\bPlat[ăa]\s*:\s*(\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
@@ -3241,7 +3249,7 @@ class ScalpOverlayService : Service() {
     val elapsed = (endedSeconds - openingSeconds + 86400) % 86400
     if (elapsed !in 240..960) return // never mistake an old list row for an M5 close
     val candidate = ClosedDetail437(packageId, pair, ids.single(),
-      stake, payoutValues.single(), net, openingSeconds)
+      stake, payoutValues.single(), net, side437, openingSeconds)
     if (candidate == firstClosedDetail437 &&
         observedAt - firstClosedDetailAt437 in 1_500L..15_000L) {
       verifiedClosedDetail437 = candidate
@@ -4492,6 +4500,7 @@ class ScalpOverlayService : Service() {
               .putString("expectedPackage429", package429)
               .putLong("expectedStakeCents429", stake429 ?: -1L)
               .putInt("expectedPayout429", payout429 ?: -1)
+              .putString("expectedSide437", activeSignal)
               .putLong("attemptedAt429", android.os.SystemClock.elapsedRealtime())
               .commit()
             if (!saved) {
