@@ -4480,11 +4480,19 @@ class ScalpOverlayService : Service() {
     // time, market, trend, second confirmation, or pair evidence.
     // Screen-relative percentages are not win probability.
     val rawDirectionValid = rawSignal == "BUY" || rawSignal == "SELL"
-    val sameOpticalDirection = rawDirectionValid && observedTrendMeasured &&
-      observedTrendDirection == rawSignal && observed == rawSignal
+    // 450 SIMPLE: optical SHOCK needs the observed forming candle's
+    // direction, two rebound frames, and real wick. The preceding three
+    // candles are an optional veto ONLY if they show an opposite trend.
+    // A missing trend is not invented and no longer suppresses the signal.
+    val sameOpticalDirection = rawDirectionValid && detected &&
+      observed == rawSignal
+    val independentlyOppositeTrend = observedTrendMeasured &&
+      observedTrendDirection != "NONE" &&
+      observedTrendDirection != rawSignal
     val sameShockDirection = sameOpticalDirection &&
-      observedTrendStrengthPercent > SHOCK_MIN_TREND
-    val sameScalpDirection = sameOpticalDirection &&
+      !independentlyOppositeTrend
+    val sameScalpDirection = sameOpticalDirection && observedTrendMeasured &&
+      observedTrendDirection == rawSignal &&
       observedTrendStrengthPercent > SCALP_MIN_TREND
     val confirmedShock = rawStrategy == "SHOCK" && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
@@ -4506,8 +4514,10 @@ class ScalpOverlayService : Service() {
     // demo SHOCK signal lock. The autonomous DEMO executor supports SHOCK
     // only; otherwise a non-executable SCALP BIP can block real SHOCK
     // candidates during the following five minutes.
-    val scalpAlertAllowed = confirmedScalp &&
-      !autoDemoSessionRequested && !autoDemoSessionConsumed
+    // 450: one strategy only in the compact robot overlay.
+    // The legacy M5 SCALP classifier stays testable but cannot emit a
+    // competing BUY/SELL signal or consume a fresh SHOCK alert.
+    val scalpAlertAllowed = false
     val confirmedSignal = if (confirmedShock || scalpAlertAllowed) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK"
       else if (scalpAlertAllowed) "SCALP_TREND" else "NONE"
@@ -5211,7 +5221,7 @@ class ScalpOverlayService : Service() {
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoArmed && !autoDemoSessionConsumed ->
-          "🤖 ȘOC FLEX 30/20/25 • " + if (activeStrategy == "SHOCK" &&
+          "🤖 ȘOC SIMPLU 30/20 + FITIL • " + if (activeStrategy == "SHOCK" &&
               activeSignal != "NONE") "ȘOC CONFIRMAT"
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
