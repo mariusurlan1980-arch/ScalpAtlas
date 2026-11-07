@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 440 VERIFIED HISTORY OCR RECOVERY DEMO
+name: Build Scalp Atlas 441 SAFE LATE HISTORY RECONCILIATION
 
 on:
   push:
-    branches: [feature/scalpatlas-history-reconcile440]
+    branches: [feature/scalpatlas-history-timeout441]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-440
+  group: scalp-atlas-calculator-test-441
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.20'
+          expo['version']='3.2.21'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=440
+          expo['android']['versionCode']=441
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1366,6 +1366,41 @@ jobs:
           console.log('440: banner OCR, independent stake, synthetic receipt, duplicate rows checked');
           NODE
 
+      - name: Verify 441 old-order timeout recovers history navigation without order bypass
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'if (openReceiptMissing429 &&' "$O"
+          grep -Fq 'val openReceiptWindow441 = attemptedAt429 > 0L &&' "$O"
+          grep -Fq 'val openReceipt429 = if (openReceiptWindow441)' "$O"
+          grep -Fq 'navigateVerifiedDemoHistory431(' "$O"
+          grep -Fq 'historyNavStallSince441 = nowElapsed' "$O"
+          grep -Fq 'age441 !in 0L..29_999L' "$O"
+          grep -Fq 'historyNavOcrSamples432 >= 2' "$O"
+          grep -Fq 'verifiedClosedDetail437' "$O"
+          grep -Fq 'brokerOpenTimeMatchesAttempt437(' "$O"
+          grep -Fq 'uniqueClosedDetailReadTwice = true' "$O"
+          grep -Fq 'zeroOpenReadTwice = true' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const eligibleToNavigate = (priorPending, tab) =>
+            priorPending && tab !== 'ÎNCHIS' && tab !== 'DETALIU ÎNCHIS';
+          for(const age of [0,109999,110001,54000000]) {
+            assert.equal(eligibleToNavigate(true,'NECUNOSCUT'), true,
+              'OLD pending receipt must still reach read-only history at age '+age);
+          }
+          assert.equal(eligibleToNavigate(true,'DETALIU ÎNCHIS'),false);
+          const eligibleOpenReceipt = age => age>=0 && age<=110000;
+          assert.equal(eligibleOpenReceipt(54000000),false);
+          assert.equal(eligibleOpenReceipt(30000),true);
+          const retryEligible = age => age > 29999;
+          assert.equal(retryEligible(20000),false);
+          assert.equal(retryEligible(30000),true);
+          console.log('Late read-only history navigation, short-lived OPEN proof and safe retry checks passed');
+          NODE
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1457,12 +1492,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-440-VERIFICARE-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-441-ISTORIC-RECUPERARE-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.20-VERIFICARE-440
-          path: ScalpAtlas-440-VERIFICARE-DEMO-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.21-ISTORIC-441
+          path: ScalpAtlas-441-ISTORIC-RECUPERARE-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1471,13 +1506,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-440-VERIFICARE-DEMO-G24.apk"
+          FILE="ScalpAtlas-441-ISTORIC-RECUPERARE-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-recovery440-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-late-history441-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 440 VERIFICARE ORDIN DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "440: Reparatie istoricului QT DEMO dupa tranzactie 5 minute. Citirea OCR a contului QT Demo include partea superioara a ecranului (y 0.035-0.135), care fusese exclusa in 437-439. Accepta suma din linia de tranzactie fara a folosi Profit sau Plata ca martor. Dupa ID Inchis verificat 2/2 selecteaza explicit fila Deschis prin accesibilitate sau OCR 2/2, nu Android BACK. Reseteaza eroarea ISTORICUL NU SE DESCHIDE doar daca pagina reala istoric e detectata. Cere in continuare aceeasi pereche, suma, payout, directie, timp gest, UUID si rezultat plus doua probe zero pozitii. Fara deblocare prin imagine manuala si fara ordine duplicate sau QT Real. Testele CI si buildul APK nu dovedesc functionarea pe telefon. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 441 RECUPERARE ISTORIC DUPA TIMEOUT • ${GITHUB_SHA:0:12}" \
+            --notes "441: Reparatie verificare istoric dupa expirarea celor 110 secunde de captura ID OPEN. Continua navigarea READ-ONLY catre Tranzactii/Deschis chiar si pentru ordin vechi, fara a presupune rezultatul. Dupa trei esecuri navigarea face pauza 30 secunde si poate reincearca numai in QT Demo verificat; doua cadre OCR pentru unicul buton real Tranzactii pot ajuta inca de la prima incercare. Raman obligatorii ID unic, ore, pereche, miza, payout, rezultat 2/2 si 0 pozitii Deschis 2/2 inainte de rearmare. FARA auto-deblocare la 100% SOC si FARA ordin Real. Build valid nu certifica functionalitatea pe Motorola. Build $GITHUB_SHA." \
             --prerelease
