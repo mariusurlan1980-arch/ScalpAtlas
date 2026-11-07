@@ -2003,6 +2003,8 @@ class ScalpOverlayService : Service() {
   private var shockDurationText: TextView? = null
   private var shockReasonText: TextView? = null
   private var signalGateNote: TextView? = null
+  // 451: compact, read-only Martingale state; never triggers a broker gesture.
+  private var martingaleStatusText: TextView? = null
   private var wickText: TextView? = null
   private var signalBlinkAnimator: ValueAnimator? = null
   private var signalBlinkDirection = "NONE"
@@ -2813,6 +2815,18 @@ class ScalpOverlayService : Service() {
     calcRow.addView(calcOne, LinearLayout.LayoutParams(-1, dp(31)))
     root.addView(calcRow)
     root.addView(probeStatus)
+    // 451: ALWAYS visible even when the overlay is minimized. The number is
+    // a preview at 92% payout, not an executed stake and not a broker balance.
+    martingaleStatusText = TextView(this).apply {
+      text = "MIZĂ 1,00 USD • MG DEMO"
+      textSize = 9f
+      gravity = Gravity.CENTER
+      maxLines = 1
+      setTextColor(Color.rgb(75, 100, 121))
+      setPadding(dp(3), dp(1), dp(3), dp(1))
+      contentDescription = "Martingale demo: miză calculată, niciodată ordin confirmat"
+    }
+    martingaleStatusText?.let { root.addView(it) }
     // 430: The manual "TEST SELL DEMO 1$" control has been removed from
     // the overlay. SHOCK DEMO remains autonomous after the user starts LIVE.
     // Legacy previous-attempt preferences are deliberately retained so an
@@ -5214,7 +5228,45 @@ class ScalpOverlayService : Service() {
           // Diagnostics must never interrupt screen capture or SHOCK signals.
         }
       }
-      // Reuse the existing narrow footer; no extra controls, no added panel height.
+      // 451: Draw a read-only recovery quote in the always-visible compact
+      // row. It comes from the SAME persisted broker-receipt ledger used by
+      // the executor. The actual ORDER stake still needs fresh broker payout,
+      // balance and amount-field read-back in the separate QT DEMO preflight.
+      // Never infer a LOSS from candle colour, timer, empty OPEN tab or bip.
+      val mgText451 = martingaleStatusText
+      if (mgText451 != null) {
+        val verifiedDemo451 =
+          lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
+          !lastBrokerAccountStatus.contains("QT REAL")
+        val unresolvedOld451 = autoDemoSessionConsumed ||
+          getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+            .getBoolean("attempted", false) ||
+          getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+            .getBoolean("attempted", false)
+        val recoveryQuote451 = demoRecoveryLedger.quote(92) // preview only
+        val recoveryCents451 = recoveryQuote451.stakeCents
+        val recoveryActive451 = demoRecoveryLedger.isRecovering429()
+        mgText451.text = when {
+          !verifiedDemo451 -> "MG: DOAR QT DEMO"
+          unresolvedOld451 || demoRecoveryLedger.verifiedOpenPositionId429() != null ->
+            "MG BLOCAT • ORDIN NEVERIFICAT"
+          demoRecoveryLedger.needsBaseStakeReset() ->
+            "MG: RESET 1,00 USD • AȘTEPT"
+          recoveryCents451 == null -> "MG STOP • " + recoveryQuote451.reason.take(17)
+          recoveryActive451 ->
+            "MG PLAN 92%: " +
+              (recoveryCents451 / 100L).toString() + "," +
+              (recoveryCents451 % 100L).toString().padStart(2, '0') + " USD"
+          else -> "MIZĂ 1,00 USD • MG DEMO"
+        }
+        mgText451.setTextColor(
+          if (verifiedDemo451 && !unresolvedOld451 &&
+              recoveryCents451 != null && recoveryActive451)
+            Color.rgb(39, 111, 79)
+          else Color.rgb(97, 108, 119)
+        )
+      }
+      // Reuse the existing narrow footer; no extra controls in compact mode.
       // Display a reason, not a false probability of winning.
       signalGateNote?.text = when {
         lastBrokerAccountStatus.contains("QT REAL IDENTIFICAT") ->
@@ -5404,6 +5456,7 @@ class ScalpOverlayService : Service() {
     autoDemoExpiry = 0L
     autoDemoButton = null
     autoDemoRow = null
+    martingaleStatusText = null
     onePairEvalAutoPending = false
     overlayWindowParams = null
     virtualDisplay = null
