@@ -217,6 +217,12 @@ class ScalpOverlayService : Service() {
   @Volatile private var closedRowSamples438 = 0
   private var lastClosedRowTapAt438 = 0L
   private var lastVerifiedDetailBackId438: String? = null
+  // 442: One CLOSED-history scan per outstanding DEMO attempt in a bounded
+  // interval. Navigation is not settlement proof, and this cooldown NEVER
+  // changes the saved attempted flag, ledger, or position gate.
+  private var lastClosedHistoryScanAt442 = 0L
+  private var lastClosedHistoryScanKey442: String? = null
+  private val closedHistoryScanPauseMs442 = 180_000L
 
   // 435: independently observed OPEN-tab LABEL, not a fixed touch point.
   @Volatile private var historyOpenOcrAt435 = 0L
@@ -784,6 +790,23 @@ class ScalpOverlayService : Service() {
       historyNavStalled431 = false
       return "ISTORIC DESCHIS CONFIRMAT • VERIFIC TRANZACȚII DEMO"
     }
+    // 442: After a CLOSED-history read we must not oscillate back to the
+    // broker history on every monitor tick. Let the chart remain visible
+    // during the bounded review pause. A verified new CLOSED detail is not
+    // blocked from completing its OPEN-tab reconciliation.
+    val old442 = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val pendingKey442 = listOf(
+      old442.getString("expectedPackage429", "").orEmpty(),
+      old442.getString("expectedPair429", "").orEmpty(),
+      old442.getLong("attemptedAt429", -1L).toString()
+    ).joinToString("|")
+    if (!historyPageVisible433 && verifiedClosedDetail437 == null &&
+        old442.getBoolean("attempted", false) &&
+        lastClosedHistoryScanKey442 == pendingKey442 &&
+        lastClosedHistoryScanAt442 > 0L &&
+        nowElapsed - lastClosedHistoryScanAt442 in 0L until closedHistoryScanPauseMs442) {
+      return "ISTORIC DEMO • PAUZĂ REVERIFICARE • FĂRĂ ORDIN"
+    }
     if (historyNavPending431 &&
         nowElapsed - historyNavPendingAt431 >= 7_000L) {
       historyNavPending431 = false
@@ -1158,10 +1181,29 @@ class ScalpOverlayService : Service() {
                   // It is diagnostic ONLY: an empty Open tab cannot identify a
                   // matching WIN/LOSS or authorize any stake increase.
                   val provenPackage = reviewPackage
-                  closedHistoryInspectionInProgress = true
-                  val navigation = TouchTestService.advanceDemoClosedHistoryNavigation(
+                  // 442: Do not click the CLOSED tab repeatedly for the
+                  // same unresolved DEMO gesture. OCR and full-ID checks
+                  // remain mandatory; this only reduces UI oscillation.
+                  val pendingKey442 = listOf(
+                    expectedPackage429.orEmpty(), expectedPair429.orEmpty(),
+                    attemptedAt429.toString()
+                  ).joinToString("|")
+                  val scanRecently442 = pendingReceipt429 &&
+                    lastClosedHistoryScanKey442 == pendingKey442 &&
+                    lastClosedHistoryScanAt442 > 0L &&
+                    tick - lastClosedHistoryScanAt442 in
+                      0L until closedHistoryScanPauseMs442
+                  closedHistoryInspectionInProgress = !scanRecently442
+                  val navigation = if (scanRecently442)
+                    "ISTORIC DEMO • PAUZĂ REVERIFICARE • FĂRĂ ORDIN"
+                  else TouchTestService.advanceDemoClosedHistoryNavigation(
                     cachedDemoVerifiedOnChart = verifiedDemoReview
                   )
+                  if (pendingReceipt429 &&
+                      navigation.startsWith("ISTORIC DEMO • DESCHID FILA ÎNCHIS")) {
+                    lastClosedHistoryScanAt442 = tick
+                    lastClosedHistoryScanKey442 = pendingKey442
+                  }
                   lastAutoDemoHistoryNavStatus = navigation.take(105)
                   lastAutoDemoHistoryNavStatusAt = tick
                   if (navigation.startsWith("ISTORIC DEMO • DESCHID FILA ÎNCHIS")) {
@@ -1280,8 +1322,11 @@ class ScalpOverlayService : Service() {
                             mainHandler.postDelayed({
                               if (!shuttingDown && mediaProjection != null &&
                                   TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
-                                if (!pendingReceipt429)
-                                  TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                                // 442: Return to the chart after a CLOSED
+                                // history review even when the old order is
+                                // unresolved. Back is navigation only; the
+                                // persistent unknown-ID lock stays intact.
+                                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
                               }
                               closedHistoryInspectionInProgress = false
                             }, 800L)
@@ -1298,8 +1343,9 @@ class ScalpOverlayService : Service() {
                       if (!shuttingDown && mediaProjection != null &&
                           provenPackage != null &&
                           TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
-                        if (!pendingReceipt429)
-                          TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                        // 442: A failed or throttled CLOSED review must
+                        // not keep the broker trapped in its history pane.
+                        TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
                       }
                       closedHistoryInspectionInProgress = false
                     }, 750L)
