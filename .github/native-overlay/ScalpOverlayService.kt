@@ -2911,6 +2911,47 @@ class ScalpOverlayService : Service() {
   }
 
   /**
+   * 447: On Pocket Option HISTORY screens, the floating robot previously
+   * covered the broker's upper-right "QT Demo" header (see G24 screenshots).
+   * The CLOSED detail parser correctly requires that visible header for
+   * account proof, so its own overlay made every legitimate receipt unreadable.
+   *
+   * Dock the compact indicator to the upper LEFT, clear of the account
+   * header (right), history title/tabs (beneath) and order controls (bottom).
+   * This is only a window layout change; NEVER use it to infer settlement
+   * or permit BUY/SELL. The next independent OCR frames must see the
+   * uncovered, genuine QT Demo header.
+   */
+  private fun dockOverlayForBrokerHistory447() {
+    val view = overlayView ?: return
+    val window = overlayWindowParams ?: return
+    val metrics = resources.displayMetrics
+    if (metrics.widthPixels < dp(240) ||
+        metrics.heightPixels < dp(360)) return
+    val safeHistoryTitleTop = (metrics.heightPixels * 0.135f).toInt()
+    val targetX = dp(8)
+    val targetY = minOf(
+      dp(24),
+      (safeHistoryTitleTop - view.height - dp(6)).coerceAtLeast(0)
+    )
+    if (window.x == targetX && window.y == targetY) return
+    mainHandler.post {
+      if (shuttingDown || overlayView !== view ||
+          !historyPageVisible433) return@post
+      val current = overlayWindowParams ?: return@post
+      // Do not let a user-expanded window invade the account banner.
+      // Compacted mode is already the default; keep that geometry stable.
+      current.x = targetX
+      current.y = targetY
+      try {
+        windowManager.updateViewLayout(view, current)
+      } catch (_: Throwable) {
+        // No failure may change account verification or order locks.
+      }
+    }
+  }
+
+  /**
    * Keep the phone display on only while the user-authorized foreground
    * MediaProjection LIVE session is running. The 30-minute journal may end,
    * but the live 24-48h monitoring request should not turn off the screen.
@@ -3760,6 +3801,9 @@ class ScalpOverlayService : Service() {
       }
       historyPageVisible433 = true
       historyPageLastSeen433 = observedAt
+      // 447: The next MediaProjection+OCR frame must observe the real
+      // QT Demo banner, not an area occluded by our own status pill.
+      dockOverlayForBrokerHistory447()
       historyPageTab433 = when {
         selectedOpenTabVerifiedOnScreen(frame) -> "DESCHIS"
         selectedClosedTabVerifiedOnScreen(frame) -> "ÎNCHIS"
