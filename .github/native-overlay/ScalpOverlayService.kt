@@ -3084,6 +3084,104 @@ class ScalpOverlayService : Service() {
     } catch (_: Throwable) { false }
   }
 
+  /**
+   * 437: CLOSED broker detail OCR, not the ordinary list of past trades.
+   * The app never guesses LOSS from a balance, elapsed candle or zero
+   * open count. In-memory proof expires quickly and cannot outlive LIVE.
+   */
+  private fun exactMoneyCents437(source: String): Long? {
+    val clean = source.trim().replace(Regex("""(?i)\s|USD|\$"""), "")
+      .replace(',', '.')
+    val m = Regex("""^([+-]?)([0-9]{1,5})(?:\.([0-9]{1,2}))?$""")
+      .matchEntire(clean) ?: return null
+    val frac = m.groupValues[3].padEnd(2, '0')
+    val cents = (m.groupValues[2].toLongOrNull() ?: return null) * 100L +
+      (frac.toLongOrNull() ?: return null)
+    return if (m.groupValues[1] == "-") -cents else cents
+  }
+
+  private fun recordClosedDetailOcr437(
+    result: com.google.mlkit.vision.text.Text,
+    frame: Bitmap,
+    observedAt: Long
+  ) {
+    val packageId = TouchTestService.activeDemoExecutorPackageForReview()
+      ?: return
+    // Real must NEVER become a fallback when the account cannot be read.
+    if (packageId != verifiedDemoAccountPackage ||
+        verifiedDemoAccountAt <= 0L ||
+        android.os.SystemClock.elapsedRealtime() - verifiedDemoAccountAt !in 0L..90_000L)
+      return
+    val lines = result.textBlocks.flatMap { it.lines }.filter {
+      val box = it.boundingBox
+      box != null && box.centerY().toFloat() / frame.height in 0.07f..0.93f
+    }.map { it.text.trim() }.filter { it.isNotBlank() }
+    val content = lines.joinToString(" ").replace(Regex("""\s+"""), " ")
+    if (!Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(content) ||
+        Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(content)) return
+    // Require an individually opened detail sheet with its timestamps and
+    // uniquely labelled full UUID. The historical LIST has no such fields.
+    val ids = Regex("""(?i)\bOrdin\s*:\s*([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})\b""")
+      .findAll(content).map { it.groupValues[1].lowercase() }.distinct().toList()
+    val pairs = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\s+OTC\b""")
+      .findAll(content).map { it.value.uppercase().replace(Regex("""\s+"""), " ") }
+      .distinct().toList()
+    val openLabel = Regex("""(?i)Ora\s+deschiderii\s*:\s*(\d{1,2}:\d{2}:\d{2}(?:\.\d{1,3})?)""")
+      .find(content)?.groupValues?.getOrNull(1)
+    val closeLabel = Regex("""(?i)Ora\s+(?:închiderii|inchiderii)\s*:\s*(\d{1,2}:\d{2}:\d{2}(?:\.\d{1,3})?)""")
+      .find(content)?.groupValues?.getOrNull(1)
+    val netRaw = Regex("""(?i)\bProfit\s*:\s*([+-]\s*\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
+      .find(content)?.groupValues?.getOrNull(1)
+    val paidRaw = Regex("""(?i)\bPlat[ăa]\s*:\s*(\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
+      .find(content)?.groupValues?.getOrNull(1)
+    val stakeSources = lines.filter {
+      Regex("""^\$[0-9]{1,5}(?:[.,][0-9]{1,2})?$""").matches(it)
+    }.mapNotNull(::exactMoneyCents437).distinct()
+    if (ids.size != 1 || pairs.size != 1 ||
+        openLabel == null || closeLabel == null ||
+        netRaw == null || paidRaw == null ||
+        stakeSources.size != 1) return
+    val stake = stakeSources.single()
+    val paid = exactMoneyCents437(paidRaw) ?: return
+    val net = exactMoneyCents437(netRaw) ?: return
+    val pair = pairs.single()
+    val percentText = Regex.escape(pair).replace("\\ ", """\s+""")
+    val payoutValues = Regex("""(?i)\b""" + percentText +
+      """\s*\+?(\d{2,3})\s*%""").findAll(content)
+      .mapNotNull { it.groupValues[1].toIntOrNull() }.distinct().toList()
+    if (payoutValues.size != 1 || payoutValues.single() !in 92..100 ||
+        stake !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
+        net !in -stake..((stake * payoutValues.single() + 99L) / 100L) ||
+        paid != stake + net) return
+    val opened = openLabel.split(':')
+    val closed = closeLabel.split(':')
+    if (opened.size != 3 || closed.size != 3) return
+    val hh = opened[0].toIntOrNull() ?: return
+    val mm = opened[1].toIntOrNull() ?: return
+    val ss = opened[2].substringBefore('.').toIntOrNull() ?: return
+    if (hh !in 0..23 || mm !in 0..59 || ss !in 0..59) return
+    val openingSeconds = hh * 3600 + mm * 60 + ss
+    val endedSeconds = run {
+      val h = closed[0].toIntOrNull() ?: return
+      val m = closed[1].toIntOrNull() ?: return
+      val sc = closed[2].substringBefore('.').toIntOrNull() ?: return
+      if (h !in 0..23 || m !in 0..59 || sc !in 0..59) return
+      h * 3600 + m * 60 + sc
+    }
+    val elapsed = (endedSeconds - openingSeconds + 86400) % 86400
+    if (elapsed !in 240..960) return // never mistake an old list row for an M5 close
+    val candidate = ClosedDetail437(packageId, pair, ids.single(),
+      stake, payoutValues.single(), net, openingSeconds)
+    if (candidate == firstClosedDetail437 &&
+        observedAt - firstClosedDetailAt437 in 1_500L..15_000L) {
+      verifiedClosedDetail437 = candidate
+      verifiedClosedDetailAt437 = observedAt
+    } else {
+      firstClosedDetail437 = candidate
+      firstClosedDetailAt437 = observedAt
+    }
+  }
+
   /** A second independent OCR sample is mandatory; never use a chart screenshot
    * as evidence that a prior physical broker order is closed. */
   private fun recordExplicitEmptyOpenOcr(
