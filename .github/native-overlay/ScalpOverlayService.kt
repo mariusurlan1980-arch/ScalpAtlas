@@ -3139,11 +3139,14 @@ class ScalpOverlayService : Service() {
     }.mapNotNull(::exactMoneyCents437).distinct()
     if (ids.size != 1 || pairs.size != 1 ||
         openLabel == null || closeLabel == null ||
-        netRaw == null || paidRaw == null ||
-        stakeSources.size != 1) return
-    val stake = stakeSources.single()
+        netRaw == null || paidRaw == null) return
     val paid = exactMoneyCents437(paidRaw) ?: return
     val net = exactMoneyCents437(netRaw) ?: return
+    // Pocket Option displays "$1", "$1.92", "+$0.92" together on a
+    // detail header. Only the independently labelled payout MINUS the
+    // signed profit can identify which visible amount was the stake.
+    val stake = paid - net
+    if (stakeSources.count { it == stake } != 1) return
     val pair = pairs.single()
     val percentText = Regex.escape(pair).replace("\\ ", """\s+""")
     val payoutValues = Regex("""(?i)\b""" + percentText +
