@@ -3428,9 +3428,13 @@ class ScalpOverlayService : Service() {
       val x = box.centerX().toFloat() / frame.width
       if (y !in 0.21f..(idY442 - 0.02f) || x !in 0.03f..0.74f)
         return@mapNotNull null
-      val parsed = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\s+OTC\b""")
-        .find(line.text)?.value?.uppercase()
-        ?.replace(Regex("""\s+"""), " ") ?: return@mapNotNull null
+      // 446: OCR may insert spaces around '/' in AUD / CHF OTC.
+      // Store a canonical instrument ID for strict later comparison with
+      // the independently persisted broker attempt.
+      val match = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\s+OTC\b""")
+        .find(line.text) ?: return@mapNotNull null
+      val parsed = match.groupValues[1].uppercase() + "/" +
+        match.groupValues[2].uppercase() + " OTC"
       Pair(y, parsed)
     }
     val latestRowY442 = pairsWithGeometry442.maxOfOrNull { it.first }
@@ -3488,10 +3492,18 @@ class ScalpOverlayService : Service() {
     if (stakeSources.count { it == stake } != 1 &&
         !(stakeRow440.size == 1 && stakeRow440.single() == stake)) return
     val pair = pairs.single()
-    val percentText = Regex.escape(pair).replace("\\ ", """\s+""")
-    val payoutValues = Regex("""(?i)\b""" + percentText +
-      """\s*\+?(\d{2,3})\s*%""").findAll(pairRowText442)
-      .mapNotNull { it.groupValues[1].toIntOrNull() }.distinct().toList()
+    // 446: Read the payout from the SAME instrument row. The instrument
+    // and '+92%' may be separate ML Kit lines and spaces around '/' vary.
+    // Never borrow a payout from another historical row.
+    val rowPayout446 = Regex(
+      """(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\s+OTC\s*\+?(\d{2,3})\s*%"""
+    )
+    val payoutValues = rowPayout446.findAll(pairRowText442)
+      .filter { hit ->
+        hit.groupValues[1].uppercase() + "/" +
+          hit.groupValues[2].uppercase() + " OTC" == pair
+      }
+      .mapNotNull { it.groupValues[3].toIntOrNull() }.distinct().toList()
     if (payoutValues.size != 1 || payoutValues.single() !in 92..100 ||
         stake !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
         net !in -stake..((stake * payoutValues.single() + 99L) / 100L) ||
@@ -3564,6 +3576,9 @@ class ScalpOverlayService : Service() {
       observedAt - lastClosedTabVisualAt in 0L..6_000L
     if (!validPage) { reset(); return }
     val payoutRegex = Regex("""\+\s*""" + expectedPayout + """\s*%""")
+    val fxRegex446 = Regex(
+      """(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})(?:\s+(OTC))?\b"""
+    )
     val lines = result.textBlocks.flatMap { it.lines }
     data class ClosedRow438(val x: Float, val y: Float, val closedMinute: Int?)
     val times = lines.mapNotNull { line ->
@@ -3579,15 +3594,49 @@ class ScalpOverlayService : Service() {
         return@mapNotNull null
       Pair(y, hm[0] * 60 + hm[1])
     }
+    // 446: ML Kit commonly returns the currency label, '+92%', and
+    // closing clock as SEPARATE lines on a visually single CLOSED row.
+    // The previous single-line payout requirement rejected those valid
+    // history rows and caused a permanent navigation-only lock.
+    // Build the row text from physically aligned lines (not the entire
+    // screenshot), reject ambiguous second instruments/payouts, and keep
+    // the broker OPEN/CLOSED UUID proof mandatory after navigation.
     val options = lines.mapNotNull { line ->
       val rect = line.boundingBox ?: return@mapNotNull null
       val x = rect.centerX().toFloat() / frame.width
       val y = rect.centerY().toFloat() / frame.height
-      val label = line.text.uppercase().replace(Regex("""\s+"""), " ").trim()
+      val label = line.text.trim()
       if (x !in 0.08f..0.72f || y !in 0.25f..0.86f ||
-          !label.contains(expectedPair!!.uppercase()) ||
-          !payoutRegex.containsMatchIn(label)) return@mapNotNull null
-      val sameRowTimes = times.filter { kotlin.math.abs(it.first - y) <= 0.029f }
+          !fxRegex446.containsMatchIn(label)) return@mapNotNull null
+      val rowText446 = lines.mapNotNull siblingRow446@ { sibling ->
+        val bounds = sibling.boundingBox ?: return@siblingRow446 null
+        val siblingY = bounds.centerY().toFloat() / frame.height
+        val siblingX = bounds.centerX().toFloat() / frame.width
+        if (kotlin.math.abs(siblingY - y) > 0.019f ||
+            siblingX !in 0.025f..0.985f) return@siblingRow446 null
+        Pair(bounds.left, sibling.text)
+      }.sortedBy { it.first }.joinToString(" ") { it.second }
+        .replace(Regex("""\s+"""), " ").trim()
+      val instruments446 = fxRegex446.findAll(rowText446)
+        .map { match ->
+          match.groupValues[1].uppercase() + "/" +
+            match.groupValues[2].uppercase() +
+            if (match.groupValues[3].isBlank()) "" else " OTC"
+        }.distinct().toList()
+      if (instruments446.size != 1 ||
+          instruments446.single() != expectedPair!!.uppercase()) return@mapNotNull null
+      // Require EXACTLY the pending payout on this row. An additional
+      // different payout, or an unlabeled percent elsewhere, cannot count.
+      val payoutValues446 = Regex("""\+\s*(\d{2,3})\s*%""")
+        .findAll(rowText446).mapNotNull {
+          it.groupValues[1].toIntOrNull()
+        }.distinct().toList()
+      if (payoutValues446.size != 1 ||
+          payoutValues446.single() != expectedPayout ||
+          !payoutRegex.containsMatchIn(rowText446)) return@mapNotNull null
+      val sameRowTimes = times.filter {
+        kotlin.math.abs(it.first - y) <= 0.019f
+      }
       ClosedRow438(x, y,
         if (sameRowTimes.size == 1) sameRowTimes.single().second else null)
     }
