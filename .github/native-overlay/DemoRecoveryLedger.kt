@@ -191,6 +191,28 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   }
 
   /**
+   * 444: Idempotent recovery from a partial two-store commit. Settlement can
+   * be successfully written to THIS ledger before the distinct persisted
+   * Android-attempt flag is cleared. Retrying must not book WIN/LOSS twice.
+   * Caller MUST independently prove the exact original gesture, CLOSED
+   * detail twice and empty OPEN tab twice before consulting this check.
+   * A previously recorded UUID is NOT permission to submit an order.
+   */
+  @Synchronized
+  fun alreadySettledClosedReceipt444(
+    brokerAccountKey: String,
+    positionId: String
+  ): Boolean {
+    if (!brokerAccountKey.startsWith("QT_DEMO:") ||
+        brokerAccountKey != prefs.getString("accountKey", null) ||
+        positionId.isBlank() ||
+        prefs.getString("pendingPositionId", null) != null)
+      return false
+    val seen = prefs.getStringSet("seenClosedReceipts", emptySet()).orEmpty()
+    return seen.contains(positionId + ":CLOSED")
+  }
+
+  /**
    * Trusted receipt correlation only. These are persisted by the ledger,
    * not guessed from a gesture, the clock or a changed demo balance.
    */
