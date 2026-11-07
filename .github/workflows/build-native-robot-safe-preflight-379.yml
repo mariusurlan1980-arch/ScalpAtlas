@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock450]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=449
+          expo['android']['versionCode']=450
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -909,7 +909,7 @@ jobs:
           grep -Fq 'private const val SHOCK_MIN_DEPTH = 30' "$O"
           grep -Fq 'private const val SHOCK_MIN_RECOVERY = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_TREND = 25' "$O"
-          grep -Fq 'val scalpAlertAllowed = confirmedScalp &&' "$O"
+          grep -Fq 'val scalpAlertAllowed = false' "$O"
           grep -Fq '!autoDemoSessionRequested && !autoDemoSessionConsumed' "$O"
           grep -Fq 'now - lockedAt in 0L..5000L' "$O"
           grep -Fq 'REQUIRED_CONFIRMATIONS = 2' "$O"
@@ -1078,22 +1078,22 @@ jobs:
           grep -Fq 'shockSameCandle:confirmed' "$E"
           grep -Fq 'if(recovery/drop<minRecoveryFraction)continue;' "$E"
           grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20)continue;' "$E"
-          grep -Fq "candle.trendDirection!==candle.dir" "$E"
+          grep -Fq "if(candle.opticalQuality<70)continue;" "$E"
           grep -Fq 'var minBody=Math.max(10,h*.035)' "$E"
           grep -Fq 'var minMove=Math.max(7,h*.018)' "$E"
           grep -Fq 'colorFlipBuy.shockDirection' .github/scripts/test_shock_broker_capture.mjs
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Regression test SHOCK + SCALP TREND M5 on one broker screen
+      - name: Regression test SHOCK SIMPLE only on one broker screen
         run: |
           node .github/scripts/test_shock_broker_capture.mjs
           grep -Fq "strategy:'NONE'" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "var strategy=confirmed?'SHOCK'" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq "scalpOpticalVerified:scalpConfirmed" scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq "tf==='M5'" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "var scalpConfirmed=false,scalpDir='NONE'" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'minTrendStrengthPercent=25,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq "candle.trendStrengthPercent<=minTrendStrengthPercent" scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq 'PANTĂ ≤50%' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "var shockBlocker=confirmed?'ȘOC CONFIRMAT':" scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq "SCALP DEZACTIVAT" scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'source:' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'JSONObject.quote(pairAtCapture)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'headerLines.joinToString' .github/native-overlay/ScalpOverlayService.kt
@@ -1682,7 +1682,7 @@ jobs:
           grep -q 'if (!safe) stopPulseRing()' "$SERVICE"
           grep -q 'shockBodyPercent > SHOCK_MIN_DEPTH' "$SERVICE"
           grep -q 'observedTrendStrengthPercent > SHOCK_MIN_TREND' "$SERVICE"
-          grep -q 'PANTĂ ≤25%' "$SERVICE"
+          grep -q 'TREND SLAB • INFORMATIV' "$SERVICE"
           grep -q 'val confirmedScalp = rawStrategy == "SCALP_TREND"' "$SERVICE"
           grep -q 'val confirmedShock = rawStrategy == "SHOCK"' "$SERVICE"
           grep -q 'candidateStrategy != confirmedStrategy' "$SERVICE"
@@ -1696,12 +1696,12 @@ jobs:
           grep -q 'wickText?.text' "$SERVICE"
           grep -q 'shockReasonText?.text' "$SERVICE"
           grep -q 'shockDurationText?.text' "$SERVICE"
-          grep -q 'observedTrendDirection == rawSignal' "$SERVICE"
+          grep -q 'opticalQuality >= 70 && observed == rawSignal' "$SERVICE"
           grep -q 'candleGraphic?.updateObserved' "$SERVICE"
           grep -q 'trendMiniView?.showData' "$SERVICE"
           grep -q 'trendContradicted = trendFresh && candleFresh' "$SERVICE"
           grep -q 'trendDir = if (trendAgrees)' "$SERVICE"
-          grep -q 'trendContradicted -> "CONTRA TREND"' "$SERVICE"
+          grep -q 'trendContradicted -> "TREND DIFERIT • ȘOC SEPARAT"' "$SERVICE"
           grep -q 'playTestBip()' "$SERVICE"
           grep -q 'text = "TEST BIP"' "$SERVICE"
           grep -q 'signalRing?.addView(signalText)' "$SERVICE"
@@ -1736,28 +1736,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-449-TEST-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-450-SOC-SIMPLU-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-449-TEST-DEMO-G24
-          path: ScalpAtlas-449-TEST-DEMO-G24.apk
+          name: ScalpAtlas-450-SOC-SIMPLU-DEMO-G24
+          path: ScalpAtlas-450-SOC-SIMPLU-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-early-history-dock449'
+        if: github.ref == 'refs/heads/fix/scalpatlas-simple-shock450'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-449-TEST-DEMO-G24.apk"
+          FILE="ScalpAtlas-450-SOC-SIMPLU-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-history449-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-simple-shock450-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 449 CANDIDAT DEMO - DEBLOCARE NAVIGARE ISTORIC • ${GITHUB_SHA:0:12}" \
-            --notes "449 CANDIDAT PENTRU UN TEST QT DEMO (NU ESTE PROBAT PE MOTOROLA G24): muta indicatorul din dreptul contului QT Demo INAINTE de deschiderea istoricului pentru a evita blocarea OCR de catre propria suprapunere. La blocaj afiseaza informatii citibile despre fereastra Android. NU sterge ordinele neconfirmate si NU permite duplicate: fara ordin pana la reconcilierea ID-ului broker WIN/LOSS. Progresa Martingale este doar calculata si protejata; nu este validata in live. Tranzactionarea REAL este dezactivata. Cod compilat CI, functiile de apasare si recitire trebuie testate pe telefon. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 450 CANDIDAT DEMO - MOTOR SOC SIMPLU • ${GITHUB_SHA:0:12}" \
+            --notes "450 TEST MOTOR SOC SIMPLU, QT DEMO EXCLUSIV: citire optica a aceleiasi lumanari din cadre Android, retragere >30% din corp, revenire >=20%, fitil vizibil >=20% din corpul anterior, durata maxima 18 secunde si confirmare in doua cadre independente. A doua strategie M5 SCALP este dezactivata, iar directia trendului precedent este doar informativa. PASTREAZA protejarea ordinelor duplicate, fara stergerea marcajelor istorice neconfirmate si fara tranzactionare REAL; calculele Martingale nu sunt proba de executare. CI + teste sintetice nu echivaleaza cu validarea pe Motorola G24. Nicio garantie de profit. Build $GITHUB_SHA." \
           --prerelease
