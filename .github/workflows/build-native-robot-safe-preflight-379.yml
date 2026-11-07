@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=450
+          expo['android']['versionCode']=451
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -851,6 +851,15 @@ jobs:
           grep -Fq 'onVerifiedDemoClosed(' "$P"
           grep -Fq '!receiptIndependentlyVerified' "$P"
           grep -Fq 'demoRecoveryLedger.diagnostic(92)' "$O"
+          # 451: recovery quote must be visible in the compact overlay while
+          # remaining read-only; only verified broker receipt controls stake.
+          grep -Fq 'private var martingaleStatusText: TextView? = null' "$O"
+          grep -Fq 'martingaleStatusText?.let { root.addView(it) }' "$O"
+          grep -Fq 'val recoveryQuote451 = demoRecoveryLedger.quote(92)' "$O"
+          grep -Fq 'MG PLAN 92%: ' "$O"
+          grep -Fq 'MG BLOCAT • ORDIN NEVERIFICAT' "$O"
+          grep -Fq 'MG: DOAR QT DEMO' "$O"
+          grep -Fq 'demoRecoveryLedger.verifiedOpenPositionId429() != null' "$O"
           grep -Fq 'setVerifiedDemoRecoveryStakeOnBroker(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'ACTION_SET_TEXT' .github/native-overlay/DemoStakeEditor.kt
           grep -Fq 'QT\s*Real' .github/native-overlay/DemoStakeEditor.kt
@@ -1756,11 +1765,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-450-TEST-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-451-MARTINGALE-PLAN-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-450-TEST-DEMO-G24
+          name: ScalpAtlas-451-MARTINGALE-PLAN-DEMO-G24
           path: ScalpAtlas-450-TEST-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
