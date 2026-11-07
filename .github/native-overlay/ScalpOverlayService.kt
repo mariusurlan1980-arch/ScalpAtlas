@@ -1024,7 +1024,11 @@ class ScalpOverlayService : Service() {
           // A CLOSED list row is only a navigation target; the full UUID,
           // opened time, side, payout and signed result must still be checked
           // twice inside its detail sheet before a prior lock can be cleared.
-          val closedList438 = pendingReceipt429 && openReceiptMissing429 &&
+          // 445: A broker-verified OPEN ID must NOT suppress selection of
+          // its CLOSED history row. Previously only MISSING-OPEN attempts
+          // could open a CLOSED detail, so normal trades could never settle.
+          // Row OCR is navigation-only; full UUID + outcome still need 2/2.
+          val closedList438 = pendingReceipt429 &&
             verifiedDemoReview && historyPageTab433 == "ÎNCHIS" &&
             historyPageVisible433 && verifiedClosedDetail437 == null &&
             reviewPackage != null && reviewPackage == expectedPackage429
@@ -1103,9 +1107,16 @@ class ScalpOverlayService : Service() {
                 val closedProof437 = verifiedClosedDetail437
                 val closedProofFresh437 = closedProof437 != null &&
                   System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..90_000L
+                // 445: Reconcile BOTH possible paths:
+                // A) OPEN receipt was missed -> strict recovered CLOSED ID.
+                // B) OPEN receipt already has an exact broker UUID -> CLOSED
+                //    UUID must be IDENTICAL before the ledger may settle it.
+                // Both paths require a twice-read CLOSED detail, the original
+                // persisted gesture's time, and two separate zero-OPEN reads.
+                val verifiedOpenId445 =
+                  demoRecoveryLedger.verifiedOpenPositionId429()
                 val matchingAttempt437 = pendingReceipt429 &&
-                  openReceiptMissing429 && closedProofFresh437 &&
-                  closedProof437 != null &&
+                  closedProofFresh437 && closedProof437 != null &&
                   closedProof437.brokerPackage == expectedPackage429 &&
                   closedProof437.pair == expectedPair429 &&
                   closedProof437.stakeCents == expectedStake429 &&
@@ -1113,6 +1124,8 @@ class ScalpOverlayService : Service() {
                   (pendingPrefs429.getString("expectedSide437", null) == null ||
                     pendingPrefs429.getString("expectedSide437", null) ==
                       closedProof437.side) &&
+                  (verifiedOpenId445 == null ||
+                    verifiedOpenId445 == closedProof437.positionId) &&
                   brokerOpenTimeMatchesAttempt437(
                     closedProof437.openedSecondsOfDay, attemptedAt429
                   )
@@ -1129,18 +1142,31 @@ class ScalpOverlayService : Service() {
                     positionId = closedProof437.positionId
                   )
                 val reconciled437 = if (alreadySettled444) true
-                else if (matchingAttempt437 && closedProof437 != null)
-                  demoRecoveryLedger.reconcileSettledDemoWithMissingOpen437(
-                    brokerAccountKey = "QT_DEMO:" + expectedPackage429,
-                    positionId = closedProof437.positionId,
-                    stakeCents = closedProof437.stakeCents,
-                    payoutPercent = closedProof437.payoutPercent,
-                    netProfitCents = closedProof437.netProfitCents,
-                    uniqueClosedDetailReadTwice = true,
-                    zeroOpenReadTwice = true,
-                    exactPriorGestureTimeMatched = true
-                  )
-                else false
+                else if (matchingAttempt437 && closedProof437 != null) {
+                  if (verifiedOpenId445 != null) {
+                    // 445: The OPEN receipt's UUID must exactly match the
+                    // independently confirmed CLOSED UUID. No loss estimate
+                    // or time-only settlement is allowed here.
+                    demoRecoveryLedger.onVerifiedDemoClosed(
+                      brokerAccountKey = "QT_DEMO:" + expectedPackage429,
+                      positionId = verifiedOpenId445,
+                      closedReceiptId = verifiedOpenId445 + ":CLOSED",
+                      netProfitCents = closedProof437.netProfitCents,
+                      receiptIndependentlyVerified = true
+                    )
+                  } else {
+                    demoRecoveryLedger.reconcileSettledDemoWithMissingOpen437(
+                      brokerAccountKey = "QT_DEMO:" + expectedPackage429,
+                      positionId = closedProof437.positionId,
+                      stakeCents = closedProof437.stakeCents,
+                      payoutPercent = closedProof437.payoutPercent,
+                      netProfitCents = closedProof437.netProfitCents,
+                      uniqueClosedDetailReadTwice = true,
+                      zeroOpenReadTwice = true,
+                      exactPriorGestureTimeMatched = true
+                    )
+                  }
+                } else false
                 val savedReconciled437 = reconciled437 &&
                   pendingPrefs429.edit().putBoolean("attempted", false)
                     .remove("expectedPair429").remove("expectedPackage429")

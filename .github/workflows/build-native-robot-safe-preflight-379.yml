@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.24'
+          expo['version']='3.2.25'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=444
+          expo['android']['versionCode']=445
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1331,6 +1331,41 @@ jobs:
           grep -Fq 'zeroOpenReadTwice = true' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
+      - name: Verify 445 verified-OPEN to CLOSED bridge and no duplicate receipt
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          L=.github/native-overlay/DemoRecoveryLedger.kt
+          grep -Fq 'val closedList438 = pendingReceipt429 &&' "$O"
+          grep -Fq 'val verifiedOpenId445 =' "$O"
+          grep -Fq 'verifiedOpenId445 == closedProof437.positionId' "$O"
+          grep -Fq 'demoRecoveryLedger.onVerifiedDemoClosed(' "$O"
+          grep -Fq 'receiptIndependentlyVerified = true' "$O"
+          grep -Fq 'brokerOpenTimeMatchesAttempt437(' "$O"
+          grep -Fq 'val matchingAttempt437 = pendingReceipt429 &&' "$O"
+          grep -Fq 'val alreadySettled444 = matchingAttempt437 &&' "$O"
+          grep -Fq 'fun alreadySettledClosedReceipt444(' "$L"
+          grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const eligibleRow=(pending,knownOpenId,selectedClosed,closedDetailVerified) =>
+             pending && selectedClosed && !closedDetailVerified;
+          assert.equal(eligibleRow(true,'387595e2-b930-4648-b31f-903e15197d47',true,false),true);
+          assert.equal(eligibleRow(true,null,true,false),true);
+          assert.equal(eligibleRow(false,'some',true,false),false);
+          assert.equal(eligibleRow(true,'some',true,true),false);
+          const allowed=(known,closed)=>known===null||known===closed;
+          assert.equal(allowed('idA','idB'),false);
+          assert.equal(allowed('idA','idA'),true);
+          const complete=(sameAccount,pair,stake,payout,side,time,closedTwice,zeroOpenTwice,idMatches)=>
+             [sameAccount,pair,stake,payout,side,time,closedTwice,zeroOpenTwice,idMatches].every(Boolean);
+          assert.equal(complete(true,true,true,true,true,true,true,true,false),false);
+          assert.equal(complete(true,true,true,true,true,true,true,false,true),false);
+          assert.equal(complete(true,true,true,true,true,true,true,true,true),true);
+          console.log('445 safe OPEN->CLOSED UUID correlation test passed');
+          NODE
+
       - name: Verify 440 history OCR top banner, stake proof, and deterministic navigation
         run: |
           set -euo pipefail
@@ -1563,12 +1598,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-CI-444-DOAR-TEST-ANDROID.apk
+          cp "$APK" ScalpAtlas-445-CI-DOAR-TEST-ANDROID.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-444-CI-FARA-RELEASE
-          path: ScalpAtlas-CI-444-DOAR-TEST-ANDROID.apk
+          name: ScalpAtlas-445-CI-FARA-RELEASE
+          path: ScalpAtlas-445-CI-DOAR-TEST-ANDROID.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1578,7 +1613,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-CI-444-DOAR-TEST-ANDROID.apk"
+          FILE="ScalpAtlas-445-CI-DOAR-TEST-ANDROID.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-closed-proof442-${GITHUB_SHA:0:12}"
