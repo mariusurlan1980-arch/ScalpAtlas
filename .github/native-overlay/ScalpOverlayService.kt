@@ -824,7 +824,8 @@ class ScalpOverlayService : Service() {
       historyNavOcrY432 in 0.84f..0.975f
     val navigation = if (ocrReady432) {
       val wasSent432 = TouchTestService.tapVerifiedDemoHistoryOcr432(
-        brokerPkg432!!, historyNavOcrX432, historyNavOcrY432
+        brokerPkg432!!, historyNavOcrX432, historyNavOcrY432,
+        cachedDemoVerifiedOnChart = verifiedDemoReview
       )
       // The OCR result is one-shot per location and may not be reused.
       historyNavOcrSamples432 = 0
