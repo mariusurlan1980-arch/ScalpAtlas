@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=449
+          expo['android']['versionCode']=450
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -696,7 +696,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'private var autoDemoLastPreflightReason' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '"🤖 ȘOC FLEX 30/20/25 • " + shockBlocker.take(39)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"🤖 ȘOC SIMPLU 30/20 + FITIL • "' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '"🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeStatus.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
 
@@ -909,7 +909,9 @@ jobs:
           grep -Fq 'private const val SHOCK_MIN_DEPTH = 30' "$O"
           grep -Fq 'private const val SHOCK_MIN_RECOVERY = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_TREND = 25' "$O"
-          grep -Fq 'val scalpAlertAllowed = confirmedScalp &&' "$O"
+          grep -Fq 'val scalpAlertAllowed = false' "$O"
+          grep -Fq '!independentlyOppositeTrend' "$O"
+          grep -Fq 'val sameOpticalDirection = rawDirectionValid && detected' "$O"
           grep -Fq '!autoDemoSessionRequested && !autoDemoSessionConsumed' "$O"
           grep -Fq 'now - lockedAt in 0L..5000L' "$O"
           grep -Fq 'REQUIRED_CONFIRMATIONS = 2' "$O"
@@ -1385,6 +1387,23 @@ jobs:
           console.log('448: one-open-at-a-time and verified-settlement-only rearm checked');
           NODE
 
+      - name: Verify 450 SHOCK SIMPLU detector and broker safety isolation
+        run: |
+          set -euo pipefail
+          E=scalp-atlas-new/shockNativeEngine.ts
+          O=.github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'var penultimate=history[history.length-2];' "$E"
+          grep -Fq 'if(firstRebound<=0||secondRebound<=0)continue;' "$E"
+          grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20)continue;' "$E"
+          grep -Fq "candle.trendMeasured && candle.trendDirection!=='NONE'" "$E"
+          grep -Fq 'val independentlyOppositeTrend' "$O"
+          grep -Fq 'val sameShockDirection = sameOpticalDirection &&' "$O"
+          grep -Fq 'val scalpAlertAllowed = false' "$O"
+          grep -Fq 'TouchTestService.pressAutoOneDollarDemoOrderOnce(' "$O"
+          grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
+          grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
       - name: Verify 447 QT Demo header unobscured during history OCR
         run: |
           set -euo pipefail
@@ -1736,12 +1755,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-449-TEST-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-450-TEST-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-449-TEST-DEMO-G24
-          path: ScalpAtlas-449-TEST-DEMO-G24.apk
+          name: ScalpAtlas-450-TEST-DEMO-G24
+          path: ScalpAtlas-450-TEST-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1751,7 +1770,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-449-TEST-DEMO-G24.apk"
+          FILE="ScalpAtlas-450-TEST-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-demo-history449-${GITHUB_SHA:0:12}"
