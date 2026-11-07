@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 436 VERIFIED UUID RECEIPT DEMO
+name: Build Scalp Atlas 437 VERIFIED CLOSED RECEIPT RECONCILIATION
 
 on:
   push:
-    branches: [feature/scalpatlas-receipt-uuid436]
+    branches: [feature/scalpatlas-settlement-reconcile437]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-436
+  group: scalp-atlas-calculator-test-437
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.16'
+          expo['version']='3.2.17'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=436
+          expo['android']['versionCode']=437
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1240,6 +1240,49 @@ jobs:
           console.log('UUID 36 chars accepted; initial DEMO loss 1.00 => next 2.09 at payout 92%');
           NODE
 
+      - name: Verify 437 no unreconciled DEMO gesture can be cleared without broker evidence
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          L=.github/native-overlay/DemoRecoveryLedger.kt
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'recordClosedDetailOcr437(result, copy, observedAt)' "$O"
+          grep -Fq 'val ids = Regex(' "$O"
+          grep -Fq 'val directionLabel437 = Regex(' "$O"
+          grep -Fq 'val paidRaw = Regex(' "$O"
+          grep -Fq 'val netRaw = Regex(' "$O"
+          grep -Fq 'verifiedClosedDetail437 = candidate' "$O"
+          grep -Fq 'observedAt - firstClosedDetailAt437 in 1_500L..15_000L' "$O"
+          grep -Fq 'brokerOpenTimeMatchesAttempt437(' "$O"
+          grep -Fq 'closedProof437.pair == expectedPair429' "$O"
+          grep -Fq 'closedProof437.stakeCents == expectedStake429' "$O"
+          grep -Fq 'closedProof437.payoutPercent == expectedPayout429' "$O"
+          grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'reconcileSettledDemoWithMissingOpen437(' "$O"
+          grep -Fq 'uniqueClosedDetailReadTwice: Boolean' "$L"
+          grep -Fq 'zeroOpenReadTwice: Boolean' "$L"
+          grep -Fq 'exactPriorGestureTimeMatched: Boolean' "$L"
+          grep -Fq 'prefs.getString("pendingPositionId", null) != null' "$L"
+          grep -Fq 'seenClosedReceipts' "$L"
+          grep -Fq 'quote(payoutPercent).stakeCents != stakeCents' "$L"
+          grep -Fq 'fun onVerifiedDemoClosed(' "$L"
+          grep -Fq 'fun pressVerifiedDemoStakeOnce429(' "$T"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          grep -Fq 'private class TravelingNeonEdge434(' "$O"
+          ! grep -Fq 'localButton("TEST SELL DEMO 1$"' "$O"
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const id='387595e2-b930-4648-b31f-903e15197d47';
+          const regex=/\bOrdin\s*:\s*([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})\b/i;
+          assert.equal(('Ordin: '+id).match(regex)?.[1], id);
+          const demo={pair:'AUD/CHF OTC',stake:100,payout:92,net:92,paid:192};
+          assert.equal(demo.paid-demo.net,demo.stake);
+          assert.equal(Math.ceil((100+92)*100/92),209);
+          const sec=t=>t.split(':').map(Number).reduce((a,b)=>a*60+b);
+          assert.equal(sec('17:46:49')-sec('17:41:49'),300);
+          console.log('Broker UUID, timestamp, signed payout, 1->2.09 recovery fixture checked');
+          NODE
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1331,12 +1374,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-436-UUID-RECOVERY-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-437-DEMO-INCHIDERE-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.16-UUID-RECOVERY-436
-          path: ScalpAtlas-436-UUID-RECOVERY-DEMO-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.17-RECONCILIERE-437
+          path: ScalpAtlas-437-DEMO-INCHIDERE-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1345,13 +1388,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-436-UUID-RECOVERY-DEMO-G24.apk"
+          FILE="ScalpAtlas-437-DEMO-INCHIDERE-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-receipt436-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-reconcile437-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 436 UUID ORDIN DEMO • RECUPERARE VERIFICATĂ • ${GITHUB_SHA:0:12}" \
-            --notes "436: Citirea exacta a etichetei Ordin: UUID de 36 caractere din detaliile Pocket Option DEMO, cu miza si Profit separate sau combinate, strict numai cand exista un singur ID si o singura pereche si se verifica de doua ori acelasi receipt. Se pastreaza ledger-ul cu recovery la payout confirmat, limita 6 tranzactii si plafon de miza, fara crestere daca nu exista acelasi ID verificat pe OPEN si CLOSED. Nu se presupune niciodata LOSS din sold, grafic sau timeout. Modul Real dezactivat. Lumina LED si mesajele stabile 434/435 pastrate. Compilarea nu dovedeste ca robotul poate citi automat detaliile sau poate modifica miza pe telefon. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 437 RECONCILIERE ORDIN ÎNCHIS DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "437: Reconciliere strict DEMO pentru o tranzactie inchisa al carei ID de deschidere nu a putut fi citit la timp. Citeste detaliul individual direct din doua cadre live distincte: cont QT Demo, UUID Ordin, pereche OTC, ora deschiderii/inchiderii, directie BUY/SELL, suma, payout si rezultat semnat. Asociaza numai daca perechea, miza, payout, directia salvata si ora deschiderii corespund gestului original salvat, apoi confirma separat 0 pozitii Deschis din doua citiri ale istoricului. Numai atunci registrul actualizeaza WIN/LOSS, curata blocarea persistenta si poate rearma automat strategia SHOC pentru urmatorul ordin DEMO. In lipsa oricarei dovezi nu executa nimic si nu dubleaza. Lumina LED pastrata; QT Real interzis. APK compilat nu dovedeste citirea efectiva sau tranzactionarea autonoma pe Motorola. Build $GITHUB_SHA." \
             --prerelease
