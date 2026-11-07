@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=448
+          expo['android']['versionCode']=449
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1395,7 +1395,9 @@ jobs:
           grep -Fq 'dockOverlayForBrokerHistory447()' "$O"
           grep -Fq 'val targetX = dp(8)' "$O"
           grep -Fq 'safeHistoryTitleTop - view.height - dp(6)' "$O"
-          grep -Fq 'historyPageVisible433) return@post' "$O"
+          grep -Fq 'safePendingReview449)) return@post' "$O"
+          grep -Fq 'if (autoDemoSessionConsumed && brokerNow435 != null)' "$O"
+          grep -Fq 'TouchTestService.brokerWindowDiagnostic446() + " • FĂRĂ ORDIN"' "$O"
           grep -Fq 'current.x = targetX' "$O"
           grep -Fq 'current.y = targetY' "$O"
           grep -Fq 'Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(accountHeader440)' "$O"
@@ -1734,28 +1736,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-448-CI-DOAR-TEST-ANDROID.apk
+          cp "$APK" ScalpAtlas-449-TEST-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-448-CI-FARA-RELEASE
-          path: ScalpAtlas-448-CI-DOAR-TEST-ANDROID.apk
+          name: ScalpAtlas-449-TEST-DEMO-G24
+          path: ScalpAtlas-449-TEST-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-closed-history-loop'
+        if: github.ref == 'refs/heads/fix/scalpatlas-early-history-dock449'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-448-CI-DOAR-TEST-ANDROID.apk"
+          FILE="ScalpAtlas-449-TEST-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-closed-proof442-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-history449-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 442 CANDIDAT VERIFICARE ID ÎNCHIS DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "442 CANDIDAT DE TEST QT DEMO: limiteaza bucla repetata Deschis/Inchis, revine la grafic fara sa deblocheze tranzactia neconfirmata si citeste detaliile extinse doar din randul ordinului unic deasupra ID-ului, fara a confunda perechile istorice de dedesubt. Include reparatiile anterioare ale orei UTC+3 si navigarea read-only dupa expirarea timpului de captura a ordinului OPEN. Pastreaza obligatorii ID-ul unic, side, ora, perechea, miza, payoutul, WIN/LOSS verificat de doua ori si 0 pozitii active verificat de doua ori; fara deblocare la bip sau SOC 100%. Comenzile reale raman dezactivate. APK compilat si verificat prin CI, DAR NU TESTAT PE MOTOROLA G24, deci nu este demonstrat ca poate relua tranzactii automate. Build $GITHUB_SHA." \
-            --prerelease
+            --title "SCALP ATLAS 449 CANDIDAT DEMO - DEBLOCARE NAVIGARE ISTORIC • ${GITHUB_SHA:0:12}" \
+            --notes "449 CANDIDAT PENTRU UN TEST QT DEMO (NU ESTE PROBAT PE MOTOROLA G24): muta indicatorul din dreptul contului QT Demo INAINTE de deschiderea istoricului pentru a evita blocarea OCR de catre propria suprapunere. La blocaj afiseaza informatii citibile despre fereastra Android. NU sterge ordinele neconfirmate si NU permite duplicate: fara ordin pana la reconcilierea ID-ului broker WIN/LOSS. Progresa Martingale este doar calculata si protejata; nu este validata in live. Tranzactionarea REAL este dezactivata. Cod compilat CI, functiile de apasare si recitire trebuie testate pe telefon. Build $GITHUB_SHA." \
+          --prerelease

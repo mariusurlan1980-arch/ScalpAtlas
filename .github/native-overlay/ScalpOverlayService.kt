@@ -757,6 +757,13 @@ class ScalpOverlayService : Service() {
     // MediaProjection frames proves that the history page IS open even
     // when broker WebView accessibility exposes no page-title nodes.
     val brokerNow435 = TouchTestService.activeDemoExecutorPackageForReview()
+    // 449: Version 447 docked the overlay only AFTER the history title was
+    // OCR-confirmed. On G24 the overlay itself can cover the QT Demo header
+    // before navigation, preventing the verification needed to open history.
+    // Dock at the START of a pending, broker-only review; this never changes
+    // the order gate, ledger, result or real-account restrictions.
+    if (autoDemoSessionConsumed && brokerNow435 != null)
+      dockOverlayForBrokerHistory447()
     val openPageSeen435 = verifiedDemoReview && historyPageVisible433 &&
       historyPageTab433 == "DESCHIS" && brokerNow435 != null &&
       brokerNow435 == lastOpenTabVisualPackage429 &&
@@ -828,7 +835,10 @@ class ScalpOverlayService : Service() {
         historyNavPending431 = false
         lastAutoDemoHistoryNavAt = 0L
       } else {
-        val stalled = "BLOCAT: ISTORICUL NU SE DESCHIDE • FĂRĂ ORDIN"
+        // 449: Give a readable failure reason rather than a permanent,
+        // context-free padlock. This is diagnostic ONLY.
+        val stalled = "BLOCAT: ISTORICUL NU SE DESCHIDE • " +
+          TouchTestService.brokerWindowDiagnostic446() + " • FĂRĂ ORDIN"
         lastAutoDemoHistoryNavStatus = stalled
         lastAutoDemoHistoryNavStatusAt = nowElapsed
         return stalled
@@ -870,7 +880,8 @@ class ScalpOverlayService : Service() {
       historyNavStallSince441 = nowElapsed
     }
     lastAutoDemoHistoryNavStatus = if (historyNavStalled431)
-      "BLOCAT: ISTORICUL NU SE DESCHIDE • FĂRĂ ORDIN"
+      "BLOCAT: ISTORICUL NU SE DESCHIDE • " +
+        TouchTestService.brokerWindowDiagnostic446() + " • FĂRĂ ORDIN"
     else navigation.take(105)
     lastAutoDemoHistoryNavStatusAt = nowElapsed
     return lastAutoDemoHistoryNavStatus
@@ -2954,9 +2965,15 @@ class ScalpOverlayService : Service() {
       (safeHistoryTitleTop - view.height - dp(6)).coerceAtLeast(0)
     )
     if (window.x == targetX && window.y == targetY) return
+    // 449: Pending DEMO history is allowed to uncover the account header
+    // BEFORE history navigation; 447 required the page already opened.
+    // Purely visual: no gesture, no account trust, no trade state reset.
+    val safePendingReview449 = autoDemoSessionConsumed &&
+      !lastBrokerAccountStatus.contains("QT REAL") &&
+      TouchTestService.activeDemoExecutorPackageForReview() != null
     mainHandler.post {
       if (shuttingDown || overlayView !== view ||
-          !historyPageVisible433) return@post
+          !(historyPageVisible433 || safePendingReview449)) return@post
       val current = overlayWindowParams ?: return@post
       // Do not let a user-expanded window invade the account banner.
       // Compacted mode is already the default; keep that geometry stable.
