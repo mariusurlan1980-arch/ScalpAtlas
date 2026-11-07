@@ -176,6 +176,9 @@ class ScalpOverlayService : Service() {
   private var historyNavPendingAt431 = 0L
   private var historyNavFailed431 = 0
   private var historyNavStalled431 = false
+  // 441: navigation failures pause scanning briefly but do not permanently
+  // prohibit verified, read-only history navigation. NEVER clear old trades.
+  private var historyNavStallSince441 = 0L
   // 432: two independent LIVE OCR reads of the lower-left broker
   // "Tranzacții" NAV LABEL. Never infer a control from fixed coordinates.
   @Volatile private var historyNavOcrAt432 = 0L
@@ -786,20 +789,33 @@ class ScalpOverlayService : Service() {
       historyNavPending431 = false
       historyNavFailed431++
     }
-    if (historyNavFailed431 >= 3) historyNavStalled431 = true
+    if (historyNavFailed431 >= 3 && !historyNavStalled431) {
+      historyNavStalled431 = true
+      historyNavStallSince441 = nowElapsed
+    }
     if (historyNavStalled431) {
-      val stalled = "BLOCAT: ISTORICUL NU SE DESCHIDE • FĂRĂ ORDIN"
-      lastAutoDemoHistoryNavStatus = stalled
-      lastAutoDemoHistoryNavStatusAt = nowElapsed
-      return stalled
+      // The 431 hard latch never retried after three navigation failures,
+      // even many hours later. A timed pause allows READ-ONLY re-navigation,
+      // while the pending broker-order safety marker remains untouched.
+      val age441 = nowElapsed - historyNavStallSince441
+      if (age441 !in 0L..29_999L) {
+        historyNavStalled431 = false
+        historyNavFailed431 = 0
+        historyNavPending431 = false
+        lastAutoDemoHistoryNavAt = 0L
+      } else {
+        val stalled = "BLOCAT: ISTORICUL NU SE DESCHIDE • FĂRĂ ORDIN"
+        lastAutoDemoHistoryNavStatus = stalled
+        lastAutoDemoHistoryNavStatusAt = nowElapsed
+        return stalled
+      }
     }
     if (lastAutoDemoHistoryNavAt > 0L &&
         nowElapsed - lastAutoDemoHistoryNavAt in 0L..9_999L)
       return lastAutoDemoHistoryNavStatus
     lastAutoDemoHistoryNavAt = nowElapsed
     val brokerPkg432 = TouchTestService.activeDemoExecutorPackageForReview()
-    val ocrReady432 = historyNavFailed431 >= 1 &&
-      lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") &&
+    val ocrReady432 = lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") &&
       brokerPkg432 != null && brokerPkg432 == verifiedDemoAccountPackage &&
       brokerPkg432 == historyNavOcrPackage432 &&
       historyNavOcrSamples432 >= 2 &&
@@ -824,7 +840,10 @@ class ScalpOverlayService : Service() {
                navigation.contains("BLOCAT")) {
       historyNavFailed431++
     }
-    if (historyNavFailed431 >= 3) historyNavStalled431 = true
+    if (historyNavFailed431 >= 3 && !historyNavStalled431) {
+      historyNavStalled431 = true
+      historyNavStallSince441 = nowElapsed
+    }
     lastAutoDemoHistoryNavStatus = if (historyNavStalled431)
       "BLOCAT: ISTORICUL NU SE DESCHIDE • FĂRĂ ORDIN"
     else navigation.take(105)
@@ -919,20 +938,28 @@ class ScalpOverlayService : Service() {
             expectedPayout429 in 92..100
           val openReceiptMissing429 = pendingReceipt429 &&
             demoRecoveryLedger.verifiedOpenPositionId429() == null
-          if (openReceiptMissing429 && attemptedAt429 > 0L &&
-              nowReview - attemptedAt429 in 0L..110_000L &&
+          // 441: AFTER the 110-second OPEN receipt window expires, the
+          // old code stopped navigating to history entirely. That left
+          // CLOSED receipt reconciliation impossible for an hours-old
+          // transaction. Navigate read-only regardless of receipt age;
+          // attempt to CAPTURE a live OPEN ID only inside the short window.
+          if (openReceiptMissing429 &&
               historyPageTab433 != "ÎNCHIS" &&
               historyPageTab433 != "DETALIU ÎNCHIS") {
+            val openReceiptWindow441 = attemptedAt429 > 0L &&
+              nowReview - attemptedAt429 in 0L..110_000L
             val selectedOpenVisual429 =
               lastOpenTabVisualPackage429 == reviewPackage &&
               openTabVisualConsecutive429 >= 2 &&
               System.currentTimeMillis() - lastOpenTabVisualAt429 in 0L..5000L
-            val openReceipt429 = TouchTestService.readDoubleVerifiedDemoReceipt429(
-              expectedPair = expectedPair429!!,
-              cachedDemoVerifiedOnChart = verifiedDemoReview,
-              closed = false,
-              selectedTabVerifiedVisually = selectedOpenVisual429
-            )
+            val openReceipt429 = if (openReceiptWindow441)
+              TouchTestService.readDoubleVerifiedDemoReceipt429(
+                expectedPair = expectedPair429!!,
+                cachedDemoVerifiedOnChart = verifiedDemoReview,
+                closed = false,
+                selectedTabVerifiedVisually = selectedOpenVisual429
+              )
+            else null
             if (openReceipt429 != null &&
                 openReceipt429.brokerPackage == expectedPackage429 &&
                 openReceipt429.stakeCents == expectedStake429 &&
@@ -958,8 +985,10 @@ class ScalpOverlayService : Service() {
               if (navigation431.contains("BLOCAT: ISTORICUL"))
                 touchProbeStatus?.text = navigation431
               else
-                touchProbeStatus?.text = "🔎 DESCHIS DEMO • " +
-                  TouchTestService.receiptStatus429().take(65)
+                touchProbeStatus?.text = if (openReceiptWindow441)
+                  "🔎 DESCHIS DEMO • " +
+                    TouchTestService.receiptStatus429().take(65)
+                else "🔎 ISTORIC DEMO • CAUT TRANZACȚIA ÎNCHISĂ"
             }
           } else if (openReceiptMissing429) {
             // A five-minute trade can no longer have an OPEN receipt.
