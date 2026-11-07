@@ -3362,9 +3362,47 @@ class ScalpOverlayService : Service() {
     // uniquely labelled full UUID. The historical LIST has no such fields.
     val ids = Regex("""(?i)\bOrdin\s*:\s*([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})\b""")
       .findAll(content).map { it.groupValues[1].lowercase() }.distinct().toList()
-    val pairs = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\s+OTC\b""")
-      .findAll(content).map { it.value.uppercase().replace(Regex("""\s+"""), " ") }
-      .distinct().toList()
+    // 442: The CLOSED detail expands INLINE above older history rows.
+    // A full screenshot normally includes OTHER pairs below it. Requiring
+    // exactly one pair in the entire screenshot rejects a valid receipt.
+    // Anchor the detail to its single UUID line, then choose the nearest
+    // instrument row ABOVE that UUID and read payout from that SAME row.
+    val uuidPattern442 =
+      Regex("""(?i)\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b""")
+    val idLocations442 = readable440.mapNotNull { line ->
+      val box = line.boundingBox ?: return@mapNotNull null
+      if (!uuidPattern442.containsMatchIn(line.text))
+        return@mapNotNull null
+      box.centerY().toFloat() / frame.height
+    }
+    if (ids.size != 1 || idLocations442.size != 1) return
+    val idY442 = idLocations442.single()
+    val pairsWithGeometry442 = readable440.mapNotNull { line ->
+      val box = line.boundingBox ?: return@mapNotNull null
+      val y = box.centerY().toFloat() / frame.height
+      val x = box.centerX().toFloat() / frame.width
+      if (y !in 0.21f..(idY442 - 0.02f) || x !in 0.03f..0.74f)
+        return@mapNotNull null
+      val parsed = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\s+OTC\b""")
+        .find(line.text)?.value?.uppercase()
+        ?.replace(Regex("""\s+"""), " ") ?: return@mapNotNull null
+      Pair(y, parsed)
+    }
+    val latestRowY442 = pairsWithGeometry442.maxOfOrNull { it.first }
+      ?: return
+    if (idY442 - latestRowY442 !in 0.045f..0.30f) return
+    val pairs = pairsWithGeometry442
+      .filter { kotlin.math.abs(it.first - latestRowY442) <= 0.020f }
+      .map { it.second }.distinct()
+    if (pairs.size != 1) return
+    val pairRowText442 = readable440.mapNotNull { line ->
+      val box = line.boundingBox ?: return@mapNotNull null
+      if (kotlin.math.abs(box.centerY().toFloat() / frame.height -
+          latestRowY442) > 0.027f)
+        return@mapNotNull null
+      Pair(box.left, line.text)
+    }.sortedBy { it.first }.joinToString(" ") { it.second }
+      .replace(Regex("""\s+"""), " ")
     val openLabel = Regex("""(?i)Ora\s+deschiderii\s*:\s*(\d{1,2}:\d{2}:\d{2}(?:\.\d{1,3})?)""")
       .find(content)?.groupValues?.getOrNull(1)
     val closeLabel = Regex("""(?i)Ora\s+(?:închiderii|inchiderii)\s*:\s*(\d{1,2}:\d{2}:\d{2}(?:\.\d{1,3})?)""")
@@ -3407,7 +3445,7 @@ class ScalpOverlayService : Service() {
     val pair = pairs.single()
     val percentText = Regex.escape(pair).replace("\\ ", """\s+""")
     val payoutValues = Regex("""(?i)\b""" + percentText +
-      """\s*\+?(\d{2,3})\s*%""").findAll(content)
+      """\s*\+?(\d{2,3})\s*%""").findAll(pairRowText442)
       .mapNotNull { it.groupValues[1].toIntOrNull() }.distinct().toList()
     if (payoutValues.size != 1 || payoutValues.single() !in 92..100 ||
         stake !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
