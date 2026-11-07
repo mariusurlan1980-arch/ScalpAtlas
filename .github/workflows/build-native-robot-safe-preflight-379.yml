@@ -1135,7 +1135,10 @@ jobs:
           T=.github/native-overlay/TouchTestService.kt
           grep -Fq 'recordBrokerHistoryBottomLabelOcr432(' "$O"
           grep -Fq 'historyNavOcrSamples432 >= 2' "$O"
-          grep -Fq 'historyNavFailed431 >= 1' "$O"
+          # 441 removes the old forced failed-attempt prerequisite; navigation
+          # requires two OCR frames and fresh verified DEMO instead.
+          grep -Fq 'historyNavOcrSamples432 >= 2' "$O"
+          grep -Fq 'brokerPkg432 == verifiedDemoAccountPackage' "$O"
           grep -Fq 'historyNavOcrX432 in 0.02f..0.35f' "$O"
           grep -Fq 'historyNavOcrY432 in 0.84f..0.975f' "$O"
           grep -Fq 'historyNavOcrPackage432' "$O"
