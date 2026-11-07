@@ -526,17 +526,37 @@ class TouchTestService : AccessibilityService() {
       } catch (_: Throwable) { false }
     }
 
-    /** Only after a full, twice-verified CLOSED detail may we navigate Back. */
+    /**
+     * 440: The Pocket Option CLOSED detail expands inline in Transactions,
+     * so Android BACK can leave the history page entirely. Once the detail
+     * UUID was independently verified twice, navigate ONLY through the
+     * explicitly labelled "Deschis" tab, never BACK or order controls.
+     * A successful click is just navigation, NOT zero open-position proof.
+     */
     fun returnFromVerifiedDemoClosedDetail438(expectedBrokerPackage: String): Boolean {
-      val svc = connected ?: return false
-      val root = svc.rootInActiveWindow ?: return false
+      val info = activeDemoHistoryNodes(true) ?: return false
+      val (svc, root, labels) = info
       if (root.packageName?.toString() != expectedBrokerPackage ||
           !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage) ||
           svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage)
         return false
-      return try {
-        svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
-      } catch (_: Throwable) { false }
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      val pageTitle = labels.any { (node, rect) ->
+        rect.centerY() in (metrics.heightPixels * .09f).toInt()..
+          (metrics.heightPixels * .24f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
+            Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""")
+              .matches(it.trim())
+          }
+      }
+      if (!pageTitle) return false
+      return clickExactDemoNavigationLabel(svc, root, labels,
+        Regex("""(?i)^(?:Deschis|Open)$"""), .08f, .48f, .15f, .31f)
     }
 
     fun advanceDemoHistoryReviewNavigation(
