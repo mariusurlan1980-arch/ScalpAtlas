@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.26'
+          expo['version']='3.2.27'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=446
+          expo['android']['versionCode']=447
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1331,6 +1331,36 @@ jobs:
           grep -Fq 'zeroOpenReadTwice = true' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
+      - name: Verify 447 QT Demo header unobscured during history OCR
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'private fun dockOverlayForBrokerHistory447()' "$O"
+          grep -Fq 'historyPageVisible433 = true' "$O"
+          grep -Fq 'dockOverlayForBrokerHistory447()' "$O"
+          grep -Fq 'val targetX = dp(8)' "$O"
+          grep -Fq 'safeHistoryTitleTop - view.height - dp(6)' "$O"
+          grep -Fq 'historyPageVisible433) return@post' "$O"
+          grep -Fq 'current.x = targetX' "$O"
+          grep -Fq 'current.y = targetY' "$O"
+          grep -Fq 'Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(accountHeader440)' "$O"
+          grep -Fq 'val savedReconciled437 = reconciled437 &&' "$O"
+          grep -Fq 'if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())' "$T"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const screen={w:688,h:1536},pill={w:290,h:114};
+          const target={x:14,y:Math.min(42,Math.max(0,.135*screen.h-pill.h-10))};
+          const intersects=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+          assert.equal(intersects({...target,...pill},{x:370,y:65,w:200,h:105}),false,
+            'history pill must not hide QT Demo top-right');
+          assert.equal(intersects({...target,...pill},{x:32,y:200,w:165,h:55}),false,
+            'history pill must not hide Transactions page heading');
+          assert.equal(intersects({...target,...pill},{x:40,y:1200,w:620,h:130}),false);
+          console.log('447: synthetic upper-left dock avoids account header and history page title');
+          NODE
+
       - name: Verify 446 split OCR row pairing and ambiguity rejection
         run: |
           set -euo pipefail
@@ -1650,12 +1680,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-446-CI-DOAR-TEST-ANDROID.apk
+          cp "$APK" ScalpAtlas-447-CI-DOAR-TEST-ANDROID.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-446-CI-FARA-RELEASE
-          path: ScalpAtlas-446-CI-DOAR-TEST-ANDROID.apk
+          name: ScalpAtlas-447-CI-FARA-RELEASE
+          path: ScalpAtlas-447-CI-DOAR-TEST-ANDROID.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1665,7 +1695,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-446-CI-DOAR-TEST-ANDROID.apk"
+          FILE="ScalpAtlas-447-CI-DOAR-TEST-ANDROID.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-closed-proof442-${GITHUB_SHA:0:12}"
