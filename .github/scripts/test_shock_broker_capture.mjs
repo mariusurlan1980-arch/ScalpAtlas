@@ -181,7 +181,7 @@ assert.equal(sell.trendDirection,'SELL','SELL must match measured 3-closed-candl
 assert.equal(sell.trendMeasured,true);
 assert.ok(sell.trendVisualPoints.length===3);
 assert.ok(sell.trendStrengthPercent>25 && sell.trendStrengthPercent<=100,'SELL trend >25%');
-assert.equal(sell.trendThresholdPercent,25);
+assert.equal(sell.trendThresholdPercent,0,'450 SELL trend is informative only');
 assert.ok(sell.trendVisualPoints[2]>sell.trendVisualPoints[0],'SELL mini line falls in price');
 assert.ok(sell.shockObservedDurationMs>=300 && sell.shockObservedDurationMs<=18000);
 assert.equal(sell.shockDirection,'SELL','Red candle upward retracement + recovery must be recognized');
