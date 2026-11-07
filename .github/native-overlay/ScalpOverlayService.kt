@@ -190,6 +190,22 @@ class ScalpOverlayService : Service() {
   @Volatile private var historyPageVisible433 = false
   @Volatile private var historyPageLastSeen433 = 0L
   @Volatile private var historyPageTab433 = "NECUNOSCUT"
+  // 437: A recently observed, individually identified CLOSED DEMO receipt
+  // must have TWO independent live OCR reads, and is never an order itself.
+  private data class ClosedDetail437(
+    val brokerPackage: String,
+    val pair: String,
+    val positionId: String,
+    val stakeCents: Long,
+    val payoutPercent: Int,
+    val netProfitCents: Long,
+    val openedSecondsOfDay: Int
+  )
+  private var firstClosedDetail437: ClosedDetail437? = null
+  private var firstClosedDetailAt437 = 0L
+  @Volatile private var verifiedClosedDetail437: ClosedDetail437? = null
+  @Volatile private var verifiedClosedDetailAt437 = 0L
+
   // 435: independently observed OPEN-tab LABEL, not a fixed touch point.
   @Volatile private var historyOpenOcrAt435 = 0L
   @Volatile private var historyOpenOcrX435 = -1f
