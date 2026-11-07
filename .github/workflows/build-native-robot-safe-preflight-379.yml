@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.22'
+          expo['version']='3.2.23'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=442
+          expo['android']['versionCode']=443
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1416,6 +1416,12 @@ jobs:
           grep -Fq 'findAll(pairRowText442)' "$O"
           grep -Fq 'ids.size != 1 || idLocations442.size != 1' "$O"
           grep -Fq 'lastClosedHistoryScanKey442 == pendingKey442' "$O"
+          # Read-only fallback must never loosen any broker gesture checks.
+          T=.github/native-overlay/TouchTestService.kt
+          grep -Fq 'val root = readOnlyBrokerRoot(svc) ?: return null' "$T"
+          grep -Fq 'visibleBrokerChild = !b.isEmpty' "$T"
+          grep -Fq 'svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage' "$T"
+          grep -Fq 'svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString()' "$T"
           grep -Fq 'uniqueClosedDetailReadTwice = true' "$O"
           grep -Fq 'zeroOpenReadTwice = true' "$O"
           grep -Fq 'brokerOpenTimeMatchesAttempt437(' "$O"
@@ -1543,12 +1549,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-442-ISTORIC-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-443-NUMAI-TEST-FEREASTRA-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-442-TEST-ISTORIC-DEMO
-          path: ScalpAtlas-442-ISTORIC-DEMO-G24.apk
+          name: ScalpAtlas-443-CI-VERIFICARE-FEREASTRA
+          path: ScalpAtlas-443-NUMAI-TEST-FEREASTRA-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1558,7 +1564,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-442-ISTORIC-DEMO-G24.apk"
+          FILE="ScalpAtlas-443-NUMAI-TEST-FEREASTRA-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-closed-proof442-${GITHUB_SHA:0:12}"
