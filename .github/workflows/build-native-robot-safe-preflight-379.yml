@@ -2,7 +2,7 @@ name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.25'
+          expo['version']='3.2.26'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=445
+          expo['android']['versionCode']=446
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1331,6 +1331,49 @@ jobs:
           grep -Fq 'zeroOpenReadTwice = true' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
+      - name: Verify 446 split OCR row pairing and ambiguity rejection
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val rowText446 = lines.mapNotNull siblingRow446@' "$O"
+          grep -Fq 'kotlin.math.abs(siblingY - y) > 0.019f' "$O"
+          grep -Fq 'instruments446.size != 1' "$O"
+          grep -Fq 'payoutValues446.size != 1' "$O"
+          grep -Fq 'sameRowTimes.size == 1' "$O"
+          grep -Fq 'val rowPayout446 = Regex(' "$O"
+          grep -Fq 'val matchingAttempt437 = pendingReceipt429 &&' "$O"
+          grep -Fq 'verifiedOpenId445 == closedProof437.positionId' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const lines=[
+            {text:'AUD / CHF OTC',x:.21,y:.350},
+            {text:'+92%',x:.65,y:.354},
+            {text:'17:46',x:.90,y:.352},
+            {text:'EUR/USD OTC +90%',x:.20,y:.420},
+            {text:'17:41',x:.90,y:.422}
+          ];
+          function detect(anchor,rows,expectedPair,payout) {
+            const text=rows.filter(t=>Math.abs(t.y-anchor.y)<=.019&&t.x>=.025&&t.x<=.985)
+              .sort((a,b)=>a.x-b.x).map(t=>t.text).join(' ');
+            const fx=[...text.matchAll(/\b([A-Z]{3})\s*\/\s*([A-Z]{3})(?:\s+(OTC))?\b/gi)]
+              .map(m=>m[1].toUpperCase()+'/'+m[2].toUpperCase()+(m[3]?' OTC':''));
+            const p=[...text.matchAll(/\+\s*(\d{2,3})\s*%/g)].map(m=>+m[1]);
+            return new Set(fx).size===1&&fx.includes(expectedPair)&&
+              new Set(p).size===1&&p.includes(payout);
+          }
+          assert.equal(detect(lines[0],lines,'AUD/CHF OTC',92),true);
+          assert.equal(detect(lines[0],lines,'AUD/CHF OTC',93),false);
+          assert.equal(detect(lines[0],lines,'EUR/USD OTC',92),false);
+          assert.equal(detect(lines[0],[...lines,{text:'GBP/JPY OTC',x:.4,y:.353}],
+            'AUD/CHF OTC',92),false);
+          assert.equal(detect(lines[0],[...lines,{text:'+95%',x:.50,y:.353}],
+            'AUD/CHF OTC',92),false);
+          assert.equal(detect(lines[0],lines.filter(x=>x.text!=='+92%'),
+            'AUD/CHF OTC',92),false);
+          console.log('446: split pair/payout same-row synthetic tests passed');
+          NODE
+
       - name: Verify 445 verified-OPEN to CLOSED bridge and no duplicate receipt
         run: |
           set -euo pipefail
@@ -1598,12 +1641,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-445-CI-DOAR-TEST-ANDROID.apk
+          cp "$APK" ScalpAtlas-446-CI-DOAR-TEST-ANDROID.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-445-CI-FARA-RELEASE
-          path: ScalpAtlas-445-CI-DOAR-TEST-ANDROID.apk
+          name: ScalpAtlas-446-CI-FARA-RELEASE
+          path: ScalpAtlas-446-CI-DOAR-TEST-ANDROID.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1613,7 +1656,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-445-CI-DOAR-TEST-ANDROID.apk"
+          FILE="ScalpAtlas-446-CI-DOAR-TEST-ANDROID.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-closed-proof442-${GITHUB_SHA:0:12}"
