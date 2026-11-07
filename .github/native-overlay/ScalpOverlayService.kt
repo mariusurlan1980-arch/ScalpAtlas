@@ -763,12 +763,23 @@ class ScalpOverlayService : Service() {
       lastAutoDemoHistoryNavStatusAt = nowElapsed
       return lastAutoDemoHistoryNavStatus
     }
-    if (TouchTestService.confirmedDemoHistoryPageReadOnly431(verifiedDemoReview)) {
+    // 439: Merely seeing the DESCHIS label is NOT evidence that the OPEN
+    // tab is selected. A CLOSED page shows both labels too. Require fresh
+    // MediaProjection proof that OPEN is actually selected before treating
+    // an Accessibility-visible label as an opened page. This is navigation
+    // only; zero-OPEN still requires its own independent two-frame proof.
+    val selectedOpenPage439 = verifiedDemoReview &&
+      historyPageVisible433 && historyPageTab433 == "DESCHIS" &&
+      System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L &&
+      lastOpenTabVisualPackage429 == brokerNow435 &&
+      System.currentTimeMillis() - lastOpenTabVisualAt429 in 0L..5_000L
+    if (selectedOpenPage439 &&
+        TouchTestService.confirmedDemoHistoryPageReadOnly431(verifiedDemoReview)) {
       historyNavPending431 = false
       historyNavPendingAt431 = 0L
       historyNavFailed431 = 0
       historyNavStalled431 = false
-      return "ISTORIC DESCHIS • VERIFIC TRANZACȚII DEMO"
+      return "ISTORIC DESCHIS CONFIRMAT • VERIFIC TRANZACȚII DEMO"
     }
     if (historyNavPending431 &&
         nowElapsed - historyNavPendingAt431 >= 7_000L) {
