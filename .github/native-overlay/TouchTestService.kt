@@ -420,9 +420,15 @@ class TouchTestService : AccessibilityService() {
     fun tapVerifiedDemoHistoryOcr432(
       expectedBrokerPackage: String,
       centerXFraction: Float,
-      centerYFraction: Float
+      centerYFraction: Float,
+      cachedDemoVerifiedOnChart: Boolean
     ): Boolean {
-      val info = activeDemoHistoryNodes(false) ?: return false
+      // 441: The Pocket Option WebView often has no accessible QT Demo
+      // text. The independently verified, fresh same-package DEMO proof
+      // permits NAVIGATION ONLY. The 2-frame OCR of the bottom-left
+      // Transactions label is still required and this never places orders.
+      if (!cachedDemoVerifiedOnChart) return false
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart) ?: return false
       val (svc, root, _) = info
       if (root.packageName?.toString() != expectedBrokerPackage ||
           svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
