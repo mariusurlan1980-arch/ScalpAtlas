@@ -1291,7 +1291,7 @@ jobs:
           grep -Fq 'java.util.TimeZone.getTimeZone("GMT+03:00")' "$O"
           grep -Fq 'recordClosedListRowOcr438(result, copy, observedAt)' "$O"
           grep -Fq 'closedRowSamples438 >= 2' "$O"
-          grep -Fq 'options.size != 1' "$O"
+          grep -Fq 'unique.size != 1' "$O"
           grep -Fq 'historyPageTab433 == "ÎNCHIS"' "$O"
           grep -Fq 'tapVerifiedDemoClosedRowOcr438(' "$T"
           grep -Fq 'returnFromVerifiedDemoClosedDetail438(' "$T"
