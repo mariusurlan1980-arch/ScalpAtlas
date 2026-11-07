@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 438 UTC+3 VERIFIED CLOSED HISTORY NAVIGATION
+name: Build Scalp Atlas 439 SELECTED OPEN TAB HISTORY PROOF
 
 on:
   push:
-    branches: [feature/scalpatlas-history-recovery438]
+    branches: [feature/scalpatlas-open-tab-proof439]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-438
+  group: scalp-atlas-calculator-test-439
   cancel-in-progress: true
 
 permissions:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.18'
+          expo['version']='3.2.19'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=438
+          expo['android']['versionCode']=439
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1313,6 +1313,21 @@ jobs:
           console.log('Broker UTC+3 and November device UTC+2 verified');
           NODE
 
+      - name: Verify 439 selected-OPEN tab navigation gate and no duplicate orders
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val selectedOpenPage439 = verifiedDemoReview' "$O"
+          grep -Fq 'historyPageVisible433 && historyPageTab433 == "DESCHIS"' "$O"
+          grep -Fq 'if (selectedOpenPage439 &&' "$O"
+          grep -Fq 'TouchTestService.confirmedDemoHistoryPageReadOnly431(verifiedDemoReview))' "$O"
+          grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
+          grep -Fq 'brokerOpenTimeMatchesAttempt437(' "$O"
+          grep -Fq 'reconcileSettledDemoWithMissingOpen437(' "$O"
+          grep -Fq 'uniqueClosedDetailReadTwice = true' "$O"
+          grep -Fq 'zeroOpenReadTwice = true' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1404,12 +1419,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-438-ISTORIC-ID-G24.apk
+          cp "$APK" ScalpAtlas-439-FILA-DESCHIS-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.18-ISTORIC-438
-          path: ScalpAtlas-438-ISTORIC-ID-G24.apk
+          name: ScalpAtlas-LIVE-v3.2.19-FILA-DESCHIS-439
+          path: ScalpAtlas-439-FILA-DESCHIS-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -1418,13 +1433,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-438-ISTORIC-ID-G24.apk"
+          FILE="ScalpAtlas-439-FILA-DESCHIS-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-history438-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-open439-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 438 ISTORIC UTC+3 SI ID DEMO • ${GITHUB_SHA:0:12}" \
-            --notes "438: Corecteaza fusul orar al istoricului Pocket Option UTC+3 fata de telefonul UTC+2, identifica in doua cadre OCR o singura linie din fila Inchis cu perechea si payoutul ordinului DEMO, deschide exclusiv acea linie pentru a citi detaliul UUID si rezultatul 2/2, apoi incearca verificarea separata 0 pozitii Deschis 2/2. Niciun rand sau clic nu este dovada de WIN/LOSS. Un ordin vechi necunoscut ramane blocat daca lipseste oricare dintre probe. Niciun ordin QT Real; nu se activeaza auto pe Real. Este un APK construit, nu un test dovedit pe Motorola G24. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 439 FILA DESCHIS CONFIRMATA DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "439: Fix demonstrabil pe ecran istoric. Prezenta etichetei Deschis NU mai este considerata dovada ca fila Deschis este activa. Necesita selectarea vizuala OCR recenta a filei Deschis, altfel navigarea continua catre fila corecta; zero pozitii si detaliul ID ordin trecut raman in continuare conditionate de dovezi independente 2/2. Pastrate corectiile UTC+3 si selectarea unei singure tranzactii Inchis din 438. Nicio deblocare manuala fortata, fara ordine Real. Compilare Android valida, nu test functional pe Motorola. Build $GITHUB_SHA." \
             --prerelease
