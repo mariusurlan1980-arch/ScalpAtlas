@@ -4751,6 +4751,12 @@ class ScalpOverlayService : Service() {
             "🔒 DEMO • PAUZĂ DE SIGURANȚĂ 5 MINUTE"
           !TouchTestService.ready() ->
             "🔒 DEMO • ACCESIBILITATE NECONECTATĂ"
+          verifiedClosedDetail437 != null &&
+            now - verifiedClosedDetailAt437 in 0L..90_000L ->
+            "📋 ÎNCHIS 2/2 • DESCHIDE TRANZACȚII > DESCHIS"
+          firstClosedDetail437 != null &&
+            now - firstClosedDetailAt437 in 0L..15_000L ->
+            "📋 DETALIU ÎNCHIS 1/2 • CITES CEA DE-A DOUA DOVADĂ"
           // 435: Show the TRUE reason after a missing order-ID timeout.
           // An empty history page never proves the missing OPEN receipt.
           getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
