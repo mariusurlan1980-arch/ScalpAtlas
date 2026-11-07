@@ -888,7 +888,7 @@ class ScalpOverlayService : Service() {
           val expectedStake429 = pendingPrefs429.getLong("expectedStakeCents429", -1L)
           val expectedPayout429 = pendingPrefs429.getInt("expectedPayout429", -1)
           val attemptedAt429 = pendingPrefs429.getLong("attemptedAt429", -1L)
-          val pendingReceipt429 = oldShockAttempt && !expectedPair429.isNullOrBlank() &&
+          var pendingReceipt429 = oldShockAttempt && !expectedPair429.isNullOrBlank() &&
             expectedPackage429 == reviewPackage &&
             expectedStake429 in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS &&
             expectedPayout429 in 92..100
@@ -964,6 +964,47 @@ class ScalpOverlayService : Service() {
               demoEmptyReviewReads++
               if (demoEmptyReviewReads >= 2 &&
                   tradePositionGate.brokerVerifiedEmptyDemoReview(true)) {
+                // 437: An order whose OPEN ID was not observed in time
+                // can be reconciled ONLY against a unique, twice-read CLOSED
+                // detail, the original persisted gesture time, same DEMO
+                // account/pair/stake/payout, plus two explicit EMPTY Open
+                // reads. A balance change or historical list entry never
+                // provides sufficient evidence for rearming or LOSS.
+                val closedProof437 = verifiedClosedDetail437
+                val closedProofFresh437 = closedProof437 != null &&
+                  System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..90_000L
+                val matchingAttempt437 = pendingReceipt429 &&
+                  openReceiptMissing429 && closedProofFresh437 &&
+                  closedProof437 != null &&
+                  closedProof437.brokerPackage == expectedPackage429 &&
+                  closedProof437.pair == expectedPair429 &&
+                  closedProof437.stakeCents == expectedStake429 &&
+                  closedProof437.payoutPercent == expectedPayout429 &&
+                  brokerOpenTimeMatchesAttempt437(
+                    closedProof437.openedSecondsOfDay, attemptedAt429
+                  )
+                val reconciled437 = if (matchingAttempt437 && closedProof437 != null)
+                  demoRecoveryLedger.reconcileSettledDemoWithMissingOpen437(
+                    brokerAccountKey = "QT_DEMO:" + expectedPackage429,
+                    positionId = closedProof437.positionId,
+                    stakeCents = closedProof437.stakeCents,
+                    payoutPercent = closedProof437.payoutPercent,
+                    netProfitCents = closedProof437.netProfitCents,
+                    uniqueClosedDetailReadTwice = true,
+                    zeroOpenReadTwice = true,
+                    exactPriorGestureTimeMatched = true
+                  )
+                else false
+                val savedReconciled437 = reconciled437 &&
+                  pendingPrefs429.edit().putBoolean("attempted", false)
+                    .remove("expectedPair429").remove("expectedPackage429")
+                    .remove("expectedStakeCents429").remove("expectedPayout429")
+                    .remove("attemptedAt429").commit()
+                if (savedReconciled437) {
+                  pendingReceipt429 = false
+                  verifiedClosedDetail437 = null
+                  verifiedClosedDetailAt437 = 0L
+                }
                 // Both writes must succeed. An uncertain broker gesture is
                 // never cleared from persistent storage based on a chart-only
                 // guess, page change, screenshot OCR or elapsed time alone.
@@ -991,8 +1032,9 @@ class ScalpOverlayService : Service() {
                   sell404Diagnostic = null
                   autoDemoLastPreflightReason =
                     "0 POZIȚII DEMO CONFIRMATE • REVIN LA GRAFIC"
-                  touchProbeStatus?.text =
-                    "✅ QT DEMO 0 POZIȚII • BLOCATUL VECHI ELIMINAT"
+                  touchProbeStatus?.text = if (savedReconciled437)
+                    "✅ ORDIN ÎNCHIS VERIFICAT 2/2 • DEMO REACTIVAT"
+                  else "✅ QT DEMO 0 POZIȚII • BLOCATUL VECHI ELIMINAT"
                   lastDemoTradeStatus =
                     "QT DEMO • LISTĂ DESCHIS GOALĂ VERIFICATĂ 2/2"
                   lastAutoDemoHistoryNavStatus = ""
