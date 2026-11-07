@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 452 G24 DEMO simple motor
+name: Build Scalp Atlas 453 G24 DEMO fresh BIP auto entry
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=452
+          expo['android']['versionCode']=453
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1676,6 +1676,27 @@ jobs:
           console.log('Expanded history detail isolated from unrelated old rows');
           NODE
 
+      - name: Verify fresh BIP auto entry and strict DEMO guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          assert 'val freshJustConfirmedShock453 = activeSignal != "NONE"' in src
+          assert 'lockedAt > autoDemoEntryCycleStartedAt' in src
+          assert 'now - lockedAt in 0L..4_000L' in src
+          assert 'autoDemoLockedAt = if (freshJustConfirmedShock453)' in src
+          assert 'val previousDemoUnresolved453 =' in src
+          assert 'tradePositionGate.state() == TradePositionGate.State.READY' in src
+          assert 'activeStrategy == "SHOCK"' in src
+          assert 'stake429 == 100L' in src
+          assert 'TouchTestService.pressAutoOneDollarDemoOrderOnce(' in src
+          assert 'TouchTestService.pressVerifiedDemoStakeOnce429(' in src
+          assert 'tradePositionGate.beginAttempt()' in src
+          assert 'getBoolean("attempted", false)' in src
+          assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          print('453: fresh BIP gate + pending-order safety checks passed')
+          PY
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1767,28 +1788,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-452-SHOCK-SIMPLU-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-453-AUTO-BIP-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-452-SHOCK-SIMPLU-DEMO-G24
-          path: ScalpAtlas-452-SHOCK-SIMPLU-DEMO-G24.apk
+          name: ScalpAtlas-453-AUTO-BIP-DEMO-G24
+          path: ScalpAtlas-453-AUTO-BIP-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-simple-engine452'
+        if: github.ref == 'refs/heads/fix/scalpatlas-fresh-bip-auto-demo453'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-452-SHOCK-SIMPLU-DEMO-G24.apk"
+          FILE="ScalpAtlas-453-AUTO-BIP-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-simple452-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-auto453-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 452 - ȘOC SIMPLU DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "452 CANDIDAT QT DEMO pentru Motorola G24, netestat fizic: prag pixel redus pentru lumânări reale mici și menținere maxim 3 secunde a unui ȘOC deja confirmat optic în două cadre de revenire, doar pentru a permite cele două verificări independente ale semnalului Android. Un singur ordin activ, nicio deblocare fără receipt OPEN/CLOSED + istoricul 0 OPEN 2/2. Martingale calculat după LOSS verificat, cu limită și fără garanție; brokerul trebuie să confirme miza, payout >=92%, sold și WIN/LOSS. REAL dezactivat. Nu executa pe bani reali. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 453 - BIP ȘOC AUTO DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "453 CANDIDAT QT DEMO pentru Motorola G24, netestat pe dispozitiv: rezolvă pierderea semnalului ȘOC atunci când verificarea brokerului se încheie chiar după BIP. Permite doar semnal ȘOC proaspăt din sesiunea LIVE curentă, cu verificări independente ale brokerului, sumei, payout ≥92% și accesibilității. Un singur ordin; fără repetare/deblocare la istoric incert; un nou trade doar după CLOSED verificat și 0 OPEN 2/2. Nu garantează profit. Cont REAL dezactivat. Build $GITHUB_SHA." \
           --prerelease
