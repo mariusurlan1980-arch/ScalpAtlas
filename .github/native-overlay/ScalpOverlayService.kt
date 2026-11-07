@@ -962,8 +962,11 @@ class ScalpOverlayService : Service() {
                   TouchTestService.receiptStatus429().take(65)
             }
           } else if (openReceiptMissing429) {
+            // A five-minute trade can no longer have an OPEN receipt.
+            // Continue strict CLOSED history reconciliation instead of
+            // describing an old OPEN as the only possible evidence.
             touchProbeStatus?.text =
-              "BLOCAT: ID OPEN N-A FOST CONFIRMAT • FĂRĂ RECUPERARE"
+              "🔎 DEMO • CAUT ID ÎN ISTORICUL ÎNCHIS • FĂRĂ ORDIN"
           }
           // A CLOSED list row is only a navigation target; the full UUID,
           // opened time, side, payout and signed result must still be checked
@@ -3250,13 +3253,24 @@ class ScalpOverlayService : Service() {
         verifiedDemoAccountAt <= 0L ||
         android.os.SystemClock.elapsedRealtime() - verifiedDemoAccountAt !in 0L..90_000L)
       return
-    val lines = result.textBlocks.flatMap { it.lines }.filter {
+    // 440: The broker's QT Demo account banner is near y=0.06 of the
+    // Motorola screen. The previous y>=0.07 OCR crop silently discarded
+    // this REQUIRED identity proof from every individual CLOSED detail.
+    // Read the broker account from its own upper-screen region, not from
+    // historical row text or our overlay.
+    val readable440 = result.textBlocks.flatMap { it.lines }.filter {
       val box = it.boundingBox
-      box != null && box.centerY().toFloat() / frame.height in 0.07f..0.93f
-    }.map { it.text.trim() }.filter { it.isNotBlank() }
+      box != null && box.centerY().toFloat() / frame.height in 0.035f..0.94f
+    }
+    val accountHeader440 = readable440.filter { line ->
+      val box = line.boundingBox
+      box != null && box.centerY().toFloat() / frame.height in 0.035f..0.135f
+    }.joinToString(" ") { it.text.trim() }.replace(Regex("""\s+"""), " ")
+    val lines = readable440.map { it.text.trim() }.filter { it.isNotBlank() }
     val content = lines.joinToString(" ").replace(Regex("""\s+"""), " ")
-    if (!Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(content) ||
-        Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(content)) return
+    if (!Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(accountHeader440) ||
+        Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(accountHeader440))
+      return
     // Require an individually opened detail sheet with its timestamps and
     // uniquely labelled full UUID. The historical LIST has no such fields.
     val ids = Regex("""(?i)\bOrdin\s*:\s*([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})\b""")
@@ -3279,6 +3293,19 @@ class ScalpOverlayService : Service() {
     val stakeSources = lines.filter {
       Regex("""^\$[0-9]{1,5}(?:[.,][0-9]{1,2})?$""").matches(it)
     }.mapNotNull(::exactMoneyCents437).distinct()
+    // 440: ML Kit can return "↘ $1" on the broker's CLOSED summary line,
+    // rather than the exact isolated "$1". This is a READ-ONLY witness
+    // restricted to the upper-left stake row, never payout/profit labels.
+    val stakeRow440 = readable440.filter { line ->
+      val rect = line.boundingBox
+      rect != null && rect.centerX().toFloat() / frame.width in 0.015f..0.43f &&
+        rect.centerY().toFloat() / frame.height in 0.25f..0.38f
+    }.flatMap { line ->
+      Regex("""(?:^|[^A-Za-z0-9])\$\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)(?![0-9])""")
+        .findAll(line.text).mapNotNull { hit ->
+          exactMoneyCents437(hit.groupValues[1])
+        }.toList()
+    }.distinct()
     if (ids.size != 1 || pairs.size != 1 ||
         openLabel == null || closeLabel == null ||
         netRaw == null || paidRaw == null) return
@@ -3288,7 +3315,8 @@ class ScalpOverlayService : Service() {
     // detail header. Only the independently labelled payout MINUS the
     // signed profit can identify which visible amount was the stake.
     val stake = paid - net
-    if (stakeSources.count { it == stake } != 1) return
+    if (stakeSources.count { it == stake } != 1 &&
+        !(stakeRow440.size == 1 && stakeRow440.single() == stake)) return
     val pair = pairs.single()
     val percentText = Regex.escape(pair).replace("\\ ", """\s+""")
     val payoutValues = Regex("""(?i)\b""" + percentText +
@@ -3465,6 +3493,14 @@ class ScalpOverlayService : Service() {
     // not the chart footer "Tranzacții" or any historical FX row.
     val trueHistoryPage433 = title && openTab && closedTab && pkg != null
     if (trueHistoryPage433) {
+      // 440: This is a VERIFIED history page, even when the currently
+      // selected tab is CLOSED. A previous failed navigation must not
+      // permanently claim "history doesn't open" on this screen. Never
+      // infer that OPEN is selected or that a trade has settled.
+      historyNavPending431 = false
+      historyNavPendingAt431 = 0L
+      historyNavFailed431 = 0
+      historyNavStalled431 = false
       if (!historyPageVisible433) {
         // Invalidate only CHART analysis. Do not clear persisted broker
         // attempts, history receipts, trade gates or recovery accounting.
@@ -4925,8 +4961,12 @@ class ScalpOverlayService : Service() {
           firstClosedDetail437 != null &&
             now - firstClosedDetailAt437 in 0L..15_000L ->
             "📋 DETALIU ÎNCHIS 1/2 • CITES CEA DE-A DOUA DOVADĂ"
-          // 435: Show the TRUE reason after a missing order-ID timeout.
-          // An empty history page never proves the missing OPEN receipt.
+          // 440: Real navigation errors must be visible above the generic
+          // old-ID lock. The lock is still mandatory and never auto-cleared
+          // just because the page, pair or any price changed.
+          lastAutoDemoHistoryNavStatus.isNotBlank() &&
+            android.os.SystemClock.elapsedRealtime() - lastAutoDemoHistoryNavStatusAt in 0L..14_000L ->
+            "🔒 DEMO • " + lastAutoDemoHistoryNavStatus.take(90)
           getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
             .let { prior ->
               prior.getBoolean("attempted", false) &&
@@ -4935,10 +4975,7 @@ class ScalpOverlayService : Service() {
                 android.os.SystemClock.elapsedRealtime() -
                   prior.getLong("attemptedAt429", -1L) !in 0L..110_000L
             } ->
-            "🔒 DEMO • ID ORDIN ANTERIOR NECONFIRMAT • FĂRĂ ORDIN"
-          lastAutoDemoHistoryNavStatus.isNotBlank() &&
-            android.os.SystemClock.elapsedRealtime() - lastAutoDemoHistoryNavStatusAt in 0L..14_000L ->
-            "🔒 DEMO • " + lastAutoDemoHistoryNavStatus.take(90)
+            "🔒 DEMO • RECUPEREZ ID ÎNCHIS • FĂRĂ ORDINE NOI"
           activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
             "🔒 BIP " + activeSignal + " • SCALP M5 • ȘOC NECONFIRMAT"
           activeSignal != "NONE" && activeStrategy == "SHOCK" ->
