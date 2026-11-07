@@ -56,9 +56,36 @@ class TouchTestService : AccessibilityService() {
           }
           .mapNotNull { it.root }
           .firstOrNull { node ->
-            BrokerAdapterRegistry.hasDemoExecutor(
-              node.packageName?.toString().orEmpty()
-            ) && node.isVisibleToUser
+            val pkg = node.packageName?.toString().orEmpty()
+            if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) return@firstOrNull false
+            if (node.isVisibleToUser) return@firstOrNull true
+            // 443: On Android 14 a broker WebView can have a non-visible
+            // ROOT while its actual child controls are visibly rendered.
+            // Read-only detection may use a visible descendant of that same
+            // full-size, allowlisted broker window. Gestures still require
+            // the independently checked active foreground broker root.
+            val queue = ArrayDeque<AccessibilityNodeInfo>()
+            queue.add(node)
+            var scanned = 0
+            var visibleBrokerChild = false
+            while (queue.isNotEmpty() && scanned++ < 100 &&
+                   !visibleBrokerChild) {
+              val candidate = queue.removeFirst()
+              if (candidate !== node &&
+                  candidate.packageName?.toString() == pkg &&
+                  candidate.isVisibleToUser) {
+                val b = Rect()
+                candidate.getBoundsInScreen(b)
+                visibleBrokerChild = !b.isEmpty &&
+                  b.left >= 0 && b.top >= 0 &&
+                  b.right <= metrics.widthPixels &&
+                  b.bottom <= metrics.heightPixels
+              }
+              if (!visibleBrokerChild)
+                for (i in 0 until candidate.childCount.coerceAtMost(25))
+                  candidate.getChild(i)?.let(queue::addLast)
+            }
+            visibleBrokerChild
           }
       } catch (_: Throwable) { null }
     }
@@ -266,8 +293,12 @@ class TouchTestService : AccessibilityService() {
       cachedDemoVerifiedOnChart: Boolean
     ): Triple<TouchTestService, AccessibilityNodeInfo, List<Pair<AccessibilityNodeInfo, Rect>>>? {
       val svc = connected ?: return null
-      // For navigation, do NOT use a background window under Android UI.
-      val root = svc.rootInActiveWindow ?: return null
+      // 443: Collect READ-ONLY broker labels from the same visible,
+      // allowlisted application window even if Android focuses SystemUI.
+      // Every navigation/gesture helper independently requires the active
+      // foreground broker root before any ACTION_CLICK/dispatchGesture.
+      // Never treat this fallback as authorization for BUY/SELL.
+      val root = readOnlyBrokerRoot(svc) ?: return null
       val pkg = root.packageName?.toString().orEmpty()
       if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) return null
       val display = android.util.DisplayMetrics()
