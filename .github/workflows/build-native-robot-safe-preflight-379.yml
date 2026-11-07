@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 441 SAFE LATE HISTORY RECONCILIATION
+name: Build Scalp Atlas safe history reconciliation (CI candidate)
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.21'
+          expo['version']='3.2.22'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=441
+          expo['android']['versionCode']=442
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1407,6 +1407,51 @@ jobs:
           console.log('Late read-only history navigation, short-lived OPEN proof and safe retry checks passed');
           NODE
 
+      - name: Verify targeted CLOSED receipt match and safe navigation test
+        run: |
+          set -euo pipefail
+          O=.github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val idLocations442 = readable440.mapNotNull' "$O"
+          grep -Fq 'val pairRowText442 = readable440.mapNotNull' "$O"
+          grep -Fq 'findAll(pairRowText442)' "$O"
+          grep -Fq 'ids.size != 1 || idLocations442.size != 1' "$O"
+          grep -Fq 'lastClosedHistoryScanKey442 == pendingKey442' "$O"
+          grep -Fq 'uniqueClosedDetailReadTwice = true' "$O"
+          grep -Fq 'zeroOpenReadTwice = true' "$O"
+          grep -Fq 'brokerOpenTimeMatchesAttempt437(' "$O"
+          grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
+          node - <<'NODE'
+          const assert = require('node:assert/strict');
+          const uuid = '387595e2-b930-4648-b31f-903e15197d47';
+          const rows=[
+            {x:.20,y:.280,txt:'AUD/CHF OTC +92%'},
+            {x:.28,y:.462,txt:'Ordin: '+uuid},
+            {x:.20,y:.540,txt:'AUD/CHF OTC +92%'},
+            {x:.20,y:.596,txt:'EUR/USD OTC +92%'},
+            {x:.20,y:.704,txt:'CHF/NOK OTC +92%'}
+          ];
+          const findExpanded=(records)=>{
+            const ids=records.filter(r=>/\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b/i.test(r.txt));
+            if(ids.length!==1) return null;
+            const idY=ids[0].y;
+            const pairs=records.filter(r=>r.y>=.21&&r.y<=idY-.02&&r.x>=.03&&r.x<=.74&&/\b[A-Z]{3}\/[A-Z]{3} OTC\b/i.test(r.txt));
+            if(!pairs.length)return null;
+            const maxY=Math.max(...pairs.map(p=>p.y));
+            if(idY-maxY<.045||idY-maxY>.30)return null;
+            const selected=pairs.filter(x=>Math.abs(x.y-maxY)<=.02);
+            const names=[...new Set(selected.map(x=>x.txt.match(/\b[A-Z]{3}\/[A-Z]{3} OTC\b/i)[0]))];
+            if(names.length!==1)return null;
+            const rowText=records.filter(r=>Math.abs(r.y-maxY)<=.027).sort((a,b)=>a.x-b.x).map(x=>x.txt).join(' ');
+            const pct=rowText.match(new RegExp(names[0].replace('/','\\/')+'\\s*\\+?(\\d{2,3})\\s*%','i'));
+            return pct?{name:names[0],payout:Number(pct[1])}:null;
+          };
+          assert.deepEqual(findExpanded(rows),{name:'AUD/CHF OTC',payout:92});
+          assert.equal(findExpanded(rows.concat({x:.3,y:.46,txt:'Ordin: '+uuid.replace(/^./,'8')})),null);
+          assert.equal(findExpanded(rows.filter(r=>!r.txt.startsWith('Ordin:'))),null);
+          assert.equal(findExpanded(rows.map(r=>r.y===.28?{...r,txt:'AUD/CHF OTC'}:r)),null);
+          console.log('Expanded history detail isolated from unrelated old rows');
+          NODE
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1498,21 +1543,22 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-441-ISTORIC-RECUPERARE-G24.apk
+          cp "$APK" ScalpAtlas-CANDIDAT-442-NEPUBLICAT-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-LIVE-v3.2.21-ISTORIC-441
-          path: ScalpAtlas-441-ISTORIC-RECUPERARE-G24.apk
+          name: ScalpAtlas-TEST-442-NERELEASE
+          path: ScalpAtlas-CANDIDAT-442-NEPUBLICAT-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
+        if: github.ref == 'refs/heads/feature/scalpatlas-history-timeout441'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-441-ISTORIC-RECUPERARE-G24.apk"
+          FILE="ScalpAtlas-CANDIDAT-442-NEPUBLICAT-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-late-history441-${GITHUB_SHA:0:12}"
