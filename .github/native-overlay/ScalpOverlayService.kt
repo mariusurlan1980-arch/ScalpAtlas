@@ -3608,12 +3608,12 @@ class ScalpOverlayService : Service() {
       val label = line.text.trim()
       if (x !in 0.08f..0.72f || y !in 0.25f..0.86f ||
           !fxRegex446.containsMatchIn(label)) return@mapNotNull null
-      val rowText446 = lines.mapNotNull { sibling ->
-        val bounds = sibling.boundingBox ?: return@mapNotNull null
+      val rowText446 = lines.mapNotNull siblingRow446@ { sibling ->
+        val bounds = sibling.boundingBox ?: return@siblingRow446 null
         val siblingY = bounds.centerY().toFloat() / frame.height
         val siblingX = bounds.centerX().toFloat() / frame.width
         if (kotlin.math.abs(siblingY - y) > 0.019f ||
-            siblingX !in 0.025f..0.985f) return@mapNotNull null
+            siblingX !in 0.025f..0.985f) return@siblingRow446 null
         Pair(bounds.left, sibling.text)
       }.sortedBy { it.first }.joinToString(" ") { it.second }
         .replace(Regex("""\s+"""), " ").trim()
