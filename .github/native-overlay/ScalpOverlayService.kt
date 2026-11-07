@@ -3394,6 +3394,9 @@ class ScalpOverlayService : Service() {
         // separate fresh frames and selected OPEN tab. This runs even though
         // no candle/timeframe can be detected on the Transactions screen.
         recordExplicitEmptyOpenOcr(result, copy, observedAt)
+        // 437: read a uniquely identified CLOSED trade detail in two
+        // independent frames. Does not itself rearm or submit an order.
+        recordClosedDetailOcr437(result, copy, observedAt)
         recordBrokerHistoryBottomLabelOcr432(result, copy, observedAt)
         // 433: On history, M5 and the active FX selector do not exist.
         // Continue the independent OPEN/CLOSED evidence checker above,
