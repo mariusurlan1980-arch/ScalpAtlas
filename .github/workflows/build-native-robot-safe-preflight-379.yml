@@ -1,8 +1,8 @@
-name: Build Scalp Atlas safe history reconciliation (CI candidate)
+name: Build Scalp Atlas 452 G24 DEMO simple motor
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: scalp-atlas-calculator-test-441
+  group: scalp-atlas-g24-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=451
+          expo['android']['versionCode']=452
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1090,9 +1090,11 @@ jobs:
           grep -Fq 'if(recovery/drop<minRecoveryFraction)continue;' "$E"
           grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20)continue;' "$E"
           grep -Fq "candle.trendDirection!==candle.dir" "$E"
-          grep -Fq 'var minBody=Math.max(10,h*.035)' "$E"
-          grep -Fq 'var minMove=Math.max(7,h*.018)' "$E"
+          grep -Fq 'var minBody=Math.max(8,Math.min(16,h*.018))' "$E"
+          grep -Fq 'var minMove=Math.max(5,Math.min(10,h*.008))' "$E"
           grep -Fq 'colorFlipBuy.shockDirection' .github/scripts/test_shock_broker_capture.mjs
+          grep -Fq 'shockHold={at:now,dir:dir,x:candle.x' "$E"
+          grep -Fq 'heldFrame2.shockDirection' .github/scripts/test_shock_broker_capture.mjs
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
       - name: Regression test SHOCK + SCALP TREND M5 on one broker screen
@@ -1765,28 +1767,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-451-MARTINGALE-PLAN-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-452-SHOCK-SIMPLU-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-451-MARTINGALE-PLAN-DEMO-G24
-          path: ScalpAtlas-450-TEST-DEMO-G24.apk
+          name: ScalpAtlas-452-SHOCK-SIMPLU-DEMO-G24
+          path: ScalpAtlas-452-SHOCK-SIMPLU-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-early-history-dock449'
+        if: github.ref == 'refs/heads/fix/scalpatlas-simple-engine452'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-450-TEST-DEMO-G24.apk"
+          FILE="ScalpAtlas-452-SHOCK-SIMPLU-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-history449-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-simple452-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 449 CANDIDAT DEMO - DEBLOCARE NAVIGARE ISTORIC • ${GITHUB_SHA:0:12}" \
-            --notes "449 CANDIDAT PENTRU UN TEST QT DEMO (NU ESTE PROBAT PE MOTOROLA G24): muta indicatorul din dreptul contului QT Demo INAINTE de deschiderea istoricului pentru a evita blocarea OCR de catre propria suprapunere. La blocaj afiseaza informatii citibile despre fereastra Android. NU sterge ordinele neconfirmate si NU permite duplicate: fara ordin pana la reconcilierea ID-ului broker WIN/LOSS. Progresa Martingale este doar calculata si protejata; nu este validata in live. Tranzactionarea REAL este dezactivata. Cod compilat CI, functiile de apasare si recitire trebuie testate pe telefon. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 452 - ȘOC SIMPLU DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "452 CANDIDAT QT DEMO pentru Motorola G24, netestat fizic: prag pixel redus pentru lumânări reale mici și menținere maxim 3 secunde a unui ȘOC deja confirmat optic în două cadre de revenire, doar pentru a permite cele două verificări independente ale semnalului Android. Un singur ordin activ, nicio deblocare fără receipt OPEN/CLOSED + istoricul 0 OPEN 2/2. Martingale calculat după LOSS verificat, cu limită și fără garanție; brokerul trebuie să confirme miza, payout >=92%, sold și WIN/LOSS. REAL dezactivat. Nu executa pe bani reali. Build $GITHUB_SHA." \
           --prerelease
