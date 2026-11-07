@@ -143,6 +143,9 @@ class ScalpOverlayService : Service() {
   private var autoDemoSessionRequested = false
   private var autoDemoSessionConsumed = false
   private var autoDemoSessionEndAt = 0L
+  // Wall-clock start of the currently authorized, verified DEMO entry cycle.
+  // A BIP from before this boundary must never become a broker order.
+  private var autoDemoEntryCycleStartedAt = 0L
   // Dedicated 386 TEST BUILD. A single QT Demo BUY (1 USD) may be attempted
   // in the first 60s of an explicitly started LIVE capture, WITHOUT SHOCK.
   // A successful attempt is consumed persistently; NO ordinary SHOCK orders
@@ -501,6 +504,8 @@ class ScalpOverlayService : Service() {
           ).getBoolean("attempted", false)
           autoDemoSessionRequested = !priorAutoShockAttempt && !priorSell404Attempt
           autoDemoSessionConsumed = priorAutoShockAttempt || priorSell404Attempt
+          autoDemoEntryCycleStartedAt = if (autoDemoSessionRequested)
+            System.currentTimeMillis() else 0L
           autoDemoArmed = false
           autoDemoLastPreflightReason =
             if (autoDemoSessionConsumed)
@@ -1218,6 +1223,8 @@ class ScalpOverlayService : Service() {
                 if (savedOldSell && savedOldShock) {
                   autoDemoSessionRequested = !pendingReceipt429
                   autoDemoSessionConsumed = pendingReceipt429
+                  autoDemoEntryCycleStartedAt = if (!pendingReceipt429)
+                    System.currentTimeMillis() else 0L
                   autoDemoArmed = false
                   autoDemoMarket = null
                   autoDemoExpiry = 0L
@@ -1366,6 +1373,7 @@ class ScalpOverlayService : Service() {
                                 if (cleared429) {
                                   autoDemoSessionRequested = true
                                   autoDemoSessionConsumed = false
+                                  autoDemoEntryCycleStartedAt = System.currentTimeMillis()
                                   autoDemoArmed = false
                                   autoDemoMarket = null
                                   autoDemoLastPreflightAt = 0L
@@ -4944,7 +4952,21 @@ class ScalpOverlayService : Service() {
             autoDemoLastPreflightReason = "PREGĂTIT"
             autoDemoArmed = true
             autoDemoMarket = pair
-            autoDemoLockedAt = lockedAt // must see a NEW SHOCK, never replay an old BIP
+            // 453: Analyzer-confirmed BIP and broker preflight may complete
+            // in the SAME overlay callback. 452 copied lockedAt here, making
+            // the genuine just-emitted SHOCK look like an old signal; it was
+            // silently skipped even though DEMO was already user-authorized.
+            // Accept this fresh, current-cycle SHOCK once (<=4 seconds old).
+            // Never replay a pre-capture BIP or one from a previously
+            // unresolved trade. The gesture still needs ALL independent
+            // broker/amount/payout/fresh-frame checks below.
+            val freshJustConfirmedShock453 = activeSignal != "NONE" &&
+              activeStrategy == "SHOCK" &&
+              lockedAt > autoDemoEntryCycleStartedAt &&
+              now - lockedAt in 0L..4_000L &&
+              lastConfirmedShockPercent > SHOCK_MIN_DEPTH
+            autoDemoLockedAt = if (freshJustConfirmedShock453)
+              lockedAt - 1L else lockedAt
             autoDemoExpiry = autoDemoSessionEndAt
             touchProbeStatus?.text = "🤖 DEMO AUTO • MIZĂ VERIFICATĂ • AȘTEAPTĂ ȘOC"
           } else {
@@ -4963,7 +4985,16 @@ class ScalpOverlayService : Service() {
         val pairLostLong = seenPair == "NEIDENTIFICAT" &&
           latestMarketAt > 0L && now - latestMarketAt > MARKET_STALE_MS
         val uiClosed = overlayView == null || !autoDemoSessionRequested
+        // A stale persisted order marker always wins over a fresh BIP.
+        // Even a concurrently re-armed UI cannot submit a duplicate order.
+        val previousDemoUnresolved453 =
+          getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+            .getBoolean("attempted", false) ||
+          getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+            .getBoolean("attempted", false)
         val readyForDemo = brokerConnected &&
+          !autoDemoSessionConsumed && !previousDemoUnresolved453 &&
+          tradePositionGate.state() == TradePositionGate.State.READY &&
           TouchTestService.ready() && pairReady(now) &&
           !pairMismatch && !pairLostLong &&
           seenPair == expectedPair &&
