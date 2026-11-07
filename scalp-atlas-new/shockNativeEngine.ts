@@ -8,9 +8,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
   'use strict';
   var canvas=document.getElementById('c');
   var ctx=canvas.getContext('2d',{willReadFrequently:true});
-  var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1,lastObservedAt=0,lastValidCandleAt=0;
+  var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1,lastObservedAt=0,lastValidCandleAt=0,shockHold=null;
   function send(obj){try{AndroidBridge.postMessage(JSON.stringify(obj));}catch(e){}}
-  function reset(){history=[];lastX=-1;lastValidCandleAt=0;}
+  function reset(){history=[];lastX=-1;lastValidCandleAt=0;shockHold=null;}
   function report(frameId,tf,pair,epoch,reason,quality,extra){
     var result={frameId:frameId,timeframe:tf,brokerPair:pair,marketEpoch:epoch,
       source:'ANDROID_SCREEN_CAPTURE',shockDirection:'NONE',signal:'NONE',
@@ -296,6 +296,37 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
               confirmedDuration=fallMs;
               dir=candle.dir;
             }
+          }
+        }
+        // 452: A SHOCK is already backed by TWO distinct rebound frames,
+        // but Android also wants two independent confirmed analysis callbacks
+        // >=1.5s apart. Without a short hold, a stable candle immediately
+        // after the rebound yields only ONE callback and never reaches BIP.
+        // Hold the SAME physically verified event for at most 3 seconds,
+        // only while this fresh frame still shows the original direction,
+        // candle X, wick and no significant reversal of the rebound.
+        // Never create a signal from a static candle, missing pixels or
+        // a stale/changed chart; reset() clears this hold on every boundary.
+        if(confirmed){
+          shockHold={at:now,dir:dir,x:candle.x,y:candle.closeY,
+            body:candle.bodyHeight,depth:confirmedDepth,
+            rebound:confirmedRebound,duration:confirmedDuration};
+        }else if(shockHold){
+          var held=shockHold;
+          var against=held.dir==='BUY'?candle.closeY-held.y:held.y-candle.closeY;
+          var matching=candle.dir===held.dir &&
+            Math.abs(candle.x-held.x)<=tolerance &&
+            candle.wickPixels>=held.body*.20 &&
+            against<=minMove &&
+            !(candle.trendMeasured && candle.trendDirection!=='NONE' &&
+              candle.trendDirection!==held.dir);
+          if(now-held.at<=3000 && matching){
+            confirmed=true;dir=held.dir;
+            confirmedDepth=held.depth;
+            confirmedRebound=held.rebound;
+            confirmedDuration=held.duration;
+          }else{
+            shockHold=null;
           }
         }
         // SCALP TREND is an independent DEMO strategy on M5 only:
