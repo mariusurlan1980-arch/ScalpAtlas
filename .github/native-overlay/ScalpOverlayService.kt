@@ -1116,7 +1116,20 @@ class ScalpOverlayService : Service() {
                   brokerOpenTimeMatchesAttempt437(
                     closedProof437.openedSecondsOfDay, attemptedAt429
                   )
-                val reconciled437 = if (matchingAttempt437 && closedProof437 != null)
+                // 444: If the CLOSED settlement was already atomically
+                // saved in the ledger, but Android-attempt clearing failed
+                // or the app died before the second preferences commit,
+                // recognize the exact SAME broker-verified UUID WITHOUT
+                // booking its P/L a second time. This runs ONLY after the
+                // full 437 match incl. original gesture time and 0 OPEN 2/2.
+                val alreadySettled444 = matchingAttempt437 &&
+                  closedProof437 != null &&
+                  demoRecoveryLedger.alreadySettledClosedReceipt444(
+                    brokerAccountKey = "QT_DEMO:" + expectedPackage429,
+                    positionId = closedProof437.positionId
+                  )
+                val reconciled437 = if (alreadySettled444) true
+                else if (matchingAttempt437 && closedProof437 != null)
                   demoRecoveryLedger.reconcileSettledDemoWithMissingOpen437(
                     brokerAccountKey = "QT_DEMO:" + expectedPackage429,
                     positionId = closedProof437.positionId,
@@ -1165,9 +1178,15 @@ class ScalpOverlayService : Service() {
                   sell404Diagnostic = null
                   autoDemoLastPreflightReason =
                     "0 POZIȚII DEMO CONFIRMATE • REVIN LA GRAFIC"
-                  touchProbeStatus?.text = if (savedReconciled437)
-                    "✅ ORDIN ÎNCHIS VERIFICAT 2/2 • DEMO REACTIVAT"
-                  else "✅ QT DEMO 0 POZIȚII • BLOCATUL VECHI ELIMINAT"
+                  touchProbeStatus?.text = when {
+                    savedReconciled437 && alreadySettled444 ->
+                      "✅ ID ÎNCHIS REVERIFICAT • FĂRĂ DUBLU WIN/LOSS • DEMO REACTIVAT"
+                    savedReconciled437 ->
+                      "✅ ORDIN ÎNCHIS VERIFICAT 2/2 • DEMO REACTIVAT"
+                    pendingReceipt429 ->
+                      "🔒 0 POZIȚII DESCHISE • ID ANTERIOR NECONFIRMAT"
+                    else -> "✅ QT DEMO 0 POZIȚII • VERIFICARE FINALIZATĂ"
+                  }
                   lastDemoTradeStatus =
                     "QT DEMO • LISTĂ DESCHIS GOALĂ VERIFICATĂ 2/2"
                   lastAutoDemoHistoryNavStatus = ""
