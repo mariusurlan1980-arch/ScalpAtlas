@@ -1204,7 +1204,11 @@ class ScalpOverlayService : Service() {
         // Amount edits depend on broker-verified settled trade receipts;
         // the existing 424 build has no automatic receipt reader, so this
         // event cannot be produced by Android gesture callbacks or SHOCK.
-        maybePrepareAutomaticDemoRecoveryStake(android.os.SystemClock.elapsedRealtime())
+        // 463: In CHART-ONLY, do not silently edit the stake field for
+        // Martingale. Keep any recovery amount disabled until a separately
+        // validated broker settlement and an explicitly tested risk policy.
+        if (!CHART_ONLY_DEMO_462)
+          maybePrepareAutomaticDemoRecoveryStake(android.os.SystemClock.elapsedRealtime())
         // 462 CHART-ONLY DEMO: do not open, press, or scroll either the
         // CLOSED or OPEN transaction tabs automatically. A single valid
         // user-authorized DEMO SHOCK can still submit one broker order,
