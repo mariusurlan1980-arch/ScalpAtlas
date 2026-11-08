@@ -3877,6 +3877,15 @@ class ScalpOverlayService : Service() {
       Regex("""(?i)^(?:Deschis|Open)$"""))
     val closedTab = hasLine(0.15f, 0.30f,
       Regex("""(?i)^(?:Închis|Inchis|Closed)$"""))
+    // 454: On the G24 QT Demo screenshot the broker shows BOTH
+    // "Deschis" and "Închis" tabs and a selected bottom "Tranzacții"
+    // navigation item, but NO full-screen "Tranzacții" heading.
+    // Require all these independent screen regions to recognize the page.
+    // This is PAGE IDENTITY only; an OPEN-empty proof still needs an
+    // explicit message, visually selected OPEN tab and 2 fresh reads.
+    val transactionsFooter454 = hasLine(0.86f, 0.98f,
+      Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""))
+    val historyIdentity454 = title || (transactionsFooter454 && openTab && closedTab)
     val body = lines.filter { line ->
       val box = line.boundingBox
       box != null && box.centerY().toFloat() / frame.height in 0.22f..0.89f
@@ -3888,7 +3897,7 @@ class ScalpOverlayService : Service() {
     val pkg = TouchTestService.activeDemoExecutorPackageForReview()
     // 433: Page identity must come from actual history TITLE and both tabs,
     // not the chart footer "Tranzacții" or any historical FX row.
-    val trueHistoryPage433 = title && openTab && closedTab && pkg != null
+    val trueHistoryPage433 = historyIdentity454 && openTab && closedTab && pkg != null
     // 440: The broker WebView sometimes hides tab text from Android
     // Accessibility. Independently capture the exact visible "Deschis"
     // label twice; this is a navigation coordinate, not a position receipt.
@@ -3951,7 +3960,7 @@ class ScalpOverlayService : Service() {
       historyPageVisible433 = false
       historyPageTab433 = "NECUNOSCUT"
     }
-    val selectedOpen429 = title && openTab && closedTab &&
+    val selectedOpen429 = historyIdentity454 && openTab && closedTab &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
     if (selectedOpen429) {
       if (lastOpenTabVisualPackage429 == pkg &&
@@ -3965,11 +3974,11 @@ class ScalpOverlayService : Service() {
       lastOpenTabVisualPackage429 = null
       openTabVisualConsecutive429 = 0
     }
-    val qualified = title && openTab && closedTab && emptyMessage &&
+    val qualified = historyIdentity454 && openTab && closedTab && emptyMessage &&
       selectedOpen429
     // CLOSED-tab proof is independent from OPEN-tab empty-state evidence.
     // The result amounts on a generic list are NOT proof of WIN/LOSS.
-    val closedSelected = title && openTab && closedTab &&
+    val closedSelected = historyIdentity454 && openTab && closedTab &&
       selectedClosedTabVerifiedOnScreen(frame) && pkg != null
     if (closedSelected) {
       if (lastClosedTabVisualPackage == pkg &&
