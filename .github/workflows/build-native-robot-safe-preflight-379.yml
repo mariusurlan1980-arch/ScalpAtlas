@@ -256,7 +256,7 @@ jobs:
           grep -Fq 'if (seenReal || (!seenDemo && !cachedDemoVerifiedOnChart)) return null' "$T"
           grep -Fq 'clickExactDemoNavigationLabel(' "$T"
           grep -Fq 'advanceDemoHistoryReviewNavigation(' "$O"
-          grep -Fq 'returnToDemoChartAfterVerifiedEmptyReview(' "$O"
+          grep -Fq 'returnToChartAfterReview458(' "$O"
           grep -Fq 'AccessibilityService.GLOBAL_ACTION_BACK' "$T"
           grep -Fq 'demoEmptyReviewReads >= 2' "$O"
           grep -Fq 'TouchTestService.priorDemoGestureCooldownComplete()' "$O"
@@ -1840,7 +1840,7 @@ jobs:
           assert 'val openReview458 = pendingReceipt429 && verifiedDemoReview &&' in o
           assert 'nowReview - openTabFirstObservedAt458 >= 45_000L' in o
           assert 'private fun returnToChartAfterReview458(' in o
-          assert 'TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(' in o
+          assert 'TouchTestService.navigateFromVerifiedDemoHistoryToChart461(' in o
           assert 'TouchTestService.tapVerifiedDemoPerspectiveFooter457(' in o
           assert 'demoEmptyReviewReads >= 2' in o
           assert 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' in o
