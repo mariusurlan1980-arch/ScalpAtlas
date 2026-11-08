@@ -708,7 +708,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'private val pairCropOcrRecognizer' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'region.width * 3, region.height * 3' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'region.width * 4, region.height * 4' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'recordVisiblePair(instruments[0], System.currentTimeMillis())' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'schedulePairHeaderOcr(copy, observedAt)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'MARKET_OCR_CONFIRMATIONS = 2' .github/native-overlay/ScalpOverlayService.kt
