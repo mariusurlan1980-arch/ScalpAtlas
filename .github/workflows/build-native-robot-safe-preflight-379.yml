@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 463 G24 chart-only passive receipt verification
+name: Build Scalp Atlas 464 G24 limited DEMO $1 expiry pilot
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=463
+          expo['android']['versionCode']=464
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1958,6 +1958,54 @@ jobs:
           print('463 PASS: passive authentic receipt match, no chart-only history clicks or MG bypass')
           PY
 
+      - name: Verify 464 bounded DEMO-only no-receipt pilot and 1 USD preflight
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          gate=Path('.github/native-overlay/TradePositionGate.kt').read_text()
+          registry=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          pilot=s.split('private fun maybeRearmExpiredDemoPilot464(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
+          monitor=s.split('private fun startBrokerAccountMonitor()',1)[1].split('private fun startDemoClickMonitor()',1)[0]
+          assert 'DEMO_PILOT_BUFFER_MS_464 = 7 * 60_000L' in s
+          assert 'DEMO_PILOT_MAX_REARMS_464 = 2' in s
+          assert 'getBoolean("attempted", false)' in pilot
+          assert 'autoDemoSessionConsumed' in pilot
+          assert 'expectedStake != 100L' in pilot
+          assert 'expectedPayout !in 92..100' in pilot
+          assert 'wallAge !in DEMO_PILOT_BUFFER_MS_464..(24 * 60 * 60_000L)' in pilot
+          assert 'TouchTestService.priorDemoGestureCooldownComplete()' in pilot
+          assert 'unverifiedDemoPilotRearms464' in pilot
+          assert 'used >= DEMO_PILOT_MAX_REARMS_464' in pilot
+          assert 'demoRecoveryLedger.verifiedOpenPositionId429() != null' in pilot
+          assert 'demoRecoveryLedger.isRecovering429()' in pilot
+          assert 'demoRecoveryLedger.quote(expectedPayout).stakeCents != 100L' in pilot
+          assert 'tradePositionGate.state()' in pilot
+          assert 'TradePositionGate.State.OPEN' not in pilot
+          assert 'lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT")' in pilot
+          assert 'TouchTestService.preflightOneDollarDemoOrder(visiblePair)' in pilot
+          assert 'releaseUnknownGestureForExpiredDemoPilot464(' in pilot
+          assert 'putInt("unverifiedDemoPilotRearms464", used + 1)' in pilot
+          assert 'autoDemoEntryCycleStartedAt = System.currentTimeMillis()' in pilot
+          assert 'maybeRearmExpiredDemoPilot464(' in monitor
+          assert 'if (CHART_ONLY_DEMO_462) {' in monitor
+          assert 'CHART_ONLY_DEMO_462 && stake429 != 100L' in s
+          assert 'realOrderAdapterAvailable = false' in registry
+          assert 'state == State.SUBMITTING || state == State.OPEN' in gate
+          # A timeout can only rearm a limited DEMO probe; it cannot
+          # reconcile receipts or pretend the unknown result was WIN or LOSS.
+          for forbidden in (
+              'brokerVerifiedEmptyDemoReview(', 'onVerifiedDemoClosed(',
+              'reconcileSettledDemoWithMissingOpen437(',
+              'advanceDemoHistoryReviewNavigation(',
+              'advanceDemoClosedHistoryNavigation(',
+              'tapVerifiedDemoOpenTabOcr435(', 'dispatchGesture(',
+              'performGlobalAction(', 'pressAutoOneDollarDemoOrderOnce(',
+              'pressVerifiedDemoStakeOnce429('):
+            assert forbidden not in pilot, forbidden
+          print('464 PASS: bounded fixed-$1 DEMO pilot, no receipt settlement, no REAL/MG, no history touches')
+          PY
+
       - name: Allow Gradle wrapper download on slower GitHub runners
         run: |
           python3 - <<'PY'
@@ -2079,28 +2127,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-463-PROBA-PASIVA-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-464-PILOT-DEMO-1USD-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-463-PROBA-PASIVA-DEMO-G24
-          path: ScalpAtlas-463-PROBA-PASIVA-DEMO-G24.apk
+          name: ScalpAtlas-464-PILOT-DEMO-1USD-G24
+          path: ScalpAtlas-464-PILOT-DEMO-1USD-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-passive-proof463'
+        if: github.ref == 'refs/heads/fix/scalpatlas-demo-expiry-pilot464'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-463-PROBA-PASIVA-DEMO-G24.apk"
+          FILE="ScalpAtlas-464-PILOT-DEMO-1USD-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-passive463-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-pilot464-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 463 - PROBĂ PASIVĂ DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "463 CANDIDAT Motorola G24 QT Demo: păstrează modul Doar grafic fără niciun tap automat în istoricul Deschis/Închis. Corectează verificarea contului QT Demo înainte de return-ul v462 și adaugă procesare PASIVĂ când utilizatorul arată manual ID-ul unui ordin ÎNCHIS: cere detalii UUID unice citite de două ori, pereche/sumă/payout/direcție/ora deschiderii identice cu ordinul salvat și apoi verificarea independentă 0 DESCHISE 2/2. Doar dovada completă poate dezactiva blocajul; pentru loss nu pornește MG automat. Fără o dovadă oficială afișată, rămâne blocat. APK compilat nu înseamnă testat în broker; fără REAL. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 464 - PILOT DEMO 1 USD G24 • ${GITHUB_SHA:0:12}" \
+            --notes "464 CANDIDAT QT DEMO Motorola G24 (NETESTAT FIZIC). Experimenteaza in modul DOAR GRAFIC pana la 3 incercari 1 USD totale, cu minimum 7 minute intre gesturi si numai dupa confirmarea contului QT DEMO, perechii, payout >=92%, campului 1 USD si unui NOU SOC valid. Daca ordinul vechi a fost un gest fara ID, timpul NU este dovada inchiderii: rezultatul ramane NECUNOSCUT, NU calculeaza WIN/LOSS si NU ruleaza Martingale. Daca exista ID broker OPEN, risc MG, stare neclara, ordin vechi fara data sau maxim 3 probe, robotul ramane blocat. Nu navigheaza automat la Tranzactii, nu trimite ordine REAL si nu garanteaza profit. Daca durata setata in broker depaseste 5 min, NU folosi pilotul; exista risc de suprapunere deoarece inchiderea nu e verificata de broker. Compilarea CI nu dovedeste executarea in broker. Build $GITHUB_SHA." \
           --prerelease
