@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 459 G24 resolve Open-tab OCR and physical label
+name: Build Scalp Atlas 460 G24 targeted FX pair selector OCR
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-pair-selector-ocr460]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=459
+          expo['android']['versionCode']=460
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1880,6 +1880,32 @@ jobs:
           print('459: bound physical Open label fallback, OCR word rect and intact order safety gates')
           PY
 
+      - name: Verify 460 active FX header crop and strict broker safety
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          o=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          assert 'val left = (frame.width * 0.05f).toInt()' in o
+          assert 'val right = (frame.width * 0.52f).toInt()' in o
+          assert 'val top = (frame.height * 0.132f).toInt()' in o
+          assert 'val bottom = (frame.height * 0.205f).toInt()' in o
+          assert 'region, region.width * 4, region.height * 4, true' in o
+          assert 'val lineText460 = cropLines460.joinToString(" ")' in o
+          assert 'val elementText460 = cropLines460.flatMap { it.elements }' in o
+          assert 'schedulePairHeaderOcr(copy, observedAt)' in o
+          assert 'val nearbyOtc = labels.any' in t
+          assert 'metrics.heightPixels * 0.022f' in t
+          assert 'val suffix = if (match.groupValues[3].isNotBlank() || nearbyOtc)' in t
+          assert 'pendingMarketCount >= MARKET_OCR_CONFIRMATIONS' in o
+          assert '!pairReady(now) || pair == "NEIDENTIFICAT"' in o
+          assert 'TouchTestService.readVisibleDemoPair()' in o
+          assert 'tradePositionGate.beginAttempt()' in o
+          assert 'oldShockAttempt && !savedReconciled437 -> false' in o
+          assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          print('460: targeted selector OCR, multi-frame gate and exact broker preflight preserved')
+          PY
+
       - name: Allow Gradle wrapper download on slower GitHub runners
         run: |
           python3 - <<'PY'
@@ -2001,28 +2027,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-460-SELECTOR-OTC-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-459-FILA-DESCHIS-DEMO-G24
-          path: ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk
+          name: ScalpAtlas-460-SELECTOR-OTC-DEMO-G24
+          path: ScalpAtlas-460-SELECTOR-OTC-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-open-tab-accessibility459'
+        if: github.ref == 'refs/heads/fix/scalpatlas-pair-selector-ocr460'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk"
+          FILE="ScalpAtlas-460-SELECTOR-OTC-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-openlabel459-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-pairocr460-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 459 - FILA DESCHIS DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "459 CANDIDAT QT DEMO G24, NETESTAT PE TELEFON: remediază blocajul FILA DESCHIS AȘTEPT POZIȚIA OCR 2/2 prin recunoașterea cuvintelor individuale OCR și încercarea alternativă a etichetei exacte Deschis din accesibilitate Android, cu atingere fizică și max. 3 încercări. Nu consideră atingerea dovadă, verifică selectarea Deschis și lista 0 poziții 2/2, păstrează ordinul neverificat și nu mărește miza. Eventuala nouă tranzacție necesită ȘOC valid + QT Demo + miza verificată. Fără REAL. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 460 - SELECTOR OTC DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "460 CANDIDAT QT DEMO G24, NETESTAT PE TELEFON: pentru eroarea PERECHE OCR NECITITĂ restrânge regiunea vizuală la selectorul instrumentului, mărește de 4 ori capturile și citește linii/elements OCR; încearcă selectorul mărit și când OCR complet este ambiguu. În arborele Android poate combina OTC doar cu o etichetă explicită vecină. Rămân necesare pereche confirmată multiplu, QT DEMO, TF, miza 1 USD, payout >=92%, ȘOC proaspăt și verificarea poziției anterioare. Nu există bypass de MG sau tranzacții REAL. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
           --prerelease
