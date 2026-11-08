@@ -232,6 +232,13 @@ class ScalpOverlayService : Service() {
   // 457: Navigation is not settlement. A bounded history read should
   // leave the user on the chart, while the unverified old ID stays locked.
   private var lastPerspectiveReturnAttempt457 = 0L
+  // 461: Session-local, navigation-only watchdog. No settlement or order
+  // flag can be changed by this clock or by Android Back/Perspective.
+  private var historyWatchStartedAt461 = 0L
+  private var historyWatchLastSeenAt461 = 0L
+  private var historyWatchSamples461 = 0
+  private var historyWatchReturnAttempts461 = 0
+  private var historyWatchLastReturnAt461 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
@@ -1110,6 +1117,40 @@ class ScalpOverlayService : Service() {
           // a same-package cached proof. Both are READ-ONLY; order dispatch
           // still requires the full independent broker preflight on chart.
           val verifiedDemoReview = demoVisibleNow || cachedDemoReview
+          // 461: Even a perfectly completed WIN can leave the user on
+          // Transactions > Closed while the legacy receipt parser waits for
+          // an unavailable OCR detail. Do NOT make chart navigation depend
+          // on receipt settlement. After a bounded review of the VERIFIED
+          // SAME-PACKAGE DEMO history, make up to three non-order attempts
+          // to return to the live broker chart.
+          val historyWatchDue461 = verifiedDemoReview &&
+            historyPageVisible433 &&
+            System.currentTimeMillis() - historyPageLastSeen433 in 0L..6_000L &&
+            historyWatchSamples461 >= 2 &&
+            historyWatchStartedAt461 > 0L &&
+            nowReview - historyWatchStartedAt461 >= 30_000L &&
+            historyWatchReturnAttempts461 < 3 &&
+            (historyWatchLastReturnAt461 == 0L ||
+              nowReview - historyWatchLastReturnAt461 >= 15_000L) &&
+            reviewPackage != null && reviewPackage == verifiedDemoAccountPackage
+          if (historyWatchDue461) {
+            historyWatchLastReturnAt461 = nowReview
+            historyWatchReturnAttempts461++
+            val nav461 = TouchTestService.navigateFromVerifiedDemoHistoryToChart461(
+              cachedDemoVerifiedOnChart = verifiedDemoReview,
+              ocrVerifiedHistoryPage = true
+            )
+            // Successful dispatch is NOT a verified chart transition, and
+            // it cannot clear an unverified old trade or enable MG.
+            // Pause every automatic HISTORY entry during recovery so we do
+            // not oscillate back to the finished-trades list. The watchdog
+            // itself may retry two more times if OCR STILL sees history.
+            if (nav461.contains("NAVIGARE") && nav461.contains("TRIMISĂ"))
+              historyReturnPauseUntil457 = nowReview + 600_000L
+            lastAutoDemoHistoryNavStatus = nav461.take(105)
+            lastAutoDemoHistoryNavStatusAt = nowReview
+            touchProbeStatus?.text = "🤖 " + nav461.take(105)
+          }
           // 429: After a possibly accepted physical DEMO gesture, inspect
           // the selected OPEN tab promptly. Waiting for a five-minute
           // cooldown would miss the only window to capture a live order ID.
@@ -1291,6 +1332,7 @@ class ScalpOverlayService : Service() {
           }
           val closedDetail438 = verifiedClosedDetail437
           if (closedDetail438 != null && pendingReceipt429 &&
+              historyReturnPauseUntil457 <= nowReview &&
               historyPageTab433 == "DETALIU ÎNCHIS" &&
               closedDetail438.brokerPackage == expectedPackage429 &&
               lastVerifiedDetailBackId438 != closedDetail438.positionId &&
@@ -4211,6 +4253,19 @@ class ScalpOverlayService : Service() {
       historyOpenOcrAt435 = 0L
     }
     if (trueHistoryPage433) {
+      // 461: Count fresh independent frame observations of this page.
+      // A transient OCR miss does not restart the review; a genuine chart
+      // switch clears the sequence after the history identity expires.
+      val stamp461 = android.os.SystemClock.elapsedRealtime()
+      if (historyWatchStartedAt461 == 0L ||
+          (historyWatchLastSeenAt461 > 0L &&
+            stamp461 - historyWatchLastSeenAt461 > 12_000L)) {
+        historyWatchStartedAt461 = stamp461
+        historyWatchSamples461 = 1
+        historyWatchReturnAttempts461 = 0
+        historyWatchLastReturnAt461 = 0L
+      } else historyWatchSamples461 = (historyWatchSamples461 + 1).coerceAtMost(3)
+      historyWatchLastSeenAt461 = stamp461
       // 440: This is a VERIFIED history page, even when the currently
       // selected tab is CLOSED. A previous failed navigation must not
       // permanently claim "history doesn't open" on this screen. Never
@@ -4244,6 +4299,11 @@ class ScalpOverlayService : Service() {
                observedAt - historyPageLastSeen433 > 6_000L) {
       historyPageVisible433 = false
       historyPageTab433 = "NECUNOSCUT"
+      historyWatchStartedAt461 = 0L
+      historyWatchLastSeenAt461 = 0L
+      historyWatchSamples461 = 0
+      historyWatchReturnAttempts461 = 0
+      historyWatchLastReturnAt461 = 0L
     }
     val selectedOpen429 = historyIdentity454 && openTab && closedTab &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
