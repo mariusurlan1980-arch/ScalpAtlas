@@ -322,7 +322,14 @@ class TouchTestService : AccessibilityService() {
     @Volatile private var closedEvidenceDiagnostic427 = "ÎNCHIS • AȘTEPT DATE EXPLICITE"
     fun closedEvidenceDiagnostic427(): String = closedEvidenceDiagnostic427
     @Volatile private var demoHistoryNavigationStatus = "ISTORIC NECONSULTAT"
-    fun demoHistoryNavigationDiagnostic(): String = demoHistoryNavigationStatus
+    // 456: A gesture can be accepted, completed or cancelled by Android.
+    // None of these states proves that Pocket Option changed pages.
+    @Volatile private var demoNavGestureFeedback456 = "GEST NEÎNCERCAT"
+    fun demoHistoryNavigationDiagnostic(): String =
+      if (demoHistoryNavigationStatus.contains("GEST TRIMIS") ||
+          demoHistoryNavigationStatus.contains("DESCHID TRANZACȚII"))
+        demoHistoryNavigationStatus + " • " + demoNavGestureFeedback456
+      else demoHistoryNavigationStatus
 
     private fun activeDemoHistoryNodes(
       cachedDemoVerifiedOnChart: Boolean
@@ -445,8 +452,26 @@ class TouchTestService : AccessibilityService() {
       val gesture = GestureDescription.Builder()
         .addStroke(GestureDescription.StrokeDescription(path, 0L, 80L)).build()
       return try {
-        svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
-      } catch (_: Throwable) { false }
+        demoNavGestureFeedback456 = "GEST CERUT • AȘTEPT RĂSPUNS ANDROID"
+        val submitted = svc.dispatchGesture(
+          gesture,
+          object : AccessibilityService.GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) {
+              demoNavGestureFeedback456 =
+                "GEST FINALIZAT ANDROID • PAGINA ÎNCĂ NECONFIRMATĂ"
+            }
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+              demoNavGestureFeedback456 = "GEST ANULAT DE ANDROID • FĂRĂ ORDIN"
+            }
+          },
+          Handler(Looper.getMainLooper())
+        )
+        if (!submitted) demoNavGestureFeedback456 = "GEST REFUZAT ANDROID"
+        submitted
+      } catch (error: Throwable) {
+        demoNavGestureFeedback456 = "EROARE GEST ANDROID"
+        false
+      }
     }
 
     // A successful dispatchGesture only means Android accepted a touch;
