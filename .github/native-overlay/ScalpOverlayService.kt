@@ -1340,8 +1340,14 @@ class ScalpOverlayService : Service() {
                     lastClosedHistoryScanAt442 > 0L &&
                     tick - lastClosedHistoryScanAt442 in
                       0L until closedHistoryScanPauseMs442
-                  closedHistoryInspectionInProgress = !scanRecently442
-                  val navigation = if (scanRecently442)
+                  // 454: Once two broker-proven ZERO-OPEN samples safely
+                  // rearmed an unknown base-$1 DEMO cycle, do NOT re-open
+                  // the same old CLOSED history. Return to the live chart.
+                  closedHistoryInspectionInProgress =
+                    !scanRecently442 && !unknownBaseCleared454
+                  val navigation = if (unknownBaseCleared454)
+                    "✅ QT DEMO 0 DESCHISE • REVIN LA GRAFIC • AUTO 1 USD"
+                  else if (scanRecently442)
                     "ISTORIC DEMO • PAUZĂ REVERIFICARE • FĂRĂ ORDIN"
                   else TouchTestService.advanceDemoClosedHistoryNavigation(
                     cachedDemoVerifiedOnChart = verifiedDemoReview
