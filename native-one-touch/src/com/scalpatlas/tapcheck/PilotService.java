@@ -1,4 +1,4 @@
-package com.scalpatlas.tapcheck;
+package com.scalpatlas.tapcheck2;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
