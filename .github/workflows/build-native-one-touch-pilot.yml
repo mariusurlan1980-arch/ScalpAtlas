@@ -1,0 +1,104 @@
+name: Build Atlas Tiny One-Touch QT Demo Pilot
+
+on:
+  push:
+    branches: [pilot/one-touch-demo-g24]
+    paths:
+      - 'native-one-touch/**'
+      - '.github/workflows/build-native-one-touch-pilot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atlas-one-touch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android tools already installed on runner, no Gradle or npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -d "$SDK"
+          if ! find "$SDK/platforms" -name android.jar -print -quit | grep -q .; then
+            sdkmanager "platforms;android-35"
+          fi
+          if ! find "$SDK/build-tools" -name aapt2 -print -quit | grep -q .; then
+            sdkmanager "build-tools;35.0.0"
+          fi
+          PLATFORM=$(find "$SDK/platforms" -name android.jar | sort -V | tail -1)
+          BT=$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          test -s "$PLATFORM"
+          test -x "$BT/aapt2"
+          test -x "$BT/d8"
+          test -x "$BT/apksigner"
+          echo "PLATFORM=$PLATFORM" >> "$GITHUB_ENV"
+          echo "BT=$BT" >> "$GITHUB_ENV"
+          echo "Using Android platform: $PLATFORM and tools: $BT"
+      - name: Verify touch target only, never BUY or SELL
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("native-one-touch/src/com/scalpatlas/tapcheck/PilotService.java").read_text()
+          assert 'qtReal' in s and 'qtDemo' in s
+          assert 'navLabel(text)' in s and 'dispatchGesture(gesture' in s
+          assert 'if (attempted)' in s and 'return; // Absolutely no second gesture' in s
+          assert 'obs.openTab && obs.closedTab' in s
+          assert 'pressAnyPair' not in s and 'pressAutoOneDollar' not in s
+          assert 'TYPE_ACCESSIBILITY_OVERLAY' in s
+          print('Safety: one demo nav gesture only, no order executor')
+          PY
+      - name: Compile native Java Android APK without Gradle/Expo/Kotlin
+        working-directory: native-one-touch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/dex build/classes
+          "$BT/aapt2" compile --dir res -o build/resources.zip
+          "$BT/aapt2" link -o build/unsigned.apk --manifest AndroidManifest.xml \
+            -I "$PLATFORM" --min-sdk-version 26 --target-sdk-version 34 \
+            build/resources.zip
+          javac -encoding UTF-8 -source 8 -target 8 -cp "$PLATFORM" \
+            -d build/classes \
+            src/com/scalpatlas/tapcheck/MainActivity.java \
+            src/com/scalpatlas/tapcheck/PilotService.java
+          "$BT/d8" --lib "$PLATFORM" --min-api 26 --output build/dex \
+            $(find build/classes -name '*.class' | sort)
+          (cd build/dex && zip -q -u ../unsigned.apk classes.dex)
+          "$BT/zipalign" -f 4 build/unsigned.apk build/aligned.apk
+          keytool -genkeypair -alias pilot -keystore build/pilot.jks \
+            -storepass android -keypass android -keyalg RSA -keysize 2048 \
+            -validity 365 -dname "CN=Scalp Atlas Diagnostic Pilot" -noprompt
+          "$BT/apksigner" sign --ks build/pilot.jks --ks-key-alias pilot \
+            --ks-pass pass:android --key-pass pass:android \
+            --out build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk build/aligned.apk
+          "$BT/apksigner" verify --verbose build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk
+          test -s build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk
+          cp build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk "${GITHUB_WORKSPACE}/ScalpAtlas-PROBA-O-ATINGERE-G24.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScalpAtlas-PROBA-O-ATINGERE-G24
+          path: ScalpAtlas-PROBA-O-ATINGERE-G24.apk
+          if-no-files-found: error
+      - name: Publish direct APK, no ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FILE="ScalpAtlas-PROBA-O-ATINGERE-G24.apk"
+          TAG="atlas-one-touch-pilot-${GITHUB_SHA:0:12}"
+          gh release create "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "SCALP ATLAS PROBA O ATINGERE G24" \
+            --notes "APK TEST NATIV foarte simplu pentru Motorola G24. Necesita activarea manuala unica a serviciului de Accesibilitate. Pe Pocket Option QT Demo incearca automat o singura atingere pe eticheta confirmata Tranzactii si verifica vizual aparitia filelor Deschis si Inchis. Nu apasa BUY/SELL, nu plaseaza tranzactii, nu are Martingale sau motor de semnale. Daca eticheta/contul nu se pot citi, NU apasa nimic. Netestat fizic pe Motorola G24; compilarea nu garanteaza functionarea. Build $GITHUB_SHA."
