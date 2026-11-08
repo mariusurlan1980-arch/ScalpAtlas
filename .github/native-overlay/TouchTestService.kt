@@ -592,6 +592,64 @@ class TouchTestService : AccessibilityService() {
     }
 
     /**
+     * 457: Return to the broker chart using ONLY the "Perspective" footer
+     * discovered in two independent OCR frames of an identified history page.
+     * This is NAVIGATION ONLY. A touch can never reconcile, settle, or
+     * re-arm any prior broker order.
+     */
+    fun tapVerifiedDemoPerspectiveFooter457(
+      expectedBrokerPackage: String,
+      centerXFraction: Float,
+      centerYFraction: Float,
+      cachedDemoVerifiedOnChart: Boolean,
+      ocrConfirmedHistoryPage: Boolean
+    ): Boolean {
+      if (!ocrConfirmedHistoryPage || !cachedDemoVerifiedOnChart) return false
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart) ?: return false
+      val (svc, root, _) = info
+      if (root.packageName?.toString() != expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage) ||
+          !centerXFraction.isFinite() || !centerYFraction.isFinite() ||
+          centerXFraction !in 0.20f..0.63f ||
+          centerYFraction !in 0.84f..0.985f) return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      if (metrics.widthPixels < 300 || metrics.heightPixels < 600) return false
+      val x = metrics.widthPixels * centerXFraction
+      val y = metrics.heightPixels * centerYFraction
+      if (svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage)
+        return false
+      val path = Path().apply { moveTo(x, y) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 80L)).build()
+      return try {
+        demoNavGestureFeedback456 = "PERSPECTIVE • GEST CERUT ANDROID"
+        val sent = svc.dispatchGesture(
+          gesture,
+          object : AccessibilityService.GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) {
+              demoNavGestureFeedback456 =
+                "PERSPECTIVE • GEST FINALIZAT • GRAFIC NECONFIRMAT"
+            }
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+              demoNavGestureFeedback456 = "PERSPECTIVE • GEST ANULAT"
+            }
+          }, Handler(Looper.getMainLooper())
+        )
+        if (!sent) demoNavGestureFeedback456 = "PERSPECTIVE • GEST REFUZAT"
+        sent
+      } catch (_: Throwable) {
+        demoNavGestureFeedback456 = "PERSPECTIVE • EROARE GEST"
+        false
+      }
+    }
+
+    /**
      * 438: Navigation ONLY. Open a CLOSED history list row selected from two
      * consistent MediaProjection OCR frames. This tap is not an order,
      * a receipt, or permission to clear a pending DEMO gesture.
