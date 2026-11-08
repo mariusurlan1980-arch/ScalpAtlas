@@ -811,8 +811,27 @@ class ScalpOverlayService : Service() {
       System.currentTimeMillis() - historyOpenOcrAt435 in 0L..6_000L &&
       historyOpenOcrX435 in 0.08f..0.48f &&
       historyOpenOcrY435 in 0.15f..0.31f
-    if (!ocrConfirmed455)
-      return "🔎 FILA DESCHIS • AȘTEPT POZIȚIA OCR 2/2 • FĂRĂ APĂSARE"
+    if (!ocrConfirmed455) {
+      // 459: On Motorola G24 Pocket Option may draw the visible "Deschis"
+      // tab as an accessible labelled control while OCR cannot stabilize
+      // its bounds for two frames. Use the EXACT accessibility label and
+      // its physical on-screen bounds; never tap a guessed coordinate.
+      // The history screen and QT DEMO identity were verified above.
+      // This is navigation ONLY. The 2/2 SELECTED OPEN visual proof and
+      // independent 0-positions proof remain mandatory.
+      val labelNavigation459 =
+        TouchTestService.advanceDemoHistoryReviewNavigation(
+          cachedDemoVerifiedOnChart = verifiedDemoReview
+        )
+      if (labelNavigation459.contains("FILA DESCHIS") &&
+          labelNavigation459.contains("GEST TRIMIS")) {
+        lastOpenTabNavigationAt455 = nowElapsed
+        openTabNavigationAttempts455++
+        return "🔎 FILA DESCHIS • ATINGERE FIZICĂ ETICHETĂ " +
+          openTabNavigationAttempts455 + "/3 • VERIFIC PAGINA"
+      }
+      return "🔒 FILA DESCHIS • OCR 2/2 ȘI ETICHETĂ INDISPONIBILE • FĂRĂ APĂSARE"
+    }
     lastOpenTabNavigationAt455 = nowElapsed
     openTabNavigationAttempts455++
     val touchSent455 = TouchTestService.tapVerifiedDemoOpenTabOcr435(
