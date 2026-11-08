@@ -453,8 +453,12 @@ class TouchTestService : AccessibilityService() {
             (h * (yMax + 0.035f)).toInt() &&
           r.contains(chosen.second.centerX(), chosen.second.centerY())
         if (node.isClickable && safeNavRegion &&
-            svc.rootInActiveWindow?.packageName?.toString() == root.packageName?.toString() &&
-            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+            svc.rootInActiveWindow?.packageName?.toString() == root.packageName?.toString()) {
+          // 456: WebView can acknowledge ACTION_CLICK without changing the page.
+          // Send exactly one physical gesture on the verified navigation label
+          // below; never treat a dispatched gesture as a confirmed page switch.
+          break
+        }
         current = node.parent
       }
       // Fallback is one short touch at the center of the verified NAV LABEL,
