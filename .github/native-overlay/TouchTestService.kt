@@ -278,7 +278,20 @@ class TouchTestService : AccessibilityService() {
           bounds.centerX() > metrics.widthPixels * 0.70f ||
           value.length > 46) return@mapNotNull null
         val match = pattern.find(value) ?: return@mapNotNull null
-        val suffix = if (match.groupValues[3].isNotBlank()) " OTC" else ""
+        // 460: In the Pocket Option G24 WebView the visible OTC text can
+        // be a separate sibling node alongside "AUD/CHF". Accept that
+        // suffix ONLY if the node is physically adjacent to the same
+        // header selector label; never pull OTC from historical rows.
+        val nearbyOtc = labels.any { (otherText, otherBounds) ->
+          Regex("""(?i)^\\s*\\(?\\s*OTC\\s*\\)?\\s*$""")
+            .matches(otherText) &&
+          kotlin.math.abs(otherBounds.centerY() - bounds.centerY()) <=
+            metrics.heightPixels * 0.022f &&
+          otherBounds.centerX() > bounds.left &&
+          otherBounds.centerX() < bounds.right + metrics.widthPixels * 0.18f
+        }
+        val suffix = if (match.groupValues[3].isNotBlank() || nearbyOtc)
+          " OTC" else ""
         match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase() + suffix
       }.distinct()
       return instruments.singleOrNull()
