@@ -1779,7 +1779,10 @@ jobs:
           nav=t.split('private fun clickExactDemoNavigationLabel(',1)[1].split('fun confirmedDemoHistoryPageReadOnly431(',1)[0]
           assert 'node.performAction(AccessibilityNodeInfo.ACTION_CLICK)' not in nav
           assert 'for (depth in 0..6)' not in nav
-          assert 'svc.dispatchGesture(gesture' in nav
+          assert 'svc.dispatchGesture(' in nav
+          assert 'demoNavGestureFeedback456' in nav
+          assert 'onCompleted(gestureDescription: GestureDescription?)' in nav
+          assert 'onCancelled(gestureDescription: GestureDescription?)' in nav
           assert 'rootInActiveWindow?.packageName' in nav
           assert 'candidates.isEmpty()' in nav
           assert 'GEST TRIMIS • AȘTEPT PAGINA' in t
