@@ -108,6 +108,10 @@ class ScalpOverlayService : Service() {
     // 462: intentional one-order safety mode; never enter history UI.
     // Do NOT change this to allow consecutive orders without settlement.
     private const val CHART_ONLY_DEMO_462 = true
+    // 464: maximum two extra $1 DEMO tests after the initial unknown tap.
+    // An elapsed time window is NOT broker settlement and cannot trigger MG.
+    private const val DEMO_PILOT_BUFFER_MS_464 = 7 * 60_000L
+    private const val DEMO_PILOT_MAX_REARMS_464 = 2
     private const val TF_STALE_MS = 18000L
     private const val MARKET_STALE_MS = 12_000L
     private const val MARKET_SETTLE_MS = 6_000L
@@ -1182,6 +1186,123 @@ class ScalpOverlayService : Service() {
     else "463 • REZULTAT VERIFICAT • NOI ORDINE BLOCATE (FĂRĂ MG)"
   }
 
+  /**
+   * 464: A limited $1 QT DEMO test mode, requested because v463 can read
+   * a price chart but cannot fetch a completed order ID without history.
+   * Do NOT label a timed-out gesture WIN/LOSS or modify the recovery ledger.
+   * No REAL order, no dynamic stake, no history navigation. The 7-minute
+   * interval is based on the configured 5-minute DEMO test + 2-minute
+   * buffer; it is not broker-confirmed closure. Stop after three attempted
+   * pilot orders in total unless the old receipt is independently verified.
+   */
+  private fun maybeRearmExpiredDemoPilot464(
+    nowElapsed: Long,
+    visiblePackage: String?,
+    chartDemoVerified: Boolean
+  ): String? {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    if (!prefs.getBoolean("attempted", false) ||
+        !autoDemoSessionConsumed ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false)) return null
+    if (!chartDemoVerified || visiblePackage == null ||
+        visiblePackage != verifiedDemoAccountPackage ||
+        verifiedDemoAccountAt <= 0L ||
+        nowElapsed - verifiedDemoAccountAt !in 0L..90_000L ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
+        !TouchTestService.ready() ||
+        (historyPageVisible433 &&
+          System.currentTimeMillis() - historyPageLastSeen433 in 0L..6_000L))
+      return null
+
+    val expectedPackage = prefs.getString("expectedPackage429", null)
+    val expectedPair = prefs.getString("expectedPair429", null)
+    val expectedSide = prefs.getString("expectedSide437", null)
+    val expectedStake = prefs.getLong("expectedStakeCents429", -1L)
+    val expectedPayout = prefs.getInt("expectedPayout429", -1)
+    val priorWall = prefs.getLong("attemptedWallAt454", -1L)
+    if (expectedPackage != visiblePackage || expectedPair.isNullOrBlank() ||
+        expectedSide !in listOf("BUY", "SELL") ||
+        expectedStake != 100L || expectedPayout !in 92..100 ||
+        priorWall <= 0L)
+      return "464 • ORDIN VECHI INCOMPLET • NECESITĂ DOVADĂ BROKER"
+
+    val wallAge = System.currentTimeMillis() - priorWall
+    if (wallAge < DEMO_PILOT_BUFFER_MS_464 && wallAge >= 0L)
+      return "464 • AȘTEPT PAUZA DEMO 7 MIN • FĂRĂ ORDIN"
+    // No release after a clock anomaly or an arbitrarily old saved attempt.
+    if (wallAge !in DEMO_PILOT_BUFFER_MS_464..(24 * 60 * 60_000L))
+      return "464 • TIMP ORDIN NECLAR • NECESITĂ DOVADĂ BROKER"
+    if (!TouchTestService.priorDemoGestureCooldownComplete())
+      return "464 • PAUZĂ ANDROID DEMO • FĂRĂ ORDIN"
+
+    // A real broker OPEN UUID, a previous verified LOSS, or an active MG
+    // cycle is never eligible for the no-receipt $1 pilot.
+    if (demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+        demoRecoveryLedger.isRecovering429() ||
+        demoRecoveryLedger.needsBaseStakeReset() ||
+        demoRecoveryLedger.quote(expectedPayout).stakeCents != 100L)
+      return "464 • REGISTRU ORDIN/MG ACTIV • NECESITĂ DOVADĂ BROKER"
+
+    val used = prefs.getInt("unverifiedDemoPilotRearms464", 0)
+    if (used >= DEMO_PILOT_MAX_REARMS_464)
+      return "464 • 3 PROBE DEMO EFECTUATE • OPRIT PÂNĂ LA DOVADĂ"
+
+    val gateState = tradePositionGate.state()
+    if (gateState != TradePositionGate.State.UNKNOWN &&
+        gateState != TradePositionGate.State.READY)
+      return "464 • POZIȚIE POSIBIL DESCHISĂ • FĂRĂ ORDIN"
+
+    val nowWall = System.currentTimeMillis()
+    val visiblePair = TouchTestService.readVisibleDemoPair() ?: return null
+    if (!pairReady(nowWall) || currentPair(nowWall) != visiblePair)
+      return "464 • PERECHE LIVE NECONFIRMATĂ • FĂRĂ ORDIN"
+    val preflight = try {
+      TouchTestService.preflightOneDollarDemoOrder(visiblePair)
+    } catch (_: Throwable) { "BLOCAT: PRECHECK QT DEMO" }
+    if (!preflight.startsWith("PREGĂTIT AUTO DEMO"))
+      return "464 • AȘTEPT CONFIRMARE DEMO 1 USD • FĂRĂ ORDIN"
+    if (TouchTestService.activeDemoExecutorPackageForReview() != visiblePackage)
+      return "464 • FEREASTRĂ DEMO SCHIMBATĂ • FĂRĂ ORDIN"
+
+    // This state change is only a timed DEMO pilot release of UNKNOWN.
+    // It is NOT a brokerVerifiedEmptyDemoReview and books NO P/L.
+    if (!tradePositionGate.releaseUnknownGestureForExpiredDemoPilot464(
+        elapsedWindowVerified = true,
+        freshDemoPreflightVerified = true,
+        limitedPilotCapacityAvailable = true))
+      return "464 • STARE ORDIN INCERTĂ • FĂRĂ REPETARE"
+
+    val stored = prefs.edit()
+      .putInt("unverifiedDemoPilotRearms464", used + 1)
+      .putLong("lastUnknownProbeWall464", priorWall)
+      .putString("lastUnknownProbePair464", expectedPair)
+      .putBoolean("attempted", false)
+      .remove("expectedPackage429")
+      .remove("expectedPair429")
+      .remove("expectedStakeCents429")
+      .remove("expectedPayout429")
+      .remove("expectedSide437")
+      .remove("attemptedAt429")
+      .remove("attemptedWallAt454")
+      .commit()
+    if (!stored) {
+      tradePositionGate.uncertainResult()
+      return "464 • NU POT SALVA PAUZA • FĂRĂ REPETARE"
+    }
+
+    autoDemoSessionRequested = true
+    autoDemoSessionConsumed = false
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoExpiry = 0L
+    autoDemoLastPreflightAt = 0L
+    autoDemoLockedAt = lockedAt
+    autoDemoEntryCycleStartedAt = System.currentTimeMillis()
+    autoDemoLastPreflightReason = "PILOT QT DEMO 1 USD • REZULTAT PRECEDENT NECUNOSCUT"
+    return "464 • PILOT DEMO 1 USD REACTIVAT • FĂRĂ MG / REZULTAT NECUNOSCUT"
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -1241,15 +1362,21 @@ class ScalpOverlayService : Service() {
           val passiveStatus463 = inspectPassiveDemoProof463(
             proofNow463, proofPackage463, chartCache463
           )
-          if (passiveStatus463 != null)
-            lastAutoDemoHistoryNavStatus = passiveStatus463
+          val pilotStatus464 = if (passiveStatus463 == null && autoDemoSessionConsumed)
+            maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
+          else null
+          val effectiveStatus464 = passiveStatus463 ?: pilotStatus464
+          if (effectiveStatus464 != null) {
+            lastAutoDemoHistoryNavStatus = effectiveStatus464
+            lastAutoDemoHistoryNavStatusAt = proofNow463
+          }
           if (autoDemoSessionConsumed) {
-            lastAutoDemoHistoryNavStatus = ""
-            lastAutoDemoHistoryNavStatusAt = 0L
-            touchProbeStatus?.text = if (passiveStatus463 != null)
-              "🤖 " + passiveStatus463.take(110)
+            touchProbeStatus?.text = if (effectiveStatus464 != null)
+              "🤖 " + effectiveStatus464.take(110)
             else "🤖 GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
               "ORDIN VECHI BLOCAT PÂNĂ LA VERIFICARE"
+          } else if (pilotStatus464 != null) {
+            touchProbeStatus?.text = "🤖 " + pilotStatus464.take(110)
           }
           mainHandler.postDelayed(this, 2500L)
           return
@@ -5626,6 +5753,8 @@ class ScalpOverlayService : Service() {
             demoRecoveryLedger.quote(payout429).stakeCents == stake429
           val latestPreflight = try {
             when {
+              CHART_ONLY_DEMO_462 && stake429 != 100L ->
+                "BLOCAT: PILOT DEMO DOAR 1 USD • FĂRĂ MG"
               !quoteMatches429 || package429 == null ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
               stake429 == 100L ->
