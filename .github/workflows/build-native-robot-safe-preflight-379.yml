@@ -1137,9 +1137,11 @@ jobs:
           set -euo pipefail
           T=.github/native-overlay/TouchTestService.kt
           O=.github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'for (depth in 0..6)' "$T"
-          grep -Fq 'val safeNavRegion = ' "$T"
-          grep -Fq 'node.performAction(AccessibilityNodeInfo.ACTION_CLICK)' "$T"
+          # 456: navigation is one physical tap on the verified broker label.
+          # A WebView ACTION_CLICK or six-level ancestor traversal is obsolete.
+          grep -Fq 'svc.dispatchGesture(gesture' "$T"
+          grep -Fq 'candidates.isEmpty()' "$T"
+          grep -Fq 'rootInActiveWindow?.packageName' "$T"
           grep -Fq 'fun confirmedDemoHistoryPageReadOnly431(' "$T"
           grep -Fq 'return (title || historyPageIdentity454(labels, h)) && open' "$T"
           grep -Fq 'private fun navigateVerifiedDemoHistory431(' "$O"
