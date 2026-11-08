@@ -1147,7 +1147,8 @@ class ScalpOverlayService : Service() {
             if (closedListFirstObservedAt454 == 0L)
               closedListFirstObservedAt454 = nowReview
           } else closedListFirstObservedAt454 = 0L
-          if (closedList438 && closedRowSamples438 >= 2 &&
+          if (closedList438 && historyReturnPauseUntil457 <= nowReview &&
+              closedRowSamples438 >= 2 &&
               System.currentTimeMillis() - closedRowAt438 in 0L..6_000L &&
               nowReview - lastClosedRowTapAt438 > 20_000L) {
             lastClosedRowTapAt438 = nowReview
