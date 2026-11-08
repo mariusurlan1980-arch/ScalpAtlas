@@ -882,8 +882,10 @@ class ScalpOverlayService : Service() {
         return "PERSPECTIVE • GEST TRIMIS • VERIFIC GRAFIC • FĂRĂ ORDIN NOU"
       }
     }
-    // Only a broker-verified HISTORY page permits the legacy Back fallback.
-    return TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+    // 461: If the exact OCR Perspective footer is unavailable, try the
+    // same labelled control in Android Accessibility. Only then allow a
+    // broker-history-verified global Back. Never use arbitrary coordinates.
+    return TouchTestService.navigateFromVerifiedDemoHistoryToChart461(
       cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage && freshHistory
     )
   }
@@ -1138,7 +1140,7 @@ class ScalpOverlayService : Service() {
           if (historyWatchDue461) {
             historyWatchLastReturnAt461 = nowReview
             historyWatchReturnAttempts461++
-            val nav461 = TouchTestService.navigateFromVerifiedDemoHistoryToChart461(
+            val nav461 = returnToChartAfterReview458(
               cachedDemoVerifiedOnChart = verifiedDemoReview,
               ocrVerifiedHistoryPage = true
             )
@@ -1147,7 +1149,9 @@ class ScalpOverlayService : Service() {
             // Pause every automatic HISTORY entry during recovery so we do
             // not oscillate back to the finished-trades list. The watchdog
             // itself may retry two more times if OCR STILL sees history.
-            if (nav461.contains("NAVIGARE") && nav461.contains("TRIMISĂ"))
+            if (nav461.contains("TRIMIS") &&
+                (nav461.contains("PERSPECTIVE") ||
+                  nav461.contains("NAVIGARE")))
               historyReturnPauseUntil457 = nowReview + 600_000L
             lastAutoDemoHistoryNavStatus = nav461.take(105)
             lastAutoDemoHistoryNavStatusAt = nowReview
