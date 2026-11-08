@@ -1042,6 +1042,146 @@ class ScalpOverlayService : Service() {
     return lastAutoDemoHistoryNavStatus
   }
 
+  /**
+   * 463: Passive-only reconciliation. The robot NEVER clicks "Deschis" or
+   * "Închis". If the user happens to show the exact closed detail and then
+   * the explicit empty Open tab, OCR and Accessibility can verify both.
+   * Nothing about chart movement, time, a gesture or account balance settles
+   * a trade. This is not a substitute for a broker-supported order-status API.
+   */
+  private fun inspectPassiveDemoProof463(
+    nowElapsed: Long,
+    reviewPackage: String?,
+    cachedDemoVerifiedOnChart: Boolean
+  ): String? {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    if (!prefs.getBoolean("attempted", false)) return null
+    if (getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+        .getBoolean("attempted", false))
+      return "463 • TEST SELL VECHI NECONFIRMAT • FĂRĂ ORDIN"
+    if (!cachedDemoVerifiedOnChart ||
+        reviewPackage == null || reviewPackage != verifiedDemoAccountPackage ||
+        verifiedDemoAccountAt <= 0L ||
+        nowElapsed - verifiedDemoAccountAt !in 0L..90_000L ||
+        !historyPageVisible433 ||
+        System.currentTimeMillis() - historyPageLastSeen433 !in 0L..6_000L)
+      return null
+
+    val expectedPackage = prefs.getString("expectedPackage429", null)
+    val expectedPair = prefs.getString("expectedPair429", null)
+    val stake = prefs.getLong("expectedStakeCents429", -1L)
+    val payout = prefs.getInt("expectedPayout429", -1)
+    val attemptedAt = prefs.getLong("attemptedAt429", -1L)
+    if (expectedPackage != reviewPackage || expectedPair.isNullOrBlank() ||
+        stake !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
+        payout !in 92..100 || attemptedAt <= 0L)
+      return "463 • DETALII ORDIN VECHI INCOMPLETE • BLOCAT"
+
+    if (historyPageTab433 != "DESCHIS") {
+      val proof = verifiedClosedDetail437
+      return if (proof != null &&
+          System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..90_000L &&
+          proof.brokerPackage == expectedPackage &&
+          proof.pair == expectedPair)
+        "463 • DETALIU ÎNCHIS CITIT 2/2 • LIPSEȘTE DOVADA 0 DESCHISE"
+      else "463 • ISTORIC CITIT PASIV • ORDIN ÎNCĂ NEVERIFICAT"
+    }
+
+    val freshOcr = lastEmptyOpenOcrPackage == reviewPackage &&
+      emptyOpenOcrConsecutive >= 2 &&
+      System.currentTimeMillis() - lastEmptyOpenOcrAt in 0L..4_500L
+    val selectedOpen = lastOpenTabVisualPackage429 == reviewPackage &&
+      openTabVisualConsecutive429 >= 2 &&
+      System.currentTimeMillis() - lastOpenTabVisualAt429 in 0L..5_000L
+    if (!freshOcr || !selectedOpen) return "463 • AȘTEPT 0 DESCHISE OCR 2/2"
+    val emptyRead = try {
+      TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(
+        cachedDemoVerifiedOnChart = true,
+        ocrVerifiedEmptyOpenTab = true
+      )
+    } catch (_: Throwable) { false }
+    if (!emptyRead) return "463 • ZERO POZIȚII NECONFIRMAT"
+    if (demoEmptyReviewReads == 0 ||
+        nowElapsed - demoEmptyReviewFirstAt !in 0L..20_000L) {
+      demoEmptyReviewReads = 1
+      demoEmptyReviewFirstAt = nowElapsed
+      return "463 • ZERO DESCHISE 1/2 • CITIRE PASIVĂ"
+    }
+    if (nowElapsed - demoEmptyReviewFirstAt < 2_000L)
+      return "463 • AȘTEPT A DOUA CITIRE INDEPENDENTĂ"
+    demoEmptyReviewReads = 0
+    demoEmptyReviewFirstAt = 0L
+
+    // Two empty-Open reads alone must NEVER clear a previous gesture.
+    val closed = verifiedClosedDetail437
+      ?: return "463 • ZERO DESCHISE 2/2 • LIPSEȘTE ID ÎNCHIS"
+    if (System.currentTimeMillis() - verifiedClosedDetailAt437 !in 0L..90_000L ||
+        closed.brokerPackage != expectedPackage ||
+        closed.pair != expectedPair ||
+        closed.stakeCents != stake ||
+        closed.payoutPercent != payout ||
+        (prefs.getString("expectedSide437", null) != null &&
+          prefs.getString("expectedSide437", null) != closed.side) ||
+        !brokerOpenTimeMatchesAttempt437(closed.openedSecondsOfDay, attemptedAt))
+      return "463 • DOVADA ÎNCHIDERII NU SE POTRIVEȘTE • BLOCAT"
+
+    val openId = demoRecoveryLedger.verifiedOpenPositionId429()
+    if (openId != null && openId != closed.positionId)
+      return "463 • ID OPEN / ÎNCHIS DIFERIT • BLOCAT"
+    val ledgerKey = "QT_DEMO:" + expectedPackage
+    val alreadySettled = demoRecoveryLedger.alreadySettledClosedReceipt444(
+      ledgerKey, closed.positionId
+    )
+    val ledgerUpdated = if (alreadySettled) true
+      else if (openId != null)
+        demoRecoveryLedger.onVerifiedDemoClosed(
+          ledgerKey, openId, openId + ":CLOSED", closed.netProfitCents, true
+        )
+      else
+        demoRecoveryLedger.reconcileSettledDemoWithMissingOpen437(
+          ledgerKey, closed.positionId, closed.stakeCents,
+          closed.payoutPercent, closed.netProfitCents,
+          uniqueClosedDetailReadTwice = true,
+          zeroOpenReadTwice = true,
+          exactPriorGestureTimeMatched = true
+        )
+    if (!ledgerUpdated) return "463 • REGISTRU DEMO NU ACCEPTĂ DOVADA • BLOCAT"
+
+    // Exact proof and ledger are durable before clearing the gesture flag.
+    val cleared = prefs.edit().putBoolean("attempted", false)
+      .remove("expectedPair429").remove("expectedPackage429")
+      .remove("expectedStakeCents429").remove("expectedPayout429")
+      .remove("expectedSide437").remove("attemptedAt429")
+      .remove("attemptedWallAt454").commit()
+    if (!cleared)
+      return "463 • REZULTAT CITIT, DAR BLOCAREA NU S-A SALVAT"
+
+    val gateReady = when (tradePositionGate.state()) {
+      TradePositionGate.State.OPEN ->
+        tradePositionGate.brokerConfirmedClosed(closed.positionId, true)
+      TradePositionGate.State.UNKNOWN, TradePositionGate.State.READY ->
+        tradePositionGate.brokerVerifiedEmptyDemoReview(true)
+      TradePositionGate.State.SUBMITTING -> false
+    }
+    verifiedClosedDetail437 = null
+    verifiedClosedDetailAt437 = 0L
+    // A verified LOSS changes the ledger, but CHART-ONLY must never run a
+    // Martingale progression or submit an untested larger stake automatically.
+    val canRearmBase = gateReady && !demoRecoveryLedger.isRecovering429() &&
+      demoRecoveryLedger.quote(payout).stakeCents == 100L
+    autoDemoSessionRequested = canRearmBase
+    autoDemoSessionConsumed = !canRearmBase
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoLastPreflightAt = 0L
+    autoDemoLockedAt = lockedAt
+    autoDemoEntryCycleStartedAt = if (canRearmBase)
+      System.currentTimeMillis() else 0L
+    return if (canRearmBase)
+      "463 • ORDIN ÎNCHIS VERIFICAT • DEMO 1 USD REARMAT"
+    else "463 • REZULTAT VERIFICAT • NOI ORDINE BLOCATE (FĂRĂ MG)"
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -1073,11 +1213,38 @@ class ScalpOverlayService : Service() {
         // NO Martingale are permitted; elapsed time is not settlement proof.
         // Keep only the READ-ONLY broker identity monitor on the live chart.
         if (CHART_ONLY_DEMO_462) {
+          // Restore the <=90-second chart DEMO identity proof which v462
+          // accidentally skipped before its early return. We may then read
+          // a manually displayed broker receipt, WITHOUT touching the UI.
+          val proofNow463 = android.os.SystemClock.elapsedRealtime()
+          val proofPackage463 =
+            TouchTestService.activeDemoExecutorPackageForReview()
+          val demoChart463 = diagnostic.contains("QT DEMO IDENTIFICAT")
+          if (demoChart463 && proofPackage463 != null) {
+            verifiedDemoAccountAt = proofNow463
+            verifiedDemoAccountPackage = proofPackage463
+          } else if (diagnostic.contains("QT REAL IDENTIFICAT") ||
+              (proofPackage463 != null &&
+                proofPackage463 != verifiedDemoAccountPackage)) {
+            verifiedDemoAccountAt = 0L
+            verifiedDemoAccountPackage = null
+          }
+          val chartCache463 = proofPackage463 != null &&
+            proofPackage463 == verifiedDemoAccountPackage &&
+            verifiedDemoAccountAt > 0L &&
+            proofNow463 - verifiedDemoAccountAt in 0L..90_000L &&
+            !diagnostic.contains("QT REAL IDENTIFICAT")
+          val passiveStatus463 = inspectPassiveDemoProof463(
+            proofNow463, proofPackage463, chartCache463
+          )
+          if (passiveStatus463 != null)
+            lastAutoDemoHistoryNavStatus = passiveStatus463
           if (autoDemoSessionConsumed) {
             lastAutoDemoHistoryNavStatus = ""
             lastAutoDemoHistoryNavStatusAt = 0L
-            touchProbeStatus?.text =
-              "🤖 GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
+            touchProbeStatus?.text = if (passiveStatus463 != null)
+              "🤖 " + passiveStatus463.take(110)
+            else "🤖 GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
               "ORDIN VECHI BLOCAT PÂNĂ LA VERIFICARE"
           }
           mainHandler.postDelayed(this, 2500L)
