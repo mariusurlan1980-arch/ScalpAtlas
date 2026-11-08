@@ -231,6 +231,13 @@ class ScalpOverlayService : Service() {
   private var lastClosedHistoryScanAt442 = 0L
   private var lastClosedHistoryScanKey442: String? = null
   private val closedHistoryScanPauseMs442 = 180_000L
+  // 455: Each actual OCR-targeted OPEN-tab gesture must be followed by
+  // independent VISUAL proof of a changed tab. Android's ACTION_CLICK
+  // returning true alone is never proof of a Pocket Option page change.
+  // Three failed navigation attempts cap the loop until the LIVE session
+  // or broker page is explicitly restarted; this never arms an order.
+  private var lastOpenTabNavigationAt455 = 0L
+  private var openTabNavigationAttempts455 = 0
 
   // 435: independently observed OPEN-tab LABEL, not a fixed touch point.
   @Volatile private var historyOpenOcrAt435 = 0L
@@ -758,6 +765,55 @@ class ScalpOverlayService : Service() {
     historyNavOcrPackage432 = pkg
   }
 
+  private fun attemptBrokerOpenTabWithVisualProof455(
+    verifiedDemoReview: Boolean,
+    brokerPackage: String?,
+    nowElapsed: Long
+  ): String {
+    // Read-only broker identity + two OCR reads of the REAL, visible tab;
+    // only this precisely bounded, non-order tab may be physically touched.
+    if (!verifiedDemoReview || brokerPackage == null ||
+        brokerPackage != verifiedDemoAccountPackage ||
+        !TouchTestService.confirmedDemoHistoryPageReadOnly431(verifiedDemoReview))
+      return "🔒 FILA DESCHIS • ISTORIC/CONT NECONFIRMAT • FĂRĂ ORDIN"
+    val openSelected455 = historyPageVisible433 &&
+      historyPageTab433 == "DESCHIS" &&
+      lastOpenTabVisualPackage429 == brokerPackage &&
+      openTabVisualConsecutive429 >= 2 &&
+      System.currentTimeMillis() - lastOpenTabVisualAt429 in 0L..5_000L
+    if (openSelected455) {
+      openTabNavigationAttempts455 = 0
+      lastOpenTabNavigationAt455 = 0L
+      return "✅ FILA DESCHIS SELECTATĂ 2/2 • VERIFIC 0 POZIȚII"
+    }
+    if (openTabNavigationAttempts455 >= 3)
+      return "🔒 FILA DESCHIS NU SE ACTIVEAZĂ • 3 ÎNCERCĂRI • FĂRĂ ALTE APĂSĂRI"
+    if (lastOpenTabNavigationAt455 > 0L &&
+        nowElapsed - lastOpenTabNavigationAt455 in 0L..12_000L)
+      return "🔎 FILA DESCHIS • VERIFIC VIZUAL SCHIMBAREA • NU REPET"
+    val ocrConfirmed455 = historyPageVisible433 &&
+      System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L &&
+      historyOpenOcrCount435 >= 2 &&
+      System.currentTimeMillis() - historyOpenOcrAt435 in 0L..6_000L &&
+      historyOpenOcrX435 in 0.08f..0.48f &&
+      historyOpenOcrY435 in 0.15f..0.31f
+    if (!ocrConfirmed455)
+      return "🔎 FILA DESCHIS • AȘTEPT POZIȚIA OCR 2/2 • FĂRĂ APĂSARE"
+    lastOpenTabNavigationAt455 = nowElapsed
+    openTabNavigationAttempts455++
+    val touchSent455 = TouchTestService.tapVerifiedDemoOpenTabOcr435(
+      brokerPackage, historyOpenOcrX435, historyOpenOcrY435,
+      cachedDemoVerifiedOnChart = verifiedDemoReview
+    )
+    // A successfully DISPATCHED gesture is NOT evidence that Pocket Option
+    // switched tabs. The next frames must confirm visually selected OPEN.
+    return if (touchSent455)
+      "🔎 FILA DESCHIS • ATINGERE TRIMISĂ " +
+        openTabNavigationAttempts455 + "/3 • AȘTEPT ECRANUL"
+    else "🔒 FILA DESCHIS • ATINGERE RESPINSĂ " +
+      openTabNavigationAttempts455 + "/3 • FĂRĂ ORDIN"
+  }
+
   private fun navigateVerifiedDemoHistory431(
     verifiedDemoReview: Boolean,
     nowElapsed: Long
@@ -806,6 +862,21 @@ class ScalpOverlayService : Service() {
       historyNavFailed431 = 0
       historyNavStalled431 = false
       return "ISTORIC DESCHIS CONFIRMAT • VERIFIC TRANZACȚII DEMO"
+    }
+    // 455: On the user's G24 screenshot the broker remains on the blue
+    // "Închis" tab even after Android reports a successful ACTION_CLICK on
+    // "Deschis". Stop re-clicking WebView text and use ONLY the two-frame
+    // OCR physical tap followed by a visual selected-tab proof.
+    val historyScreen455 = verifiedDemoReview && brokerNow435 != null &&
+      brokerNow435 == verifiedDemoAccountPackage &&
+      TouchTestService.confirmedDemoHistoryPageReadOnly431(verifiedDemoReview)
+    if (historyScreen455) {
+      val openNavigation455 = attemptBrokerOpenTabWithVisualProof455(
+        verifiedDemoReview, brokerNow435, nowElapsed
+      )
+      lastAutoDemoHistoryNavStatus = openNavigation455
+      lastAutoDemoHistoryNavStatusAt = nowElapsed
+      return openNavigation455
     }
     // 442: After a CLOSED-history read we must not oscillate back to the
     // broker history on every monitor tick. Let the chart remain visible
@@ -1085,20 +1156,9 @@ class ScalpOverlayService : Service() {
               (lastClosedListOpenNavAt454 == 0L ||
                 nowReview - lastClosedListOpenNavAt454 >= 20_000L)) {
             lastClosedListOpenNavAt454 = nowReview
-            val movedByLabel454 = TouchTestService.returnFromVerifiedDemoClosedDetail438(
-              expectedPackage429!!
+            touchProbeStatus?.text = attemptBrokerOpenTabWithVisualProof455(
+              verifiedDemoReview, expectedPackage429, nowReview
             )
-            val movedByOcr454 = if (!movedByLabel454 &&
-                historyOpenOcrCount435 >= 2 &&
-                System.currentTimeMillis() - historyOpenOcrAt435 in 0L..6_000L)
-              TouchTestService.tapVerifiedDemoOpenTabOcr435(
-                expectedPackage429!!,
-                historyOpenOcrX435, historyOpenOcrY435,
-                cachedDemoVerifiedOnChart = true
-              ) else false
-            touchProbeStatus?.text = if (movedByLabel454 || movedByOcr454)
-              "🔎 ÎNCHIS FĂRĂ ID EXACT • VERIFIC DESCHIS 0/2"
-            else "🔒 ÎNCHIS NECONCLUDENT • FĂRĂ ORDIN"
           }
           val closedDetail438 = verifiedClosedDetail437
           if (closedDetail438 != null && pendingReceipt429 &&
@@ -1108,25 +1168,14 @@ class ScalpOverlayService : Service() {
               System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..20_000L) {
             // The proof stays in memory; navigate to the OPEN list to obtain
             // two independent zero-position reads before reconciliation.
-            val openedByAccessibility440 =
-              TouchTestService.returnFromVerifiedDemoClosedDetail438(
-                expectedPackage429!!
-              )
-            val openedByOcr440 = if (!openedByAccessibility440 &&
-                historyOpenOcrCount435 >= 2 &&
-                System.currentTimeMillis() - historyOpenOcrAt435 in 0L..6_000L)
-              TouchTestService.tapVerifiedDemoOpenTabOcr435(
-                expectedPackage429!!,
-                historyOpenOcrX435, historyOpenOcrY435,
-                cachedDemoVerifiedOnChart = true
-              )
-            else false
-            val backed438 = openedByAccessibility440 || openedByOcr440
-            if (backed438) {
+            val openNav455 = attemptBrokerOpenTabWithVisualProof455(
+              verifiedDemoReview, expectedPackage429, nowReview
+            )
+            if (openNav455.contains("ATINGERE TRIMISĂ") ||
+                openNav455.contains("SELECTATĂ 2/2")) {
               lastVerifiedDetailBackId438 = closedDetail438.positionId
-              touchProbeStatus?.text =
-                "🔎 ID ÎNCHIS 2/2 • REVIN LA DESCHIS • CONFIRM 0 POZIȚII"
             }
+            touchProbeStatus?.text = openNav455
           }
           val ocrCurrent = verifiedDemoReview &&
             lastEmptyOpenOcrPackage == reviewPackage &&
