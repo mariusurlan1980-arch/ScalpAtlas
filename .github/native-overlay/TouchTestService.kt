@@ -373,6 +373,33 @@ class TouchTestService : AccessibilityService() {
       return Triple(svc, root, result)
     }
 
+    // 454: Pocket Option's Motorola history layout can omit the page
+    // title entirely, while showing the Open/Closed tabs AND the selected
+    // bottom "Tranzacții" navigation. This identifies the HISTORY PAGE,
+    // never proves that any position is closed or permits BUY/SELL.
+    private fun historyPageIdentity454(
+      labels: List<Pair<AccessibilityNodeInfo, Rect>>,
+      heightPixels: Int
+    ): Boolean {
+      fun at(label: Regex, low: Float, high: Float): Boolean =
+        labels.any { (node, rect) ->
+          rect.centerY() in (heightPixels * low).toInt()..
+            (heightPixels * high).toInt() &&
+            listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+              .any { label.matches(it.replace(Regex("""\s+"""), " ").trim()) }
+        }
+      val pageHeading = at(
+        Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""),
+        .09f, .24f)
+      val footer = at(
+        Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""),
+        .86f, .985f)
+      val open = at(Regex("""(?i)^(?:Deschis|Open)$"""), .15f, .31f)
+      val closed = at(
+        Regex("""(?i)^(?:Închis|Inchis|Closed)$"""), .15f, .31f)
+      return pageHeading || (footer && open && closed)
+    }
+
     private fun clickExactDemoNavigationLabel(
       svc: TouchTestService,
       root: AccessibilityNodeInfo,
@@ -474,7 +501,7 @@ class TouchTestService : AccessibilityService() {
             Regex("""(?i)^(Deschis|Open)$""").matches(it.trim())
           }
       }
-      return title && open
+      return (title || historyPageIdentity454(labels, h)) && open
     }
 
     // 432: The broker draws the bottom "Tranzacții" label in a WebView
@@ -626,7 +653,8 @@ class TouchTestService : AccessibilityService() {
               .matches(it.trim())
           }
       }
-      if (!pageTitle) return false
+      if (!pageTitle && !historyPageIdentity454(labels, metrics.heightPixels))
+        return false
       return clickExactDemoNavigationLabel(svc, root, labels,
         Regex("""(?i)^(?:Deschis|Open)$"""), .08f, .48f, .15f, .31f)
     }
@@ -651,7 +679,10 @@ class TouchTestService : AccessibilityService() {
             Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
           }
       }
-      val success = if (title) {
+      val historyPage454 = title || historyPageIdentity454(
+        labels, metrics.heightPixels
+      )
+      val success = if (historyPage454) {
         clickExactDemoNavigationLabel(svc, root, labels,
           Regex("""(?i)^(?:Deschis|Open)$"""), 0.08f, 0.48f, 0.15f, 0.30f)
       } else {
@@ -661,7 +692,7 @@ class TouchTestService : AccessibilityService() {
       }
       demoHistoryNavigationStatus = if (!success)
         "ISTORIC AUTO • CONTROL NECONFIRMAT • FĂRĂ ORDIN"
-      else if (title)
+      else if (historyPage454)
         "ISTORIC AUTO • FILA DESCHIS • VERIFIC 0 POZIȚII"
       else
         "ISTORIC AUTO • DESCHID TRANZACȚII • FĂRĂ ORDIN"
@@ -1030,7 +1061,8 @@ class TouchTestService : AccessibilityService() {
             Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
           }
       }
-      if (!isHistory) return "GRAFIC • VERIFICARE BROKER NECESARĂ"
+      if (!isHistory && !historyPageIdentity454(labels, metrics.heightPixels))
+        return "GRAFIC • VERIFICARE BROKER NECESARĂ"
       val accepted = try {
         svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
       } catch (_: Throwable) { false }
@@ -1116,6 +1148,16 @@ class TouchTestService : AccessibilityService() {
         it.bounds.centerY() in (h * 0.15f).toInt()..(h * 0.30f).toInt() &&
           Regex("""(?i)^(?:Deschis|Open)$""").matches(it.text)
       }
+      val closedTab454 = labels.any {
+        it.bounds.centerY() in (h * 0.15f).toInt()..(h * 0.30f).toInt() &&
+          Regex("""(?i)^(?:Închis|Inchis|Closed)$""").matches(it.text)
+      }
+      val footer454 = labels.any {
+        it.bounds.centerY() in (h * 0.86f).toInt()..(h * 0.985f).toInt() &&
+          Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""")
+            .matches(it.text)
+      }
+      val fullHistoryIdentity454 = pageTitle || (footer454 && openTab && closedTab454)
       // 412: Localized broker UI can express the same EXPLICIT empty
       // OPEN-position state in several exact phrases. Do not infer closure
       // from a missing count, a zero price, or chart-only OCR.
@@ -1135,12 +1177,13 @@ class TouchTestService : AccessibilityService() {
       // the visually selected OPEN tab. Its caller requires two independent
       // fresh screen reads and the SAME verified Pocket Option DEMO package.
       // This fallback never works on chart view or with uncertain tab state.
-      val confirmedByAccessibility = pageTitle && openTab && explicitEmpty
+      val confirmedByAccessibility =
+        fullHistoryIdentity454 && openTab && explicitEmpty
       val confirmedByOcr = ocrVerifiedEmptyOpenTab && cachedDemoVerifiedOnChart
       demoEmptyReviewStatus = when {
         confirmedByAccessibility -> "LISTĂ GOALĂ CITITĂ • ACCESIBILITATE 1/2"
         confirmedByOcr -> "LISTĂ GOALĂ CITITĂ • ECRAN OCR 1/2"
-        !pageTitle -> "NU IDENTIFIC PAGINA TRANZACȚII"
+        !fullHistoryIdentity454 -> "NU IDENTIFIC PAGINA TRANZACȚII"
         !openTab -> "NU IDENTIFIC FILA DESCHIS"
         else -> "MESAJUL LISTĂ GOALĂ NU ESTE CITIT"
       }
