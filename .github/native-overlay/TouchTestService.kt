@@ -1205,8 +1205,15 @@ class TouchTestService : AccessibilityService() {
       val prior = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
         .getLong("lastAcceptedAt", 0L)
       if (prior == 0L) return true
-      val elapsed = android.os.SystemClock.elapsedRealtime() - prior
-      return elapsed >= 5 * 60_000L
+      val uptime = android.os.SystemClock.elapsedRealtime()
+      val elapsed = uptime - prior
+      // 454: Android elapsedRealtime() resets on Motorola reboot, while
+      // SharedPreferences retains the previous boot's absolute uptime.
+      // A negative difference is NEVER evidence the old cooldown passed;
+      // require at least five minutes since THIS boot AND the independent
+      // broker ZERO-OPEN 2/2 proof before any DEMO rearm.
+      return if (elapsed < 0L) uptime >= 5 * 60_000L
+        else elapsed >= 5 * 60_000L
     }
 
     fun inspectVisibleDemoOpenBadgeReadOnly(): String {
