@@ -1,4 +1,4 @@
-name: Build Atlas Tiny One-Touch QT Demo Pilot
+name: Build Atlas One Touch Installer v2 Android 14
 
 on:
   push:
@@ -82,15 +82,16 @@ jobs:
             -validity 365 -dname "CN=Scalp Atlas Diagnostic Pilot" -noprompt
           "$BT/apksigner" sign --ks build/pilot.jks --ks-key-alias pilot \
             --ks-pass pass:android --key-pass pass:android \
-            --out build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk build/aligned.apk
-          "$BT/apksigner" verify --verbose build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk
-          test -s build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk
-          cp build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk "${GITHUB_WORKSPACE}/ScalpAtlas-PROBA-O-ATINGERE-G24.apk"
+            --out build/ScalpAtlas-PROBA-ATINGERE-V2-G24.apk build/aligned.apk
+          "$BT/apksigner" verify --verbose build/ScalpAtlas-PROBA-ATINGERE-V2-G24.apk
+          test -s build/ScalpAtlas-PROBA-ATINGERE-V2-G24.apk
+          cp build/ScalpAtlas-PROBA-ATINGERE-V2-G24.apk "${GITHUB_WORKSPACE}/ScalpAtlas-PROBA-ATINGERE-V2-G24.apk"
       - name: Confirm APK manifest and alignment
         run: |
           set -euo pipefail
-          "$BT/aapt2" dump badging ScalpAtlas-PROBA-O-ATINGERE-G24.apk
-          "$BT/zipalign" -c -v 4 ScalpAtlas-PROBA-O-ATINGERE-G24.apk
+          "$BT/aapt2" dump badging ScalpAtlas-PROBA-ATINGERE-V2-G24.apk
+          "$BT/aapt2" dump badging ScalpAtlas-PROBA-ATINGERE-V2-G24.apk | grep -F "versionCode='2'"
+          "$BT/zipalign" -c -v 4 ScalpAtlas-PROBA-ATINGERE-V2-G24.apk
       - name: Install APK on Android 14 emulator before release
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -99,22 +100,22 @@ jobs:
           profile: pixel_5
           disable-animations: true
           script: |
-            adb install -r ScalpAtlas-PROBA-O-ATINGERE-G24.apk
-            adb shell pm list packages | grep -F 'com.scalpatlas.tapcheck'
-            adb shell am start -W -n com.scalpatlas.tapcheck/.MainActivity
+            adb install -r ScalpAtlas-PROBA-ATINGERE-V2-G24.apk
+            adb shell pm list packages | grep -F 'com.scalpatlas.tapcheck2'
+            adb shell am start -W -n com.scalpatlas.tapcheck2/.MainActivity
       - uses: actions/upload-artifact@v4
         with:
           name: ScalpAtlas-PROBA-O-ATINGERE-G24
-          path: ScalpAtlas-PROBA-O-ATINGERE-G24.apk
+          path: ScalpAtlas-PROBA-ATINGERE-V2-G24.apk
           if-no-files-found: error
       - name: Publish direct APK, no ZIP
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-PROBA-O-ATINGERE-G24.apk"
-          TAG="atlas-one-touch-pilot-${GITHUB_SHA:0:12}"
+          FILE="ScalpAtlas-PROBA-ATINGERE-V2-G24.apk"
+          TAG="atlas-one-touch-installer-v2-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --prerelease \
-            --title "SCALP ATLAS PROBA O ATINGERE G24" \
-            --notes "APK TEST NATIV foarte simplu pentru Motorola G24. Necesita activarea manuala unica a serviciului de Accesibilitate. Pe Pocket Option QT Demo incearca automat o singura atingere pe eticheta confirmata Tranzactii si verifica vizual aparitia filelor Deschis si Inchis. Nu apasa BUY/SELL, nu plaseaza tranzactii, nu are Martingale sau motor de semnale. Daca eticheta/contul nu se pot citi, NU apasa nimic. Netestat fizic pe Motorola G24; compilarea nu garanteaza functionarea. Build $GITHUB_SHA."
+            --title "SCALP ATLAS PROBA ATINGERE V2 G24" \
+            --notes "APK TEST NATIV v2 pentru Motorola G24, cu versiune explicita si nume de pachet nou pentru a evita conflictul de instalare. Necesita activarea manuala unica a serviciului de Accesibilitate. Pe Pocket Option QT Demo incearca automat o singura atingere pe eticheta confirmata Tranzactii si verifica vizual aparitia filelor Deschis si Inchis. Nu apasa BUY/SELL, nu plaseaza tranzactii, nu are Martingale sau motor de semnale. Daca eticheta/contul nu se pot citi, NU apasa nimic. Netestat fizic pe Motorola G24; compilarea nu garanteaza functionarea. Build $GITHUB_SHA."
