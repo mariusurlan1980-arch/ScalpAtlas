@@ -224,6 +224,15 @@ class ScalpOverlayService : Service() {
   // indefinitely. These timers authorize navigation ONLY, never a trade.
   private var closedListFirstObservedAt454 = 0L
   private var lastClosedListOpenNavAt454 = 0L
+  // 457: Navigation is not settlement. A bounded history read should
+  // leave the user on the chart, while the unverified old ID stays locked.
+  private var lastPerspectiveReturnAttempt457 = 0L
+  private var historyReturnPauseUntil457 = 0L
+  @Volatile private var perspectiveOcrAt457 = 0L
+  @Volatile private var perspectiveOcrPackage457: String? = null
+  @Volatile private var perspectiveOcrX457 = -1f
+  @Volatile private var perspectiveOcrY457 = -1f
+  @Volatile private var perspectiveOcrSamples457 = 0
   private var lastVerifiedDetailBackId438: String? = null
   // 442: One CLOSED-history scan per outstanding DEMO attempt in a bounded
   // interval. Navigation is not settlement proof, and this cooldown NEVER
@@ -818,6 +827,11 @@ class ScalpOverlayService : Service() {
     verifiedDemoReview: Boolean,
     nowElapsed: Long
   ): String {
+    // 457: After a bounded CLOSED review, leave the price chart visible
+    // instead of endlessly reopening Transactions. This pauses navigation
+    // only; it never resets "attempted", broker IDs, MG, or position locks.
+    if (historyReturnPauseUntil457 > nowElapsed)
+      return "ISTORIC DEMO • PAUZĂ NAVIGARE • GRAFIC • ORDIN VECHI BLOCAT"
     // 435: A visually selected OPEN tab verified twice by independent
     // MediaProjection frames proves that the history page IS open even
     // when broker WebView accessibility exposes no page-title nodes.
@@ -1145,20 +1159,51 @@ class ScalpOverlayService : Service() {
               "🔎 ÎNCHIS DEMO • DESCHID DETALIU • VERIFIC ID 2/2"
             else "🔒 ÎNCHIS DEMO • RÂND NECONFIRMAT • FĂRĂ ORDIN"
           }
-          // 454: If no unique CLOSED row can be found after a bounded
-          // OCR review, leave the list via the explicitly labelled "Deschis"
-          // tab and independently verify zero open positions. Repeated
-          // taps on "Tranzacții" do not solve an unidentifiable old order.
-          // Both functions navigate ONLY, and they cannot clear old receipts.
-          if (closedList438 && closedRowSamples438 < 2 &&
-              closedListFirstObservedAt454 > 0L &&
-              nowReview - closedListFirstObservedAt454 >= 25_000L &&
-              (lastClosedListOpenNavAt454 == 0L ||
-                nowReview - lastClosedListOpenNavAt454 >= 20_000L)) {
-            lastClosedListOpenNavAt454 = nowReview
-            touchProbeStatus?.text = attemptBrokerOpenTabWithVisualProof455(
-              verifiedDemoReview, expectedPackage429, nowReview
-            )
+          // 457: The screen shown by the user is the CLOSED trade list.
+          // After a bounded review, navigate to broker "Perspective" from
+          // two fresh independent OCR detections, not back to "Tranzacții".
+          // Preserve ALL old-order locks. No WIN/LOSS, stake or AUTO reset.
+          // At 25 s escape if no unique row; at 45 s escape even when an
+          // attempted row click never produced a verifiable CLOSED detail.
+          val timedOutClosedList457 = closedList438 &&
+            closedListFirstObservedAt454 > 0L &&
+            (nowReview - closedListFirstObservedAt454 >= 45_000L ||
+              (closedRowSamples438 < 2 &&
+                nowReview - closedListFirstObservedAt454 >= 25_000L))
+          if (timedOutClosedList457 && !closedHistoryInspectionInProgress &&
+              nowReview - lastPerspectiveReturnAttempt457 >= 30_000L &&
+              historyReturnPauseUntil457 <= nowReview) {
+            val freshPerspective457 = perspectiveOcrSamples457 >= 2 &&
+              perspectiveOcrPackage457 == expectedPackage429 &&
+              System.currentTimeMillis() - perspectiveOcrAt457 in 0L..6_000L &&
+              perspectiveOcrX457 in 0.20f..0.63f &&
+              perspectiveOcrY457 in 0.84f..0.985f &&
+              historyPageVisible433 &&
+              System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+            if (freshPerspective457) {
+              lastPerspectiveReturnAttempt457 = nowReview
+              val sent457 = TouchTestService.tapVerifiedDemoPerspectiveFooter457(
+                expectedPackage429!!, perspectiveOcrX457, perspectiveOcrY457,
+                cachedDemoVerifiedOnChart = verifiedDemoReview,
+                ocrConfirmedHistoryPage = true
+              )
+              perspectiveOcrSamples457 = 0
+              if (sent457) {
+                // Page transition itself still requires a NEW chart frame.
+                historyReturnPauseUntil457 = nowReview + 180_000L
+                lastClosedHistoryScanKey442 = listOf(
+                  expectedPackage429.orEmpty(), expectedPair429.orEmpty(),
+                  attemptedAt429.toString()
+                ).joinToString("|")
+                lastClosedHistoryScanAt442 = nowReview
+              }
+              touchProbeStatus?.text = if (sent457)
+                "🔎 PERSPECTIVE • REVENIRE TRIMISĂ • VERIFIC GRAFIC • MG BLOCAT"
+              else "🔒 PERSPECTIVE • GEST RESPINS • FĂRĂ ORDIN"
+            } else {
+              touchProbeStatus?.text =
+                "🔎 PERSPECTIVE • AȘTEPT ETICHETA OCR 2/2 • FĂRĂ ORDIN"
+            }
           }
           val closedDetail438 = verifiedClosedDetail437
           if (closedDetail438 != null && pendingReceipt429 &&
@@ -3955,7 +4000,17 @@ class ScalpOverlayService : Service() {
     // explicit message, visually selected OPEN tab and 2 fresh reads.
     val transactionsFooter454 = hasLine(0.86f, 0.98f,
       Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""))
-    val historyIdentity454 = title || (transactionsFooter454 && openTab && closedTab)
+    // 457: On the photographed G24 history screen the bottom label can
+    // be tiny in OCR. BOTH tab labels plus a dated history section identify
+    // this as the HISTORY PAGE, never as a chart or settlement proof.
+    val datedHistory457 = lines.any { line ->
+      val y = line.boundingBox?.centerY()?.toFloat()?.div(frame.height)
+        ?: return@any false
+      y in 0.22f..0.86f &&
+        Regex("""^20\\d{2}-\\d{2}-\\d{2}$""").matches(line.text.trim())
+    }
+    val historyIdentity454 = title ||
+      (openTab && closedTab && (transactionsFooter454 || datedHistory457))
     val body = lines.filter { line ->
       val box = line.boundingBox
       box != null && box.centerY().toFloat() / frame.height in 0.22f..0.89f
@@ -3968,6 +4023,36 @@ class ScalpOverlayService : Service() {
     // 433: Page identity must come from actual history TITLE and both tabs,
     // not the chart footer "Tranzacții" or any historical FX row.
     val trueHistoryPage433 = historyIdentity454 && openTab && closedTab && pkg != null
+    // 457: Bottom "Perspective" is a safe NON-ORDER navigation control.
+    // Its coordinates must be found independently in two fresh OCR frames.
+    val perspectiveLabels457 = if (trueHistoryPage433) lines.mapNotNull { line ->
+      val rect = line.boundingBox ?: return@mapNotNull null
+      val x = rect.centerX().toFloat() / frame.width
+      val y = rect.centerY().toFloat() / frame.height
+      if (x !in 0.20f..0.63f || y !in 0.84f..0.985f ||
+          !Regex("""(?i)^(?:Perspective|Perspectiva|Perspectivă)$""")
+            .matches(line.text.trim()))
+        return@mapNotNull null
+      Pair(x, y)
+    } else emptyList()
+    if (perspectiveLabels457.size == 1 && pkg != null) {
+      val xy = perspectiveLabels457.single()
+      if (perspectiveOcrSamples457 > 0 &&
+          perspectiveOcrPackage457 == pkg &&
+          observedAt - perspectiveOcrAt457 in 1_000L..12_000L &&
+          kotlin.math.abs(xy.first - perspectiveOcrX457) <= 0.035f &&
+          kotlin.math.abs(xy.second - perspectiveOcrY457) <= 0.025f)
+        perspectiveOcrSamples457 = (perspectiveOcrSamples457 + 1).coerceAtMost(3)
+      else perspectiveOcrSamples457 = 1
+      perspectiveOcrX457 = xy.first
+      perspectiveOcrY457 = xy.second
+      perspectiveOcrAt457 = observedAt
+      perspectiveOcrPackage457 = pkg
+    } else {
+      perspectiveOcrSamples457 = 0
+      perspectiveOcrAt457 = 0L
+      perspectiveOcrPackage457 = null
+    }
     // 440: The broker WebView sometimes hides tab text from Android
     // Accessibility. Independently capture the exact visible "Deschis"
     // label twice; this is a navigation coordinate, not a position receipt.
