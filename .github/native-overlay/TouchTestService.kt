@@ -283,7 +283,7 @@ class TouchTestService : AccessibilityService() {
         // suffix ONLY if the node is physically adjacent to the same
         // header selector label; never pull OTC from historical rows.
         val nearbyOtc = labels.any { (otherText, otherBounds) ->
-          Regex("""(?i)^\\s*\\(?\\s*OTC\\s*\\)?\\s*$""")
+          Regex("""(?i)^\s*\(?\s*OTC\s*\)?\s*$""")
             .matches(otherText) &&
           kotlin.math.abs(otherBounds.centerY() - bounds.centerY()) <=
             metrics.heightPixels * 0.022f &&
