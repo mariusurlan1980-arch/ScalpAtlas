@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 459 G24 resolve Open-tab OCR and physical label
+name: Build Scalp Atlas 461 G24 automatic Perspective return after Demo WIN
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-watchdog461]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=459
+          expo['android']['versionCode']=461
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1880,6 +1880,37 @@ jobs:
           print('459: bound physical Open label fallback, OCR word rect and intact order safety gates')
           PY
 
+      - name: Verify 461 bounded chart return cannot settle or duplicate DEMO trades
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          o=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          assert 'private var historyWatchStartedAt461 = 0L' in o
+          assert 'private var historyWatchSamples461 = 0' in o
+          assert '(oldShockAttempt || oldSellAttempt)' in o
+          assert 'nowReview - historyWatchStartedAt461 >= 30_000L' in o
+          assert 'historyWatchReturnAttempts461 < 3' in o
+          assert 'historyWatchLastReturnAt461 >= 15_000L' in o
+          assert 'TouchTestService.navigateFromVerifiedDemoHistoryToChart461(' in o
+          assert 'historyReturnPauseUntil457 = nowReview + 600_000L' in o
+          assert 'historyReturnPauseUntil457 > tick' in o
+          assert 'historyWatchSamples461 = (historyWatchSamples461 + 1).coerceAtMost(3)' in o
+          assert 'fun navigateFromVerifiedDemoHistoryToChart461(' in t
+          assert 'if (!ocrVerifiedHistoryPage || !cachedDemoVerifiedOnChart)' in t
+          assert 'historyPageIdentity454(labels, h)' in t
+          assert 'Perspective|Perspectiva|Perspectivă' in t
+          assert 'svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))' in t
+          assert 'svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)' in t
+          assert 'openTabVisualConsecutive429 >= 2' in o
+          assert 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' in o
+          assert 'oldShockAttempt && !savedReconciled437 -> false' in o
+          assert 'tradePositionGate.beginAttempt()' in o
+          assert 'realOrderAdapterAvailable = false' in r
+          print('461: demo-only history watchdog, max 3 attempts, unchanged receipt/order gates')
+          PY
+
       - name: Allow Gradle wrapper download on slower GitHub runners
         run: |
           python3 - <<'PY'
@@ -2001,28 +2032,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-461-REVINE-LA-GRAFIC-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-459-FILA-DESCHIS-DEMO-G24
-          path: ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk
+          name: ScalpAtlas-461-REVINE-LA-GRAFIC-G24
+          path: ScalpAtlas-461-REVINE-LA-GRAFIC-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-open-tab-accessibility459'
+        if: github.ref == 'refs/heads/fix/scalpatlas-chart-watchdog461'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk"
+          FILE="ScalpAtlas-461-REVINE-LA-GRAFIC-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-openlabel459-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-chartreturn461-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 459 - FILA DESCHIS DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "459 CANDIDAT QT DEMO G24, NETESTAT PE TELEFON: remediază blocajul FILA DESCHIS AȘTEPT POZIȚIA OCR 2/2 prin recunoașterea cuvintelor individuale OCR și încercarea alternativă a etichetei exacte Deschis din accesibilitate Android, cu atingere fizică și max. 3 încercări. Nu consideră atingerea dovadă, verifică selectarea Deschis și lista 0 poziții 2/2, păstrează ordinul neverificat și nu mărește miza. Eventuala nouă tranzacție necesită ȘOC valid + QT Demo + miza verificată. Fără REAL. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 461 - REVINE LA GRAFIC DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "461 CANDIDAT DEMO G24, NETESTAT PE TELEFON: bazat pe versiunea 459 care a efectuat o tranzacție BUY DEMO raportată de utilizator pe 8 noiembrie. Un watchdog al paginii de istoric verificată 2 cadre încearcă după 30 secunde să revină la Perspective, cu max. 3 încercări distanțate la 15 secunde și pauză pentru a nu reveni continuu la Tranzacții. Folosește eticheta exactă Perspective a brokerului sau Android Back numai pe istoric verificat. Nu șterge ordinul neverificat, nu deduce WIN sau LOSS din navigare, nu activează martingale; noi ordine cer confirmarea pozițiilor. REAL dezactivat. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
           --prerelease
