@@ -220,6 +220,11 @@ class ScalpOverlayService : Service() {
   @Volatile private var closedRowY438 = -1f
   @Volatile private var closedRowSamples438 = 0
   private var lastClosedRowTapAt438 = 0L
+  // 458: At most ONE closed-row probe per persisted DEMO attempt.
+  // If it cannot produce a unique authenticated receipt, switch to OPEN
+  // and verify zero positions rather than clicking completed trades again.
+  private var closedRowProbeKey458: String? = null
+  private var openTabFirstObservedAt458 = 0L
   // 454: An unmatched CLOSED-history page must not trap the G24 broker
   // indefinitely. These timers authorize navigation ONLY, never a trade.
   private var closedListFirstObservedAt454 = 0L
@@ -1147,10 +1152,16 @@ class ScalpOverlayService : Service() {
             if (closedListFirstObservedAt454 == 0L)
               closedListFirstObservedAt454 = nowReview
           } else closedListFirstObservedAt454 = 0L
+          val closedAttemptKey458 = listOf(expectedPackage429.orEmpty(),
+            expectedPair429.orEmpty(), attemptedAt429.toString()).joinToString("|")
           if (closedList438 && historyReturnPauseUntil457 <= nowReview &&
+              closedRowProbeKey458 != closedAttemptKey458 &&
               closedRowSamples438 >= 2 &&
               System.currentTimeMillis() - closedRowAt438 in 0L..6_000L &&
               nowReview - lastClosedRowTapAt438 > 20_000L) {
+            // Mark before dispatch. Even a rejected/cancelled gesture cannot
+            // cause endless clicks on a completed-trade row.
+            closedRowProbeKey458 = closedAttemptKey458
             lastClosedRowTapAt438 = nowReview
             val sent438 = TouchTestService.tapVerifiedDemoClosedRowOcr438(
               reviewPackage!!, closedRowX438, closedRowY438
@@ -1160,17 +1171,36 @@ class ScalpOverlayService : Service() {
               "🔎 ÎNCHIS DEMO • DESCHID DETALIU • VERIFIC ID 2/2"
             else "🔒 ÎNCHIS DEMO • RÂND NECONFIRMAT • FĂRĂ ORDIN"
           }
+          // 458: The missing step in 457: from the selected CLOSED tab,
+          // first attempt "Deschis" (OPEN). Only that tab can provide
+          // the independently verified EMPTY OPEN 2/2 evidence which permits
+          // a safe new base-$1 DEMO cycle. Never assume CLOSED list = empty.
+          // The 455 helper caps attempts at 3 with >=12 seconds between taps.
+          val closedAge458 = if (closedList438)
+            nowReview - closedListFirstObservedAt454 else 0L
+          val rowProbeSettled458 = closedRowProbeKey458 != closedAttemptKey458 ||
+            nowReview - lastClosedRowTapAt438 >= 8_000L
+          if (closedList438 && closedAge458 >= 10_000L &&
+              rowProbeSettled458 && historyReturnPauseUntil457 <= nowReview &&
+              !closedHistoryInspectionInProgress) {
+            val openNav458 = attemptBrokerOpenTabWithVisualProof455(
+              verifiedDemoReview, expectedPackage429, nowReview
+            )
+            if (openNav458.isNotBlank())
+              touchProbeStatus?.text = "🔎 458 • " + openNav458.take(92)
+          }
           // 457: The screen shown by the user is the CLOSED trade list.
           // After a bounded review, navigate to broker "Perspective" from
           // two fresh independent OCR detections, not back to "Tranzacții".
           // Preserve ALL old-order locks. No WIN/LOSS, stake or AUTO reset.
-          // At 25 s escape if no unique row; at 45 s escape even when an
-          // attempted row click never produced a verifiable CLOSED detail.
+          // 458: Allow at least one strict OPEN-tab verification window
+          // before escaping. If none of the 3 bounded taps is visually
+          // acknowledged, return to Perspective with the old lock intact.
           val timedOutClosedList457 = closedList438 &&
             closedListFirstObservedAt454 > 0L &&
-            (nowReview - closedListFirstObservedAt454 >= 45_000L ||
-              (closedRowSamples438 < 2 &&
-                nowReview - closedListFirstObservedAt454 >= 25_000L))
+            (nowReview - closedListFirstObservedAt454 >= 65_000L ||
+              (openTabNavigationAttempts455 >= 3 &&
+                nowReview - closedListFirstObservedAt454 >= 45_000L))
           if (timedOutClosedList457 && !closedHistoryInspectionInProgress &&
               nowReview - lastPerspectiveReturnAttempt457 >= 30_000L &&
               historyReturnPauseUntil457 <= nowReview) {
@@ -1223,6 +1253,15 @@ class ScalpOverlayService : Service() {
             }
             touchProbeStatus?.text = openNav455
           }
+          // 458: A broker OPEN tab with no explicit zero-position message
+          // must not hold the screen forever. Do not clear any order marker.
+          val openReview458 = pendingReceipt429 && verifiedDemoReview &&
+            historyPageVisible433 && historyPageTab433 == "DESCHIS" &&
+            reviewPackage != null && reviewPackage == expectedPackage429
+          if (openReview458) {
+            if (openTabFirstObservedAt458 == 0L)
+              openTabFirstObservedAt458 = nowReview
+          } else openTabFirstObservedAt458 = 0L
           val ocrCurrent = verifiedDemoReview &&
             lastEmptyOpenOcrPackage == reviewPackage &&
             emptyOpenOcrConsecutive >= 2 &&
