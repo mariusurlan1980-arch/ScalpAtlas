@@ -105,6 +105,9 @@ class ScalpOverlayService : Service() {
     // A direction's 5-7 minute lock is NOT a 5-7 minute window for NEW entries.
     private const val ALERT_FRESH_MS = 30_000L
     private const val OCR_INTERVAL_MS = 3000L
+    // 462: intentional one-order safety mode; never enter history UI.
+    // Do NOT change this to allow consecutive orders without settlement.
+    private const val CHART_ONLY_DEMO_462 = true
     private const val TF_STALE_MS = 18000L
     private const val MARKET_STALE_MS = 12_000L
     private const val MARKET_SETTLE_MS = 6_000L
@@ -1062,6 +1065,24 @@ class ScalpOverlayService : Service() {
         // the existing 424 build has no automatic receipt reader, so this
         // event cannot be produced by Android gesture callbacks or SHOCK.
         maybePrepareAutomaticDemoRecoveryStake(android.os.SystemClock.elapsedRealtime())
+        // 462 CHART-ONLY DEMO: do not open, press, or scroll either the
+        // CLOSED or OPEN transaction tabs automatically. A single valid
+        // user-authorized DEMO SHOCK can still submit one broker order,
+        // subject to the unchanged preflight and persistent "attempted"
+        // guard. Without a broker-verified settlement, NO second order and
+        // NO Martingale are permitted; elapsed time is not settlement proof.
+        // Keep only the READ-ONLY broker identity monitor on the live chart.
+        if (CHART_ONLY_DEMO_462) {
+          if (autoDemoSessionConsumed) {
+            lastAutoDemoHistoryNavStatus = ""
+            lastAutoDemoHistoryNavStatusAt = 0L
+            touchProbeStatus?.text =
+              "🤖 GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
+              "ORDIN VECHI BLOCAT PÂNĂ LA VERIFICARE"
+          }
+          mainHandler.postDelayed(this, 2500L)
+          return
+        }
         // 410: On the broker's Transactions page the account header is
         // sometimes absent, even though QT Demo was confirmed on the chart.
         // Carry that proof for <=90s ONLY in the SAME broker package, and ONLY
