@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 462 G24 chart-only one-shot QT Demo
+name: Build Scalp Atlas 463 G24 chart-only passive receipt verification
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=462
+          expo['android']['versionCode']=463
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1906,6 +1906,56 @@ jobs:
           print('462: on-chart demo account read, history auto navigation unreachable, one-order safeguards intact')
           PY
 
+      - name: Verify 463 passive reconciliation without broker navigation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          assert 'private const val CHART_ONLY_DEMO_462 = true' in s
+          fn=s.split('private fun inspectPassiveDemoProof463(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
+          monitor=s.split('private fun startBrokerAccountMonitor()',1)[1].split('private fun startDemoClickMonitor()',1)[0]
+          assert 'TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(' in fn
+          assert 'emptyOpenOcrConsecutive >= 2' in fn
+          assert 'openTabVisualConsecutive429 >= 2' in fn
+          assert 'demoEmptyReviewReads = 1' in fn
+          assert 'nowElapsed - demoEmptyReviewFirstAt < 2_000L' in fn
+          assert 'verifiedClosedDetail437' in fn
+          assert 'expectedPair' in fn and 'closed.pair != expectedPair' in fn
+          assert 'closed.stakeCents != stake' in fn
+          assert 'closed.payoutPercent != payout' in fn
+          assert 'closed.side' in fn
+          assert 'brokerOpenTimeMatchesAttempt437' in fn
+          assert 'openId != null && openId != closed.positionId' in fn
+          assert 'reconcileSettledDemoWithMissingOpen437(' in fn
+          assert 'alreadySettledClosedReceipt444(' in fn
+          assert 'ledgerUpdated' in fn and 'if (!ledgerUpdated)' in fn
+          assert 'brokerConfirmedClosed(closed.positionId, true)' in fn
+          assert 'brokerVerifiedEmptyDemoReview(true)' in fn
+          assert 'demoRecoveryLedger.quote(payout).stakeCents == 100L' in fn
+          assert '!demoRecoveryLedger.isRecovering429()' in fn
+          assert 'autoDemoSessionConsumed = !canRearmBase' in fn
+          # PASSIVE method must never interact with a trading UI or browser.
+          for forbidden in ('advanceDemoHistoryReviewNavigation(',
+              'advanceDemoClosedHistoryNavigation(',
+              'tapVerifiedDemoOpenTabOcr435(',
+              'tapVerifiedDemoClosedRowOcr438(',
+              'pressAnyPairDemoSellOnce(', 'pressAutoOneDollarDemoOrderOnce(',
+              'dispatchGesture(', 'performGlobalAction('):
+            assert forbidden not in fn, forbidden
+          assert 'inspectPassiveDemoProof463(' in monitor
+          # All historic navigation stays after the constant-true return.
+          before, after = monitor.split('if (CHART_ONLY_DEMO_462) {',1)
+          guard = after.split('// 410: On the broker',1)[0]
+          assert 'inspectPassiveDemoProof463(' in guard
+          assert '\n          return\n' in guard
+          assert 'navigateVerifiedDemoHistory431(' in after
+          assert 'TouchTestService.inspectBrokerAccountReadOnly()' in before
+          assert 'realOrderAdapterAvailable = false' in r
+          print('463 PASS: passive authentic receipt match, no chart-only history clicks or MG bypass')
+          PY
+
       - name: Allow Gradle wrapper download on slower GitHub runners
         run: |
           python3 - <<'PY'
@@ -2027,28 +2077,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-462-DOAR-GRAFIC-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-463-PROBA-PASIVA-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-462-DOAR-GRAFIC-DEMO-G24
-          path: ScalpAtlas-462-DOAR-GRAFIC-DEMO-G24.apk
+          name: ScalpAtlas-463-PROBA-PASIVA-DEMO-G24
+          path: ScalpAtlas-463-PROBA-PASIVA-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-chart-only462'
+        if: github.ref == 'refs/heads/fix/scalpatlas-passive-proof463'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-462-DOAR-GRAFIC-DEMO-G24.apk"
+          FILE="ScalpAtlas-463-PROBA-PASIVA-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-chartonly462-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-passive463-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 462 - DOAR GRAFIC DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "462 CANDIDAT pentru Motorola G24 QT Demo; bazat pe 459 cu o tranzacție automată BUY raportată de utilizator. Modul DOAR GRAFIC interzice oricărei rutine de monitorizare deschiderea automată a paginilor Tranzacții Deschis/Închis. Monitorul citește doar contul, motorul ȘOC poate trimite cel mult o tranzacție per ordin confirmat prin garda existentă. Fără verificarea unui ordin anterior, NU se trimit alte tranzacții, fără Martingale și fără resetare de blocaje. Necesită test practic, REAL dezactivat. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 463 - PROBĂ PASIVĂ DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "463 CANDIDAT Motorola G24 QT Demo: păstrează modul Doar grafic fără niciun tap automat în istoricul Deschis/Închis. Corectează verificarea contului QT Demo înainte de return-ul v462 și adaugă procesare PASIVĂ când utilizatorul arată manual ID-ul unui ordin ÎNCHIS: cere detalii UUID unice citite de două ori, pereche/sumă/payout/direcție/ora deschiderii identice cu ordinul salvat și apoi verificarea independentă 0 DESCHISE 2/2. Doar dovada completă poate dezactiva blocajul; pentru loss nu pornește MG automat. Fără o dovadă oficială afișată, rămâne blocat. APK compilat nu înseamnă testat în broker; fără REAL. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
           --prerelease
