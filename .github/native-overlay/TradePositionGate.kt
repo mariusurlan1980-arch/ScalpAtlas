@@ -72,6 +72,30 @@ class TradePositionGate {
     return true
   }
 
+  /**
+   * 464: BOUNDED QT DEMO-ONLY testing after an unverified Android tap.
+   * This is deliberately NOT broker proof of closure, not an accounting
+   * settlement, and not a way to clear a known OPEN position. It only
+   * permits the unknown-gesture pilot to continue at fixed $1 after the
+   * caller checked the recorded 5-minute test window plus a safety buffer.
+   * The caller enforces the finite attempt cap and fresh QT Demo preflight.
+   */
+  @Synchronized
+  fun releaseUnknownGestureForExpiredDemoPilot464(
+    elapsedWindowVerified: Boolean,
+    freshDemoPreflightVerified: Boolean,
+    limitedPilotCapacityAvailable: Boolean
+  ): Boolean {
+    if (!elapsedWindowVerified || !freshDemoPreflightVerified ||
+        !limitedPilotCapacityAvailable ||
+        state == State.SUBMITTING || state == State.OPEN) return false
+    // UNKNOWN means Android's physical tap was attempted but no broker ID
+    // was captured. Never turn this into a WIN, LOSS or broker CLOSED proof.
+    currentId = null
+    state = State.READY
+    return true
+  }
+
   @Synchronized
   fun resetOnNewVerifiedAccount() {
     currentId = null
