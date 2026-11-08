@@ -1141,7 +1141,7 @@ jobs:
           grep -Fq 'val safeNavRegion = ' "$T"
           grep -Fq 'node.performAction(AccessibilityNodeInfo.ACTION_CLICK)' "$T"
           grep -Fq 'fun confirmedDemoHistoryPageReadOnly431(' "$T"
-          grep -Fq 'return title && open' "$T"
+          grep -Fq 'return (title || historyPageIdentity454(labels, h)) && open' "$T"
           grep -Fq 'private fun navigateVerifiedDemoHistory431(' "$O"
           grep -Fq 'historyNavFailed431 >= 3' "$O"
           grep -Fq 'ISTORICUL NU SE DESCHIDE' "$O"
@@ -1189,7 +1189,8 @@ jobs:
           set -euo pipefail
           O=.github/native-overlay/ScalpOverlayService.kt
           T=.github/native-overlay/TouchTestService.kt
-          grep -Fq 'val trueHistoryPage433 = title && openTab && closedTab && pkg != null' "$O"
+          grep -Fq 'val trueHistoryPage433 = historyIdentity454 && openTab && closedTab && pkg != null' "$O"
+          grep -Fq 'val historyIdentity454 = title || (transactionsFooter454 && openTab && closedTab)' "$O"
           grep -Fq 'historyPageVisible433 = true' "$O"
           grep -Fq 'historyPageVisible433 = false' "$O"
           grep -Fq 'historyPageTab433 = when {' "$O"
