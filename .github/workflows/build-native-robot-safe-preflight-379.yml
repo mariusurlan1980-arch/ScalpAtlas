@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 456 G24 simple physical history navigation
+name: Build Scalp Atlas 457 G24 return to Perspective after closed history
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=456
+          expo['android']['versionCode']=457
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1192,7 +1192,8 @@ jobs:
           O=.github/native-overlay/ScalpOverlayService.kt
           T=.github/native-overlay/TouchTestService.kt
           grep -Fq 'val trueHistoryPage433 = historyIdentity454 && openTab && closedTab && pkg != null' "$O"
-          grep -Fq 'val historyIdentity454 = title || (transactionsFooter454 && openTab && closedTab)' "$O"
+          grep -Fq 'val historyIdentity454 = title ||' "$O"
+          grep -Fq '(openTab && closedTab && (transactionsFooter454 || datedHistory457))' "$O"
           grep -Fq 'historyPageVisible433 = true' "$O"
           grep -Fq 'historyPageVisible433 = false' "$O"
           grep -Fq 'historyPageTab433 = when {' "$O"
@@ -1793,6 +1794,34 @@ jobs:
           print('456 safe physical navigation source checks passed')
           PY
 
+      - name: Verify 457 return to chart does not remove an old-order lock
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          o=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          assert 'val datedHistory457 = lines.any { line ->' in o
+          assert 'openTab && closedTab && (transactionsFooter454 || datedHistory457)' in o
+          assert 'perspectiveOcrSamples457 >= 2' in o
+          assert 'perspectiveOcrPackage457 == expectedPackage429' in o
+          assert 'val timedOutClosedList457 = closedList438 &&' in o
+          assert 'nowReview - closedListFirstObservedAt454 >= 45_000L' in o
+          assert 'nowReview - closedListFirstObservedAt454 >= 25_000L' in o
+          assert 'historyReturnPauseUntil457 = nowReview + 180_000L' in o
+          assert 'lastClosedHistoryScanAt442 = nowReview' in o
+          assert 'tapVerifiedDemoPerspectiveFooter457(' in o
+          assert 'fun tapVerifiedDemoPerspectiveFooter457(' in t
+          assert 'ocrConfirmedHistoryPage: Boolean' in t
+          assert 'if (!ocrConfirmedHistoryPage || !cachedDemoVerifiedOnChart) return false' in t
+          assert 'centerXFraction !in 0.20f..0.63f' in t
+          assert 'centerYFraction !in 0.84f..0.985f' in t
+          assert 'BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage)' in t
+          assert 'return "ISTORIC DEMO • PAUZĂ NAVIGARE • GRAFIC • ORDIN VECHI BLOCAT"' in o
+          assert 'oldShockAttempt && !savedReconciled437 -> false' in o
+          assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          print('457 history recognition, Perspective physical touch and preserved order locks verified')
+          PY
+
       - name: Allow Gradle wrapper download on slower GitHub runners
         run: |
           python3 - <<'PY'
@@ -1914,28 +1943,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-456-ISTORIC-SIMPLU-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-457-REVINO-GRAFIC-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-455-FILA-DESCHIS-DEMO-G24
-          path: ScalpAtlas-456-ISTORIC-SIMPLU-DEMO-G24.apk
+          name: ScalpAtlas-457-REVINO-GRAFIC-DEMO-G24
+          path: ScalpAtlas-457-REVINO-GRAFIC-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-physical-history-nav456'
+        if: github.ref == 'refs/heads/fix/scalpatlas-return-to-chart457'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-456-ISTORIC-SIMPLU-DEMO-G24.apk"
+          FILE="ScalpAtlas-457-REVINO-GRAFIC-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-simple456-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-perspective457-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 456 - ISTORIC SIMPLU DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "456 CANDIDAT QT DEMO Motorola G24, NETESTAT PE TELEFON: încearcă o singură atingere virtuală fizică pe eticheta Tranzacții sau Deschis confirmată în broker; elimină ACTION_CLICK WebView fără efect și căutarea de părinți. Așteaptă confirmarea vizuală că pagina/fila s-a schimbat. La eșec nu presupune deschiderea istoricului, nu șterge ordinul neverificat și nu trimite ordine noi. 1 USD inițial, REAL dezactivat. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 457 - REVINO LA GRAFIC DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "457 CANDIDAT QT DEMO Motorola G24, NETESTAT PE TELEFON: identifică și istoricul cu filele Deschis/Închis plus dată, iar după verificare limitată încearcă atingerea fizică a etichetei Perspective confirmate în două cadre OCR și menține pauză de navigare 3 minute. O atingere Android nu dovedește trecerea la grafic. NU șterge ordinul vechi neverificat, NU ghicește WIN/LOSS și NU trimite o nouă comandă până la reconciliere. 1 USD inițial, REAL dezactivat. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
           --prerelease
