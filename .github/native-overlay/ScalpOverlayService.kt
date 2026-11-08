@@ -4087,11 +4087,19 @@ class ScalpOverlayService : Service() {
     observedAt: Long
   ) {
     val lines = result.textBlocks.flatMap { it.lines }
+    // 459: Pocket Option sometimes groups both tab labels into one OCR
+    // line. Individual ML Kit text ELEMENTS retain each label's own
+    // bounding rectangle. Use both sources, never infer empty positions.
+    val words459 = lines.flatMap { it.elements }
     fun hasLine(lower: Float, upper: Float, regex: Regex): Boolean =
       lines.any { line ->
         val box = line.boundingBox ?: return@any false
         val centerY = box.centerY().toFloat() / frame.height
         centerY in lower..upper && regex.matches(line.text.trim())
+      } || words459.any { element ->
+        val box = element.boundingBox ?: return@any false
+        val centerY = box.centerY().toFloat() / frame.height
+        centerY in lower..upper && regex.matches(element.text.trim())
       }
     val title = hasLine(0.09f, 0.24f,
       Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""))
@@ -4163,7 +4171,20 @@ class ScalpOverlayService : Service() {
     // 440: The broker WebView sometimes hides tab text from Android
     // Accessibility. Independently capture the exact visible "Deschis"
     // label twice; this is a navigation coordinate, not a position receipt.
-    val openLabels440 = if (trueHistoryPage433) lines.mapNotNull { line ->
+    // Prefer word-level bounds where OCR grouped "Deschis Închis" in
+    // one line. Otherwise use the whole-line bounds, as in versions 435+.
+    val openWordLabels459 = if (trueHistoryPage433)
+      words459.mapNotNull { element ->
+        val rect = element.boundingBox ?: return@mapNotNull null
+        val x = rect.centerX().toFloat() / frame.width
+        val y = rect.centerY().toFloat() / frame.height
+        if (x !in 0.08f..0.48f || y !in 0.15f..0.30f ||
+            !Regex("""(?i)^(?:Deschis|Open)$""").matches(element.text.trim()))
+          return@mapNotNull null
+        Pair(x, y)
+      }
+    else emptyList()
+    val openLineLabels440 = if (trueHistoryPage433) lines.mapNotNull { line ->
       val rect = line.boundingBox ?: return@mapNotNull null
       val x = rect.centerX().toFloat() / frame.width
       val y = rect.centerY().toFloat() / frame.height
@@ -4172,6 +4193,8 @@ class ScalpOverlayService : Service() {
         return@mapNotNull null
       Pair(x, y)
     } else emptyList()
+    val openLabels440 = if (openWordLabels459.isNotEmpty())
+      openWordLabels459 else openLineLabels440
     if (openLabels440.size == 1 && pkg != null) {
       val xy = openLabels440.single()
       if (historyOpenOcrCount435 > 0 &&
