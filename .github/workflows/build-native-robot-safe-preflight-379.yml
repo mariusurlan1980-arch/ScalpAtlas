@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 459 G24 resolve Open-tab OCR and physical label
+name: Build Scalp Atlas 462 G24 chart-only one-shot QT Demo
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=459
+          expo['android']['versionCode']=462
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1880,6 +1880,32 @@ jobs:
           print('459: bound physical Open label fallback, OCR word rect and intact order safety gates')
           PY
 
+      - name: Verify 462 chart-only mode cannot auto-enter trade history
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          assert 'private const val CHART_ONLY_DEMO_462 = true' in s
+          monitor=s.split('private fun startBrokerAccountMonitor()',1)[1].split('private fun startDemoClickMonitor()',1)[0]
+          assert 'if (CHART_ONLY_DEMO_462) {' in monitor
+          before, after=monitor.split('if (CHART_ONLY_DEMO_462) {',1)
+          guard=after.split('// 410: On the broker',1)[0]
+          assert 'mainHandler.postDelayed(this, 2500L)' in guard
+          assert '\n          return\n' in guard
+          assert 'advanceDemoClosedHistoryNavigation(' in after
+          assert 'navigateVerifiedDemoHistory431(' in after
+          assert 'TouchTestService.inspectBrokerAccountReadOnly()' in before
+          assert 'autoDemoSessionConsumed' in guard
+          assert 'tradePositionGate.beginAttempt()' in s
+          assert 'getBoolean("attempted", false)' in s
+          assert 'oldShockAttempt && !savedReconciled437 -> false' in s
+          assert 'realOrderAdapterAvailable = false' in r
+          assert 'fun pressAutoOneDollarDemoOrderOnce(' in t
+          print('462: on-chart demo account read, history auto navigation unreachable, one-order safeguards intact')
+          PY
+
       - name: Allow Gradle wrapper download on slower GitHub runners
         run: |
           python3 - <<'PY'
@@ -2001,28 +2027,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-462-DOAR-GRAFIC-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-459-FILA-DESCHIS-DEMO-G24
-          path: ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk
+          name: ScalpAtlas-462-DOAR-GRAFIC-DEMO-G24
+          path: ScalpAtlas-462-DOAR-GRAFIC-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-open-tab-accessibility459'
+        if: github.ref == 'refs/heads/fix/scalpatlas-chart-only462'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-459-FILA-DESCHIS-DEMO-G24.apk"
+          FILE="ScalpAtlas-462-DOAR-GRAFIC-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-openlabel459-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-chartonly462-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 459 - FILA DESCHIS DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "459 CANDIDAT QT DEMO G24, NETESTAT PE TELEFON: remediază blocajul FILA DESCHIS AȘTEPT POZIȚIA OCR 2/2 prin recunoașterea cuvintelor individuale OCR și încercarea alternativă a etichetei exacte Deschis din accesibilitate Android, cu atingere fizică și max. 3 încercări. Nu consideră atingerea dovadă, verifică selectarea Deschis și lista 0 poziții 2/2, păstrează ordinul neverificat și nu mărește miza. Eventuala nouă tranzacție necesită ȘOC valid + QT Demo + miza verificată. Fără REAL. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 462 - DOAR GRAFIC DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "462 CANDIDAT pentru Motorola G24 QT Demo; bazat pe 459 cu o tranzacție automată BUY raportată de utilizator. Modul DOAR GRAFIC interzice oricărei rutine de monitorizare deschiderea automată a paginilor Tranzacții Deschis/Închis. Monitorul citește doar contul, motorul ȘOC poate trimite cel mult o tranzacție per ordin confirmat prin garda existentă. Fără verificarea unui ordin anterior, NU se trimit alte tranzacții, fără Martingale și fără resetare de blocaje. Necesită test practic, REAL dezactivat. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
           --prerelease
