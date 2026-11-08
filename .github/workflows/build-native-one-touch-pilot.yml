@@ -86,6 +86,22 @@ jobs:
           "$BT/apksigner" verify --verbose build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk
           test -s build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk
           cp build/ScalpAtlas-PROBA-O-ATINGERE-G24.apk "${GITHUB_WORKSPACE}/ScalpAtlas-PROBA-O-ATINGERE-G24.apk"
+      - name: Confirm APK manifest and alignment
+        run: |
+          set -euo pipefail
+          "$BT/aapt2" dump badging ScalpAtlas-PROBA-O-ATINGERE-G24.apk
+          "$BT/zipalign" -c -v 4 ScalpAtlas-PROBA-O-ATINGERE-G24.apk
+      - name: Install APK on Android 14 emulator before release
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_5
+          disable-animations: true
+          script: |
+            adb install -r ScalpAtlas-PROBA-O-ATINGERE-G24.apk
+            adb shell pm list packages | grep -F 'com.scalpatlas.tapcheck'
+            adb shell am start -W -n com.scalpatlas.tapcheck/.MainActivity
       - uses: actions/upload-artifact@v4
         with:
           name: ScalpAtlas-PROBA-O-ATINGERE-G24
