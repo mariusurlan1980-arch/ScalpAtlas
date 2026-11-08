@@ -329,7 +329,11 @@ jobs:
           grep -Fq 'h * 0.88f' "$T"
           grep -Fq 'emptyPattern.matches(' "$T"
           grep -Fq 'demoEmptyReviewDiagnostic()' "$O"
-          grep -Fq 'pageTitle && openTab && explicitEmpty' "$T"
+          # 454: The G24 history has both tabs plus the bottom Transactions
+          # navigation, sometimes without a page heading. Do not mistake
+          # this page identity for proof of zero OPEN positions.
+          grep -Fq 'val fullHistoryIdentity454 = pageTitle || (footer454 && openTab && closedTab454)' "$T"
+          grep -Fq 'fullHistoryIdentity454 && openTab && explicitEmpty' "$T"
           grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T" || grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
           grep -Fq 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' "$O"
           grep -Fq 'demoEmptyReviewReads >= 2' "$O"
@@ -792,7 +796,11 @@ jobs:
           grep -Fq 'fun inspectExplicitEmptyOpenDemoTabReadOnly(' "$T"
           grep -Fq 'cachedDemoVerifiedOnChart: Boolean = false' "$T"
           grep -Fq 'if (real || (!demo && !cachedDemoVerifiedOnChart)) {' "$T"
-          grep -Fq 'pageTitle && openTab && explicitEmpty' "$T"
+          # 454: The G24 history has both tabs plus the bottom Transactions
+          # navigation, sometimes without a page heading. Do not mistake
+          # this page identity for proof of zero OPEN positions.
+          grep -Fq 'val fullHistoryIdentity454 = pageTitle || (footer454 && openTab && closedTab454)' "$T"
+          grep -Fq 'fullHistoryIdentity454 && openTab && explicitEmpty' "$T"
           grep -Fq 'fun priorDemoGestureCooldownComplete(): Boolean' "$T"
           grep -Fq 'fun brokerVerifiedEmptyDemoReview(twoIndependentReads: Boolean): Boolean' "$G"
           grep -Fq 'state != State.UNKNOWN && state != State.READY' "$G"
