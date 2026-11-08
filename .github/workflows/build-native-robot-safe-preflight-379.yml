@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 455 G24 DEMO verified Open tab navigation
+name: Build Scalp Atlas 456 G24 simple physical history navigation
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=455
+          expo['android']['versionCode']=456
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1768,6 +1768,26 @@ jobs:
           print('455: OCR 2/2, no false tab success, bounded retries, DEMO-only trade guard passed')
           PY
 
+      - name: Verify 456 simple physical navigation and unchanged trade safety
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          o=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          nav=t.split('private fun clickExactDemoNavigationLabel(',1)[1].split('fun confirmedDemoHistoryPageReadOnly431(',1)[0]
+          assert 'node.performAction(AccessibilityNodeInfo.ACTION_CLICK)' not in nav
+          assert 'for (depth in 0..6)' not in nav
+          assert 'svc.dispatchGesture(gesture' in nav
+          assert 'rootInActiveWindow?.packageName' in nav
+          assert 'candidates.isEmpty()' in nav
+          assert 'GEST TRIMIS • AȘTEPT PAGINA' in t
+          assert 'historyNavPending431 = true' in o
+          assert 'historyNavFailed431++' in o
+          assert 'MG BLOCAT • ORDIN NEVERIFICAT' in o
+          assert 'openTabNavigationAttempts455 >= 3' in o
+          print('456 safe physical navigation source checks passed')
+          PY
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -1859,28 +1879,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-455-FILA-DESCHIS-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-456-ISTORIC-SIMPLU-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: ScalpAtlas-455-FILA-DESCHIS-DEMO-G24
-          path: ScalpAtlas-455-FILA-DESCHIS-DEMO-G24.apk
+          path: ScalpAtlas-456-ISTORIC-SIMPLU-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-open-tab-visual-proof455'
+        if: github.ref == 'refs/heads/fix/scalpatlas-physical-history-nav456'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-455-FILA-DESCHIS-DEMO-G24.apk"
+          FILE="ScalpAtlas-456-ISTORIC-SIMPLU-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-tab455-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-simple456-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 455 - FILA DESCHIS DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "455 CANDIDAT QT DEMO pentru Motorola G24, netestat fizic: pe pagina Tranzacții > Închis nu mai consideră un ACTION_CLICK acceptat de Android drept confirmare că fila Deschis s-a schimbat. Apasă doar poziția exactă Deschis citită în două cadre OCR, re-verifică vizual fila selectată și limitează la cel mult trei tentative de navigare pe sesiune. Dacă nu poate confirma fila sau pozițiile deschise, NU trimite BUY/SELL. Păstrează reconcilierea prudentă a ordinelor, 1 USD inițial, semnale ȘOC noi și blocarea contului REAL. Nu garantează profit. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 456 - ISTORIC SIMPLU DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "456 CANDIDAT QT DEMO Motorola G24, NETESTAT PE TELEFON: încearcă o singură atingere virtuală fizică pe eticheta Tranzacții sau Deschis confirmată în broker; elimină ACTION_CLICK WebView fără efect și căutarea de părinți. Așteaptă confirmarea vizuală că pagina/fila s-a schimbat. La eșec nu presupune deschiderea istoricului, nu șterge ordinul neverificat și nu trimite ordine noi. 1 USD inițial, REAL dezactivat. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
           --prerelease
