@@ -4007,7 +4007,7 @@ class ScalpOverlayService : Service() {
       val y = line.boundingBox?.centerY()?.toFloat()?.div(frame.height)
         ?: return@any false
       y in 0.22f..0.86f &&
-        Regex("""^20\\d{2}-\\d{2}-\\d{2}$""").matches(line.text.trim())
+        Regex("""^20\d{2}-\d{2}-\d{2}$""").matches(line.text.trim())
     }
     val historyIdentity454 = title ||
       (openTab && closedTab && (transactionsFooter454 || datedHistory457))
