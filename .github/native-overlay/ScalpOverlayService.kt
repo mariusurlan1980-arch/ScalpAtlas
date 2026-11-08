@@ -1252,7 +1252,7 @@ class ScalpOverlayService : Service() {
                 // does NOT modify the recovery ledger.
                 val unknownBaseEligible454 = !savedReconciled437 &&
                   verifiedClosedDetail437 == null &&
-                  (oldShockAttempt != oldSellAttempt) &&
+                  (oldShockAttempt || oldSellAttempt) &&
                   demoRecoveryLedger.verifiedOpenPositionId429() == null &&
                   !demoRecoveryLedger.isRecovering429() &&
                   demoRecoveryLedger.quote(92).stakeCents == 100L &&
@@ -1260,21 +1260,27 @@ class ScalpOverlayService : Service() {
                   reviewPackage != null && reviewPackage == verifiedDemoAccountPackage &&
                   TouchTestService.priorDemoGestureCooldownComplete()
                 val unknownBaseCleared454 = if (unknownBaseEligible454) {
-                  val store454 = if (oldShockAttempt)
-                    pendingPrefs429 else getSharedPreferences(
-                      sell404TestPrefs, Context.MODE_PRIVATE
-                    )
-                  val edit454 = store454.edit().putBoolean("attempted", false)
-                  if (oldShockAttempt) {
-                    edit454.remove("expectedPair429")
+                  // Older builds may have left BOTH the SELL-404 and
+                  // SHOCK-400 markers. After independently proven 0 OPEN 2/2,
+                  // clear each persisted lock with durable commits; never
+                  // rearm on a partial write, and never infer a P/L.
+                  val shockCleared454 = if (oldShockAttempt)
+                    pendingPrefs429.edit()
+                      .putBoolean("attempted", false)
+                      .remove("expectedPair429")
                       .remove("expectedPackage429")
                       .remove("expectedStakeCents429")
                       .remove("expectedPayout429")
                       .remove("expectedSide437")
                       .remove("attemptedAt429")
                       .remove("attemptedWallAt454")
-                  }
-                  edit454.commit()
+                      .commit()
+                  else true
+                  val sellCleared454 = if (shockCleared454 && oldSellAttempt)
+                    getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+                      .edit().putBoolean("attempted", false).commit()
+                  else !oldSellAttempt
+                  shockCleared454 && sellCleared454
                 } else false
                 if (unknownBaseCleared454) pendingReceipt429 = false
                 val savedOldSell = !oldSellAttempt || unknownBaseCleared454
