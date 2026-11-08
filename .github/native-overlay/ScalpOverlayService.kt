@@ -1124,6 +1124,8 @@ class ScalpOverlayService : Service() {
           // SAME-PACKAGE DEMO history, make up to three non-order attempts
           // to return to the live broker chart.
           val historyWatchDue461 = verifiedDemoReview &&
+            (autoDemoSessionConsumed && (oldShockAttempt || oldSellAttempt) ||
+              closedHistoryInspectionInProgress) &&
             historyPageVisible433 &&
             System.currentTimeMillis() - historyPageLastSeen433 in 0L..6_000L &&
             historyWatchSamples461 >= 2 &&
@@ -1585,7 +1587,9 @@ class ScalpOverlayService : Service() {
                   // the same old CLOSED history. Return to the live chart.
                   closedHistoryInspectionInProgress =
                     !scanRecently442 && !unknownBaseCleared454
-                  val navigation = if (unknownBaseCleared454)
+                  val navigation = if (historyReturnPauseUntil457 > tick)
+                    "ISTORIC DEMO • REVIN LA GRAFIC • FĂRĂ REINTRARE"
+                  else if (unknownBaseCleared454)
                     "✅ QT DEMO 0 DESCHISE • REVIN LA GRAFIC • AUTO 1 USD"
                   else if (scanRecently442)
                     "ISTORIC DEMO • PAUZĂ REVERIFICARE • FĂRĂ ORDIN"
