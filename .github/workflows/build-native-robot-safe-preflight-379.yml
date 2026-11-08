@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 457 G24 return to Perspective after closed history
+name: Build Scalp Atlas 458 G24 safe Open-tab rearm and chart recovery
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=457
+          expo['android']['versionCode']=458
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1725,7 +1725,7 @@ jobs:
           assert 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' in s
           assert 'val unknownBaseCleared454 = if (unknownBaseEligible454)' in s
           assert 'closedListFirstObservedAt454' in s
-          assert 'nowReview - closedListFirstObservedAt454 >= 25_000L' in s
+          assert 'closedAge458 >= 10_000L' in s
           # 455 deliberately replaces the unreliable WebView ACTION_CLICK
           # with OCR 2/2 + a bounded, visually confirmed physical OPEN-tab tap.
           assert 'attemptBrokerOpenTabWithVisualProof455(' in s
@@ -1805,8 +1805,8 @@ jobs:
           assert 'perspectiveOcrSamples457 >= 2' in o
           assert 'perspectiveOcrPackage457 == expectedPackage429' in o
           assert 'val timedOutClosedList457 = closedList438 &&' in o
-          assert 'nowReview - closedListFirstObservedAt454 >= 45_000L' in o
-          assert 'nowReview - closedListFirstObservedAt454 >= 25_000L' in o
+          assert 'nowReview - closedListFirstObservedAt454 >= 65_000L' in o
+          assert 'closedAge458 >= 10_000L' in o
           assert 'historyReturnPauseUntil457 = nowReview + 180_000L' in o
           assert 'lastClosedHistoryScanAt442 = nowReview' in o
           assert 'tapVerifiedDemoPerspectiveFooter457(' in o
@@ -1820,6 +1820,35 @@ jobs:
           assert 'oldShockAttempt && !savedReconciled437 -> false' in o
           assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
           print('457 history recognition, Perspective physical touch and preserved order locks verified')
+          PY
+
+      - name: Verify 458 Open-tab rearm before chart return and no repeated CLOSED row clicks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          o=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          assert 'private var closedRowProbeKey458: String? = null' in o
+          assert 'closedRowProbeKey458 != closedAttemptKey458' in o
+          assert 'closedRowProbeKey458 = closedAttemptKey458' in o
+          assert 'closedAge458 >= 10_000L' in o
+          assert 'rowProbeSettled458 && historyReturnPauseUntil457 <= nowReview' in o
+          assert 'val openNav458 = attemptBrokerOpenTabWithVisualProof455(' in o
+          assert 'val timedOutClosedList457 = closedList438 &&' in o
+          assert 'nowReview - closedListFirstObservedAt454 >= 65_000L' in o
+          assert 'openTabNavigationAttempts455 >= 3' in o
+          assert 'val openReview458 = pendingReceipt429 && verifiedDemoReview &&' in o
+          assert 'nowReview - openTabFirstObservedAt458 >= 45_000L' in o
+          assert 'private fun returnToChartAfterReview458(' in o
+          assert 'TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(' in o
+          assert 'TouchTestService.tapVerifiedDemoPerspectiveFooter457(' in o
+          assert 'demoEmptyReviewReads >= 2' in o
+          assert 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' in o
+          assert 'val unknownBaseEligible454 = !savedReconciled437 &&' in o
+          assert 'oldShockAttempt && !savedReconciled437 -> false' in o
+          assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          assert 'fun tapVerifiedDemoOpenTabOcr435(' in t
+          print('458: bounded history, Open 2/2 gating, single completed-row tap, no automatic MG bypass')
           PY
 
       - name: Allow Gradle wrapper download on slower GitHub runners
@@ -1943,28 +1972,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-457-REVINO-GRAFIC-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-458-DEMO-UN-ORDIN-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-457-REVINO-GRAFIC-DEMO-G24
-          path: ScalpAtlas-457-REVINO-GRAFIC-DEMO-G24.apk
+          name: ScalpAtlas-458-DEMO-UN-ORDIN-G24
+          path: ScalpAtlas-458-DEMO-UN-ORDIN-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-return-to-chart457'
+        if: github.ref == 'refs/heads/fix/scalpatlas-rearm-open-tab458'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-457-REVINO-GRAFIC-DEMO-G24.apk"
+          FILE="ScalpAtlas-458-DEMO-UN-ORDIN-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-perspective457-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-openrearm458-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 457 - REVINO LA GRAFIC DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "457 CANDIDAT QT DEMO Motorola G24, NETESTAT PE TELEFON: identifică și istoricul cu filele Deschis/Închis plus dată, iar după verificare limitată încearcă atingerea fizică a etichetei Perspective confirmate în două cadre OCR și menține pauză de navigare 3 minute. O atingere Android nu dovedește trecerea la grafic. NU șterge ordinul vechi neverificat, NU ghicește WIN/LOSS și NU trimite o nouă comandă până la reconciliere. 1 USD inițial, REAL dezactivat. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 458 - DEMO UN ORDIN G24 • ${GITHUB_SHA:0:12}" \
+            --notes "458 CANDIDAT QT DEMO G24, NETESTAT PE TELEFON: elimină atingerile repetate pe tranzacțiile închise; după o singură încercare de identificare a ordinului vechi, deschide fila Deschis folosind OCR 2/2 și cere confirmarea explicită zero poziții 2/2. Doar dacă ordinul anterior nu are ID OPEN verificat și ciclul este de bază 1 USD, poate rearma un singur semnal ȘOC DEMO fără Martingale retroactiv. Dacă dovada lipsește, revine la Perspective cu blocajul păstrat. Fără comenzi pe REAL. Compilarea CI nu dovedește funcționarea reală. Build $GITHUB_SHA." \
           --prerelease
