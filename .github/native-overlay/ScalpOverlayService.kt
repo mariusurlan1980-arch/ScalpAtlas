@@ -220,6 +220,10 @@ class ScalpOverlayService : Service() {
   @Volatile private var closedRowY438 = -1f
   @Volatile private var closedRowSamples438 = 0
   private var lastClosedRowTapAt438 = 0L
+  // 454: An unmatched CLOSED-history page must not trap the G24 broker
+  // indefinitely. These timers authorize navigation ONLY, never a trade.
+  private var closedListFirstObservedAt454 = 0L
+  private var lastClosedListOpenNavAt454 = 0L
   private var lastVerifiedDetailBackId438: String? = null
   // 442: One CLOSED-history scan per outstanding DEMO attempt in a bounded
   // interval. Navigation is not settlement proof, and this cooldown NEVER
@@ -1049,6 +1053,10 @@ class ScalpOverlayService : Service() {
             verifiedDemoReview && historyPageTab433 == "ÎNCHIS" &&
             historyPageVisible433 && verifiedClosedDetail437 == null &&
             reviewPackage != null && reviewPackage == expectedPackage429
+          if (closedList438) {
+            if (closedListFirstObservedAt454 == 0L)
+              closedListFirstObservedAt454 = nowReview
+          } else closedListFirstObservedAt454 = 0L
           if (closedList438 && closedRowSamples438 >= 2 &&
               System.currentTimeMillis() - closedRowAt438 in 0L..6_000L &&
               nowReview - lastClosedRowTapAt438 > 20_000L) {
@@ -1060,6 +1068,32 @@ class ScalpOverlayService : Service() {
             touchProbeStatus?.text = if (sent438)
               "🔎 ÎNCHIS DEMO • DESCHID DETALIU • VERIFIC ID 2/2"
             else "🔒 ÎNCHIS DEMO • RÂND NECONFIRMAT • FĂRĂ ORDIN"
+          }
+          // 454: If no unique CLOSED row can be found after a bounded
+          // OCR review, leave the list via the explicitly labelled "Deschis"
+          // tab and independently verify zero open positions. Repeated
+          // taps on "Tranzacții" do not solve an unidentifiable old order.
+          // Both functions navigate ONLY, and they cannot clear old receipts.
+          if (closedList438 && closedRowSamples438 < 2 &&
+              closedListFirstObservedAt454 > 0L &&
+              nowReview - closedListFirstObservedAt454 >= 25_000L &&
+              (lastClosedListOpenNavAt454 == 0L ||
+                nowReview - lastClosedListOpenNavAt454 >= 20_000L)) {
+            lastClosedListOpenNavAt454 = nowReview
+            val movedByLabel454 = TouchTestService.returnFromVerifiedDemoClosedDetail438(
+              expectedPackage429!!
+            )
+            val movedByOcr454 = if (!movedByLabel454 &&
+                historyOpenOcrCount435 >= 2 &&
+                System.currentTimeMillis() - historyOpenOcrAt435 in 0L..6_000L)
+              TouchTestService.tapVerifiedDemoOpenTabOcr435(
+                expectedPackage429!!,
+                historyOpenOcrX435, historyOpenOcrY435,
+                cachedDemoVerifiedOnChart = true
+              ) else false
+            touchProbeStatus?.text = if (movedByLabel454 || movedByOcr454)
+              "🔎 ÎNCHIS FĂRĂ ID EXACT • VERIFIC DESCHIS 0/2"
+            else "🔒 ÎNCHIS NECONCLUDENT • FĂRĂ ORDIN"
           }
           val closedDetail438 = verifiedClosedDetail437
           if (closedDetail438 != null && pendingReceipt429 &&
@@ -1202,7 +1236,43 @@ class ScalpOverlayService : Service() {
                 // Never erase a legacy SELL 404 attempt merely because the
                 // OPEN tab is empty. It has no authenticated CLOSED receipt
                 // in this flow; a genuine receipt-review must resolve it.
-                val savedOldSell = !oldSellAttempt
+                // 454: The old unknown order must not block DEMO forever
+                // after TWO explicit broker-confirmed zero-OPEN reads. When
+                // the historical UUID cannot be recovered, permit a NEW
+                // DEMO base-$1 cycle, but NEVER infer WIN/LOSS or apply MG.
+                // A previously verified OPEN UUID, a recovery cycle, two
+                // concurrent legacy markers, a non-base stake, or an
+                // unverified DEMO account always keeps the lock intact.
+                // This fallback does NOT call onVerifiedDemoClosed and
+                // does NOT modify the recovery ledger.
+                val unknownBaseEligible454 = !savedReconciled437 &&
+                  verifiedClosedDetail437 == null &&
+                  (oldShockAttempt != oldSellAttempt) &&
+                  demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+                  !demoRecoveryLedger.isRecovering429() &&
+                  demoRecoveryLedger.quote(92).stakeCents == 100L &&
+                  (!oldShockAttempt || expectedStake429 == 100L) &&
+                  reviewPackage != null && reviewPackage == verifiedDemoAccountPackage &&
+                  TouchTestService.priorDemoGestureCooldownComplete()
+                val unknownBaseCleared454 = if (unknownBaseEligible454) {
+                  val store454 = if (oldShockAttempt)
+                    pendingPrefs429 else getSharedPreferences(
+                      sell404TestPrefs, Context.MODE_PRIVATE
+                    )
+                  val edit454 = store454.edit().putBoolean("attempted", false)
+                  if (oldShockAttempt) {
+                    edit454.remove("expectedPair429")
+                      .remove("expectedPackage429")
+                      .remove("expectedStakeCents429")
+                      .remove("expectedPayout429")
+                      .remove("expectedSide437")
+                      .remove("attemptedAt429")
+                      .remove("attemptedWallAt454")
+                  }
+                  edit454.commit()
+                } else false
+                if (unknownBaseCleared454) pendingReceipt429 = false
+                val savedOldSell = !oldSellAttempt || unknownBaseCleared454
                 // 448: The older code cleared an incomplete/stale prior
                 // SHOCK attempt whenever pendingReceipt429 was false (for
                 // example, a missing expected pair or payout). That could
@@ -1210,6 +1280,7 @@ class ScalpOverlayService : Service() {
                 // Keep that attempt locked until the exact matching CLOSED
                 // receipt is confirmed twice and persisted by the ledger.
                 val savedOldShock = when {
+                  unknownBaseCleared454 -> true
                   pendingReceipt429 -> true
                   oldShockAttempt && !savedReconciled437 -> false
                   oldShockAttempt -> getSharedPreferences(
@@ -1234,6 +1305,8 @@ class ScalpOverlayService : Service() {
                   autoDemoLastPreflightReason =
                     "0 POZIȚII DEMO CONFIRMATE • REVIN LA GRAFIC"
                   touchProbeStatus?.text = when {
+                    unknownBaseCleared454 ->
+                      "✅ 0 DESCHISE 2/2 • DEMO 1 USD REACTIVAT • FĂRĂ MG RETROACTIV"
                     savedReconciled437 && alreadySettled444 ->
                       "✅ ID ÎNCHIS REVERIFICAT • FĂRĂ DUBLU WIN/LOSS • DEMO REACTIVAT"
                     savedReconciled437 ->
@@ -5092,6 +5165,7 @@ class ScalpOverlayService : Service() {
               .putInt("expectedPayout429", payout429 ?: -1)
               .putString("expectedSide437", activeSignal)
               .putLong("attemptedAt429", android.os.SystemClock.elapsedRealtime())
+              .putLong("attemptedWallAt454", System.currentTimeMillis())
               .commit()
             if (!saved) {
               tradePositionGate.cancelBeforeDispatch()
