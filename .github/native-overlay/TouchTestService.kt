@@ -1039,7 +1039,8 @@ class TouchTestService : AccessibilityService() {
     }
 
     fun returnToDemoChartAfterVerifiedEmptyReview(
-      cachedDemoVerifiedOnChart: Boolean
+      cachedDemoVerifiedOnChart: Boolean,
+      ocrVerifiedHistoryPage: Boolean = false
     ): String {
       val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
         ?: return "REVINO LA GRAFIC • FEREASTRA DEMO NECONFIRMATĂ"
@@ -1061,7 +1062,13 @@ class TouchTestService : AccessibilityService() {
             Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
           }
       }
-      if (!isHistory && !historyPageIdentity454(labels, metrics.heightPixels))
+      // 454: A two-frame visually verified page with both broker tabs
+      // and footer is safe for BACK navigation even when the WebView
+      // exposes no Accessibility title or clickable children.
+      // The caller supplies this only from fresh same-package OCR history
+      // evidence; no broker order or trade-status change follows this BACK.
+      if (!isHistory && !historyPageIdentity454(labels, metrics.heightPixels) &&
+          !ocrVerifiedHistoryPage)
         return "GRAFIC • VERIFICARE BROKER NECESARĂ"
       val accepted = try {
         svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
