@@ -1723,7 +1723,10 @@ jobs:
           assert 'val unknownBaseCleared454 = if (unknownBaseEligible454)' in s
           assert 'closedListFirstObservedAt454' in s
           assert 'nowReview - closedListFirstObservedAt454 >= 25_000L' in s
-          assert 'TouchTestService.returnFromVerifiedDemoClosedDetail438(' in s
+          # 455 deliberately replaces the unreliable WebView ACTION_CLICK
+          # with OCR 2/2 + a bounded, visually confirmed physical OPEN-tab tap.
+          assert 'attemptBrokerOpenTabWithVisualProof455(' in s
+          assert 'TouchTestService.returnFromVerifiedDemoClosedDetail438(' not in s
           assert 'TouchTestService.tapVerifiedDemoOpenTabOcr435(' in s
           assert 'closedHistoryInspectionInProgress =' in s
           assert '!scanRecently442 && !unknownBaseCleared454' in s
