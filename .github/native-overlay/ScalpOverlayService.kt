@@ -828,6 +828,40 @@ class ScalpOverlayService : Service() {
       openTabNavigationAttempts455 + "/3 • FĂRĂ ORDIN"
   }
 
+  /** 458: On a verified history page prefer its OCR-confirmed broker
+   * "Perspective" footer over Android GLOBAL_BACK. A navigation gesture
+   * never proves settlement or changes any persisted order flags. */
+  private fun returnToChartAfterReview458(
+    cachedDemoVerifiedOnChart: Boolean,
+    ocrVerifiedHistoryPage: Boolean
+  ): String {
+    val pkg = TouchTestService.activeDemoExecutorPackageForReview()
+    val freshHistory = historyPageVisible433 &&
+      System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+    val freshPerspective = cachedDemoVerifiedOnChart &&
+      ocrVerifiedHistoryPage && freshHistory && pkg != null &&
+      perspectiveOcrPackage457 == pkg &&
+      perspectiveOcrSamples457 >= 2 &&
+      System.currentTimeMillis() - perspectiveOcrAt457 in 0L..6_000L
+    if (freshPerspective && pkg != null) {
+      val sent = TouchTestService.tapVerifiedDemoPerspectiveFooter457(
+        pkg, perspectiveOcrX457, perspectiveOcrY457,
+        cachedDemoVerifiedOnChart = true,
+        ocrConfirmedHistoryPage = true
+      )
+      perspectiveOcrSamples457 = 0
+      if (sent) {
+        historyReturnPauseUntil457 =
+          android.os.SystemClock.elapsedRealtime() + 180_000L
+        return "PERSPECTIVE • GEST TRIMIS • VERIFIC GRAFIC • FĂRĂ ORDIN NOU"
+      }
+    }
+    // Only a broker-verified HISTORY page permits the legacy Back fallback.
+    return TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+      cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage && freshHistory
+    )
+  }
+
   private fun navigateVerifiedDemoHistory431(
     verifiedDemoReview: Boolean,
     nowElapsed: Long
@@ -1108,7 +1142,7 @@ class ScalpOverlayService : Service() {
               )
               if (stored) {
                 touchProbeStatus?.text = "✅ ORDIN DESCHIS DEMO • ID VERIFICAT 2/2"
-                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+                returnToChartAfterReview458(
                                   true,
                                   historyPageVisible433 &&
                                     System.currentTimeMillis() - historyPageLastSeen433 in
@@ -1625,7 +1659,7 @@ class ScalpOverlayService : Service() {
                                 // history review even when the old order is
                                 // unresolved. Back is navigation only; the
                                 // persistent unknown-ID lock stays intact.
-                                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+                                returnToChartAfterReview458(
                                   true,
                                   historyPageVisible433 &&
                                     System.currentTimeMillis() - historyPageLastSeen433 in
@@ -1649,7 +1683,7 @@ class ScalpOverlayService : Service() {
                           TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
                         // 442: A failed or throttled CLOSED review must
                         // not keep the broker trapped in its history pane.
-                        TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+                        returnToChartAfterReview458(
                                   true,
                                   historyPageVisible433 &&
                                     System.currentTimeMillis() - historyPageLastSeen433 in
