@@ -1018,7 +1018,12 @@ class ScalpOverlayService : Service() {
               )
               if (stored) {
                 touchProbeStatus?.text = "✅ ORDIN DESCHIS DEMO • ID VERIFICAT 2/2"
-                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+                                  true,
+                                  historyPageVisible433 &&
+                                    System.currentTimeMillis() - historyPageLastSeen433 in
+                                      0L..5_000L
+                                )
               } else {
                 touchProbeStatus?.text =
                   "BLOCAT: ID OPEN VERIFICAT, DAR REGISTRUL NU ÎL ACCEPTĂ"
@@ -1480,7 +1485,12 @@ class ScalpOverlayService : Service() {
                                 // history review even when the old order is
                                 // unresolved. Back is navigation only; the
                                 // persistent unknown-ID lock stays intact.
-                                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                                TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+                                  true,
+                                  historyPageVisible433 &&
+                                    System.currentTimeMillis() - historyPageLastSeen433 in
+                                      0L..5_000L
+                                )
                               }
                               closedHistoryInspectionInProgress = false
                             }, 800L)
@@ -1499,7 +1509,12 @@ class ScalpOverlayService : Service() {
                           TouchTestService.activeDemoExecutorPackageForReview() == provenPackage) {
                         // 442: A failed or throttled CLOSED review must
                         // not keep the broker trapped in its history pane.
-                        TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(true)
+                        TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+                                  true,
+                                  historyPageVisible433 &&
+                                    System.currentTimeMillis() - historyPageLastSeen433 in
+                                      0L..5_000L
+                                )
                       }
                       closedHistoryInspectionInProgress = false
                     }, 750L)
