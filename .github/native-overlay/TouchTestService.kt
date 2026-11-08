@@ -434,35 +434,10 @@ class TouchTestService : AccessibilityService() {
         }) return false
       if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())
         return false
-      // 431: Broker WebView sometimes places the click listener several
-      // wrappers ABOVE its exact visible "Tranzacții"/"Open" text. The old
-      // 0..2 ancestor walk fell back to a touch accepted by Android even
-      // when the page never changed. Inspect up to six ancestors, but
-      // restrict each to the verified small navigation region. Never
-      // climb to a full-screen broker node or any BUY/SELL control.
-      var current: AccessibilityNodeInfo? = chosen.first
-      for (depth in 0..6) {
-        val node = current ?: break
-        val r = Rect()
-        node.getBoundsInScreen(r)
-        val safeNavRegion = r.width() > 12 && r.height() > 12 &&
-          r.width() <= w * 0.48f && r.height() <= h * 0.15f &&
-          r.centerX() in (w * (xMin - 0.025f)).toInt()..
-            (w * (xMax + 0.025f)).toInt() &&
-          r.centerY() in (h * (yMin - 0.035f)).toInt()..
-            (h * (yMax + 0.035f)).toInt() &&
-          r.contains(chosen.second.centerX(), chosen.second.centerY())
-        if (node.isClickable && safeNavRegion &&
-            svc.rootInActiveWindow?.packageName?.toString() == root.packageName?.toString()) {
-          // 456: WebView can acknowledge ACTION_CLICK without changing the page.
-          // Send exactly one physical gesture on the verified navigation label
-          // below; never treat a dispatched gesture as a confirmed page switch.
-          break
-        }
-        current = node.parent
-      }
-      // Fallback is one short touch at the center of the verified NAV LABEL,
-      // never an amount field, BUY or SELL control, or arbitrary coordinate.
+      // 456 SIMPLE: one verified footer/tab label -> one physical tap.
+      // Avoid WebView ACTION_CLICK and ancestor scans: they can report success
+      // without ever changing the Pocket Option page. No arbitrary coordinates.
+      // This is navigation ONLY; the caller must visually confirm the new page.
       val rect = chosen.second
       if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())
         return false
@@ -697,9 +672,9 @@ class TouchTestService : AccessibilityService() {
       demoHistoryNavigationStatus = if (!success)
         "ISTORIC AUTO • CONTROL NECONFIRMAT • FĂRĂ ORDIN"
       else if (historyPage454)
-        "ISTORIC AUTO • FILA DESCHIS • VERIFIC 0 POZIȚII"
+        "ISTORIC AUTO • FILA DESCHIS • GEST TRIMIS • AȘTEPT PAGINA"
       else
-        "ISTORIC AUTO • DESCHID TRANZACȚII • FĂRĂ ORDIN"
+        "ISTORIC AUTO • DESCHID TRANZACȚII • GEST TRIMIS • AȘTEPT PAGINA"
       return demoHistoryNavigationStatus
     }
 
