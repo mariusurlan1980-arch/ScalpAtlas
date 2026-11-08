@@ -1712,6 +1712,20 @@ class ScalpOverlayService : Service() {
               }
             }
           } else {
+            // 458: If the OPEN list remains unreadable for 45 seconds, leave
+            // the history page. Never use an absent empty-list message to
+            // infer zero active positions, close an order, or unlock MG.
+            if (openReview458 && openTabFirstObservedAt458 > 0L &&
+                nowReview - openTabFirstObservedAt458 >= 45_000L &&
+                historyReturnPauseUntil457 <= nowReview &&
+                nowReview - lastPerspectiveReturnAttempt457 >= 30_000L) {
+              lastPerspectiveReturnAttempt457 = nowReview
+              touchProbeStatus?.text = "🔒 ZERO DESCHISE NECONFIRMAT • " +
+                returnToChartAfterReview458(
+                  verifiedDemoReview, historyPageVisible433 &&
+                    System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+                )
+            }
             // 416: a temporarily unreadable frame is not a second proof;
             // preserve the first independent positive sample for <=20 sec.
             // An expired sample must never permit recovery.
