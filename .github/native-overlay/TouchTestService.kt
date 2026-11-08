@@ -1100,6 +1100,85 @@ class TouchTestService : AccessibilityService() {
         expectedPair, id, stakeValue, pnlValue)
     }
 
+    /**
+     * 461: Non-order escape from an independently identified QT Demo history
+     * screen. Prefer the broker's *labelled* Perspective footer; only if the
+     * WebView omits that label use Android Back, and only on verified history.
+     * A successful Android gesture NEVER proves a page transition, an OPEN
+     * zero count or a settled position. No broker attempt flags are edited.
+     */
+    fun navigateFromVerifiedDemoHistoryToChart461(
+      cachedDemoVerifiedOnChart: Boolean,
+      ocrVerifiedHistoryPage: Boolean
+    ): String {
+      if (!ocrVerifiedHistoryPage || !cachedDemoVerifiedOnChart)
+        return "461 GRAFIC • ISTORIC DEMO NECONFIRMAT"
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
+        ?: return "461 GRAFIC • BROKER DEMO NECONFIRMAT"
+      val (svc, root, labels) = info
+      val pkg = root.packageName?.toString().orEmpty()
+      if (!BrokerAdapterRegistry.hasDemoExecutor(pkg) ||
+          svc.rootInActiveWindow?.packageName?.toString() != pkg)
+        return "461 GRAFIC • FEREASTRĂ BROKER INACTIVĂ"
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return "461 GRAFIC • ECRAN NECUNOSCUT" }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      if (w < 300 || h < 600) return "461 GRAFIC • REZOLUȚIE NECUNOSCUTĂ"
+      // Restrict to a verified HISTORY layout; footer text alone also exists
+      // on the live chart and must never trigger an automatic Back.
+      val knownHistory = historyPageIdentity454(labels, h) ||
+        labels.any { (node, bounds) ->
+          bounds.centerY() in (h * .09f).toInt()..(h * .24f).toInt() &&
+            listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+              .any { Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""")
+                .matches(it.trim()) }
+        }
+      if (!knownHistory && !ocrVerifiedHistoryPage)
+        return "461 GRAFIC • PAGINA ISTORIC NU ESTE CONFIRMATĂ"
+      val footerCandidates = labels.filter { (node, rect) ->
+        rect.centerX() in (w * .20f).toInt()..(w * .63f).toInt() &&
+          rect.centerY() in (h * .84f).toInt()..(h * .985f).toInt() &&
+          rect.width() in 12..(w * .4f).toInt() &&
+          rect.height() in 10..(h * .13f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+            .any { Regex("""(?i)^(?:Perspective|Perspectiva|Perspectivă)$""")
+              .matches(it.trim()) }
+      }
+      if (footerCandidates.isNotEmpty()) {
+        val rect = footerCandidates.minByOrNull { (_, r) -> r.width() * r.height() }!!.second
+        // Different physical locations carrying the same text are ambiguous.
+        if (footerCandidates.any { (_, other) ->
+            kotlin.math.abs(other.centerX() - rect.centerX()) > w * .09f ||
+            kotlin.math.abs(other.centerY() - rect.centerY()) > h * .045f
+          }) return "461 GRAFIC • ETICHETA PERSPECTIVE AMBIGUĂ"
+        if (svc.rootInActiveWindow?.packageName?.toString() != pkg)
+          return "461 GRAFIC • BROKERUL NU MAI ESTE ACTIV"
+        val gesture = GestureDescription.Builder()
+          .addStroke(GestureDescription.StrokeDescription(
+            Path().apply { moveTo(rect.exactCenterX(), rect.exactCenterY()) },
+            0L, 85L
+          )).build()
+        val sent = try {
+          svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+        } catch (_: Throwable) { false }
+        return if (sent)
+          "461 NAVIGARE PERSPECTIVE TRIMISĂ • VERIFIC GRAFIC"
+        else "461 GRAFIC • ATINGERE RESPINSĂ"
+      }
+      // WebView fallback: only once the independent OCR identified history.
+      val back = try {
+        svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+      } catch (_: Throwable) { false }
+      return if (back)
+        "461 NAVIGARE ÎNAPOI TRIMISĂ • VERIFIC GRAFIC"
+      else "461 GRAFIC • BUTONUL BACK RESPINS"
+    }
+
     fun returnToDemoChartAfterVerifiedEmptyReview(
       cachedDemoVerifiedOnChart: Boolean,
       ocrVerifiedHistoryPage: Boolean = false
