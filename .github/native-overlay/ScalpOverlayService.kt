@@ -3661,15 +3661,20 @@ class ScalpOverlayService : Service() {
     if (pairCropBusy || now - lastPairCropAttemptAt < OCR_INTERVAL_MS) return
     if (frame.width < 240 || frame.height < 450) return
     lastPairCropAttemptAt = now
-    val left = (frame.width * 0.035f).toInt()
-    val right = (frame.width * 0.57f).toInt()
-    val top = (frame.height * 0.125f).toInt()
-    val bottom = (frame.height * 0.27f).toInt()
+    // 460: The Motorola G24 header contains a floating overlay directly
+    // ABOVE the active FX selector. The previous 0.125..0.27 crop included
+    // overlay text and moving chart candles, often returning no symbol.
+    // Restrict OCR to the selector's visible label; never infer the asset
+    // from historic trade rows, chart labels, or the overlay itself.
+    val left = (frame.width * 0.05f).toInt()
+    val right = (frame.width * 0.52f).toInt()
+    val top = (frame.height * 0.132f).toInt()
+    val bottom = (frame.height * 0.205f).toInt()
     if (right <= left + 80 || bottom <= top + 35) return
     val enlarged = try {
       val region = Bitmap.createBitmap(frame, left, top, right - left, bottom - top)
       val scaled = Bitmap.createScaledBitmap(
-        region, region.width * 3, region.height * 3, true
+        region, region.width * 4, region.height * 4, true
       )
       if (scaled !== region) region.recycle()
       scaled
@@ -3678,16 +3683,25 @@ class ScalpOverlayService : Service() {
     pairCropOcrRecognizer.process(InputImage.fromBitmap(enlarged, 0))
       .addOnSuccessListener { textResult ->
         if (historyPageVisible433) return@addOnSuccessListener
-        val labels = textResult.textBlocks.flatMap { it.lines }
+        val cropLines460 = textResult.textBlocks.flatMap { it.lines }
+          .sortedWith(compareBy({ it.boundingBox?.centerY() ?: 0 },
+                              { it.boundingBox?.left ?: 0 }))
+        // ML Kit can split AUD / CHF and OTC into separate elements or
+        // combine them into one line. Both representations are read-only
+        // observations of this tightly cropped, on-screen selector.
+        val lineText460 = cropLines460.joinToString(" ") { it.text }
+        val elementText460 = cropLines460.flatMap { it.elements }
           .sortedWith(compareBy({ it.boundingBox?.centerY() ?: 0 },
                               { it.boundingBox?.left ?: 0 }))
           .joinToString(" ") { it.text }
+        val labels = if (lineText460.contains("/")) lineText460
+          else elementText460
         val pattern = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b""")
         val otcPattern = Regex("""(?i)(?<![A-Z0-9])O\s*T\s*C(?![A-Z0-9])""")
         val instruments = pattern.findAll(labels).map { match ->
           val base = match.groupValues[1].uppercase() + "/" +
             match.groupValues[2].uppercase()
-          val after = labels.substring(match.range.last + 1).take(22)
+          val after = labels.substring(match.range.last + 1).take(18)
           if (otcPattern.containsMatchIn(after)) "$base OTC" else base
         }.distinct().toList()
         val accessibilityPair = TouchTestService.readVisibleDemoPair()
@@ -4383,10 +4397,12 @@ class ScalpOverlayService : Service() {
           // Retry the zoomed selector both when regular OCR sees no pair
           // and when it disagrees with the broker Accessibility OTC suffix.
           // Never choose either conflicting sensor without a fresh crop.
-          if ((pairs.isEmpty() && accessibilityPair == null) ||
-              (pairs.size == 1 && accessibilityPair != null &&
-                pairs[0] != accessibilityPair))
-            schedulePairHeaderOcr(copy, observedAt)
+          // 460: Always attempt an independent, tightly cropped header
+          // read when the full-frame and Accessibility results fail to
+          // yield one unambiguous active instrument. A multi-pair OCR
+          // result may come from chart/overlay contamination, not a valid
+          // reason to abandon the selector crop.
+          schedulePairHeaderOcr(copy, observedAt)
           if (marketVerified && observedAt - latestMarketAt > MARKET_STALE_MS) {
             marketVerified = false
             marketLabelAmbiguous = false
