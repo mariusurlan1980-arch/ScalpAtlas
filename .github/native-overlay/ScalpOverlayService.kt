@@ -1175,10 +1175,15 @@ class ScalpOverlayService : Service() {
     }
     verifiedClosedDetail437 = null
     verifiedClosedDetailAt437 = 0L
-    // A verified LOSS changes the ledger, but CHART-ONLY must never run a
-    // Martingale progression or submit an untested larger stake automatically.
-    val canRearmBase = gateReady && !demoRecoveryLedger.isRecovering429() &&
-      demoRecoveryLedger.quote(payout).stakeCents == 100L
+    // Passive history review uses the same verified settlement ledger as
+    // chart notices. Only the experimental QT DEMO mode may resume recovery.
+    val canRearmBase = gateReady && if (CHART_MARTINGALE_DEMO_471) {
+      demoRecoveryLedger.quote(payout).stakeCents != null ||
+        demoRecoveryLedger.needsBaseStakeReset()
+    } else {
+      !demoRecoveryLedger.isRecovering429() &&
+        demoRecoveryLedger.quote(payout).stakeCents == 100L
+    }
     autoDemoSessionRequested = canRearmBase
     autoDemoSessionConsumed = !canRearmBase
     autoDemoArmed = false
@@ -1187,9 +1192,12 @@ class ScalpOverlayService : Service() {
     autoDemoLockedAt = lockedAt
     autoDemoEntryCycleStartedAt = if (canRearmBase)
       System.currentTimeMillis() else 0L
-    return if (canRearmBase)
-      "463 • ORDIN ÎNCHIS VERIFICAT • DEMO 1 USD REARMAT"
-    else "463 • REZULTAT VERIFICAT • NOI ORDINE BLOCATE (FĂRĂ MG)"
+    return when {
+      !canRearmBase -> "463 • REZULTAT VERIFICAT • NOI ORDINE BLOCATE (FĂRĂ MG)"
+      demoRecoveryLedger.isRecovering429() || demoRecoveryLedger.needsBaseStakeReset() ->
+        "MG DEMO • ORDIN ÎNCHIS VERIFICAT • PREGĂTESC MIZA PE GRAFIC"
+      else -> "463 • ORDIN ÎNCHIS VERIFICAT • DEMO 1 USD REARMAT"
+    }
   }
 
   /**
@@ -4735,13 +4743,15 @@ class ScalpOverlayService : Service() {
     val candidateKey = attemptKey + "|" + candidate.fingerprint
     // 472: broker toast may appear for only ~2 seconds; require
     // independent screenshot OCR frames >=0.65s apart (never one frame).
+    val candidateAge = observedAt - chartResultFirstSeenAt471
     if (chartResultCandidateKey471 != candidateKey ||
-        observedAt - chartResultFirstSeenAt471 !in 650L..12_000L) {
+        candidateAge !in 0L..12_000L) {
       chartResultCandidateKey471 = candidateKey
       chartResultFirstSeenAt471 = observedAt
       touchProbeStatus?.text = "MG DEMO • REZULTAT VIZIBIL 1/2 • VERIFIC"
       return
     }
+    if (candidateAge < 650L) return
     // Before booking P/L, verify it refers to an isolated unknown gesture.
     // A broker-confirmed OPEN ID cannot be resolved by a mere chart notice.
     if (tradePositionGate.state() !in listOf(
