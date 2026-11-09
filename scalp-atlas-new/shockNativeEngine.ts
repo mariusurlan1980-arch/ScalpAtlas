@@ -428,7 +428,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           candle.trendMeasured && candle.trendDirection!=='NONE' &&
             candle.trendDirection!==candle.dir &&
             !(candle.dir==='SELL'&&candle.sellPullbackConfirmed)?
-              'CONTRA TREND • AȘTEAPTĂ RETRAGERE CONFIRMATĂ':
+              'CONTRA TREND':
           candle.wickPixels<minBody*.20?'FITIL SCURT':
           'REVENIRE/TIMP';
         // Diagnostic only: explain why independent M5 SCALP TREND did NOT
