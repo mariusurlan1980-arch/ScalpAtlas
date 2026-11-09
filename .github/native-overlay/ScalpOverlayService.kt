@@ -1354,6 +1354,26 @@ class ScalpOverlayService : Service() {
             verifiedDemoAccountAt = 0L
             verifiedDemoAccountPackage = null
           }
+          // 474: Discard the *experimental MG progression*, NOT the
+          // attempted-order marker. Only migrate after the same verified
+          // QT DEMO chart proves the broker currently shows $1 and 5 min.
+          // A known OPEN ID or uncertain Android gesture still blocks orders.
+          if (demoChart463 && proofPackage463 != null &&
+              !demoRecoveryLedger.isFixedOneDollarMode474() &&
+              demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+              TouchTestService.ready()) {
+            val migrationPair474 = currentPair(System.currentTimeMillis())
+            val preflight474 = try {
+              migrationPair474 != "NEIDENTIFICAT" &&
+                TouchTestService.preflightOneDollarDemoOrder(migrationPair474)
+                  .startsWith("PREGĂTIT AUTO DEMO")
+            } catch (_: Throwable) { false }
+            if (preflight474) {
+              demoRecoveryLedger.retireExperimentalMartingale474(
+                verifiedQtDemo = true, brokerPreflightOneDollar = true
+              )
+            }
+          }
           val chartCache463 = proofPackage463 != null &&
             proofPackage463 == verifiedDemoAccountPackage &&
             verifiedDemoAccountAt > 0L &&
@@ -5911,8 +5931,9 @@ class ScalpOverlayService : Service() {
       val shockDisplay = if (percentFromCandle > 0 || shockObserved)
         percentFromCandle.toString() + "%" else "—%"
       qualityText?.text = shockDisplay
+      // 474: This is a detected candle retracement %, NOT a win forecast.
       compactStatusText?.text = when (activeSignal) {
-        "BUY", "SELL" -> activeSignal + " " + shockDisplay
+        "BUY", "SELL" -> activeSignal + " ȘOC " + shockDisplay
         else -> "ȘOC " + shockDisplay
       }
       compactStatusText?.setTextColor(when (activeSignal) {
@@ -6010,7 +6031,12 @@ class ScalpOverlayService : Service() {
         val recoveryCents451 = recoveryQuote451.stakeCents
         val recoveryActive451 = demoRecoveryLedger.isRecovering429()
         mgText451.text = when {
-          !verifiedDemo451 -> "MG: DOAR QT DEMO"
+          !verifiedDemo451 -> "ORDINE: DOAR QT DEMO"
+          demoRecoveryLedger.isFixedOneDollarMode474() &&
+            (unresolvedOld451 || demoRecoveryLedger.verifiedOpenPositionId429() != null) ->
+              "ORDIN NECONFIRMAT • FĂRĂ APĂSARE"
+          demoRecoveryLedger.isFixedOneDollarMode474() ->
+            "MIZĂ FIXĂ 1 USD • FĂRĂ MG"
           unresolvedOld451 || demoRecoveryLedger.verifiedOpenPositionId429() != null ->
             "MG BLOCAT • ORDIN NEVERIFICAT"
           demoRecoveryLedger.needsBaseStakeReset() ->
