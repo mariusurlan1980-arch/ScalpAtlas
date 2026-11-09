@@ -2264,8 +2264,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24
-          path: ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk
+          name: ScalpAtlas-475-MG-VERIFICAT-DEMO-CANDIDAT-G24
+          path: ScalpAtlas-475-MG-VERIFICAT-DEMO-CANDIDAT-G24.apk
           if-no-files-found: error
           retention-days: 30
 
