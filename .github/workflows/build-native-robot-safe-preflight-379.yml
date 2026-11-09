@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 474 fixed-demo recovery with luminous brain
+name: Build Scalp Atlas 475 verified-chart Martingale DEMO candidate
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, fix/scalpatlas-rollback-473-brain, fix/scalpatlas-474-demo-migration]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, fix/scalpatlas-rollback-473-brain, fix/scalpatlas-474-demo-migration, experiment/scalpatlas-mg-verified-demo-475]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.32'
+          expo['version']='3.2.33'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=474
+          expo['android']['versionCode']=475
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -970,10 +970,11 @@ jobs:
           cp .github/native-overlay/TouchTestActivity.kt "$JAVA_DIR/TouchTestActivity.kt"
           cp .github/native-overlay/TouchTestService.kt "$JAVA_DIR/TouchTestService.kt"
           cp .github/native-overlay/TradePositionGate.kt "$JAVA_DIR/TradePositionGate.kt"
+          cp .github/native-overlay/ChartResultProof471.kt "$JAVA_DIR/ChartResultProof471.kt"
           cp .github/native-overlay/DemoRecoveryLedger.kt "$JAVA_DIR/DemoRecoveryLedger.kt"
           cp .github/native-overlay/DemoStakeEditor.kt "$JAVA_DIR/DemoStakeEditor.kt"
           cp .github/native-overlay/BrokerAdapterRegistry.kt "$JAVA_DIR/BrokerAdapterRegistry.kt"
-          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt DemoRecoveryLedger.kt DemoStakeEditor.kt; do
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt DemoRecoveryLedger.kt DemoStakeEditor.kt ChartResultProof471.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
 
@@ -2093,7 +2094,7 @@ jobs:
           p.write_text('\n'.join(lines)+'\n')
           PY
 
-      - name: Verify 474 fixed-DEMO migration preserves unknown-order blocks
+      - name: Verify 475 verified-DEMO settlement preserves unknown-order blocks
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -2108,8 +2109,8 @@ jobs:
           assert 'fixedOneDollarMode474' in m and 'BASE_STAKE_CENTS' in l
           assert 'attempted' not in m and 'expectedStakeCents429' not in m
           assert 'fun isFixedOneDollarMode474()' in l
-          assert 'TouchTestService.preflightOneDollarDemoOrder(migrationPair474)' in a
-          assert 'demoRecoveryLedger.retireExperimentalMartingale474(' in a
+          assert 'TouchTestService.preflightOneDollarDemoOrder(migrationPair475)' in a
+          assert 'demoRecoveryLedger.enableVerifiedDemoMartingale475(' in a
           assert 'demoRecoveryLedger.verifiedOpenPositionId429() == null' in a
           assert 'if (autoDemoArmed)' in a
           assert 'tradePositionGate.beginAttempt()' in a
@@ -2119,6 +2120,35 @@ jobs:
           assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
           assert 'fun preflightOneDollarDemoOrder(' in t
           print('474 static guard PASS: QT Demo $1 verified, prior order lock retained, MG retired')
+          PY
+
+      - name: Verify 475 broker-result evidence and Martingale safety
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          l=Path('.github/native-overlay/DemoRecoveryLedger.kt').read_text()
+          p=Path('.github/native-overlay/ChartResultProof471.kt').read_text()
+          t=Path('.github/native-overlay/TradePositionGate.kt').read_text()
+          assert 'CHART_MARTINGALE_DEMO_471 = true' in s
+          assert 'recordChartDemoResult471(result, copy, observedAt)' in s
+          assert 'val ocrInterval471 = if (pendingResult471) 500L' in s
+          assert 'demoRecoveryLedger.settleExplicitChartResult471(' in s
+          assert 'tradePositionGate.chartDemoClosedNoticeVerified471(true)' in s
+          assert 'CHART_ONLY_DEMO_462 = true' in s
+          assert 'if (!CHART_MARTINGALE_DEMO_471 &&' in s
+          assert 'demoRecoveryLedger.enableVerifiedDemoMartingale475(' in s
+          assert 'enableVerifiedDemoMartingale475(' in l
+          assert 'settleExplicitChartResult471(' in l
+          assert 'seenClosedReceipts' in l and 'MAX_CYCLE_TRADES = 6' in l
+          assert 'chartDemoClosedNoticeVerified471(' in t
+          assert 'QT_DEMO_TOOLTIPS' in p and 'TRAD' in p
+          assert 'TouchTestService.pressAutoOneDollarDemoOrderOnce(' in s
+          assert 'TouchTestService.pressVerifiedDemoStakeOnce429(' in s
+          assert 'TouchTestService.priorDemoGestureCooldownComplete()' in s
+          assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          assert 'rotatingBrainAnimator467' in s
+          print('475 PASS: settlement two-frame gate, QT DEMO only, max six, original motor')
           PY
 
       - name: Build standalone release APK
@@ -2230,7 +2260,7 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk
+          cp "$APK" ScalpAtlas-475-MG-VERIFICAT-DEMO-CANDIDAT-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -2240,7 +2270,7 @@ jobs:
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-474-demo-migration'
+        if: ${{ false }} # experimental candidate: no GitHub release until broker result verified on phone
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -2248,10 +2278,10 @@ jobs:
           FILE="ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-fix474-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-mg475-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 474 - DEMO FIX 1 USD + CREIER • ${GITHUB_SHA:0:12}" \
-            --notes "474: motorul 467 plus creier albastru rotativ. FARA MG: revine la miza DEMO fixa 1 USD doar dupa citire confirmata QT Demo, suma 1 USD, payout >=92%, expirare 5 minute si fara ID OPEN verificat. Flagul de ordin incercat si cooldown-ul raman active pentru prevenirea ordinelor duplicate; nu sunt sterse la migrare. BUY/SELL arata procentul SOC de retragere, NU probabilitate de castig. CI compileaza si verifica semnatura dar NU este test pe Motorola. Nicio tranzactie QT Real; nu se garanteaza profit sau ordine. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 475 - MG EXPERIMENTAL QT DEMO + CREIER • ${GITHUB_SHA:0:12}" \
+            --notes "475: cod experimental QT Demo: motor Scalp Atlas 474 + creier rotativ, Martingale max 6 pași doar după două dovezi WIN/LOSS din notificarea brokerului pe grafic; mărește suma numai după LOSS confirmat, fără deducții din lumânări, și se oprește dacă lipsește dovada. Nevalidat pe Motorola G24 și nu trebuie folosit pe cont Real. Build $GITHUB_SHA." \
           --prerelease
