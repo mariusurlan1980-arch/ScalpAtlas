@@ -42,9 +42,13 @@ object ChartResultProof471 {
     if (lines.isEmpty() || lines.size > 140) return null
     val all = lines.joinToString(" ")
     if (Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(all)) return null
-    val canonical = all.uppercase().replace(Regex("""\s+"""), "")
+    // 472: A Pocket Option result Tooltip may only show TRADE AMOUNT and
+    // RESULT; the pair is shown in the *chart selector*, not in the popup.
+    // recordChartDemoResult471() independently requires two fresh broker
+    // identity/pair checks before calling this parser. Do not reject an
+    // otherwise explicit completed-trade notice just because OCR failed to
+    // repeat the pair inside the floating notice itself.
     val pairKey = expectedPair.uppercase().replace(Regex("""\s+"""), "")
-    if (!canonical.contains(pairKey)) return null
 
     // Pocket Option "Tooltips" can show the completed trade directly on
     // the price chart as "TRADE AMOUNT: $1.00 / RESULT: +$1.92".
