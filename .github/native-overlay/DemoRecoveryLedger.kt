@@ -149,6 +149,77 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   }
 
   /**
+   * 471: Alternative settlement for a broker-rendered result on the LIVE
+   * price-chart screen. There is NO broker UUID and this is NOT called an
+   * authenticated OPEN/CLOSED history receipt. The local attempt key is
+   * unique only to our persisted, isolated QT DEMO gesture. Two distinct
+   * fresh broker screenshots must explicitly show the SAME completed
+   * trade, invested stake and exact signed P/L; never infer a result from
+   * a candle, elapsed time, gesture callback or balance change.
+   *
+   * If the broker does not display this evidence on the chart, this
+   * method MUST NOT be called: the next stake remains blocked.
+   */
+  @Synchronized
+  fun settleExplicitChartResult471(
+    brokerAccountKey: String,
+    localAttemptKey: String,
+    stakeCents: Long,
+    payoutPercent: Int,
+    netProfitCents: Long,
+    twoFreshMatchingBrokerResultScreens: Boolean
+  ): Boolean {
+    if (!twoFreshMatchingBrokerResultScreens ||
+        !brokerAccountKey.startsWith("QT_DEMO:") ||
+        brokerAccountKey.length < 10 ||
+        localAttemptKey.length !in 15..180 ||
+        prefs.getString("pendingPositionId", null) != null ||
+        stakeCents !in BASE_STAKE_CENTS..MAX_SINGLE_STAKE_CENTS ||
+        payoutPercent !in MIN_PAYOUT_PERCENT..100) return false
+    val account = prefs.getString("accountKey", null)
+    if (account != null && account != brokerAccountKey) return false
+    val receipt = "CHART471:" + localAttemptKey
+    val seen = prefs.getStringSet("seenClosedReceipts", emptySet()).orEmpty()
+    // Idempotent retry after a crash between ledger commit and gesture
+    // marker cleanup. Never book the same screenshot result twice.
+    if (seen.contains(receipt)) return true
+
+    val maxWin = (stakeCents * payoutPercent + 99L) / 100L
+    if (!(netProfitCents == -stakeCents ||
+          (netProfitCents > 0 &&
+            netProfitCents in (maxWin - 1L)..maxWin))) return false
+    if (quote(payoutPercent).stakeCents != stakeCents) return false
+
+    val oldLoss = prefs.getLong("unrecoveredLossCents", 0L)
+    val oldTarget = prefs.getLong("remainingProfitTargetCents", 0L)
+    val wasRecovering = oldLoss > 0L || oldTarget > 0L
+    if (oldTarget !in 0L..TARGET_PROFIT_CENTS) return false
+    val newLoss = if (netProfitCents < 0L) oldLoss - netProfitCents
+      else (oldLoss - netProfitCents).coerceAtLeast(0L)
+    val targetBefore = if (netProfitCents < 0L && !wasRecovering)
+      TARGET_PROFIT_CENTS else oldTarget
+    val excessProfit = if (netProfitCents > 0L)
+      (netProfitCents - oldLoss).coerceAtLeast(0L) else 0L
+    val remainingTarget = (targetBefore - excessProfit).coerceAtLeast(0L)
+    val fullyRecovered = wasRecovering && netProfitCents > 0L &&
+      newLoss == 0L && remainingTarget == 0L
+    val completed = if (fullyRecovered || (!wasRecovering && netProfitCents > 0L)) 0
+      else prefs.getInt("completedCycleTrades", 0) + 1
+    return prefs.edit()
+      .putString("accountKey", brokerAccountKey)
+      .putLong("unrecoveredLossCents", newLoss)
+      .putLong("remainingProfitTargetCents", remainingTarget)
+      .putInt("completedCycleTrades", completed)
+      .putBoolean("halted", newLoss >= MAX_CYCLE_LOSS_CENTS ||
+        completed >= MAX_CYCLE_TRADES)
+      .putBoolean("pendingBaseStakeReset",
+        prefs.getBoolean("pendingBaseStakeReset", false) || fullyRecovered)
+      .putStringSet("seenClosedReceipts",
+        (seen + receipt).toList().takeLast(100).toSet())
+      .commit()
+  }
+
+  /**
    * 437: Strict reconciliation for a previous DEMO gesture whose OPEN
    * accessibility receipt could not be captured before its 5-minute close.
    * CLOSED proof alone is insufficient: the caller must separately verify
