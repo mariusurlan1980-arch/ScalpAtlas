@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 469 G24 DEMO chart-priority recovery test
+name: Build Scalp Atlas 470 G24 DEMO chart-locked pilot
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, experiment/scalpatlas-martingale-demo468, experiment/scalpatlas-chart-first-demo469]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, experiment/scalpatlas-martingale-demo468, experiment/scalpatlas-chart-first-demo469, fix/scalpatlas-chart-locked-demo470]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -58,6 +58,13 @@ jobs:
           test -s .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           echo "Using current generic broker overlay sources; old Pocket Option-only patch skipped."
 
+      - name: Verify broker chart is locked and Martingale is not inferred
+        run: |
+          set -e
+          grep -Fq 'private const val CHART_ONLY_DEMO_462 = true' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if (CHART_ONLY_DEMO_462)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private fun maybeRearmExpiredDemoPilot464' .github/native-overlay/ScalpOverlayService.kt
+
       - name: Validate current SHOCK source without legacy UI patches
         run: |
           set -e
@@ -96,7 +103,7 @@ jobs:
           expo['version']='3.2.30'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=469
+          expo['android']['versionCode']=470
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
