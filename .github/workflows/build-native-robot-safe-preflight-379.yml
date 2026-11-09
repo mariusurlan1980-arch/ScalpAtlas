@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 468 G24 experimental DEMO Martingale
+name: Build Scalp Atlas 469 G24 DEMO chart-priority recovery test
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, experiment/scalpatlas-martingale-demo468]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, experiment/scalpatlas-martingale-demo468, experiment/scalpatlas-chart-first-demo469]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.30'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=468
+          expo['android']['versionCode']=469
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1885,6 +1885,24 @@ jobs:
           print('459: bound physical Open label fallback, OCR word rect and intact order safety gates')
           PY
 
+      - name: Verify 469 chart-first watchdog never equates navigation with settlement
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          overlay = Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          nav = Path('.github/native-overlay/TouchTestService.kt').read_text()
+          assert 'private val maxHistoryDwellMs469 = 18_000L' in overlay
+          assert 'maybePrioritizeBrokerChart469(' in overlay
+          assert 'historyReturnPauseUntil457 = maxOf(' in overlay
+          assert 'closedHistoryInspectionInProgress' in overlay
+          assert 'TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(' in overlay
+          assert 'onVerifiedDemoClosed(' in overlay
+          assert 'CHART_ONLY_DEMO_462 = false' in overlay
+          assert 'ISTORIC DEMO • ÎNAPOI SPRE GRAFIC' in nav
+          assert '✅ LISTĂ GOALĂ 2/2 • REVIN LA GRAFIC' not in nav
+          print('469 PASS: bounded history and no invented settlement')
+          PY
+
       - name: Verify 468 authenticated broker history mode and preserved order guards
         run: |
           python3 - <<'PY'
@@ -2233,28 +2251,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-468-MG-DEMO-TEST-G24.apk
+          cp "$APK" ScalpAtlas-469-CHART-PRIORITY-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-468-MG-DEMO-TEST-G24
-          path: ScalpAtlas-468-MG-DEMO-TEST-G24.apk
+          name: ScalpAtlas-469-CHART-PRIORITY-DEMO-G24
+          path: ScalpAtlas-469-CHART-PRIORITY-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/experiment/scalpatlas-martingale-demo468'
+        if: github.ref == 'refs/heads/experiment/scalpatlas-chart-first-demo469'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-468-MG-DEMO-TEST-G24.apk"
+          FILE="ScalpAtlas-469-CHART-PRIORITY-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-martingale-demo468-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-chart-priority-demo469-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 468 - MARTINGALE DEMO EXPERIMENTAL • ${GITHUB_SHA:0:12}" \
-            --notes "VERSIUNE EXPERIMENTALA 468 / QT DEMO EXCLUSIV: activeaza verificarea brokerului din istoricul DESCHIS/INCHIS pentru a calcula un Martingale numai dupa un LOSS dovedit prin receipt unic. Secventa 1.00, 2.09, 4.36, 9.10, 18.99, 39.64 USD la payout 92%, maxim 6 tranzactii/ciclu si limite de sold. WIN cu recuperare integrala revine la 1 USD. O singura pozitie, 5 minute, M5, payout >= 92%, niciodata QT REAL. Creierul rotativ 467 si analiza SOC raman neschimbate. IMPORTANT: read-only istoricul poate fi nefiabil pe broker si poate ramane blocat; protectia opreste ordine suplimentare in loc sa inventeze un LOSS. Nu presupune profit si nu a fost testata practic pe Motorola G24. Revenire: versiunea 467 ramane disponibila. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 469 - GRAFIC PRIORITAR / MARTINGALE DEMO TEST • ${GITHUB_SHA:0:12}" \
+            --notes "VERSIUNE EXPERIMENTALA 469 / QT DEMO EXCLUSIV; istoric limitat la 18 secunde, revenire automata pe grafic si pauza de navigare; WIN/LOSS NECONFIRMAT blocheaza urmatoarea miza. Baza strategiei 468: activeaza verificarea brokerului din istoricul DESCHIS/INCHIS pentru a calcula un Martingale numai dupa un LOSS dovedit prin receipt unic. Secventa 1.00, 2.09, 4.36, 9.10, 18.99, 39.64 USD la payout 92%, maxim 6 tranzactii/ciclu si limite de sold. WIN cu recuperare integrala revine la 1 USD. O singura pozitie, 5 minute, M5, payout >= 92%, niciodata QT REAL. Creierul rotativ 467 si analiza SOC raman neschimbate. IMPORTANT: read-only istoricul poate fi nefiabil pe broker si poate ramane blocat; protectia opreste ordine suplimentare in loc sa inventeze un LOSS. Nu presupune profit si nu a fost testata practic pe Motorola G24. Revenire: versiunea 467 ramane disponibila. Build $GITHUB_SHA." \
           --prerelease
