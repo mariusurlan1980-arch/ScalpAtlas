@@ -2176,6 +2176,74 @@ class TouchTestService : AccessibilityService() {
      * READ ONLY: checks current QT Demo pair, 1 USD, broker BUY/SELL controls,
      * balance, and >=92% payout. No ACTION_CLICK, orders, or AUTO SIM here.
      */
+    /**
+     * 465: read the visible QT DEMO expiry field without clicking it.
+     * This only establishes what duration is currently configured; it
+     * does NOT establish that a previous broker order closed successfully.
+     * If the timer is obscured or the broker theme changed, do not rearm.
+     */
+    fun confirmedFiveMinuteDemoExpiry465(): Boolean {
+      val svc = connected ?: return false
+      val root = readOnlyBrokerRoot(svc) ?: return false
+      val pkg = root.packageName?.toString().orEmpty()
+      if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE)
+          as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      if (w < 300 || h < 650) return false
+      data class Item(val value: String, val rect: Rect)
+      val labels = ArrayList<Item>()
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      var scanned = 0
+      while (queue.isNotEmpty() && scanned++ < 350) {
+        val node = queue.removeFirst()
+        if (node.packageName?.toString() == pkg && node.isVisibleToUser) {
+          val box = Rect()
+          node.getBoundsInScreen(box)
+          if (!box.isEmpty && box.left >= 0 && box.top >= 0 &&
+              box.right <= w && box.bottom <= h) {
+            val text = node.text?.toString()?.trim().orEmpty()
+            val desc = node.contentDescription?.toString()?.trim().orEmpty()
+            if (text.isNotBlank()) labels.add(Item(text.take(90), Rect(box)))
+            if (desc.isNotBlank() && desc != text)
+              labels.add(Item(desc.take(90), Rect(box)))
+          }
+        }
+        for (index in 0 until node.childCount.coerceAtMost(35))
+          node.getChild(index)?.let(queue::addLast)
+      }
+      if (labels.any { it.rect.centerY() < h * .30f &&
+          Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.value) })
+        return false
+      if (labels.none { it.rect.centerY() < h * .28f &&
+          Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it.value) })
+        return false
+      val captions = labels.filter {
+        it.rect.centerX() < w * .49f &&
+        it.rect.centerY() in (h * .63f).toInt()..(h * .83f).toInt() &&
+        Regex("""(?i)^(?:Timp|Time)\s*:?$""").matches(it.value)
+      }.distinctBy { it.rect.centerX() / 12 to it.rect.centerY() / 12 }
+      if (captions.isEmpty()) return false
+      val values = labels.filter { label ->
+        label.rect.centerX() < w * .50f &&
+        label.rect.centerY() in (h * .65f).toInt()..(h * .85f).toInt() &&
+        Regex("""^\s*\d{2}:\d{2}:\d{2}\s*$""").matches(label.value) &&
+        captions.any { caption ->
+          label.rect.centerY() >= caption.rect.centerY() &&
+          label.rect.centerY() <= caption.rect.centerY() + h * .085f &&
+          kotlin.math.abs(label.rect.centerX() - caption.rect.centerX()) < w * .30f
+        }
+      }.map { it.value.trim() }.distinct()
+      return values.size == 1 && values.single() == "00:05:00"
+    }
+
     fun preflightOneDollarDemoOrder(expectedPair: String): String {
       // The readiness button MUST use the exact same Qt Demo / 1 USD /
       // payout >= 92% validators as the automatic one-shot click.
