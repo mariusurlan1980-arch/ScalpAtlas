@@ -1378,6 +1378,63 @@ class ScalpOverlayService : Service() {
     return "465 • DEMO 1 USD REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
   }
 
+  /**
+   * 472: A prior auto-DEMO attempt may be persisted even though the legacy
+   * 1 USD helper rejected its second preflight BEFORE dispatchGesture.
+   * Re-arm ONLY when the APP'S gesture safety token proves no physical tap
+   * occurred; never use expiry, candles or missing popup as that proof.
+   */
+  private fun maybeRestoreProvenUnsentDemoAttempt472(
+    nowTick: Long, brokerPackage: String?, demoChartVerified: Boolean
+  ): String? {
+    val old = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    if (!CHART_ONLY_DEMO_462 || !CHART_MARTINGALE_DEMO_471 ||
+        !autoDemoSessionConsumed || !old.getBoolean("attempted", false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false) ||
+        !demoChartVerified || brokerPackage == null ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
+        TouchTestService.activeDemoExecutorPackageForReview() != brokerPackage)
+      return null
+    val pkg = old.getString("expectedPackage429", null)
+    val pair = old.getString("expectedPair429", null)
+    val side = old.getString("expectedSide437", null)
+    val stake = old.getLong("expectedStakeCents429", -1L)
+    val payout = old.getInt("expectedPayout429", -1)
+    val tick = old.getLong("attemptedAt429", -1L)
+    val wall = old.getLong("attemptedWallAt454", -1L)
+    if (pkg != brokerPackage || pair.isNullOrBlank() ||
+        side !in listOf("BUY", "SELL") ||
+        stake !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
+        payout !in 92..100 ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+        demoRecoveryLedger.quote(payout).stakeCents != stake ||
+        TouchTestService.readVisibleDemoPair() != pair ||
+        !TouchTestService.verifiedDemoNoPhysicalGesture472(tick, wall))
+      return null
+
+    if (!tradePositionGate.verifiedNoPhysicalGesture472(true))
+      return "472 • GEST NEEFECTUAT, DAR POZIȚIA NU ESTE LIBERĂ"
+    val cleared = old.edit().putBoolean("attempted", false)
+      .remove("expectedPair429").remove("expectedPackage429")
+      .remove("expectedStakeCents429").remove("expectedPayout429")
+      .remove("expectedSide437").remove("attemptedAt429")
+      .remove("attemptedWallAt454").commit()
+    if (!cleared) {
+      tradePositionGate.uncertainResult()
+      return "472 • NU POT SALVA DEBLOCAREA • FĂRĂ ORDIN"
+    }
+    autoDemoSessionRequested = true
+    autoDemoSessionConsumed = false
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoExpiry = 0L
+    autoDemoLastPreflightAt = 0L
+    autoDemoEntryCycleStartedAt = System.currentTimeMillis()
+    autoDemoLockedAt = lockedAt
+    return "472 • FĂRĂ GEST ANTERIOR DOVEDIT • REARMAT DEMO • AȘTEPT ȘOC NOU"
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -1437,21 +1494,29 @@ class ScalpOverlayService : Service() {
             verifiedDemoAccountAt > 0L &&
             proofNow463 - verifiedDemoAccountAt in 0L..90_000L &&
             !diagnostic.contains("QT REAL IDENTIFICAT")
-          val passiveStatus463 = inspectPassiveDemoProof463(
-            proofNow463, proofPackage463, chartCache463
-          )
-          // 471: a timeout alone can no longer rearm an unknown DEMO
-          // trade. Require the broker's explicit on-chart settled notice.
+          val provenUnsent472 = if (autoDemoSessionConsumed)
+            maybeRestoreProvenUnsentDemoAttempt472(
+              proofNow463, proofPackage463, chartCache463
+            ) else null
+          val passiveStatus463 = if (provenUnsent472 == null)
+            inspectPassiveDemoProof463(
+              proofNow463, proofPackage463, chartCache463
+            ) else null
+          // 471/472: A timeout is never settlement proof. A sent gesture
+          // stays blocked without a broker-confirmed result; no history
+          // page navigation or speculative Martingale increment.
           val pilotStatus464 = if (!CHART_MARTINGALE_DEMO_471 &&
               passiveStatus463 == null && autoDemoSessionConsumed)
             maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
           else null
-          val effectiveStatus464 = passiveStatus463 ?: pilotStatus464
+          val effectiveStatus464 = provenUnsent472 ?: passiveStatus463 ?: pilotStatus464
           if (effectiveStatus464 != null) {
             lastAutoDemoHistoryNavStatus = effectiveStatus464
             lastAutoDemoHistoryNavStatusAt = proofNow463
           }
-          if (autoDemoSessionConsumed) {
+          if (provenUnsent472 != null) {
+            touchProbeStatus?.text = provenUnsent472
+          } else if (autoDemoSessionConsumed) {
             touchProbeStatus?.text = if (effectiveStatus464 != null)
               "" + effectiveStatus464.take(110)
             else {
