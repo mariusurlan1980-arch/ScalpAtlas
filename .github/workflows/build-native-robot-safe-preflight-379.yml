@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 473 rollback to working 467 with luminous brain
+name: Build Scalp Atlas 474 fixed-demo recovery with luminous brain
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, fix/scalpatlas-rollback-473-brain]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, fix/scalpatlas-rollback-473-brain, fix/scalpatlas-474-demo-migration]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.31'
+          expo['version']='3.2.32'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=473
+          expo['android']['versionCode']=474
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2093,6 +2093,34 @@ jobs:
           p.write_text('\n'.join(lines)+'\n')
           PY
 
+      - name: Verify 474 fixed-DEMO migration preserves unknown-order blocks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          l=Path('.github/native-overlay/DemoRecoveryLedger.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          assert 'private const val CHART_ONLY_DEMO_462 = true' in a
+          assert 'fun retireExperimentalMartingale474(' in l
+          m=l.split('fun retireExperimentalMartingale474(',1)[1].split('\n  }',1)[0]
+          assert 'pendingPositionId' in m and 'return false' in m
+          assert 'verifiedQtDemo' in m and 'brokerPreflightOneDollar' in m
+          assert 'fixedOneDollarMode474' in m and 'BASE_STAKE_CENTS' in l
+          assert 'attempted' not in m and 'expectedStakeCents429' not in m
+          assert 'fun isFixedOneDollarMode474()' in l
+          assert 'TouchTestService.preflightOneDollarDemoOrder(migrationPair474)' in a
+          assert 'demoRecoveryLedger.retireExperimentalMartingale474(' in a
+          assert 'demoRecoveryLedger.verifiedOpenPositionId429() == null' in a
+          assert 'if (autoDemoArmed)' in a
+          assert 'tradePositionGate.beginAttempt()' in a
+          assert 'getBoolean("attempted", false)' in a
+          assert 'TouchTestService.priorDemoGestureCooldownComplete()' in a
+          assert 'activeSignal + " ȘOC " + shockDisplay' in a
+          assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          assert 'fun preflightOneDollarDemoOrder(' in t
+          print('474 static guard PASS: QT Demo $1 verified, prior order lock retained, MG retired')
+          PY
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -2202,28 +2230,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-473-REVENIRE-467-CREIER-G24.apk
+          cp "$APK" ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-473-REVENIRE-467-CREIER-G24
-          path: ScalpAtlas-473-REVENIRE-467-CREIER-G24.apk
+          name: ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24
+          path: ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-rollback-473-brain'
+        if: github.ref == 'refs/heads/fix/scalpatlas-474-demo-migration'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-473-REVENIRE-467-CREIER-G24.apk"
+          FILE="ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-revenire473-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-fix474-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 473 - REVENIRE LA MOTOR 467 + CREIER • ${GITHUB_SHA:0:12}" \
-            --notes "473: Revenire la sursa Scalp Atlas 467 cu creier luminos albastru-cyan rotativ, fara schimbarile experimentale Martingale 468-472. Păstrează motorul automat DEMO din 467, cu tranzacție 1 USD, M5/5 minute și gest BUY/SELL doar la semnal. Nu se garantează tranzacții, profit sau absența blocajelor; APK compilat automat, încă netestat pe Motorola G24. Nu tranzacționează pe QT Real. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 474 - DEMO FIX 1 USD + CREIER • ${GITHUB_SHA:0:12}" \
+            --notes "474: motorul 467 plus creier albastru rotativ. FARA MG: revine la miza DEMO fixa 1 USD doar dupa citire confirmata QT Demo, suma 1 USD, payout >=92%, expirare 5 minute si fara ID OPEN verificat. Flagul de ordin incercat si cooldown-ul raman active pentru prevenirea ordinelor duplicate; nu sunt sterse la migrare. BUY/SELL arata procentul SOC de retragere, NU probabilitate de castig. CI compileaza si verifica semnatura dar NU este test pe Motorola. Nicio tranzactie QT Real; nu se garanteaza profit sau ordine. Build $GITHUB_SHA." \
           --prerelease
