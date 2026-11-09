@@ -2723,82 +2723,56 @@ class ScalpOverlayService : Service() {
 
 
   /**
-   * TEMPORARY VISUAL PREVIEW ONLY — chosen galactic brain variant 1.
-   * Small baked-in WebP sprite + independent orbit, no OCR, trade, touch,
-   * Accessibility, broker or watchdog state interactions.
-   * Not a true volumetric 3D asset: the brain gently swivels while the
-   * surrounding orbit makes a continuous full turn.
+   * Chosen visual #1: 12-frame rotating neon brain, with NO orbit or ring.
+   * ImageDecoder is Android 9+; Motorola G24 supports this natively.
+   * The animation runs only while its overlay view is attached, and cannot
+   * modify trading/SHOCK state, broker taps, accessibility or trade guards.
    */
   private class GalacticBrainPreviewView(context: Context) : android.widget.FrameLayout(context) {
-    private val density = resources.displayMetrics.density
-    private fun px(dp: Float): Int = (dp * density).roundToInt()
-
-    private val brain = android.widget.ImageView(context).apply {
-      setImageResource(R.drawable.galactic_brain_preview)
-      scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-      background = GradientDrawable().apply {
-        shape = GradientDrawable.OVAL
-        setColor(Color.rgb(14, 8, 32))
-      }
-      clipToOutline = true
-      isClickable = false
-      isFocusable = false
-      contentDescription = "Previzualizare creier galactic animat"
-    }
-    private val orbit = object : View(context) {
-      private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = px(1.7f).toFloat()
-        color = Color.rgb(163, 68, 242)
-      }
-      override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val r = RectF(px(1f).toFloat(), height * 0.24f,
-          width - px(1f).toFloat(), height * 0.76f)
-        line.color = Color.argb(130, 109, 84, 244)
-        canvas.drawOval(r, line)
-        line.color = Color.rgb(225, 91, 255)
-        canvas.drawArc(r, 35f, 95f, false, line)
-        line.color = Color.rgb(76, 226, 255)
-        canvas.drawArc(r, 210f, 55f, false, line)
-      }
-    }
-    private var orbitAnimator: ValueAnimator? = null
-    private var brainAnimator: ValueAnimator? = null
+    private var spinningBrain: android.graphics.drawable.AnimatedImageDrawable? = null
 
     init {
       isClickable = false
       isFocusable = false
-      addView(brain, LayoutParams(px(42f), px(42f), Gravity.CENTER))
-      addView(orbit, LayoutParams(LayoutParams.MATCH_PARENT,
-        LayoutParams.MATCH_PARENT))
+      importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+      background = GradientDrawable().apply {
+        setColor(Color.rgb(12, 8, 27))
+        cornerRadius = context.resources.displayMetrics.density * 9f
+      }
+      clipToOutline = true
+      val picture = android.widget.ImageView(context).apply {
+        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+        isClickable = false
+        isFocusable = false
+        contentDescription = "Creier galactic rotativ"
+        try {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = android.graphics.ImageDecoder.createSource(
+              context.resources, R.raw.galactic_brain_rotating)
+            val drawable = android.graphics.ImageDecoder.decodeDrawable(source)
+            setImageDrawable(drawable)
+            if (drawable is android.graphics.drawable.AnimatedImageDrawable) {
+              spinningBrain = drawable
+              drawable.repeatCount = android.graphics.drawable.AnimatedImageDrawable.REPEAT_INFINITE
+            }
+          } else {
+            setImageResource(R.drawable.galactic_brain_preview)
+          }
+        } catch (_: Exception) {
+          // Preview-only fallback; don't affect any broker service.
+          setImageResource(R.drawable.galactic_brain_preview)
+        }
+      }
+      addView(picture, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
     override fun onAttachedToWindow() {
       super.onAttachedToWindow()
-      orbitAnimator?.cancel()
-      brainAnimator?.cancel()
-      orbitAnimator = ValueAnimator.ofFloat(0f, 360f).apply {
-        duration = 7200L
-        repeatCount = ValueAnimator.INFINITE
-        interpolator = LinearInterpolator()
-        addUpdateListener { orbit.rotation = it.animatedValue as Float }
-        start()
-      }
-      brainAnimator = ValueAnimator.ofFloat(-13f, 13f, -13f).apply {
-        duration = 4800L
-        repeatCount = ValueAnimator.INFINITE
-        interpolator = LinearInterpolator()
-        addUpdateListener { brain.rotationY = it.animatedValue as Float }
-        start()
-      }
+      spinningBrain?.start()
     }
 
     override fun onDetachedFromWindow() {
-      orbitAnimator?.cancel()
-      brainAnimator?.cancel()
-      orbitAnimator = null
-      brainAnimator = null
+      spinningBrain?.stop()
       super.onDetachedFromWindow()
     }
   }
