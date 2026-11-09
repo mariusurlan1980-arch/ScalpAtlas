@@ -2144,7 +2144,7 @@ jobs:
           ledger=Path('.github/native-overlay/DemoRecoveryLedger.kt').read_text()
           reg=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
           assert 'private const val CHART_ONLY_DEMO_462 = true' in s
-          assert 'if (!CHART_ONLY_DEMO_462)' in s
+          assert 'if (!CHART_ONLY_DEMO_462 ||' in s
           assert 'maybePrepareAutomaticDemoRecoveryStake(' in s
           assert 'setVerifiedDemoRecoveryStakeOnBroker(pair, stake)' in s
           assert 'demoRecoveryLedger.quote(payout429).stakeCents == stake429' in s
