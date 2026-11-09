@@ -83,8 +83,17 @@ jobs:
           assert 'ChartResultProof471.extract(' in src
           assert 'QT_DEMO_TOOLTIPS' in parser
           assert 'if (!canonical.contains(pairKey)) return null' not in parser
+          touch=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          gate=Path('.github/native-overlay/TradePositionGate.kt').read_text()
+          assert 'verifiedDemoNoPhysicalGesture472(' in touch
+          assert 'priorGestureAt < persistedAttemptTick' in touch
+          assert 'kotlin.math.abs(uptimeAge - wallAge) > 2_500L' in touch
+          assert 'guardBefore472 == guardAfter472' in touch
+          assert 'verifiedNoPhysicalGesture472(proof: Boolean)' in gate
+          assert 'maybeRestoreProvenUnsentDemoAttempt472(' in src
+          assert 'demoRecoveryLedger.verifiedOpenPositionId429() != null' in src
           assert 'realOrderAdapterAvailable = false' in reg
-          print('472 PASS: no auto BIP on unexecuted SHOCK, known demo-only gesture dispatch, bounded result OCR')
+          print('472 PASS: no auto BIP without gesture, proven unsent retry only, bounded chart OCR')
           PY
 
       - name: Verify 471 chart-only settlement proof and DEMO-only recovery guards
