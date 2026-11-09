@@ -115,6 +115,9 @@ class ScalpOverlayService : Service() {
     // Do NOT enable dynamic stakes without a broker-authenticated CLOSED
     // result available without leaving the chart and a tested reconciliation.
     private const val CHART_ONLY_DEMO_462 = true
+    // 471 uses explicit, twice-read broker CLOSED notices visible on the
+    // uninterrupted price chart, never history navigation or candle guesses.
+    private const val CHART_MARTINGALE_DEMO_471 = true
     // 465: no hard count limit or extra 7-minute pause. The 5-minute
     // broker gesture lock remains aligned to the verified 5-minute DEMO
     // expiry; time alone never proves CLOSED and never triggers MG.
@@ -314,6 +317,8 @@ class ScalpOverlayService : Service() {
   private val demoRecoveryLedger by lazy {
     DemoRecoveryLedger(getSharedPreferences("scalp_atlas_demo_recovery_421", Context.MODE_PRIVATE))
   }
+  private var chartResultCandidateKey471: String? = null
+  private var chartResultFirstSeenAt471 = 0L
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
   private var autoDemoLastPreflightReason = "AȘTEAPTĂ VERIFICAREA"
@@ -1398,7 +1403,10 @@ class ScalpOverlayService : Service() {
         // 463: In CHART-ONLY, do not silently edit the stake field for
         // Martingale. Keep any recovery amount disabled until a separately
         // validated broker settlement and an explicitly tested risk policy.
-        if (!CHART_ONLY_DEMO_462)
+        if (!CHART_ONLY_DEMO_462 ||
+            (CHART_MARTINGALE_DEMO_471 &&
+              (demoRecoveryLedger.isRecovering429() ||
+                demoRecoveryLedger.needsBaseStakeReset())))
           maybePrepareAutomaticDemoRecoveryStake(android.os.SystemClock.elapsedRealtime())
         // 462 CHART-ONLY DEMO: do not open, press, or scroll either the
         // CLOSED or OPEN transaction tabs automatically. A single valid
@@ -1432,7 +1440,10 @@ class ScalpOverlayService : Service() {
           val passiveStatus463 = inspectPassiveDemoProof463(
             proofNow463, proofPackage463, chartCache463
           )
-          val pilotStatus464 = if (passiveStatus463 == null && autoDemoSessionConsumed)
+          // 471: a timeout alone can no longer rearm an unknown DEMO
+          // trade. Require the broker's explicit on-chart settled notice.
+          val pilotStatus464 = if (!CHART_MARTINGALE_DEMO_471 &&
+              passiveStatus463 == null && autoDemoSessionConsumed)
             maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
           else null
           val effectiveStatus464 = passiveStatus463 ?: pilotStatus464
@@ -4712,6 +4723,134 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  /**
+   * 471: opt-in QT DEMO Martingale on the uninterrupted LIVE candle chart.
+   * The only settlement source accepted here is a BROKER-rendered explicit
+   * completed-trade notice with pair, stake and signed profit/loss, in two
+   * separately captured OCR frames. CANDLE PRICE / TIMER / BALANCE alone
+   * are never accepted. No navigation to Open/Closed trades occurs here.
+   */
+  private fun recordChartDemoResult471(
+    result: com.google.mlkit.vision.text.Text,
+    frame: Bitmap,
+    observedAt: Long
+  ) {
+    if (!CHART_MARTINGALE_DEMO_471 || !CHART_ONLY_DEMO_462 ||
+        historyPageVisible433 || mediaProjection == null ||
+        !TouchTestService.ready() ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT")) return
+    val pending = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    if (!pending.getBoolean("attempted", false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false)) return
+    val packageId = TouchTestService.activeDemoExecutorPackageForReview() ?: return
+    val expectedPackage = pending.getString("expectedPackage429", null)
+    val expectedPair = pending.getString("expectedPair429", null)
+    val expectedSide = pending.getString("expectedSide437", null)
+    val stake = pending.getLong("expectedStakeCents429", -1L)
+    val payout = pending.getInt("expectedPayout429", -1)
+    val gestureTick = pending.getLong("attemptedAt429", -1L)
+    val gestureWall = pending.getLong("attemptedWallAt454", -1L)
+    if (packageId != expectedPackage || expectedPair.isNullOrBlank() ||
+        expectedSide !in listOf("BUY", "SELL") ||
+        stake !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
+        payout !in 92..100 || gestureTick <= 0L || gestureWall <= 0L ||
+        verifiedDemoAccountPackage != packageId) return
+    val elapsedTick = android.os.SystemClock.elapsedRealtime() - gestureTick
+    val elapsedWall = observedAt - gestureWall
+    // Two clocks protect against reboot, stale notifications and wall-time
+    // jumps. The CLOSED result must follow the configured five-minute expiry.
+    if (elapsedTick !in DEMO_TEST_EXPIRY_MS_465..600_000L ||
+        elapsedWall !in DEMO_TEST_EXPIRY_MS_465..600_000L ||
+        kotlin.math.abs(elapsedTick - elapsedWall) > 12_000L ||
+        !TouchTestService.priorDemoGestureCooldownComplete()) return
+    val lines = result.textBlocks.flatMap { it.lines }
+    val topHeader = lines.filter { line ->
+      val rect = line.boundingBox ?: return@filter false
+      rect.centerY().toFloat() / frame.height in 0.035f..0.19f
+    }.joinToString(" ") { it.text.trim() }
+    if (!Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(topHeader) ||
+        Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(topHeader)) return
+    // A history page has a "Tranzacții" heading in this region, whereas
+    // the price chart has the live pair and its trading controls.
+    val historyHeading = lines.any { line ->
+      val rect = line.boundingBox ?: return@any false
+      rect.centerY().toFloat() / frame.height in 0.09f..0.28f &&
+        Regex("""(?i)^(Tranzacții|Tranzactii|Transactions|Trades)$""")
+          .matches(line.text.trim())
+    }
+    if (historyHeading) return
+    if (!pairReady(observedAt) ||
+        currentPair(observedAt) != expectedPair ||
+        TouchTestService.readVisibleDemoPair() != expectedPair) return
+    val candidate = ChartResultProof471.extract(
+      lines.map { it.text }, expectedPair, stake, payout
+    ) ?: run {
+      chartResultCandidateKey471 = null
+      chartResultFirstSeenAt471 = 0L
+      return
+    }
+    val attemptKey = listOf(packageId, expectedPair, expectedSide,
+      stake, payout, gestureWall).joinToString("|")
+    val candidateKey = attemptKey + "|" + candidate.fingerprint
+    if (chartResultCandidateKey471 != candidateKey ||
+        observedAt - chartResultFirstSeenAt471 !in 1_500L..15_000L) {
+      chartResultCandidateKey471 = candidateKey
+      chartResultFirstSeenAt471 = observedAt
+      touchProbeStatus?.text = "MG DEMO • REZULTAT VIZIBIL 1/2 • VERIFIC"
+      return
+    }
+    // Before booking P/L, verify it refers to an isolated unknown gesture.
+    // A broker-confirmed OPEN ID cannot be resolved by a mere chart notice.
+    if (tradePositionGate.state() !in listOf(
+          TradePositionGate.State.UNKNOWN, TradePositionGate.State.READY) ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null) return
+    val booked = demoRecoveryLedger.settleExplicitChartResult471(
+      "QT_DEMO:" + packageId, attemptKey, stake, payout,
+      candidate.netProfitCents, twoFreshMatchingBrokerResultScreens = true
+    )
+    if (!booked) {
+      touchProbeStatus?.text = "MG DEMO • REGISTRU RESPINGE REZULTATUL"
+      return
+    }
+    val gateReady = when (tradePositionGate.state()) {
+      TradePositionGate.State.UNKNOWN ->
+        tradePositionGate.chartDemoClosedNoticeVerified471(true)
+      TradePositionGate.State.READY -> true
+      else -> false
+    }
+    if (!gateReady) return
+    // Ledger commit is durable BEFORE clearing the persisted attempt.
+    val cleared = pending.edit().putBoolean("attempted", false)
+      .remove("expectedPair429").remove("expectedPackage429")
+      .remove("expectedStakeCents429").remove("expectedPayout429")
+      .remove("expectedSide437").remove("attemptedAt429")
+      .remove("attemptedWallAt454").commit()
+    if (!cleared) {
+      tradePositionGate.uncertainResult()
+      touchProbeStatus?.text = "MG DEMO • SALVARE NECONFIRMATĂ • FĂRĂ ORDIN"
+      return
+    }
+    chartResultCandidateKey471 = null
+    chartResultFirstSeenAt471 = 0L
+    val next = demoRecoveryLedger.quote(payout)
+    val rearm = next.stakeCents != null || demoRecoveryLedger.needsBaseStakeReset()
+    autoDemoSessionRequested = rearm
+    autoDemoSessionConsumed = !rearm
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoExpiry = 0L
+    autoDemoLastPreflightAt = 0L
+    lastAutoDemoStakeEditAt = 0L
+    autoDemoLockedAt = lockedAt
+    autoDemoEntryCycleStartedAt = observedAt
+    touchProbeStatus?.text = if (!rearm)
+      "MG DEMO STOP • LIMITĂ SAU REZULTAT NECONFIRMAT"
+    else if (candidate.netProfitCents < 0L)
+      "LOSS CONFIRMAT PE GRAFIC 2/2 • PREGĂTESC MIZA MG"
+    else "WIN CONFIRMAT PE GRAFIC 2/2 • RECALCULEZ MIZA"
+  }
+
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
     if (ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
     ocrBusy = true
@@ -4751,6 +4890,7 @@ class ScalpOverlayService : Service() {
         // 437: read a uniquely identified CLOSED trade detail in two
         // independent frames. Does not itself rearm or submit an order.
         recordClosedDetailOcr437(result, copy, observedAt)
+        recordChartDemoResult471(result, copy, observedAt)
         recordClosedListRowOcr438(result, copy, observedAt)
         recordBrokerHistoryBottomLabelOcr432(result, copy, observedAt)
         // 433: On history, M5 and the active FX selector do not exist.
@@ -5864,8 +6004,10 @@ class ScalpOverlayService : Service() {
             demoRecoveryLedger.quote(payout429).stakeCents == stake429
           val latestPreflight = try {
             when {
-              CHART_ONLY_DEMO_462 && stake429 != 100L ->
-                "BLOCAT: PILOT DEMO DOAR 1 USD • FĂRĂ MG"
+              CHART_ONLY_DEMO_462 && stake429 != 100L &&
+                (!CHART_MARTINGALE_DEMO_471 ||
+                  !demoRecoveryLedger.isRecovering429()) ->
+                "BLOCAT: MG NECONFIRMAT PE GRAFIC"
               !CHART_ONLY_DEMO_462 && stake429 != 100L &&
                 !demoRecoveryLedger.isRecovering429() ->
                 "BLOCAT: MG FĂRĂ LOSS DEMO CONFIRMAT"
