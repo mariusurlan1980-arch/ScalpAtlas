@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 465 G24 continuous $1 DEMO with expiry guard
+name: Build Scalp Atlas 466 G24 validated SELL peak pullback
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.28'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=465
+          expo['android']['versionCode']=466
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2013,6 +2013,69 @@ jobs:
           print('465 PASS: unlimited-count DEMO 1 USD attempts after exact 5-minute configured expiry; no 7min delay, REAL, MG, or history clicks')
           PY
 
+      - name: Verify 466 SELL peak pullback boundaries and original broker order guards
+        run: |
+          node <<'JS'
+          const fs=require('fs'),assert=require('assert'),vm=require('vm');
+          const source=fs.readFileSync('scalp-atlas-new/shockNativeEngine.ts','utf8');
+          const code=source.split('<script>')[1]?.split('</script>')[0];
+          assert(code, 'missing embedded analyzer script');
+          new vm.Script(code,{filename:'scalp-atlas-466-analyzer.js'});
+          const begin=code.indexOf('function confirmedSellPullbackAfterRise466(');
+          const end=code.indexOf('  // Find actual filled candle bodies.',begin);
+          assert(begin>0 && end>begin, 'missing pure detector');
+          const detector=vm.runInNewContext(code.slice(begin,end)+'; confirmedSellPullbackAfterRise466');
+          const up=[
+            {closeY:100,dir:'BUY',bodyHeight:20},
+            {closeY:80,dir:'BUY',bodyHeight:20},
+            {closeY:60,dir:'BUY',bodyHeight:20}
+          ];
+          assert(detector(up,75,'SELL','BUY',20,12).ok===true,'verified early SELL reversal');
+          assert(detector(up,61,'SELL','BUY',20,12).ok===false,'top-tick entry must be blocked');
+          assert(detector(up,130,'SELL','BUY',20,12).ok===false,'late reversal chase must be blocked');
+          assert(detector(up,75,'BUY','BUY',20,12).ok===false,'cannot invert BUY');
+          assert(detector(up,75,'SELL','NONE',20,12).ok===false,'trend must be measured');
+          assert(detector(up,75,'SELL','BUY',20,3).ok===false,'no filled current candle');
+          const notPeak=[
+            {closeY:60,dir:'BUY',bodyHeight:20},
+            {closeY:85,dir:'BUY',bodyHeight:20},
+            {closeY:80,dir:'BUY',bodyHeight:20}
+          ];
+          assert(detector(notPeak,95,'SELL','BUY',20,12).ok===false,'prior close not at local peak');
+          const onlyOneGreen=[
+            {closeY:100,dir:'SELL',bodyHeight:20},
+            {closeY:80,dir:'SELL',bodyHeight:20},
+            {closeY:60,dir:'BUY',bodyHeight:20}
+          ];
+          assert(detector(onlyOneGreen,75,'SELL','BUY',20,12).ok===false,'at least 2 green bodies');
+          const shockSegment=code.slice(code.indexOf('var minShockFraction=.30'),code.indexOf('// SCALP TREND is an independent'));
+          assert(shockSegment.includes('firstRebound<=0||secondRebound<=0'),'2 rebound confirmations intact');
+          assert(shockSegment.includes('latest.wickPixels<start.bodyHeight*.20'),'wick check intact');
+          assert(shockSegment.includes('fallMs>maxDropMs'),'drop time guard intact');
+          assert(shockSegment.includes('sellPullbackConfirmed'),'SELL pullback exception missing');
+          assert(code.includes('shockSameCandle:confirmed'),'same-candle proof unchanged');
+          assert(code.includes("sellPullbackDirection:confirmed&&dir==='SELL'"));
+          console.log('466 PASS: positive measured SELL retracement, negative peak/late/ambiguous cases, original shock gates');
+          JS
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          assert 'val verifiedSellPullback466 = rawSignal == "SELL"' in s
+          assert 'observedTrendDirection == "BUY"' in s
+          assert 'result.optBoolean("sellPullbackValidated", false)' in s
+          assert 'result.optBoolean("sellPullbackPeakGuard", false)' in s
+          assert 'result.optInt("sellPullbackTravelPx", 0) >= 6' in s
+          assert 'shockSameCandle && shockRetraced && shockRecovered' in s
+          assert '(!independentlyOppositeTrend || verifiedSellPullback466)' in s
+          assert 'CHART_ONLY_DEMO_462 && stake429 != 100L' in s
+          assert 'confirmedFiveMinuteDemoExpiry465()' in t
+          assert 'realOrderAdapterAvailable = false' in r
+          assert 'TouchTestService.pressAutoOneDollarDemoOrderOnce(' in s
+          print('466 PASS: Android cross-check of SELL reversal, QT DEMO $1/5-minute restrictions unchanged')
+          PY
+
       - name: Allow Gradle wrapper download on slower GitHub runners
         run: |
           python3 - <<'PY'
@@ -2134,28 +2197,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-465-DEMO-CONTINUU-1USD-G24.apk
+          cp "$APK" ScalpAtlas-466-RETRAGERE-SELL-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-465-DEMO-CONTINUU-1USD-G24
-          path: ScalpAtlas-465-DEMO-CONTINUU-1USD-G24.apk
+          name: ScalpAtlas-466-RETRAGERE-SELL-G24
+          path: ScalpAtlas-466-RETRAGERE-SELL-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-demo-continuous465'
+        if: github.ref == 'refs/heads/fix/scalpatlas-confirmed-sell-pullback466'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-465-DEMO-CONTINUU-1USD-G24.apk"
+          FILE="ScalpAtlas-466-RETRAGERE-SELL-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-continuu465-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-sell-retragere466-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 465 - DEMO CONTINUU 1 USD G24 • ${GITHUB_SHA:0:12}" \
-            --notes "465 CANDIDAT QT DEMO Motorola G24 (NETESTAT FIZIC): elimina limita artificiala de 3 incercari si pauza suplimentara de 7 minute din v464. Fiecare semnal SOC nou poate declansa cel mult un gest BUY/SELL 1 USD dupa intervalul de expirare de 5 minute si cooldown-ul Android deja existent; este obligatoriu ca brokerul sa afiseze 00:05:00, QT DEMO, perechea si payout >=92%, suma 1 USD. Nu exista dovada automata a inchiderii brokerului, deci intervalul nu garanteaza absenta suprapunerilor; niciun WIN/LOSS nu este inventat, MG nu se activeaza, ID OPEN real nu este ignorat, REAL ramane blocat. Fara navigare automata in istoricul brokerului. Daca durata de 5 minute nu poate fi citita de accesibilitate, robotul opreste noi gesturi. Compilarea CI nu inseamna test fizic pe Pocket Option. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 466 - SELL DUPĂ RETRAGERE CONFIRMATĂ G24 • ${GITHUB_SHA:0:12}" \
+            --notes "466 CANDIDAT QT DEMO Motorola G24, NETESTAT PE TELEFON: integreaza filtrul SELL dupa crestere ascendentă masurata cu cel putin doua din trei lumânări verzi, ultimul close aproape de maxim si deplasare descendentă vizibila (nu chiar in varf si nici prea tarziu). Este o exceptie ingusta de la veto-ul contra-trend; sunt in continuare obligatorii retragerea SOC in aceeasi lumanare, revenirea in 2 cadre, fitilul real, semnalul nou si doua confirmari Android. Nu modifica atingerea BUY/SELL, blocarea QT REAL, 1 USD, 00:05:00, payout >=92%, cooldown-ul si lipsa Martingale. Sursa ilustrativa: un SELL EUR/CHF OTC cu rezultat +0.92 USD raportat de utilizator; un singur WIN nu valideaza profitabilitatea. Nu garanteaza ordine sau profit; CI nu este test pe Pocket Option. Build $GITHUB_SHA." \
           --prerelease
