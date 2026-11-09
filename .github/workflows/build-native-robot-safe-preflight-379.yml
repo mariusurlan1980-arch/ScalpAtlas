@@ -1951,7 +1951,7 @@ jobs:
               'dispatchGesture(', 'performGlobalAction('):
             assert forbidden not in fn, forbidden
           assert 'inspectPassiveDemoProof463(' in monitor
-          assert 'if (!CHART_ONLY_DEMO_462)' in monitor
+          assert 'if (!CHART_ONLY_DEMO_462 ||' in monitor
           assert 'maybePrepareAutomaticDemoRecoveryStake' in monitor
           # All historic navigation stays after the constant-true return.
           before, after = monitor.split('if (CHART_ONLY_DEMO_462) {',1)
