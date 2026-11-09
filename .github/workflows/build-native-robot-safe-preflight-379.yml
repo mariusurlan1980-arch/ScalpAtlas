@@ -2,7 +2,7 @@ name: Build Scalp Atlas 466 G24 validated SELL peak pullback
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, preview/galactic-brain-v1-466]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -973,6 +973,10 @@ jobs:
           cp .github/native-overlay/DemoRecoveryLedger.kt "$JAVA_DIR/DemoRecoveryLedger.kt"
           cp .github/native-overlay/DemoStakeEditor.kt "$JAVA_DIR/DemoStakeEditor.kt"
           cp .github/native-overlay/BrokerAdapterRegistry.kt "$JAVA_DIR/BrokerAdapterRegistry.kt"
+          # Preview branch only: restore exact selected brain art into the Android drawable folder.
+          mkdir -p scalp-atlas-new/android/app/src/main/res/drawable
+          base64 --decode .github/native-overlay/galactic_brain_preview.webp.b64 > scalp-atlas-new/android/app/src/main/res/drawable/galactic_brain_preview.webp
+          test -s scalp-atlas-new/android/app/src/main/res/drawable/galactic_brain_preview.webp
           for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt DemoRecoveryLedger.kt DemoStakeEditor.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
