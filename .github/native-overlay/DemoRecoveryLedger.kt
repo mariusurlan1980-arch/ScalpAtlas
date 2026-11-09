@@ -334,6 +334,32 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
   }
 
   /**
+   * Opt back into DEMO-only experimental MG after 474 fixed-stake migration.
+   * Only at a clean cycle boundary and after verified broker $1 preflight.
+   * Never clear pending broker IDs or old Android-gesture markers here.
+   */
+  @Synchronized
+  fun enableVerifiedDemoMartingale475(
+    verifiedQtDemo: Boolean,
+    verifiedOneDollarPreflight: Boolean,
+    noUnresolvedGesture: Boolean
+  ): Boolean {
+    if (!verifiedQtDemo || !verifiedOneDollarPreflight ||
+        !noUnresolvedGesture ||
+        prefs.getString("pendingPositionId", null) != null ||
+        isRecovering429()) return false
+    if (!prefs.getBoolean("fixedOneDollarMode474", false)) return true
+    return prefs.edit()
+      .putBoolean("fixedOneDollarMode474", false)
+      .putLong("unrecoveredLossCents", 0L)
+      .putLong("remainingProfitTargetCents", 0L)
+      .putInt("completedCycleTrades", 0)
+      .putBoolean("pendingBaseStakeReset", false)
+      .putBoolean("halted", false)
+      .commit()
+  }
+
+  /**
    * A confirmed profitable CLOSED receipt has repaid the net cycle deficit.
    * The DEMO broker field must then be read back as exactly $1.00 before
    * the cycle is considered restored. Never infer this from a gesture.
