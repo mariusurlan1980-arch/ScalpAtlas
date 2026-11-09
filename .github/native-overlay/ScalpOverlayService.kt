@@ -1454,8 +1454,19 @@ class ScalpOverlayService : Service() {
           if (autoDemoSessionConsumed) {
             touchProbeStatus?.text = if (effectiveStatus464 != null)
               "" + effectiveStatus464.take(110)
-            else "GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
-              "ORDIN VECHI BLOCAT PÂNĂ LA VERIFICARE"
+            else {
+              val pending472 = getSharedPreferences(
+                autoShockAttemptPrefs, Context.MODE_PRIVATE
+              )
+              val attemptWall472 = pending472.getLong("attemptedWallAt454", -1L)
+              val age472 = System.currentTimeMillis() - attemptWall472
+              if (pending472.getBoolean("attempted", false) &&
+                  age472 in 0L until DEMO_TEST_EXPIRY_MS_465)
+                "GRAFIC FIX • GEST ANTERIOR POSIBIL • " +
+                  "AȘTEPT ÎNCHIDEREA DE 5 MIN • FĂRĂ ALT ORDIN"
+              else "GRAFIC FIX • AȘTEPT REZULTAT BROKER PE GRAFIC • " +
+                "MG/ORDINE NOI BLOCATE DACĂ NU APARE REZULTATUL"
+            }
           } else if (pilotStatus464 != null) {
             touchProbeStatus?.text = "" + pilotStatus464.take(110)
           }
@@ -4793,8 +4804,10 @@ class ScalpOverlayService : Service() {
     val attemptKey = listOf(packageId, expectedPair, expectedSide,
       stake, payout, gestureWall).joinToString("|")
     val candidateKey = attemptKey + "|" + candidate.fingerprint
+    // 472: broker toast may appear for only ~2 seconds; require
+    // independent screenshot OCR frames >=0.65s apart (never one frame).
     if (chartResultCandidateKey471 != candidateKey ||
-        observedAt - chartResultFirstSeenAt471 !in 1_500L..15_000L) {
+        observedAt - chartResultFirstSeenAt471 !in 650L..12_000L) {
       chartResultCandidateKey471 = candidateKey
       chartResultFirstSeenAt471 = observedAt
       touchProbeStatus?.text = "MG DEMO • REZULTAT VIZIBIL 1/2 • VERIFIC"
@@ -4860,7 +4873,7 @@ class ScalpOverlayService : Service() {
     val pendingResult471 = CHART_MARTINGALE_DEMO_471 &&
       priorAttempt471.getBoolean("attempted", false) &&
       priorWall471 > 0L && now - priorWall471 in 285_000L..420_000L
-    val ocrInterval471 = if (pendingResult471) 950L else OCR_INTERVAL_MS
+    val ocrInterval471 = if (pendingResult471) 500L else OCR_INTERVAL_MS
     if (ocrBusy || now - lastOcrAttemptAt < ocrInterval471) return
     ocrBusy = true
     lastOcrAttemptAt = now
@@ -5655,8 +5668,17 @@ class ScalpOverlayService : Service() {
     } catch (_: Throwable) {
       // The signal/audio can still work if file storage temporarily fails.
     }
-    try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
-    playBip(confirmedSignal)
+    // 472: ANALYSIS BIP is misleading when the broker cannot accept an
+    // order (e.g. an older unverified DEMO attempt). Preserve visual SHOCK
+    // signals, but give an audible order-attempt cue ONLY once Android
+    // actually accepts dispatchGesture() for the QT DEMO target.
+    // This still does not prove the broker accepted the trade.
+    val demoRobotActive472 = autoDemoSessionRequested || autoDemoSessionConsumed ||
+      lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT")
+    if (!demoRobotActive472) {
+      try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
+      playBip(confirmedSignal)
+    }
     updateOverlay(
       confirmedSignal,
       "Scor orientativ " + score + " • Durată " + if (expiry > 0) expiry.toString() + " min" else "—",
@@ -6104,8 +6126,22 @@ class ScalpOverlayService : Service() {
                 } else {
                   // Any result from a physical gesture helper is uncertain
                   // even if Android reported cancellation or rejection.
+                  // Beep only after Android accepted a verified QT DEMO
+                  // gesture; never beep just because the scanner saw SHOCK.
+                  val gestureAccepted472 =
+                    result.startsWith("GEST BUY ACCEPTAT DE ANDROID") ||
+                    result.startsWith("GEST SELL ACCEPTAT DE ANDROID") ||
+                    (result.startsWith("GEST QT DEMO ") &&
+                      result.contains(" TRANSMIS"))
+                  if (gestureAccepted472) {
+                    try { liveTest.onBeep(now, activeSignal, tradePair429) } catch (_: Throwable) {}
+                    playBip(activeSignal)
+                  }
                   tradePositionGate.uncertainResult()
-                  touchProbeStatus?.text = result
+                  touchProbeStatus?.text = if (gestureAccepted472)
+                    "GEST BUY/SELL TRIMIS • REZULTAT BROKER NECONFIRMAT • " +
+                      "AȘTEPT NOTIFICARE PE GRAFIC"
+                  else result
                 }
               } catch (error: Exception) {
                 android.util.Log.e("ScalpAtlasRobot", "419 uncertain gesture", error)
