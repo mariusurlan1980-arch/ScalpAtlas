@@ -106,12 +106,15 @@ class ScalpOverlayService : Service() {
     // A direction's 5-7 minute lock is NOT a 5-7 minute window for NEW entries.
     private const val ALERT_FRESH_MS = 30_000L
     private const val OCR_INTERVAL_MS = 3000L
-    // 462: intentional one-order safety mode; never enter history UI.
-    // Do NOT change this to allow consecutive orders without settlement.
-    // 468 experimental build: enable the pre-existing authenticated OPEN/CLOSED
-    // receipt pipeline and broker-verified stake progression ONLY on QT DEMO.
-    // The known-working 467 chart-only pilot remains on its separate branch.
-    private const val CHART_ONLY_DEMO_462 = false
+    // 470: Chart-locked QT DEMO pilot. User requires the broker's live
+    // candles to remain visible continuously: no automatic navigation to
+    // Transactions > Open or Closed and no periodic history-page polling.
+    // This intentionally disables the history-dependent Martingale pipeline.
+    // Never infer WIN/LOSS from candle color or elapsed time. The existing
+    // $1 DEMO execution pilot remains separate from verified recovery.
+    // Do NOT enable dynamic stakes without a broker-authenticated CLOSED
+    // result available without leaving the chart and a tested reconciliation.
+    private const val CHART_ONLY_DEMO_462 = true
     // 465: no hard count limit or extra 7-minute pause. The 5-minute
     // broker gesture lock remains aligned to the verified 5-minute DEMO
     // expiry; time alone never proves CLOSED and never triggers MG.
