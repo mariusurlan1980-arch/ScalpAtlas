@@ -108,7 +108,10 @@ class ScalpOverlayService : Service() {
     private const val OCR_INTERVAL_MS = 3000L
     // 462: intentional one-order safety mode; never enter history UI.
     // Do NOT change this to allow consecutive orders without settlement.
-    private const val CHART_ONLY_DEMO_462 = true
+    // 468 experimental build: enable the pre-existing authenticated OPEN/CLOSED
+    // receipt pipeline and broker-verified stake progression ONLY on QT DEMO.
+    // The known-working 467 chart-only pilot remains on its separate branch.
+    private const val CHART_ONLY_DEMO_462 = false
     // 465: no hard count limit or extra 7-minute pause. The 5-minute
     // broker gesture lock remains aligned to the verified 5-minute DEMO
     // expiry; time alone never proves CLOSED and never triggers MG.
@@ -666,6 +669,9 @@ class ScalpOverlayService : Service() {
     // opening receipt followed by its corresponding closed receipt. There
     // is no manual/optical/timeout shortcut to change the amount.
     val verifiedPayout = TouchTestService.readVerifiedDemoPayoutForPair(pair)
+      ?: TouchTestService.readVerifiedDemoPayoutForStake429(
+        pair, DemoRecoveryLedger.BASE_STAKE_CENTS
+      )
       ?: return
     // A finished recovery blocks new orders until the actual broker
     // displays 1 USD again. This reset is allowed even while quote() is
@@ -697,7 +703,7 @@ class ScalpOverlayService : Service() {
         "RECUPERARE ÎNCHEIATĂ • SUMA DEMO RESTABILITĂ LA 1 USD"
       resetToBase -> "RESET 1 USD NECONFIRMAT • " + result.take(76)
       result.startsWith("SUMĂ QT DEMO CONFIRMATĂ") ->
-        "SUMĂ MODIFICATĂ ÎN DEMO • TRADE RECUPERARE NEACTIVAT"
+        "MG DEMO • SUMĂ PREGĂTITĂ • AȘTEAPTĂ ȘOC CONFIRMAT"
       else -> result
     }
   }
@@ -5789,6 +5795,9 @@ class ScalpOverlayService : Service() {
             when {
               CHART_ONLY_DEMO_462 && stake429 != 100L ->
                 "BLOCAT: PILOT DEMO DOAR 1 USD • FĂRĂ MG"
+              !CHART_ONLY_DEMO_462 && stake429 != 100L &&
+                !demoRecoveryLedger.isRecovering429() ->
+                "BLOCAT: MG FĂRĂ LOSS DEMO CONFIRMAT"
               CHART_ONLY_DEMO_462 &&
                 !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
                 "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"
@@ -6020,7 +6029,7 @@ class ScalpOverlayService : Service() {
             "MG PLAN 92%: " +
               (recoveryCents451 / 100L).toString() + "," +
               (recoveryCents451 % 100L).toString().padStart(2, '0') + " USD"
-          else -> "MIZĂ 1,00 USD • MG DEMO"
+          else -> "MIZĂ 1,00 USD • MG DEMO ACTIV"
         }
         mgText451.setTextColor(
           if (verifiedDemo451 && !unresolvedOld451 &&
