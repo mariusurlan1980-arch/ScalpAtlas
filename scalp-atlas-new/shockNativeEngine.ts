@@ -19,6 +19,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       scalpPullbackDurationMs:0,
       shockFrameId:frameId,shockOpticalVerified:false,shockSameCandle:false,
       shockRetraced:false,shockRecovered:false,quality:quality||0,
+      sellPullbackValidated:false,sellPullbackDirection:'NONE',
+      sellPullbackTravelPx:0,sellPullbackTravelPct:0,
+      sellPullbackPeakGuard:false,
       shockBlocker:'AȘTEAPTĂ DATE',scalpBlocker:'AȘTEAPTĂ DATE',
       candidateDirection:'NONE',reason:reason};
     if(extra)Object.keys(extra).forEach(function(key){result[key]=extra[key];});
@@ -116,6 +119,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     var previous=viable.slice(-4,-1),trend='NONE',pastCloses=[];
     var trendHistoryCount=previous.length;
     var trendStrengthPercent=null,trendVisualPoints=[],trendMeasured=false;
+    // 466: identify a measured SELL pullback AFTER an ascending 3-candle
+    // impulse. This is context only; it never creates an order or replaces
+    // the same-candle shock, wick, rebound or two-frame confirmations.
+    var sellPullbackConfirmed=false,sellPullbackTravelPx=0;
+    var sellPullbackTravelPct=0,sellPullbackPeakGuard=false;
     if(previous.length===3){
       previous.forEach(function(g){
         var left=Math.round((g.start+g.end)/2),t=h,b=-1;
@@ -142,6 +150,28 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // percentage, signal probability or a measured financial return.
         var denom=Math.max(1,hi-lo+meanBody);
         trendStrengthPercent=Math.min(100,Math.round(100*Math.abs(move)/denom));
+        // 466 EUR/CHF OTC reference: after >=2 green candles and a
+        // measured rising 3-candle slope, the live red candle must be
+        // BELOW the prior confirmed peak by several actual chart pixels.
+        // Do not SELL merely at a high. Do not chase a reversal that has
+        // already travelled more than ~2.8 past-candle bodies.
+        // The SELL shock still needs its OWN fast intra-candle retreat
+        // and two successive recoveries later in the analyzer.
+        if(trend==='BUY'&&candle.dir==='SELL'&&
+           pastCloses[2].dir==='BUY'&&greenCount>=2){
+          var peakClose=Math.min.apply(null,pastCloses.map(function(z){return z.closeY;}));
+          var peakSlack=Math.max(6,Math.round(meanBody*.4));
+          sellPullbackPeakGuard=pastCloses[2].closeY<=peakClose+peakSlack;
+          var travelPx=Math.round(close-pastCloses[2].closeY);
+          var minTravel=Math.max(6,Math.min(12,Math.round(meanBody*.4)));
+          var maxTravel=Math.max(25,Math.min(70,Math.round(meanBody*2.8)));
+          if(sellPullbackPeakGuard&&travelPx>=minTravel&&
+             travelPx<=maxTravel&&bottom-top>=5){
+            sellPullbackConfirmed=true;
+            sellPullbackTravelPx=travelPx;
+            sellPullbackTravelPct=Math.round(100*travelPx/Math.max(1,meanBody));
+          }
+        }
         // Preserve visual fluctuations while avoiding fabricated data.
         var visualScale=Math.max(45,hi-lo+meanBody*2);
         var mid=(hi+lo)/2;
@@ -156,6 +186,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       trendDirection:trend,trendMeasured:trendMeasured,
       trendStrengthPercent:trendStrengthPercent,trendVisualPoints:trendVisualPoints,
       trendHistoryCount:trendHistoryCount,
+      sellPullbackConfirmed:sellPullbackConfirmed,
+      sellPullbackTravelPx:sellPullbackTravelPx,
+      sellPullbackTravelPct:sellPullbackTravelPct,
+      sellPullbackPeakGuard:sellPullbackPeakGuard,
       opticalQuality:opticalQuality};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
@@ -285,8 +319,12 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             // Trend is an optional CONTRADICTION filter, not a requirement
             // for the measured shock. Missing three prior bodies is common
             // on the G24 chart and must never be fabricated as a trend.
+            // 466: a rising impulse normally vetoes SELL, except when
+            // a genuine downside pullback from the measured peak is
+            // independently visible. ALL SHOCK confirmations still apply.
             if(candle.trendMeasured && candle.trendDirection!=='NONE' &&
-               candle.trendDirection!==candle.dir)continue;
+               candle.trendDirection!==candle.dir &&
+               !(candle.dir==='SELL'&&candle.sellPullbackConfirmed))continue;
             // Both ends must be the same live candle, detected in its
             // original direction after the recovery, not the opposite candle.
             confirmed=true;
@@ -319,7 +357,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             candle.wickPixels>=held.body*.20 &&
             against<=minMove &&
             !(candle.trendMeasured && candle.trendDirection!=='NONE' &&
-              candle.trendDirection!==held.dir);
+              candle.trendDirection!==held.dir &&
+              !(held.dir==='SELL'&&candle.sellPullbackConfirmed));
           if(now-held.at<=3000 && matching){
             confirmed=true;dir=held.dir;
             confirmedDepth=held.depth;
@@ -376,7 +415,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           displayedDepth===0?'AȘTEAPTĂ ȘOC':
           displayedDepth<=30?'ȘOC ≤30%':
           candle.trendMeasured && candle.trendDirection!=='NONE' &&
-            candle.trendDirection!==candle.dir?'CONTRA TREND':
+            candle.trendDirection!==candle.dir &&
+            !(candle.dir==='SELL'&&candle.sellPullbackConfirmed)?
+              'CONTRA TREND • AȘTEAPTĂ RETRAGERE CONFIRMATĂ':
           candle.wickPixels<minBody*.20?'FITIL SCURT':
           'REVENIRE/TIMP';
         // Diagnostic only: explain why independent M5 SCALP TREND did NOT
@@ -391,6 +432,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           'AȘTEAPTĂ RETRAGERE + REVENIRE';
         var quality=strategy!=='NONE'?75:0; // internal optical gate only
         report(frameId,tf,pair,epoch,
+          confirmed&&dir==='SELL'&&candle.sellPullbackConfirmed?
+            'SELL după impuls ascendent, retragere de la maxim și ȘOC confirmat':
           confirmed?'ȘOC rapid și revenire în aceeași lumânare':
           scalpConfirmed?'SCALP TREND: retragere moderată și reluare pe M5':
           'Aștept ȘOC SIMPLU: retragere 30%, revenire 20%, fitil',
@@ -403,6 +446,18 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             scalpRecoveryPercent:scalpConfirmed?scalpRebound:0,
             scalpPullbackDurationMs:scalpConfirmed?scalpDuration:0,
             candidateDirection:emittedDirection,
+            // 466: this explicit exception is optical context, not profit
+            // probability and not an independent trading strategy.
+            sellPullbackValidated:confirmed&&dir==='SELL'&&
+              candle.sellPullbackConfirmed,
+            sellPullbackDirection:confirmed&&dir==='SELL'&&
+              candle.sellPullbackConfirmed?'SELL':'NONE',
+            sellPullbackTravelPx:candle.sellPullbackConfirmed?
+              candle.sellPullbackTravelPx:0,
+            sellPullbackTravelPct:candle.sellPullbackConfirmed?
+              candle.sellPullbackTravelPct:0,
+            sellPullbackPeakGuard:candle.sellPullbackConfirmed&&
+              candle.sellPullbackPeakGuard,
             shockOpticalVerified:confirmed,shockSameCandle:confirmed,
             shockRetraced:confirmed,shockRecovered:confirmed,
             // All percentages below refer to the observed forming candle.
