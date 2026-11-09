@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 471 G24 DEMO chart-settlement experimental
+name: Build Scalp Atlas 472 G24 DEMO reliable-gesture beep repair
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, experiment/scalpatlas-martingale-demo468, experiment/scalpatlas-chart-first-demo469, fix/scalpatlas-chart-locked-demo470, experiment/scalpatlas-chart-martingale-demo471]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, experiment/scalpatlas-martingale-demo468, experiment/scalpatlas-chart-first-demo469, fix/scalpatlas-chart-locked-demo470, experiment/scalpatlas-chart-martingale-demo471, fix/scalpatlas-bip-order-chart472]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -57,6 +57,35 @@ jobs:
           test -s .github/native-overlay/ScalpOverlayService.kt
           test -s .github/templates/ScalpAtlasIntegratedLiveV100RC1.tsx
           echo "Using current generic broker overlay sources; old Pocket Option-only patch skipped."
+
+      - name: Verify 472 signal BIP never sounds without an Android gesture
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          parser=Path('.github/native-overlay/ChartResultProof471.kt').read_text()
+          reg=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          signal=src.split('private fun handleResult(',1)[1].split('private fun formatSeconds(',1)[0]
+          order=src.split('val latestPreflight = try {',1)[1].split('} else if (!readyForDemo) {',1)[0]
+          assert 'val demoRobotActive472' in signal
+          assert 'if (!demoRobotActive472) {' in signal
+          assert signal.count('playBip(confirmedSignal)') == 1
+          assert 'val gestureAccepted472' in order
+          assert 'GEST BUY ACCEPTAT DE ANDROID' in order
+          assert 'GEST SELL ACCEPTAT DE ANDROID' in order
+          assert 'playBip(activeSignal)' in order
+          assert order.count('playBip(activeSignal)') == 1
+          assert 'result.startsWith("PRECHECK_NO_GESTURE:")' in order
+          assert 'tradePositionGate.uncertainResult()' in order
+          assert 'if (!CHART_MARTINGALE_DEMO_471 &&' in src
+          assert 'ocrInterval471 = if (pendingResult471) 500L' in src
+          assert 'observedAt - chartResultFirstSeenAt471 !in 650L..12_000L' in src
+          assert 'ChartResultProof471.extract(' in src
+          assert 'QT_DEMO_TOOLTIPS' in parser
+          assert 'if (!canonical.contains(pairKey)) return null' not in parser
+          assert 'realOrderAdapterAvailable = false' in reg
+          print('472 PASS: no auto BIP on unexecuted SHOCK, known demo-only gesture dispatch, bounded result OCR')
+          PY
 
       - name: Verify 471 chart-only settlement proof and DEMO-only recovery guards
         run: |
@@ -131,7 +160,7 @@ jobs:
           expo['version']='3.2.30'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=471
+          expo['android']['versionCode']=472
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2287,28 +2316,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-471-CHART-MG-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-472-GESTURE-BIP-CHART-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-471-CHART-MG-DEMO-G24
-          path: ScalpAtlas-471-CHART-MG-DEMO-G24.apk
+          name: ScalpAtlas-472-GESTURE-BIP-CHART-DEMO-G24
+          path: ScalpAtlas-472-GESTURE-BIP-CHART-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/experiment/scalpatlas-chart-martingale-demo471'
+        if: github.ref == 'refs/heads/fix/scalpatlas-bip-order-chart472'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-471-CHART-MG-DEMO-G24.apk"
+          FILE="ScalpAtlas-472-GESTURE-BIP-CHART-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-chart-mg-demo471-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-gesture-bip-demo472-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 471 - QT DEMO CHART-ONLY MARTINGALE EXPERIMENTAL • ${GITHUB_SHA:0:12}" \
-            --notes "EXPERIMENTAL QT DEMO ONLY. Pretul lumânărilor și expirarea nu reprezintă rezultate WIN/LOSS. Robotul rămâne pe grafic și caută două capturi independente ale unei notificări explicite de tranzacție ÎNCHISĂ care include perechea, miza, payout-ul așteptat și P/L-ul semnat; fără această dovadă se oprește recuperarea și nu mai plasează tranzacții. Numai după rezultat demonstrat, programează progresia 1, 2.09, 4.36, 9.10, 18.99, 39.64 USD la payout 92%; maxim 6 trepte, verifică miza/soldul/payout în broker și revine la 1 USD după recuperare completă. Nu navighează automat istoricul; un singur ordin; expirare 5 minute; doar QT DEMO. Build compilat, netestat pe Motorola G24; poate să nu detecteze notificarea brokerului și să rămână blocat. Versiunea funcțională anterioară rămâne separată. Commit ${GITHUB_SHA}." \
+            --title "SCALP ATLAS 472 - GRAFIC FIX / BIP DOAR DUPA GEST DEMO • ${GITHUB_SHA:0:12}" \
+            --notes "CORECTIE EXPERIMENTALA 472 PENTRU MOTOROLA G24. BIP AUTOMAT numai dupa ce Android raporteaza acceptarea gestului verificat BUY/SELL; un semnal SOC singur nu mai suna ca si cum ar fi un ordin. Acest lucru NU dovedeste ca brokerul a acceptat tranzactia. Mentine graficul activ permanent fara navigare in Istoric si citeste mai rapid notificarea rezultatului (TRADE AMOUNT / RESULT) in jurul expirarii de 5 minute. Nu mai cere in mod eronat ca popup-ul rezultat sa repete perechea afisata in selectorul graficului, deja verificata independent. Daca un ordin anterior nu are rezultat broker verificat, pastreaza blocarea tranzactiilor si Martingale pentru a nu dubla si nu mari fictiv miza. QT DEMO exclusiv, payout minim 92%, o singura pozitie, plafon MG 6 tranzactii, niciodata QT REAL. Testele GitHub confirma doar compilarea; comportamentul in Pocket Option trebuie testat pe telefon. Commit ${GITHUB_SHA}." \
           --prerelease
