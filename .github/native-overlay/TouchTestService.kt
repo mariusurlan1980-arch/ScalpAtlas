@@ -1264,6 +1264,38 @@ class TouchTestService : AccessibilityService() {
     /** A persistent 5-minute guard still applies after any Android gesture.
      * A missing/ambiguous Android uptime value cannot authorize recovery.
      */
+    /**
+     * 472: Proof from this app's OWN durable order-gesture guard that a saved
+     * QT DEMO attempt stopped before dispatchGesture(). Every physical
+     * DEMO BUY/SELL helper writes lastAcceptedAt BEFORE dispatching.
+     *
+     * Compare uptime and wall clock ages to fail closed after an Android
+     * reboot or clock adjustment. Never use a missing broker receipt, the
+     * five-minute timer or a moved candle as proof of no gesture.
+     */
+    fun verifiedDemoNoPhysicalGesture472(
+      persistedAttemptTick: Long, persistedAttemptWall: Long
+    ): Boolean {
+      val svc = connected ?: return false
+      if (persistedAttemptTick <= 0L || persistedAttemptWall <= 0L)
+        return false
+      val elapsedNow = android.os.SystemClock.elapsedRealtime()
+      val wallNow = System.currentTimeMillis()
+      val uptimeAge = elapsedNow - persistedAttemptTick
+      val wallAge = wallNow - persistedAttemptWall
+      // At least 12s after the previous attempt; no stale/reboot unlock.
+      if (uptimeAge !in 12_000L..(12 * 60 * 60_000L) ||
+          wallAge !in 12_000L..(12 * 60 * 60_000L) ||
+          kotlin.math.abs(uptimeAge - wallAge) > 2_500L)
+        return false
+      val priorGestureAt = svc.getSharedPreferences(
+        "scalp_demo_order_safety", Context.MODE_PRIVATE
+      ).getLong("lastAcceptedAt", 0L)
+      // An equal or later gesture token means a physical tap MAY have
+      // happened. This path NEVER releases such an attempt.
+      return priorGestureAt == 0L || priorGestureAt < persistedAttemptTick
+    }
+
     fun priorDemoGestureCooldownComplete(): Boolean {
       val svc = connected ?: return false
       val prior = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)
@@ -2321,7 +2353,17 @@ class TouchTestService : AccessibilityService() {
       // a 5-minute broker gesture lock, and dispatch a single physical tap.
       // This is not proof of broker acceptance; closure must be validated
       // from a separate broker order receipt before any further attempt.
-      return if (side == "BUY") {
+      // 472: If the legacy 1 USD helper rejected the request BEFORE it
+      // persisted its gesture token, it is PROVEN that dispatchGesture()
+      // was never entered. The caller may roll back its attempted flag.
+      // Once the persisted token changes, even an Android rejection
+      // remains uncertain: never unlock, retry or infer settlement.
+      val svc472 = connected ?: return "PRECHECK_NO_GESTURE: ACCESIBILITATE"
+      val guard472 = svc472.getSharedPreferences(
+        "scalp_demo_order_safety", Context.MODE_PRIVATE
+      )
+      val guardBefore472 = guard472.getLong("lastAcceptedAt", 0L)
+      val dispatch472 = if (side == "BUY") {
         pressAnyPairDemoBuyOnce { callback ->
           android.util.Log.i("ScalpAtlas400", callback)
         }
@@ -2330,6 +2372,11 @@ class TouchTestService : AccessibilityService() {
           android.util.Log.i("ScalpAtlas400", callback)
         }
       }
+      val guardAfter472 = guard472.getLong("lastAcceptedAt", 0L)
+      return if (dispatch472.startsWith("BLOCAT:") &&
+          guardBefore472 == guardAfter472)
+        "PRECHECK_NO_GESTURE: " + dispatch472
+      else dispatch472
     }
 
 
