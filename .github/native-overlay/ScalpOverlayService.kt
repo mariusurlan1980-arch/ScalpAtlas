@@ -108,10 +108,10 @@ class ScalpOverlayService : Service() {
     // 462: intentional one-order safety mode; never enter history UI.
     // Do NOT change this to allow consecutive orders without settlement.
     private const val CHART_ONLY_DEMO_462 = true
-    // 464: maximum two extra $1 DEMO tests after the initial unknown tap.
-    // An elapsed time window is NOT broker settlement and cannot trigger MG.
-    private const val DEMO_PILOT_BUFFER_MS_464 = 7 * 60_000L
-    private const val DEMO_PILOT_MAX_REARMS_464 = 2
+    // 465: no hard count limit or extra 7-minute pause. The 5-minute
+    // broker gesture lock remains aligned to the verified 5-minute DEMO
+    // expiry; time alone never proves CLOSED and never triggers MG.
+    private const val DEMO_TEST_EXPIRY_MS_465 = 5 * 60_000L
     private const val TF_STALE_MS = 18000L
     private const val MARKET_STALE_MS = 12_000L
     private const val MARKET_SETTLE_MS = 6_000L
@@ -1187,13 +1187,13 @@ class ScalpOverlayService : Service() {
   }
 
   /**
-   * 464: A limited $1 QT DEMO test mode, requested because v463 can read
-   * a price chart but cannot fetch a completed order ID without history.
-   * Do NOT label a timed-out gesture WIN/LOSS or modify the recovery ledger.
-   * No REAL order, no dynamic stake, no history navigation. The 7-minute
-   * interval is based on the configured 5-minute DEMO test + 2-minute
-   * buffer; it is not broker-confirmed closure. Stop after three attempted
-   * pilot orders in total unless the old receipt is independently verified.
+   * 465: Unlimited count of individually preflighted $1 QT DEMO pilot attempts
+   * after the prior configured 5-minute expiry and Android's gesture cooldown.
+   * There is NO extra seven-minute pause and NO three-trade counter. Without
+   * a broker order API the elapsed expiry is NOT proof of settlement, so
+   * results remain UNKNOWN, no Martingale and no known OPEN-ID override.
+   * Reject changed/unknown expiry, QT Real and mismatched account, amount,
+   * pair or payout. This is ONLY an experimental DEMO simulator workflow.
    */
   private fun maybeRearmExpiredDemoPilot464(
     nowElapsed: Long,
@@ -1228,13 +1228,15 @@ class ScalpOverlayService : Service() {
       return "464 • ORDIN VECHI INCOMPLET • NECESITĂ DOVADĂ BROKER"
 
     val wallAge = System.currentTimeMillis() - priorWall
-    if (wallAge < DEMO_PILOT_BUFFER_MS_464 && wallAge >= 0L)
-      return "464 • AȘTEPT PAUZA DEMO 7 MIN • FĂRĂ ORDIN"
-    // No release after a clock anomaly or an arbitrarily old saved attempt.
-    if (wallAge !in DEMO_PILOT_BUFFER_MS_464..(24 * 60 * 60_000L))
-      return "464 • TIMP ORDIN NECLAR • NECESITĂ DOVADĂ BROKER"
+    if (wallAge in 0 until DEMO_TEST_EXPIRY_MS_465)
+      return "465 • AȘTEPT EXPIRAREA DEMO 5 MIN • FĂRĂ ORDIN"
+    // Clock reversal and obsolete attempts cannot be reconciled by timing.
+    if (wallAge !in DEMO_TEST_EXPIRY_MS_465..(24 * 60 * 60_000L))
+      return "465 • TIMP ORDIN NECUNOSCUT • NECESITĂ DOVADĂ"
     if (!TouchTestService.priorDemoGestureCooldownComplete())
-      return "464 • PAUZĂ ANDROID DEMO • FĂRĂ ORDIN"
+      return "465 • TRADE ÎNCĂ ÎN COOLDOWN ANDROID • FĂRĂ ORDIN"
+    if (!TouchTestService.confirmedFiveMinuteDemoExpiry465())
+      return "465 • EXPIRARE 00:05:00 NECONFIRMATĂ • FĂRĂ ORDIN"
 
     // A real broker OPEN UUID, a previous verified LOSS, or an active MG
     // cycle is never eligible for the no-receipt $1 pilot.
@@ -1243,10 +1245,6 @@ class ScalpOverlayService : Service() {
         demoRecoveryLedger.needsBaseStakeReset() ||
         demoRecoveryLedger.quote(expectedPayout).stakeCents != 100L)
       return "464 • REGISTRU ORDIN/MG ACTIV • NECESITĂ DOVADĂ BROKER"
-
-    val used = prefs.getInt("unverifiedDemoPilotRearms464", 0)
-    if (used >= DEMO_PILOT_MAX_REARMS_464)
-      return "464 • 3 PROBE DEMO EFECTUATE • OPRIT PÂNĂ LA DOVADĂ"
 
     val gateState = tradePositionGate.state()
     if (gateState != TradePositionGate.State.UNKNOWN &&
@@ -1274,7 +1272,7 @@ class ScalpOverlayService : Service() {
       return "464 • STARE ORDIN INCERTĂ • FĂRĂ REPETARE"
 
     val stored = prefs.edit()
-      .putInt("unverifiedDemoPilotRearms464", used + 1)
+      // 465: no "3 probes" counter; older 464 count is intentionally ignored.
       .putLong("lastUnknownProbeWall464", priorWall)
       .putString("lastUnknownProbePair464", expectedPair)
       .putBoolean("attempted", false)
@@ -1300,7 +1298,7 @@ class ScalpOverlayService : Service() {
     autoDemoLockedAt = lockedAt
     autoDemoEntryCycleStartedAt = System.currentTimeMillis()
     autoDemoLastPreflightReason = "PILOT QT DEMO 1 USD • REZULTAT PRECEDENT NECUNOSCUT"
-    return "464 • PILOT DEMO 1 USD REACTIVAT • FĂRĂ MG / REZULTAT NECUNOSCUT"
+    return "465 • DEMO 1 USD REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
   }
 
   private fun startBrokerAccountMonitor() {
@@ -5755,6 +5753,9 @@ class ScalpOverlayService : Service() {
             when {
               CHART_ONLY_DEMO_462 && stake429 != 100L ->
                 "BLOCAT: PILOT DEMO DOAR 1 USD • FĂRĂ MG"
+              CHART_ONLY_DEMO_462 &&
+                !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
+                "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"
               !quoteMatches429 || package429 == null ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
               stake429 == 100L ->
