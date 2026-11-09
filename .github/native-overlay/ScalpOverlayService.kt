@@ -42,6 +42,7 @@ import android.view.animation.LinearInterpolator
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -119,6 +120,7 @@ class ScalpOverlayService : Service() {
   }
 
   private lateinit var windowManager: WindowManager
+  private var rotatingBrainAnimator467: android.animation.ObjectAnimator? = null
   private var overlayView: View? = null
   @Volatile private var overlayWindowParams: WindowManager.LayoutParams? = null
   private var compactStatusText: TextView? = null
@@ -1376,7 +1378,7 @@ class ScalpOverlayService : Service() {
           if (autoDemoSessionConsumed) {
             touchProbeStatus?.text = if (effectiveStatus464 != null)
               "🤖 " + effectiveStatus464.take(110)
-            else "🤖 GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
+            else "GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
               "ORDIN VECHI BLOCAT PÂNĂ LA VERIFICARE"
           } else if (pilotStatus464 != null) {
             touchProbeStatus?.text = "🤖 " + pilotStatus464.take(110)
@@ -2751,6 +2753,27 @@ class ScalpOverlayService : Service() {
     }
     close.visibility = View.VISIBLE // Small X immediately ends LIVE, capture and any robot arm.
     header.addView(close, LinearLayout.LayoutParams(dp(30), dp(28)))
+    // 467: User-approved miniature brain (transparent blue glow and tiny stars).
+    // Visual-only: the animation cannot arm, signal, or place broker orders.
+    val rotatingBrain467 = ImageView(this).apply {
+      setImageResource(R.drawable.scalp_brain)
+      scaleType = ImageView.ScaleType.FIT_CENTER
+      contentDescription = "Creier Scalp Atlas luminos, rotire continuă"
+      cameraDistance = dp(1000).toFloat()
+      isClickable = false
+      importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+    header.addView(rotatingBrain467, LinearLayout.LayoutParams(dp(35), dp(28)))
+    rotatingBrainAnimator467?.cancel()
+    rotatingBrainAnimator467 = android.animation.ObjectAnimator.ofFloat(
+      rotatingBrain467, "rotationY", 0f, 360f
+    ).apply {
+      duration = 6200L
+      repeatCount = ValueAnimator.INFINITE
+      repeatMode = ValueAnimator.RESTART
+      interpolator = LinearInterpolator()
+      start()
+    }
     val headerGap = View(this)
     header.addView(headerGap, LinearLayout.LayoutParams(0, dp(1), 1f))
     val compactStatus = TextView(this).apply {
@@ -6220,6 +6243,8 @@ class ScalpOverlayService : Service() {
     captureHandler = null
 
     mainHandler.post {
+      rotatingBrainAnimator467?.cancel()
+      rotatingBrainAnimator467 = null
       try { analyzerWebView?.destroy() } catch (_: Throwable) {}
       analyzerWebView = null
       try { overlayView?.let { windowManager.removeView(it) } } catch (_: Throwable) {}
