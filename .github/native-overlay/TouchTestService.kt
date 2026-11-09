@@ -2245,6 +2245,11 @@ class TouchTestService : AccessibilityService() {
     }
 
     fun preflightOneDollarDemoOrder(expectedPair: String): String {
+      // 465: the previous broker attempt can remain open if the user
+      // switches the expiry. Only the explicitly displayed 5-minute
+      // QT DEMO field may authorize the continuous $1 pilot.
+      if (!confirmedFiveMinuteDemoExpiry465())
+        return "BLOCAT: TIMP QT DEMO 00:05:00 NECONFIRMAT"
       // The readiness button MUST use the exact same Qt Demo / 1 USD /
       // payout >= 92% validators as the automatic one-shot click.
       // An optimistic preview must never claim that AUTO DEMO is ready
