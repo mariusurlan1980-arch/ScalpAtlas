@@ -2004,7 +2004,7 @@ jobs:
               'dispatchGesture(', 'performGlobalAction('):
             assert forbidden not in fn, forbidden
           assert 'inspectPassiveDemoProof463(' in monitor
-          assert 'if (!CHART_ONLY_DEMO_462)' in monitor
+          assert 'if (!CHART_ONLY_DEMO_462 ||' in monitor
           assert 'maybePrepareAutomaticDemoRecoveryStake' in monitor
           # All historic navigation stays after the constant-true return.
           before, after = monitor.split('if (CHART_ONLY_DEMO_462) {',1)
@@ -2014,7 +2014,7 @@ jobs:
           assert 'navigateVerifiedDemoHistory431(' in after
           assert 'TouchTestService.inspectBrokerAccountReadOnly()' in before
           assert 'realOrderAdapterAvailable = false' in r
-          print('468 PASS: broker matching and durable receipt safeguards still present')
+          print('471 PASS: broker matching, chart-only MG gate and durable safeguards present')
           PY
 
       - name: Verify 465 no three-trade cap or seven-minute pause with 5-minute QT DEMO expiry
