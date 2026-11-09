@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 467 G24 rotating luminous brain
+name: Build Scalp Atlas 473 rollback to working 467 with luminous brain
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, fix/scalpatlas-rollback-473-brain]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.29'
+          expo['version']='3.2.31'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=467
+          expo['android']['versionCode']=473
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2202,28 +2202,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-467-CREIER-ROTATIV-G24.apk
+          cp "$APK" ScalpAtlas-473-REVENIRE-467-CREIER-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-467-CREIER-ROTATIV-G24
-          path: ScalpAtlas-467-CREIER-ROTATIV-G24.apk
+          name: ScalpAtlas-473-REVENIRE-467-CREIER-G24
+          path: ScalpAtlas-473-REVENIRE-467-CREIER-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/feature/scalpatlas-rotating-brain467'
+        if: github.ref == 'refs/heads/fix/scalpatlas-rollback-473-brain'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-467-CREIER-ROTATIV-G24.apk"
+          FILE="ScalpAtlas-473-REVENIRE-467-CREIER-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-creier-rotativ467-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-revenire473-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 467 - CREIER LUMINOS ROTATIV G24 • ${GITHUB_SHA:0:12}" \
-            --notes "467: creier luminos cyan cu stele, fundal transparent, rotire 360 grade automata; modificare exclusiv vizuala peste functionalitatea 466. QT DEMO Motorola G24, NETESTAT PE TELEFON: integreaza filtrul SELL dupa crestere ascendentă masurata cu cel putin doua din trei lumânări verzi, ultimul close aproape de maxim si deplasare descendentă vizibila (nu chiar in varf si nici prea tarziu). Este o exceptie ingusta de la veto-ul contra-trend; sunt in continuare obligatorii retragerea SOC in aceeasi lumanare, revenirea in 2 cadre, fitilul real, semnalul nou si doua confirmari Android. Nu modifica atingerea BUY/SELL, blocarea QT REAL, 1 USD, 00:05:00, payout >=92%, cooldown-ul si lipsa Martingale. Sursa ilustrativa: un SELL EUR/CHF OTC cu rezultat +0.92 USD raportat de utilizator; un singur WIN nu valideaza profitabilitatea. Nu garanteaza ordine sau profit; CI nu este test pe Pocket Option. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 473 - REVENIRE LA MOTOR 467 + CREIER • ${GITHUB_SHA:0:12}" \
+            --notes "473: Revenire la sursa Scalp Atlas 467 cu creier luminos albastru-cyan rotativ, fara schimbarile experimentale Martingale 468-472. Păstrează motorul automat DEMO din 467, cu tranzacție 1 USD, M5/5 minute și gest BUY/SELL doar la semnal. Nu se garantează tranzacții, profit sau absența blocajelor; APK compilat automat, încă netestat pe Motorola G24. Nu tranzacționează pe QT Real. Build $GITHUB_SHA." \
           --prerelease
