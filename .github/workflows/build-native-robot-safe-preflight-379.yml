@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 466 G24 validated SELL peak pullback
+name: Build Scalp Atlas 467 G24 rotating luminous brain
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.28'
+          expo['version']='3.2.29'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=466
+          expo['android']['versionCode']=467
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -424,7 +424,7 @@ jobs:
           grep -Fq 'fun pressAutoOneDollarDemoOrderOnce' .github/native-overlay/TouchTestService.kt
           grep -Fq 'payoutValues[0] !in 92..100' .github/native-overlay/TouchTestService.kt
           grep -Fq 'getSharedPreferences("scalp_demo_order_safety"' .github/native-overlay/TouchTestService.kt
-          grep -Fq '🤖 ROBOT ON • OPREȘTE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'ROBOT ON • OPREȘTE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoExpiry = autoDemoSessionEndAt' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val pairLostLong = seenPair ==' .github/native-overlay/ScalpOverlayService.kt
@@ -465,7 +465,7 @@ jobs:
           grep -Fq 'mediaProjection != null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val liveCaptureActive = mediaProjection != null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (!liveCaptureActive)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'autoDemoSessionRequested -> "DEMO LIVE • VERIFICARE AUTOMATĂ"' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'ROBOT OPRIT • LIVE RĂMÂNE ACTIV' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'close.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'demoClickTestPending = false' .github/native-overlay/ScalpOverlayService.kt
@@ -511,8 +511,8 @@ jobs:
           grep -Fq 'val uiClosed = overlayView == null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'touchProbeToggle.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'testBipControl.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '🤖 PORNEȘTE • ON' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '🤖 DEMO LIVE • VERIFICARE AUTOMATĂ' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'PORNEȘTE • ON' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'DEMO LIVE • VERIFICARE AUTOMATĂ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoArmed = false' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoSessionEndAt = Long.MAX_VALUE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'pressAutoOneDollarDemoOrderOnce' .github/native-overlay/ScalpOverlayService.kt
@@ -700,8 +700,8 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'private var autoDemoLastPreflightReason' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '"🤖 ȘOC SIMPLU 30/20 + FITIL • "' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '"🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"ȘOC SIMPLU 30/20 + FITIL • "' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeStatus.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Verify 403 independent broker instrument OCR fallback
@@ -1051,6 +1051,11 @@ jobs:
           XML
           grep -Fq 'TouchTestService' scalp-atlas-new/android/app/src/main/AndroidManifest.xml
 
+          mkdir -p scalp-atlas-new/android/app/src/main/res/drawable-nodpi
+          # 467: exact user-approved small transparent brain; decoded in build only.
+          base64 -d .github/native-overlay/brain-icon.webp.b64 > scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp
+          echo "b67bbd1fa6609294b10f5d32e59a43a9370ce89b474d71b2edf0057752965c9e  scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp" | sha256sum -c -
+          test -s scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp
           mkdir -p scalp-atlas-new/android/app/src/main/res/raw
           cp scalp-atlas-new/assets/buy-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
           cp scalp-atlas-new/assets/sell-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_sell_bip.wav
@@ -2197,28 +2202,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-466-RETRAGERE-SELL-G24.apk
+          cp "$APK" ScalpAtlas-467-CREIER-ROTATIV-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-466-RETRAGERE-SELL-G24
-          path: ScalpAtlas-466-RETRAGERE-SELL-G24.apk
+          name: ScalpAtlas-467-CREIER-ROTATIV-G24
+          path: ScalpAtlas-467-CREIER-ROTATIV-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-confirmed-sell-pullback466'
+        if: github.ref == 'refs/heads/feature/scalpatlas-rotating-brain467'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-466-RETRAGERE-SELL-G24.apk"
+          FILE="ScalpAtlas-467-CREIER-ROTATIV-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-sell-retragere466-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-creier-rotativ467-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 466 - SELL DUPĂ RETRAGERE CONFIRMATĂ G24 • ${GITHUB_SHA:0:12}" \
-            --notes "466 CANDIDAT QT DEMO Motorola G24, NETESTAT PE TELEFON: integreaza filtrul SELL dupa crestere ascendentă masurata cu cel putin doua din trei lumânări verzi, ultimul close aproape de maxim si deplasare descendentă vizibila (nu chiar in varf si nici prea tarziu). Este o exceptie ingusta de la veto-ul contra-trend; sunt in continuare obligatorii retragerea SOC in aceeasi lumanare, revenirea in 2 cadre, fitilul real, semnalul nou si doua confirmari Android. Nu modifica atingerea BUY/SELL, blocarea QT REAL, 1 USD, 00:05:00, payout >=92%, cooldown-ul si lipsa Martingale. Sursa ilustrativa: un SELL EUR/CHF OTC cu rezultat +0.92 USD raportat de utilizator; un singur WIN nu valideaza profitabilitatea. Nu garanteaza ordine sau profit; CI nu este test pe Pocket Option. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 467 - CREIER LUMINOS ROTATIV G24 • ${GITHUB_SHA:0:12}" \
+            --notes "467: creier luminos cyan cu stele, fundal transparent, rotire 360 grade automata; modificare exclusiv vizuala peste functionalitatea 466. QT DEMO Motorola G24, NETESTAT PE TELEFON: integreaza filtrul SELL dupa crestere ascendentă masurata cu cel putin doua din trei lumânări verzi, ultimul close aproape de maxim si deplasare descendentă vizibila (nu chiar in varf si nici prea tarziu). Este o exceptie ingusta de la veto-ul contra-trend; sunt in continuare obligatorii retragerea SOC in aceeasi lumanare, revenirea in 2 cadre, fitilul real, semnalul nou si doua confirmari Android. Nu modifica atingerea BUY/SELL, blocarea QT REAL, 1 USD, 00:05:00, payout >=92%, cooldown-ul si lipsa Martingale. Sursa ilustrativa: un SELL EUR/CHF OTC cu rezultat +0.92 USD raportat de utilizator; un singur WIN nu valideaza profitabilitatea. Nu garanteaza ordine sau profit; CI nu este test pe Pocket Option. Build $GITHUB_SHA." \
           --prerelease
