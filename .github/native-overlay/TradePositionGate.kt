@@ -110,6 +110,19 @@ class TradePositionGate {
     return true
   }
 
+  /**
+   * 472: caller verified from the immutable pre-dispatch Android token that
+   * this particular QT DEMO gesture was never sent. This is NOT an expiry,
+   * price, broker-result or guessed no-position shortcut.
+   */
+  @Synchronized
+  fun verifiedNoPhysicalGesture472(proof: Boolean): Boolean {
+    if (!proof || state == State.OPEN || state == State.SUBMITTING ||
+        currentId != null) return false
+    state = State.READY
+    return true
+  }
+
   @Synchronized
   fun resetOnNewVerifiedAccount() {
     currentId = null
