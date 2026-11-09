@@ -43,6 +43,8 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.LinearLayout
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -2719,6 +2721,62 @@ class ScalpOverlayService : Service() {
     }
   }
 
+
+  /**
+   * Chosen visual #1: 12-frame rotating neon brain, with NO orbit or ring.
+   * ImageDecoder is Android 9+; Motorola G24 supports this natively.
+   * The animation runs only while its overlay view is attached, and cannot
+   * modify trading/SHOCK state, broker taps, accessibility or trade guards.
+   */
+  private class GalacticBrainPreviewView(context: Context) : android.widget.FrameLayout(context) {
+    private var spinningBrain: android.graphics.drawable.AnimatedImageDrawable? = null
+
+    init {
+      isClickable = false
+      isFocusable = false
+      importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+      background = GradientDrawable().apply {
+        setColor(Color.rgb(12, 8, 27))
+        cornerRadius = context.resources.displayMetrics.density * 9f
+      }
+      clipToOutline = true
+      val picture = android.widget.ImageView(context).apply {
+        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+        isClickable = false
+        isFocusable = false
+        contentDescription = "Creier galactic rotativ"
+        try {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = android.graphics.ImageDecoder.createSource(
+              context.resources, R.raw.galactic_brain_rotating)
+            val drawable = android.graphics.ImageDecoder.decodeDrawable(source)
+            setImageDrawable(drawable)
+            if (drawable is android.graphics.drawable.AnimatedImageDrawable) {
+              spinningBrain = drawable
+              drawable.repeatCount = android.graphics.drawable.AnimatedImageDrawable.REPEAT_INFINITE
+            }
+          } else {
+            setImageResource(R.drawable.galactic_brain_preview)
+          }
+        } catch (_: Exception) {
+          // Preview-only fallback; don't affect any broker service.
+          setImageResource(R.drawable.galactic_brain_preview)
+        }
+      }
+      addView(picture, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    }
+
+    override fun onAttachedToWindow() {
+      super.onAttachedToWindow()
+      spinningBrain?.start()
+    }
+
+    override fun onDetachedFromWindow() {
+      spinningBrain?.stop()
+      super.onDetachedFromWindow()
+    }
+  }
+
   private fun createOverlay() {
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
@@ -2746,6 +2804,8 @@ class ScalpOverlayService : Service() {
     }
     close.visibility = View.VISIBLE // Small X immediately ends LIVE, capture and any robot arm.
     header.addView(close, LinearLayout.LayoutParams(dp(30), dp(28)))
+    // Preview branch only: galactic brain on the left, without changing robot logic.
+    header.addView(GalacticBrainPreviewView(this), LinearLayout.LayoutParams(dp(49), dp(49)))
     val headerGap = View(this)
     header.addView(headerGap, LinearLayout.LayoutParams(0, dp(1), 1f))
     val compactStatus = TextView(this).apply {
