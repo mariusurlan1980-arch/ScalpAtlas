@@ -5201,8 +5201,21 @@ class ScalpOverlayService : Service() {
     val independentlyOppositeTrend = observedTrendMeasured &&
       observedTrendDirection != "NONE" &&
       observedTrendDirection != rawSignal
+    // 466: the EUR/CHF OTC-style SELL-after-rise is allowed ONLY when
+    // the analyzer independently measured the peak, the downward move
+    // and the usual same-candle SHOCK with two rebound observations.
+    // A mere red candle at the top is NOT a valid reversal signal.
+    val verifiedSellPullback466 = rawSignal == "SELL" &&
+      observed == "SELL" && observedTrendMeasured &&
+      observedTrendDirection == "BUY" &&
+      result.optBoolean("sellPullbackValidated", false) &&
+      result.optBoolean("sellPullbackPeakGuard", false) &&
+      result.optString("sellPullbackDirection", "NONE") == "SELL" &&
+      result.optInt("sellPullbackTravelPx", 0) >= 6 &&
+      result.optInt("sellPullbackTravelPct", 0) >= 35 &&
+      shockSameCandle && shockRetraced && shockRecovered
     val sameShockDirection = sameOpticalDirection &&
-      !independentlyOppositeTrend
+      (!independentlyOppositeTrend || verifiedSellPullback466)
     val sameScalpDirection = sameOpticalDirection && observedTrendMeasured &&
       observedTrendDirection == rawSignal &&
       observedTrendStrengthPercent > SCALP_MIN_TREND
