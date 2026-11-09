@@ -41,6 +41,14 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
     val profitRemaining = prefs.getLong("remainingProfitTargetCents", 0L)
     if (prefs.getString("pendingPositionId", null) != null)
       return Quote(null, lost, "REZULTATUL POZIȚIEI ESTE NECONFIRMAT")
+    // 474: In FIXED $1 QT DEMO mode, prior experimental Martingale losses
+    // remain historical data, never permission to raise the broker stake.
+    // A pending broker OPEN ID still blocks before reaching this branch.
+    if (prefs.getBoolean("fixedOneDollarMode474", false)) {
+      if (payoutPercent !in MIN_PAYOUT_PERCENT..100)
+        return Quote(null, 0L, "PAYOUT DEMO NECONFIRMAT")
+      return Quote(BASE_STAKE_CENTS, 0L, "MIZĂ FIXĂ DEMO 1 USD • FĂRĂ MG")
+    }
     if (prefs.getBoolean("pendingBaseStakeReset", false))
       return Quote(null, lost, "RESET 1 USD NECONFIRMAT PE BROKER")
     if (prefs.getBoolean("halted", false) || completed >= MAX_CYCLE_TRADES)
@@ -228,8 +236,39 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
 
   @Synchronized
   fun isRecovering429(): Boolean =
-    prefs.getLong("unrecoveredLossCents", 0L) > 0L ||
-      prefs.getLong("remainingProfitTargetCents", 0L) > 0L
+    !prefs.getBoolean("fixedOneDollarMode474", false) &&
+      (prefs.getLong("unrecoveredLossCents", 0L) > 0L ||
+        prefs.getLong("remainingProfitTargetCents", 0L) > 0L)
+
+  @Synchronized
+  fun isFixedOneDollarMode474(): Boolean =
+    prefs.getBoolean("fixedOneDollarMode474", false)
+
+  /**
+   * 474: Explicitly retire the *stake progression* persisted by 468-472.
+   * Requires same-screen verified QT DEMO and successful READ-ONLY 1 USD
+   * broker preflight; no known broker OPEN ID may be pending.
+   * Does NOT alter the separate attempted gesture marker, gate state,
+   * broker order history, position ID, or Android cooldown.
+   */
+  @Synchronized
+  fun retireExperimentalMartingale474(
+    verifiedQtDemo: Boolean,
+    brokerPreflightOneDollar: Boolean
+  ): Boolean {
+    if (!verifiedQtDemo || !brokerPreflightOneDollar ||
+        prefs.getString("pendingPositionId", null) != null)
+      return false
+    if (isFixedOneDollarMode474()) return true
+    return prefs.edit()
+      .putBoolean("fixedOneDollarMode474", true)
+      .putLong("unrecoveredLossCents", 0L)
+      .putLong("remainingProfitTargetCents", 0L)
+      .putInt("completedCycleTrades", 0)
+      .putBoolean("pendingBaseStakeReset", false)
+      .putBoolean("halted", false)
+      .commit()
+  }
 
   /**
    * A confirmed profitable CLOSED receipt has repaid the net cycle deficit.
@@ -238,7 +277,8 @@ class DemoRecoveryLedger(private val prefs: SharedPreferences) {
    */
   @Synchronized
   fun needsBaseStakeReset(): Boolean =
-    prefs.getBoolean("pendingBaseStakeReset", false) &&
+    !prefs.getBoolean("fixedOneDollarMode474", false) &&
+      prefs.getBoolean("pendingBaseStakeReset", false) &&
       prefs.getString("pendingPositionId", null) == null &&
       prefs.getLong("unrecoveredLossCents", 0L) == 0L &&
       prefs.getLong("remainingProfitTargetCents", 0L) == 0L &&
