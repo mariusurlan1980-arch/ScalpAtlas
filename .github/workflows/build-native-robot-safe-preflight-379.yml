@@ -866,7 +866,7 @@ jobs:
           grep -Fq 'val recoveryQuote451 = demoRecoveryLedger.quote(92)' "$O"
           grep -Fq 'MG PLAN 92%: ' "$O"
           grep -Fq 'MG BLOCAT • ORDIN NEVERIFICAT' "$O"
-          grep -Fq 'MG: DOAR QT DEMO' "$O"
+          grep -Fq 'ORDINE: DOAR QT DEMO' "$O"
           grep -Fq 'demoRecoveryLedger.verifiedOpenPositionId429() != null' "$O"
           grep -Fq 'setVerifiedDemoRecoveryStakeOnBroker(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'ACTION_SET_TEXT' .github/native-overlay/DemoStakeEditor.kt
