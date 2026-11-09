@@ -43,6 +43,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.LinearLayout
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -75,7 +76,7 @@ class ScalpOverlayService : Service() {
           service.autoDemoArmed = false
           service.autoDemoMarket = null
           service.autoDemoExpiry = 0L
-          service.autoDemoButton?.text = "🤖 PORNEȘTE • ON"
+          service.autoDemoButton?.text = "PORNEȘTE • ON"
         }
         service.overlayView?.visibility = if (hidden) View.GONE else View.VISIBLE
       }
@@ -120,6 +121,7 @@ class ScalpOverlayService : Service() {
 
   private lateinit var windowManager: WindowManager
   private var overlayView: View? = null
+  private var rotatingBrainAnimator467: android.animation.ObjectAnimator? = null
   @Volatile private var overlayWindowParams: WindowManager.LayoutParams? = null
   private var compactStatusText: TextView? = null
   private var signalText: TextView? = null
@@ -547,8 +549,8 @@ class ScalpOverlayService : Service() {
           demoClickTestLastCheck = 0L
           mainHandler.post {
             touchProbeStatus?.text = if (autoDemoSessionConsumed)
-              "🤖 TRANZACȚIE DEMO ANTERIOARĂ • VERIFIC ÎNCHIDEREA"
-            else "🤖 LIVE • DEMO AUTO LA ȘOC • REAL BLOCAT"
+              "TRANZACȚIE DEMO ANTERIOARĂ • VERIFIC ÎNCHIDEREA"
+            else "LIVE • DEMO AUTO LA ȘOC • REAL BLOCAT"
           }
           // Stay eligible while the Android-authorized LIVE screen capture
           // exists. Only a user stop, OS capture revocation, or service death
@@ -593,11 +595,11 @@ class ScalpOverlayService : Service() {
       // the at-most-one-order guard when the user opens the broker.
       mainHandler.post {
         touchProbeStatus?.text = when {
-          brokerAccountMonitorRunning -> "🤖 SCANARE CONT • FĂRĂ ORDINE"
-          autoDemoSessionConsumed -> "🤖 SCANARE LIVE • FĂRĂ ORDINE"
-          autoDemoArmed -> "🤖 DEMO AUTO ACTIV • AȘTEAPTĂ ȘOC"
-          autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"
-          else -> "🤖 ROBOT BLOCAT • FĂRĂ SESIUNE"
+          brokerAccountMonitorRunning -> "SCANARE CONT • FĂRĂ ORDINE"
+          autoDemoSessionConsumed -> "SCANARE LIVE • FĂRĂ ORDINE"
+          autoDemoArmed -> "DEMO AUTO ACTIV • AȘTEAPTĂ ȘOC"
+          autoDemoSessionRequested -> "DEMO LIVE • VERIFICARE AUTOMATĂ"
+          else -> "ROBOT BLOCAT • FĂRĂ SESIUNE"
         }
       }
     }
@@ -1318,7 +1320,7 @@ class ScalpOverlayService : Service() {
         }
         if (diagnostic != lastBrokerAccountStatus) {
           lastBrokerAccountStatus = diagnostic
-          touchProbeStatus?.text = "🤖 " + diagnostic.take(115)
+          touchProbeStatus?.text = "" + diagnostic.take(115)
         }
         // Amount edits depend on broker-verified settled trade receipts;
         // the existing 424 build has no automatic receipt reader, so this
@@ -1370,11 +1372,11 @@ class ScalpOverlayService : Service() {
           }
           if (autoDemoSessionConsumed) {
             touchProbeStatus?.text = if (effectiveStatus464 != null)
-              "🤖 " + effectiveStatus464.take(110)
-            else "🤖 GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
+              "" + effectiveStatus464.take(110)
+            else "GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
               "ORDIN VECHI BLOCAT PÂNĂ LA VERIFICARE"
           } else if (pilotStatus464 != null) {
-            touchProbeStatus?.text = "🤖 " + pilotStatus464.take(110)
+            touchProbeStatus?.text = "" + pilotStatus464.take(110)
           }
           mainHandler.postDelayed(this, 2500L)
           return
@@ -2084,7 +2086,7 @@ class ScalpOverlayService : Service() {
                 verifiedDemoReview, tick
               )
               if (navResult431.isNotBlank())
-                touchProbeStatus?.text = "🤖 " + navResult431.take(105)
+                touchProbeStatus?.text = "" + navResult431.take(105)
             }
           }
         } else {
@@ -2746,6 +2748,27 @@ class ScalpOverlayService : Service() {
     }
     close.visibility = View.VISIBLE // Small X immediately ends LIVE, capture and any robot arm.
     header.addView(close, LinearLayout.LayoutParams(dp(30), dp(28)))
+    // 467: User-approved miniature brain (transparent blue glow and tiny stars).
+    // Visual-only: the animation cannot arm, signal, or place broker orders.
+    val rotatingBrain467 = ImageView(this).apply {
+      setImageResource(R.drawable.scalp_brain)
+      scaleType = ImageView.ScaleType.FIT_CENTER
+      contentDescription = "Creier Scalp Atlas luminos, rotire continuă"
+      cameraDistance = dp(1000).toFloat()
+      isClickable = false
+      importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+    header.addView(rotatingBrain467, LinearLayout.LayoutParams(dp(35), dp(28)))
+    rotatingBrainAnimator467?.cancel()
+    rotatingBrainAnimator467 = android.animation.ObjectAnimator.ofFloat(
+      rotatingBrain467, "rotationY", 0f, 360f
+    ).apply {
+      duration = 6200L
+      repeatCount = ValueAnimator.INFINITE
+      repeatMode = ValueAnimator.RESTART
+      interpolator = LinearInterpolator()
+      start()
+    }
     val headerGap = View(this)
     header.addView(headerGap, LinearLayout.LayoutParams(0, dp(1), 1f))
     val compactStatus = TextView(this).apply {
@@ -3364,7 +3387,7 @@ class ScalpOverlayService : Service() {
       visibility = View.VISIBLE
       setPadding(0, dp(5), 0, 0)
     }
-    val brokerAutoButton = localButton("🤖 PORNEȘTE • ON", Color.rgb(88, 62, 115)).apply {
+    val brokerAutoButton = localButton("PORNEȘTE • ON", Color.rgb(88, 62, 115)).apply {
       textSize = 11f
       contentDescription = "Pornește roboțelul automat numai pentru QT Demo, un singur ordin de 1 USD la ȘOC valid. Atinge din nou pentru oprire."
       setOnClickListener {
@@ -3373,7 +3396,7 @@ class ScalpOverlayService : Service() {
             autoDemoArmed = false
             autoDemoMarket = null
             autoDemoExpiry = 0L
-            text = "🤖 PORNEȘTE • ON"
+            text = "PORNEȘTE • ON"
             probeStatus.text = "ROBOT OPRIT • FĂRĂ ORDINE NOI"
           } else {
             val wallNow = System.currentTimeMillis()
@@ -3391,14 +3414,14 @@ class ScalpOverlayService : Service() {
               autoDemoArmed = false
               autoDemoMarket = null
               autoDemoExpiry = 0L
-              text = "🤖 PORNEȘTE • ON"
+              text = "PORNEȘTE • ON"
               probeStatus.text = condition
             } else {
               autoDemoArmed = true
               autoDemoMarket = pair
               autoDemoLockedAt = lockedAt // never replay a previous BIP
               autoDemoExpiry = clockNow + 10 * 60_000L
-              text = "🤖 ROBOT ON • OPREȘTE"
+              text = "ROBOT ON • OPREȘTE"
               probeStatus.text = "ON QT DEMO • " + pair +
                 " • 1 SINGUR ȘOC NOU • 1 USD • PAYOUT ≥92%"
             }
@@ -3407,7 +3430,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
-          text = "🤖 PORNEȘTE • ON"
+          text = "PORNEȘTE • ON"
           // User-facing diagnostic contains only exception class, not
           // broker contents, balance, screen text or any account data.
           probeStatus.text = "BLOCAT: ANDROID (" +
@@ -4765,7 +4788,7 @@ class ScalpOverlayService : Service() {
         autoDemoArmed = false
         autoDemoMarket = null
         autoDemoExpiry = 0L
-        autoDemoButton?.text = "🤖 PORNEȘTE • ON"
+        autoDemoButton?.text = "PORNEȘTE • ON"
         lockedDir = null
         lockedAt = 0L
         lockedUntil = 0L
@@ -5671,9 +5694,9 @@ class ScalpOverlayService : Service() {
             autoDemoLockedAt = if (freshJustConfirmedShock453)
               lockedAt - 1L else lockedAt
             autoDemoExpiry = autoDemoSessionEndAt
-            touchProbeStatus?.text = "🤖 DEMO AUTO • MIZĂ VERIFICATĂ • AȘTEAPTĂ ȘOC"
+            touchProbeStatus?.text = "DEMO AUTO • MIZĂ VERIFICATĂ • AȘTEAPTĂ ȘOC"
           } else {
-            touchProbeStatus?.text = "🤖 DEMO AȘTEAPTĂ: " + diagnostic
+            touchProbeStatus?.text = "DEMO AȘTEAPTĂ: " + diagnostic
           }
         }
       }
@@ -5722,7 +5745,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
-          autoDemoButton?.text = "🤖 PORNEȘTE • ON"
+          autoDemoButton?.text = "PORNEȘTE • ON"
           touchProbeStatus?.text =
             "AUTO DEMO OPRIT • PERECHE/SERVICIU/EXPIRARE"
         } else if (newShock) {
@@ -5811,7 +5834,7 @@ class ScalpOverlayService : Service() {
               autoDemoArmed = false
               autoDemoMarket = null
               autoDemoExpiry = 0L
-              autoDemoButton?.text = "🤖 PORNEȘTE • ON"
+              autoDemoButton?.text = "PORNEȘTE • ON"
               // The exact second preflight runs immediately before the
               // physical gesture. Its explicit PRECHECK_NO_GESTURE result
               // proves that no gesture helper was entered and no broker order
@@ -6013,7 +6036,7 @@ class ScalpOverlayService : Service() {
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoArmed && !autoDemoSessionConsumed ->
-          "🤖 ȘOC SIMPLU 30/20 + FITIL • " + if (activeStrategy == "SHOCK" &&
+          "ȘOC SIMPLU 30/20 + FITIL • " + if (activeStrategy == "SHOCK" &&
               activeSignal != "NONE") "ȘOC CONFIRMAT"
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
@@ -6063,10 +6086,10 @@ class ScalpOverlayService : Service() {
               autoDemoLastPreflightReason.take(47)
           autoDemoArmed && activeSignal == "NONE" ->
             if (scanStatus != "LIVE")
-              "🤖 AUTO DEMO • SCAN " + scanStatus
-            else "🤖 ȘOC FLEX 30/20/25 • " + shockBlocker.take(39)
+              "AUTO DEMO • SCAN " + scanStatus
+            else "ȘOC FLEX 30/20/25 • " + shockBlocker.take(39)
           !autoDemoArmed ->
-            "🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
+            "DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
           else -> touchProbeStatus?.text?.toString().orEmpty()
         }
       }
@@ -6156,6 +6179,8 @@ class ScalpOverlayService : Service() {
     shuttingDown = true
     if (activeOverlayService === this) activeOverlayService = null
     mainHandler.post {
+      rotatingBrainAnimator467?.cancel()
+      rotatingBrainAnimator467 = null
       stopLiveCameraDot()
       stopPulseRing()
       stopNeonEdge434()
