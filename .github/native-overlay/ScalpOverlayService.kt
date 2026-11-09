@@ -4852,7 +4852,16 @@ class ScalpOverlayService : Service() {
   }
 
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
-    if (ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
+    // 471: broker result Tooltips may last only a few seconds. Increase
+    // OCR sampling briefly around the recorded five-minute DEMO expiry
+    // without changing the normal 3-second chart/TF scan cadence.
+    val priorAttempt471 = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val priorWall471 = priorAttempt471.getLong("attemptedWallAt454", -1L)
+    val pendingResult471 = CHART_MARTINGALE_DEMO_471 &&
+      priorAttempt471.getBoolean("attempted", false) &&
+      priorWall471 > 0L && now - priorWall471 in 285_000L..420_000L
+    val ocrInterval471 = if (pendingResult471) 950L else OCR_INTERVAL_MS
+    if (ocrBusy || now - lastOcrAttemptAt < ocrInterval471) return
     ocrBusy = true
     lastOcrAttemptAt = now
 
