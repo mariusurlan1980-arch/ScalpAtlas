@@ -1135,9 +1135,11 @@ class TouchTestService : AccessibilityService() {
       val accepted = try {
         svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
       } catch (_: Throwable) { false }
+      // 469: Back is only a navigation request. It is NOT evidence that
+      // the OPEN tab was empty or that any WIN / LOSS was verified.
       return if (accepted)
-        "✅ LISTĂ GOALĂ 2/2 • REVIN LA GRAFIC • AȘTEPT ȘOC"
-      else "✅ LISTĂ GOALĂ 2/2 • REVINO LA GRAFIC"
+        "ISTORIC DEMO • ÎNAPOI SPRE GRAFIC • AȘTEPT CONFIRMARE VIDEO"
+      else "ISTORIC DEMO • REVENIRE RESPINSĂ • ORDIN VECHI BLOCAT"
     }
 
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
