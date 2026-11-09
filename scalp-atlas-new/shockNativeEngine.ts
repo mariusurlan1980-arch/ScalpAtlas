@@ -33,6 +33,26 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     if(r>=95&&r>g*1.42&&r>b*1.25&&r-g>34)return 'SELL';
     return '';
   }
+  // 466: a pure, testable optical-context detector. A SELL at the very
+  // top (zero downward travel) and a late SELL after the fall are rejected.
+  // The caller still requires SAME candle + measured shock/rebound/wick.
+  function confirmedSellPullbackAfterRise466(prior,liveCloseY,liveDir,trend,meanBody,liveBody){
+    var rejected={ok:false,travelPx:0,travelPct:0,peakGuard:false};
+    if(trend!=='BUY'||liveDir!=='SELL'||prior.length!==3||
+       prior[2].dir!=='BUY'||
+       prior.filter(function(z){return z.dir==='BUY';}).length<2||
+       !Number.isFinite(meanBody)||meanBody<=0||liveBody<5)return rejected;
+    var peakClose=Math.min.apply(null,prior.map(function(z){return z.closeY;}));
+    var peakSlack=Math.max(6,Math.round(meanBody*.4));
+    var peakGuard=prior[2].closeY<=peakClose+peakSlack;
+    var travelPx=Math.round(liveCloseY-prior[2].closeY);
+    var minTravel=Math.max(6,Math.min(12,Math.round(meanBody*.4)));
+    var maxTravel=Math.max(25,Math.min(70,Math.round(meanBody*2.8)));
+    if(!peakGuard||travelPx<minTravel||travelPx>maxTravel)return rejected;
+    return {ok:true,travelPx:travelPx,
+      travelPct:Math.round(100*travelPx/Math.max(1,meanBody)),
+      peakGuard:true};
+  }
   // Find actual filled candle bodies. A wick or an isolated colored pixel
   // cannot be used as a close price, and bottom BUY/SELL buttons are excluded.
   function findCandle(p,w,h){
@@ -157,21 +177,12 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // already travelled more than ~2.8 past-candle bodies.
         // The SELL shock still needs its OWN fast intra-candle retreat
         // and two successive recoveries later in the analyzer.
-        if(trend==='BUY'&&candle.dir==='SELL'&&
-           pastCloses[2].dir==='BUY'&&greenCount>=2){
-          var peakClose=Math.min.apply(null,pastCloses.map(function(z){return z.closeY;}));
-          var peakSlack=Math.max(6,Math.round(meanBody*.4));
-          sellPullbackPeakGuard=pastCloses[2].closeY<=peakClose+peakSlack;
-          var travelPx=Math.round(close-pastCloses[2].closeY);
-          var minTravel=Math.max(6,Math.min(12,Math.round(meanBody*.4)));
-          var maxTravel=Math.max(25,Math.min(70,Math.round(meanBody*2.8)));
-          if(sellPullbackPeakGuard&&travelPx>=minTravel&&
-             travelPx<=maxTravel&&bottom-top>=5){
-            sellPullbackConfirmed=true;
-            sellPullbackTravelPx=travelPx;
-            sellPullbackTravelPct=Math.round(100*travelPx/Math.max(1,meanBody));
-          }
-        }
+        var sellReversal466=confirmedSellPullbackAfterRise466(
+          pastCloses,close,candle.dir,trend,meanBody,bottom-top);
+        sellPullbackConfirmed=sellReversal466.ok;
+        sellPullbackTravelPx=sellReversal466.travelPx;
+        sellPullbackTravelPct=sellReversal466.travelPct;
+        sellPullbackPeakGuard=sellReversal466.peakGuard;
         // Preserve visual fluctuations while avoiding fabricated data.
         var visualScale=Math.max(45,hi-lo+meanBody*2);
         var mid=(hi+lo)/2;
