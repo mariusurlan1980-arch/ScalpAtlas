@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 467 G24 rotating luminous brain
+name: Build Scalp Atlas 468 G24 experimental DEMO Martingale
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, experiment/scalpatlas-martingale-demo468]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.29'
+          expo['version']='3.2.30'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=467
+          expo['android']['versionCode']=468
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1885,14 +1885,14 @@ jobs:
           print('459: bound physical Open label fallback, OCR word rect and intact order safety gates')
           PY
 
-      - name: Verify 462 chart-only mode cannot auto-enter trade history
+      - name: Verify 468 authenticated broker history mode and preserved order guards
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
-          assert 'private const val CHART_ONLY_DEMO_462 = true' in s
+          assert 'private const val CHART_ONLY_DEMO_462 = false' in s
           monitor=s.split('private fun startBrokerAccountMonitor()',1)[1].split('private fun startDemoClickMonitor()',1)[0]
           assert 'if (CHART_ONLY_DEMO_462) {' in monitor
           before, after=monitor.split('if (CHART_ONLY_DEMO_462) {',1)
@@ -1908,17 +1908,17 @@ jobs:
           assert 'oldShockAttempt && !savedReconciled437 -> false' in s
           assert 'realOrderAdapterAvailable = false' in r
           assert 'fun pressAutoOneDollarDemoOrderOnce(' in t
-          print('462: on-chart demo account read, history auto navigation unreachable, one-order safeguards intact')
+          print('468: experimental receipt review enabled; original broker and one-position guards intact')
           PY
 
-      - name: Verify 463 passive reconciliation without broker navigation
+      - name: Verify 468 strict receipt matching before DemoRecoveryLedger settlement
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
-          assert 'private const val CHART_ONLY_DEMO_462 = true' in s
+          assert 'private const val CHART_ONLY_DEMO_462 = false' in s
           fn=s.split('private fun inspectPassiveDemoProof463(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
           monitor=s.split('private fun startBrokerAccountMonitor()',1)[1].split('private fun startDemoClickMonitor()',1)[0]
           assert 'TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(' in fn
@@ -1960,7 +1960,7 @@ jobs:
           assert 'navigateVerifiedDemoHistory431(' in after
           assert 'TouchTestService.inspectBrokerAccountReadOnly()' in before
           assert 'realOrderAdapterAvailable = false' in r
-          print('463 PASS: passive authentic receipt match, no chart-only history clicks or MG bypass')
+          print('468 PASS: broker matching and durable receipt safeguards still present')
           PY
 
       - name: Verify 465 no three-trade cap or seven-minute pause with 5-minute QT DEMO expiry
@@ -2079,6 +2079,37 @@ jobs:
           assert 'realOrderAdapterAvailable = false' in r
           assert 'TouchTestService.pressAutoOneDollarDemoOrderOnce(' in s
           print('466 PASS: Android cross-check of SELL reversal, QT DEMO $1/5-minute restrictions unchanged')
+          PY
+
+      - name: Verify 468 Martingale requires confirmed QT DEMO settlement, not a timer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          ledger=Path('.github/native-overlay/DemoRecoveryLedger.kt').read_text()
+          reg=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
+          assert 'private const val CHART_ONLY_DEMO_462 = false' in s
+          assert 'if (!CHART_ONLY_DEMO_462)' in s
+          assert 'maybePrepareAutomaticDemoRecoveryStake(' in s
+          assert 'setVerifiedDemoRecoveryStakeOnBroker(pair, stake)' in s
+          assert 'demoRecoveryLedger.quote(payout429).stakeCents == stake429' in s
+          assert 'TouchTestService.pressVerifiedDemoStakeOnce429(' in s
+          assert '!demoRecoveryLedger.isRecovering429()' in s
+          assert 'demoRecoveryLedger.onVerifiedDemoClosed(' in s
+          assert 'reconcileSettledDemoWithMissingOpen437(' in s
+          assert 'TouchTestService.readDoubleVerifiedDemoReceipt429(' in s
+          assert 'demoRecoveryLedger.verifiedOpenPositionId429() != null' in s
+          assert 'fun pressVerifiedDemoStakeOnce429(' in t
+          assert 'DemoStakeEditor.verifiedExactDemoStakeReadOnly(svc, stakeCents)' in t
+          assert 'MAX_CYCLE_TRADES = 6' in ledger
+          assert 'MAX_SINGLE_STAKE_CENTS = 3964L' in ledger
+          assert 'MIN_PAYOUT_PERCENT = 92' in ledger
+          assert 'pendingPositionId' in ledger
+          assert 'onVerifiedDemoClosed' in ledger
+          assert 'realOrderAdapterAvailable = false' in reg
+          assert 'confirmedFiveMinuteDemoExpiry465()' in t
+          print('468: DEMO only, strict receipt settlement, bounded dynamic stake and 5-minute expiry retained')
           PY
 
       - name: Allow Gradle wrapper download on slower GitHub runners
@@ -2202,28 +2233,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-467-CREIER-ROTATIV-G24.apk
+          cp "$APK" ScalpAtlas-468-MG-DEMO-TEST-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-467-CREIER-ROTATIV-G24
-          path: ScalpAtlas-467-CREIER-ROTATIV-G24.apk
+          name: ScalpAtlas-468-MG-DEMO-TEST-G24
+          path: ScalpAtlas-468-MG-DEMO-TEST-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/feature/scalpatlas-rotating-brain467'
+        if: github.ref == 'refs/heads/experiment/scalpatlas-martingale-demo468'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-467-CREIER-ROTATIV-G24.apk"
+          FILE="ScalpAtlas-468-MG-DEMO-TEST-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-creier-rotativ467-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-martingale-demo468-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 467 - CREIER LUMINOS ROTATIV G24 • ${GITHUB_SHA:0:12}" \
-            --notes "467: creier luminos cyan cu stele, fundal transparent, rotire 360 grade automata; modificare exclusiv vizuala peste functionalitatea 466. QT DEMO Motorola G24, NETESTAT PE TELEFON: integreaza filtrul SELL dupa crestere ascendentă masurata cu cel putin doua din trei lumânări verzi, ultimul close aproape de maxim si deplasare descendentă vizibila (nu chiar in varf si nici prea tarziu). Este o exceptie ingusta de la veto-ul contra-trend; sunt in continuare obligatorii retragerea SOC in aceeasi lumanare, revenirea in 2 cadre, fitilul real, semnalul nou si doua confirmari Android. Nu modifica atingerea BUY/SELL, blocarea QT REAL, 1 USD, 00:05:00, payout >=92%, cooldown-ul si lipsa Martingale. Sursa ilustrativa: un SELL EUR/CHF OTC cu rezultat +0.92 USD raportat de utilizator; un singur WIN nu valideaza profitabilitatea. Nu garanteaza ordine sau profit; CI nu este test pe Pocket Option. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 468 - MARTINGALE DEMO EXPERIMENTAL • ${GITHUB_SHA:0:12}" \
+            --notes "VERSIUNE EXPERIMENTALA 468 / QT DEMO EXCLUSIV: activeaza verificarea brokerului din istoricul DESCHIS/INCHIS pentru a calcula un Martingale numai dupa un LOSS dovedit prin receipt unic. Secventa 1.00, 2.09, 4.36, 9.10, 18.99, 39.64 USD la payout 92%, maxim 6 tranzactii/ciclu si limite de sold. WIN cu recuperare integrala revine la 1 USD. O singura pozitie, 5 minute, M5, payout >= 92%, niciodata QT REAL. Creierul rotativ 467 si analiza SOC raman neschimbate. IMPORTANT: read-only istoricul poate fi nefiabil pe broker si poate ramane blocat; protectia opreste ordine suplimentare in loc sa inventeze un LOSS. Nu presupune profit si nu a fost testata practic pe Motorola G24. Revenire: versiunea 467 ramane disponibila. Build $GITHUB_SHA." \
           --prerelease
