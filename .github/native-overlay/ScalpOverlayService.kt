@@ -245,6 +245,14 @@ class ScalpOverlayService : Service() {
   // leave the user on the chart, while the unverified old ID stays locked.
   private var lastPerspectiveReturnAttempt457 = 0L
   private var historyReturnPauseUntil457 = 0L
+  // 469: The broker price chart is the primary workspace. A verified
+  // history screen is a short, bounded inspection, never a permanent view.
+  // These clocks affect navigation ONLY: they never settle an order or
+  // release the persistent position / Martingale guard.
+  private var historyFirstVisibleAt469 = 0L
+  private var lastHistoryExitAttemptAt469 = 0L
+  private val maxHistoryDwellMs469 = 18_000L
+  private val minHistoryExitRetryMs469 = 8_000L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
   @Volatile private var perspectiveOcrX457 = -1f
@@ -891,9 +899,62 @@ class ScalpOverlayService : Service() {
       }
     }
     // Only a broker-verified HISTORY page permits the legacy Back fallback.
-    return TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+    val fallback = TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
       cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage && freshHistory
     )
+    // A successful Android Back request is navigation, NOT a closed receipt.
+    // Pause automated tab reopening while a new chart frame is awaited.
+    if (fallback.startsWith("ISTORIC DEMO • ÎNAPOI SPRE GRAFIC"))
+      historyReturnPauseUntil457 = maxOf(historyReturnPauseUntil457,
+        android.os.SystemClock.elapsedRealtime() + 180_000L)
+    return fallback
+  }
+
+  private fun maybePrioritizeBrokerChart469(
+    verifiedDemoReview: Boolean,
+    reviewPackage: String?,
+    nowElapsed: Long
+  ): Boolean {
+    val freshHistory = historyPageVisible433 &&
+      System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+    if (!freshHistory) {
+      historyFirstVisibleAt469 = 0L
+      return false
+    }
+    if (historyFirstVisibleAt469 == 0L) historyFirstVisibleAt469 = nowElapsed
+    // Allow a short period to read the OPEN/CLOSED receipt. Then prefer the
+    // chart even if the old order cannot be reconciled. An unreadable
+    // receipt must keep all previous order and recovery locks untouched.
+    if (nowElapsed - historyFirstVisibleAt469 < maxHistoryDwellMs469 ||
+        nowElapsed - lastHistoryExitAttemptAt469 < minHistoryExitRetryMs469 ||
+        closedHistoryInspectionInProgress ||
+        !verifiedDemoReview || reviewPackage == null ||
+        reviewPackage != verifiedDemoAccountPackage) return false
+
+    lastHistoryExitAttemptAt469 = nowElapsed
+    val navigation = returnToChartAfterReview458(
+      cachedDemoVerifiedOnChart = true, ocrVerifiedHistoryPage = true
+    )
+    lastAutoDemoHistoryNavStatus = navigation
+    lastAutoDemoHistoryNavStatusAt = nowElapsed
+    touchProbeStatus?.text = "GRAFIC PRIORITAR • " + navigation.take(88)
+    if (navigation.contains("GEST TRIMIS") ||
+        navigation.startsWith("ISTORIC DEMO • ÎNAPOI SPRE GRAFIC")) {
+      historyReturnPauseUntil457 = maxOf(historyReturnPauseUntil457,
+        nowElapsed + 180_000L)
+      // Do not immediately reopen the same old CLOSED screen. This is
+      // throttling only; an unresolved trade still blocks another order.
+      val pending = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+      if (pending.getBoolean("attempted", false)) {
+        lastClosedHistoryScanKey442 = listOf(
+          pending.getString("expectedPackage429", "").orEmpty(),
+          pending.getString("expectedPair429", "").orEmpty(),
+          pending.getLong("attemptedAt429", -1L).toString()
+        ).joinToString("|")
+        lastClosedHistoryScanAt442 = nowElapsed
+      }
+    }
+    return true
   }
 
   private fun navigateVerifiedDemoHistory431(
@@ -1435,6 +1496,13 @@ class ScalpOverlayService : Service() {
           // a same-package cached proof. Both are READ-ONLY; order dispatch
           // still requires the full independent broker preflight on chart.
           val verifiedDemoReview = demoVisibleNow || cachedDemoReview
+          // 469: A screen left on "Tranzacții finalizate" must return to
+          // the broker chart without user taps. Never infer WIN or LOSS.
+          if (maybePrioritizeBrokerChart469(
+              verifiedDemoReview, reviewPackage, nowReview)) {
+            mainHandler.postDelayed(this, 2500L)
+            return
+          }
           // 429: After a possibly accepted physical DEMO gesture, inspect
           // the selected OPEN tab promptly. Waiting for a five-minute
           // cooldown would miss the only window to capture a live order ID.
