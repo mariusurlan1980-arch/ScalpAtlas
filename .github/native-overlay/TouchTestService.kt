@@ -1418,16 +1418,18 @@ class TouchTestService : AccessibilityService() {
     private data class DemoOrderCheck(
       val target: DemoOrderTarget? = null,
       val reason: String,
-      val payoutPercent: Int? = null
+      val payoutPercent: Int? = null,
+      val stakeCents: Long? = null
     )
     private const val DEMO_TEST_LOCK_MS = 300_000L
 
     private fun checkOneDollarDemoTarget(
       side: String,
       requirePayout92: Boolean = false,
-      expectedStakeCents: Long = 100L
+      expectedStakeCents: Long? = 100L
     ): DemoOrderCheck {
-      if (expectedStakeCents !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS)
+      if (expectedStakeCents != null &&
+          expectedStakeCents !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS)
         return DemoOrderCheck(reason = "BLOCAT: MIZĂ PESTE LIMITA DEMO")
 
       val svc = connected ?: return DemoOrderCheck(reason = "ROBOT NECONECTAT")
@@ -1681,16 +1683,21 @@ class TouchTestService : AccessibilityService() {
         Regex("""(?i)^\s*Sum[ăa]\s*:?\s*(?:USD\s*|\$\s*)?1(?:[.,]0{1,2})?(?:\s*(?:USD|\$))?\s*$""")
           .matches(it.value)
       }
+      val observedStakeCents = amountValues.singleOrNull()?.replace(".", "")?.toLongOrNull()
+        ?: if (amountValues.isEmpty() && inlineOne) 100L else null
+      val verifiedStakeCents = expectedStakeCents ?: observedStakeCents
+        ?: return DemoOrderCheck(reason = "BLOCAT: SUMĂ DEMO NECONFIRMATĂ")
       val expectedFormatted = String.format(java.util.Locale.ROOT, "%d.%02d",
-        expectedStakeCents / 100L, expectedStakeCents % 100L)
+        verifiedStakeCents / 100L, verifiedStakeCents % 100L)
       // A stake >1 USD is allowed ONLY from one unique, real editable input.
       // Never use label-only 1 USD fallback or payout echo for larger stakes.
-      val hasDynamicStake = expectedStakeCents > 100L &&
+      val hasDynamicStake = verifiedStakeCents > 100L &&
         editableValues.size == 1 && editableValues.single() == expectedFormatted &&
         amountValues.size == 1 && amountValues.single() == expectedFormatted &&
-        try { DemoStakeEditor.verifiedExactDemoStakeReadOnly(svc, expectedStakeCents) }
+        try { DemoStakeEditor.verifiedExactDemoStakeReadOnly(svc, verifiedStakeCents) }
         catch (_: Throwable) { false }
-      val hasOneDollar = hasDynamicStake || (expectedStakeCents == 100L &&
+      val hasOneDollar = if (expectedStakeCents == null) verifiedStakeCents > 0L
+        else hasDynamicStake || (verifiedStakeCents == 100L &&
         ((amountValues.size == 1 && strictOne.matches(amountValues.single())) ||
         (amountValues.isEmpty() && inlineOne)))
       if (!hasOneDollar)
@@ -1716,8 +1723,8 @@ class TouchTestService : AccessibilityService() {
         Regex("""(?<!\d)(\d{1,5}[.,]\d{2})(?!\d)""").find(it.value)
           ?.groupValues?.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
       }.distinct()
-      if (balanceValues.size != 1 || balanceValues[0] < expectedStakeCents / 100.0)
-        return DemoOrderCheck(reason = "BLOCAT: SOLD DEMO NECONFIRMAT SAU SUB 1 USD")
+      if (balanceValues.size != 1 || balanceValues[0] < verifiedStakeCents / 100.0)
+        return DemoOrderCheck(reason = "BLOCAT: SOLD DEMO NECONFIRMAT SAU INSUFICIENT")
 
       val expression = if (side == "BUY")
         Regex("""(?i)^\s*(?:CUMPĂRAȚI|CUMPARATI)(?:\s+\d{1,3}\s*%)?\s*$""")
@@ -1770,7 +1777,7 @@ class TouchTestService : AccessibilityService() {
       if (svc.rootInActiveWindow?.packageName?.toString() != pkg)
         return DemoOrderCheck(reason = "BLOCAT: APLICAȚIA ACTIVĂ S-A SCHIMBAT")
       return DemoOrderCheck(DemoOrderTarget(candidates[0].first, pkg),
-        "GATA " + side + " • QT DEMO • SUMĂ VERIFICATĂ", verifiedPayout)
+        "GATA " + side + " • QT DEMO • SUMĂ VERIFICATĂ", verifiedPayout, verifiedStakeCents)
     }
 
     // 429: No dependency on an editable amount field for the FIRST $1 order.
@@ -2244,6 +2251,21 @@ class TouchTestService : AccessibilityService() {
       return values.size == 1 && values.single() == "00:05:00"
     }
 
+    fun readBrokerDemoOrder476(expectedPair: String): Pair<Long, Int>? {
+      if (!priorDemoGestureCooldownComplete() ||
+          !confirmedFiveMinuteDemoExpiry465() ||
+          readVisibleDemoPair() != expectedPair) return null
+      val buy = checkOneDollarDemoTarget("BUY", true, null)
+      val sell = checkOneDollarDemoTarget("SELL", true, null)
+      val stake = buy.stakeCents ?: return null
+      val payout = buy.payoutPercent ?: return null
+      if (buy.target == null || sell.target == null ||
+          sell.stakeCents != stake || sell.payoutPercent != payout ||
+          buy.target.activePackage != sell.target.activePackage ||
+          readVisibleDemoPair() != expectedPair) return null
+      return stake to payout
+    }
+
     fun preflightOneDollarDemoOrder(expectedPair: String): String {
       // 465: the previous broker attempt can remain open if the user
       // switches the expiry. Only the explicitly displayed 5-minute
@@ -2368,19 +2390,24 @@ class TouchTestService : AccessibilityService() {
     fun pressVerifiedDemoStakeOnce429(
       side: String,
       expectedPair: String,
-      stakeCents: Long
+      stakeCents: Long,
+      brokerPayout: Int? = null
     ): String {
       if (side != "BUY" && side != "SELL")
         return "PRECHECK_NO_GESTURE: DIRECȚIE INVALIDĂ"
-      val preflight = preflightVerifiedDemoStake429(expectedPair, stakeCents)
+      val preflight = if (brokerPayout == null)
+        preflightVerifiedDemoStake429(expectedPair, stakeCents)
+      else if (readBrokerDemoOrder476(expectedPair) == (stakeCents to brokerPayout))
+        "PREGĂTIT AUTO DEMO"
+      else "BLOCAT: SUMĂ / PAYOUT / TIMP DEMO SCHIMBATE"
       if (!preflight.startsWith("PREGĂTIT AUTO DEMO"))
         return "PRECHECK_NO_GESTURE: " + preflight
       val svc = connected ?: return "PRECHECK_NO_GESTURE: ACCESIBILITATE"
-      val check = checkOneDollarDemoTarget(side, true, stakeCents)
+      val check = checkOneDollarDemoTarget(side, true, stakeCents.takeIf { brokerPayout == null })
       val target = check.target
         ?: return "PRECHECK_NO_GESTURE: " + check.reason
       val other = checkOneDollarDemoTarget(
-        if (side == "BUY") "SELL" else "BUY", true, stakeCents)
+        if (side == "BUY") "SELL" else "BUY", true, stakeCents.takeIf { brokerPayout == null })
       if (other.target == null)
         return "PRECHECK_NO_GESTURE: " + other.reason
       val metrics = android.util.DisplayMetrics()
@@ -2402,7 +2429,10 @@ class TouchTestService : AccessibilityService() {
         return "PRECHECK_NO_GESTURE: ȚINTĂ NECONFIRMATĂ"
       if (svc.rootInActiveWindow?.packageName?.toString() != target.activePackage ||
           readVisibleDemoPair() != expectedPair ||
-          (stakeCents > 100L &&
+          (brokerPayout != null && (check.stakeCents != stakeCents ||
+            other.stakeCents != stakeCents || check.payoutPercent != brokerPayout ||
+            other.payoutPercent != brokerPayout || !confirmedFiveMinuteDemoExpiry465())) ||
+          (brokerPayout == null && stakeCents > 100L &&
             !DemoStakeEditor.verifiedExactDemoStakeReadOnly(svc, stakeCents)))
         return "PRECHECK_NO_GESTURE: BROKER / SUMĂ SCHIMBATĂ"
       val store = svc.getSharedPreferences("scalp_demo_order_safety", Context.MODE_PRIVATE)

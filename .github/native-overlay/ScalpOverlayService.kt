@@ -1077,7 +1077,7 @@ class ScalpOverlayService : Service() {
     val payout = prefs.getInt("expectedPayout429", -1)
     val attemptedAt = prefs.getLong("attemptedAt429", -1L)
     if (expectedPackage != reviewPackage || expectedPair.isNullOrBlank() ||
-        stake !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
+        stake <= 0L ||
         payout !in 92..100 || attemptedAt <= 0L)
       return "463 • DETALII ORDIN VECHI INCOMPLETE • BLOCAT"
 
@@ -1136,7 +1136,9 @@ class ScalpOverlayService : Service() {
     val alreadySettled = demoRecoveryLedger.alreadySettledClosedReceipt444(
       ledgerKey, closed.positionId
     )
+    val manualStake = prefs.getBoolean("brokerStake476", false)
     val ledgerUpdated = if (alreadySettled) true
+      else if (manualStake && openId == null) true
       else if (openId != null)
         demoRecoveryLedger.onVerifiedDemoClosed(
           ledgerKey, openId, openId + ":CLOSED", closed.netProfitCents, true
@@ -1155,7 +1157,7 @@ class ScalpOverlayService : Service() {
     val cleared = prefs.edit().putBoolean("attempted", false)
       .remove("expectedPair429").remove("expectedPackage429")
       .remove("expectedStakeCents429").remove("expectedPayout429")
-      .remove("expectedSide437").remove("attemptedAt429")
+      .remove("brokerStake476").remove("expectedSide437").remove("attemptedAt429")
       .remove("attemptedWallAt454").commit()
     if (!cleared)
       return "463 • REZULTAT CITIT, DAR BLOCAREA NU S-A SALVAT"
@@ -1171,8 +1173,8 @@ class ScalpOverlayService : Service() {
     verifiedClosedDetailAt437 = 0L
     // A verified LOSS changes the ledger, but CHART-ONLY must never run a
     // Martingale progression or submit an untested larger stake automatically.
-    val canRearmBase = gateReady && !demoRecoveryLedger.isRecovering429() &&
-      demoRecoveryLedger.quote(payout).stakeCents == 100L
+    val canRearmBase = gateReady && (manualStake || (!demoRecoveryLedger.isRecovering429() &&
+      demoRecoveryLedger.quote(payout).stakeCents == 100L))
     autoDemoSessionRequested = canRearmBase
     autoDemoSessionConsumed = !canRearmBase
     autoDemoArmed = false
@@ -1182,7 +1184,7 @@ class ScalpOverlayService : Service() {
     autoDemoEntryCycleStartedAt = if (canRearmBase)
       System.currentTimeMillis() else 0L
     return if (canRearmBase)
-      "463 • ORDIN ÎNCHIS VERIFICAT • DEMO 1 USD REARMAT"
+      "476 • ORDIN ÎNCHIS VERIFICAT • DEMO REACTIVAT"
     else "463 • REZULTAT VERIFICAT • NOI ORDINE BLOCATE (FĂRĂ MG)"
   }
 
@@ -1223,7 +1225,7 @@ class ScalpOverlayService : Service() {
     val priorWall = prefs.getLong("attemptedWallAt454", -1L)
     if (expectedPackage != visiblePackage || expectedPair.isNullOrBlank() ||
         expectedSide !in listOf("BUY", "SELL") ||
-        expectedStake != 100L || expectedPayout !in 92..100 ||
+        expectedStake <= 0L || expectedPayout !in 92..100 ||
         priorWall <= 0L)
       return "464 • ORDIN VECHI INCOMPLET • NECESITĂ DOVADĂ BROKER"
 
@@ -1239,11 +1241,12 @@ class ScalpOverlayService : Service() {
       return "465 • EXPIRARE 00:05:00 NECONFIRMATĂ • FĂRĂ ORDIN"
 
     // A real broker OPEN UUID, a previous verified LOSS, or an active MG
-    // cycle is never eligible for the no-receipt $1 pilot.
+    // cycle from an older build requires broker proof before timed rearm.
     if (demoRecoveryLedger.verifiedOpenPositionId429() != null ||
-        demoRecoveryLedger.isRecovering429() ||
-        demoRecoveryLedger.needsBaseStakeReset() ||
-        demoRecoveryLedger.quote(expectedPayout).stakeCents != 100L)
+        (!prefs.getBoolean("brokerStake476", false) &&
+          (demoRecoveryLedger.isRecovering429() ||
+            demoRecoveryLedger.needsBaseStakeReset() ||
+            demoRecoveryLedger.quote(expectedPayout).stakeCents != 100L)))
       return "464 • REGISTRU ORDIN/MG ACTIV • NECESITĂ DOVADĂ BROKER"
 
     val gateState = tradePositionGate.state()
@@ -1256,10 +1259,11 @@ class ScalpOverlayService : Service() {
     if (!pairReady(nowWall) || currentPair(nowWall) != visiblePair)
       return "464 • PERECHE LIVE NECONFIRMATĂ • FĂRĂ ORDIN"
     val preflight = try {
-      TouchTestService.preflightOneDollarDemoOrder(visiblePair)
+      if (TouchTestService.readBrokerDemoOrder476(visiblePair) != null)
+        "PREGĂTIT AUTO DEMO" else "BLOCAT: MIZĂ DEMO NECONFIRMATĂ"
     } catch (_: Throwable) { "BLOCAT: PRECHECK QT DEMO" }
     if (!preflight.startsWith("PREGĂTIT AUTO DEMO"))
-      return "464 • AȘTEPT CONFIRMARE DEMO 1 USD • FĂRĂ ORDIN"
+      return "464 • AȘTEPT CONFIRMAREA MIZEI DEMO • FĂRĂ ORDIN"
     if (TouchTestService.activeDemoExecutorPackageForReview() != visiblePackage)
       return "464 • FEREASTRĂ DEMO SCHIMBATĂ • FĂRĂ ORDIN"
 
@@ -1279,6 +1283,7 @@ class ScalpOverlayService : Service() {
       .remove("expectedPackage429")
       .remove("expectedPair429")
       .remove("expectedStakeCents429")
+      .remove("brokerStake476")
       .remove("expectedPayout429")
       .remove("expectedSide437")
       .remove("attemptedAt429")
@@ -1297,8 +1302,8 @@ class ScalpOverlayService : Service() {
     autoDemoLastPreflightAt = 0L
     autoDemoLockedAt = lockedAt
     autoDemoEntryCycleStartedAt = System.currentTimeMillis()
-    autoDemoLastPreflightReason = "PILOT QT DEMO 1 USD • REZULTAT PRECEDENT NECUNOSCUT"
-    return "465 • DEMO 1 USD REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
+    autoDemoLastPreflightReason = "QT DEMO • MIZĂ DIN BROKER • REZULTAT PRECEDENT NECUNOSCUT"
+    return "476 • DEMO REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
   }
 
   private fun startBrokerAccountMonitor() {
@@ -3366,7 +3371,7 @@ class ScalpOverlayService : Service() {
     }
     val brokerAutoButton = localButton("🤖 PORNEȘTE • ON", Color.rgb(88, 62, 115)).apply {
       textSize = 11f
-      contentDescription = "Pornește roboțelul automat numai pentru QT Demo, un singur ordin de 1 USD la ȘOC valid. Atinge din nou pentru oprire."
+      contentDescription = "Pornește roboțelul automat numai pentru QT Demo, un singur ordin cu suma aleasă în broker la ȘOC valid. Atinge din nou pentru oprire."
       setOnClickListener {
         try {
           if (autoDemoArmed) {
@@ -3385,7 +3390,11 @@ class ScalpOverlayService : Service() {
               !TouchTestService.ready() -> TouchTestService.accessDiagnostic(this@ScalpOverlayService)
               !pairReady(wallNow) || pair == "NEIDENTIFICAT" ->
                 "BLOCAT: PERECHEA NU ESTE STABILĂ"
-              else -> TouchTestService.preflightOneDollarDemoOrder(pair)
+              else -> if (CHART_ONLY_DEMO_462) {
+                if (TouchTestService.readBrokerDemoOrder476(pair) != null)
+                  "PREGĂTIT AUTO DEMO"
+                else "BLOCAT: MIZĂ / PAYOUT / TIMP QT DEMO NECONFIRMATE"
+              } else TouchTestService.preflightOneDollarDemoOrder(pair)
             }
             if (!condition.startsWith("PREGĂTIT AUTO DEMO")) {
               autoDemoArmed = false
@@ -3400,7 +3409,7 @@ class ScalpOverlayService : Service() {
               autoDemoExpiry = clockNow + 10 * 60_000L
               text = "🤖 ROBOT ON • OPREȘTE"
               probeStatus.text = "ON QT DEMO • " + pair +
-                " • 1 SINGUR ȘOC NOU • 1 USD • PAYOUT ≥92%"
+                " • 1 SINGUR ȘOC NOU • MIZĂ DIN BROKER • PAYOUT ≥92%"
             }
           }
         } catch (error: Exception) {
@@ -3444,7 +3453,7 @@ class ScalpOverlayService : Service() {
     // 451: ALWAYS visible even when the overlay is minimized. The number is
     // a preview at 92% payout, not an executed stake and not a broker balance.
     martingaleStatusText = TextView(this).apply {
-      text = "MIZĂ 1,00 USD • MG DEMO"
+      text = if (CHART_ONLY_DEMO_462) "MIZĂ SETATĂ ÎN BROKER" else "MIZĂ 1,00 USD • MG DEMO"
       textSize = 9f
       gravity = Gravity.CENTER
       maxLines = 1
@@ -4222,7 +4231,7 @@ class ScalpOverlayService : Service() {
       }
       .mapNotNull { it.groupValues[3].toIntOrNull() }.distinct().toList()
     if (payoutValues.size != 1 || payoutValues.single() !in 92..100 ||
-        stake !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
+        stake <= 0L ||
         net !in -stake..((stake * payoutValues.single() + 99L) / 100L) ||
         paid != stake + net) return
     val opened = openLabel.split(':')
@@ -5625,8 +5634,12 @@ class ScalpOverlayService : Service() {
             !tfReady -> "TF NECONFIRMAT"
             !brokerConnected -> "CADRE LIVE NECONFIRMATE"
             else -> try {
-              val nextStake429 = desiredVerifiedDemoStake429(pair)
+              val nextStake429 = if (CHART_ONLY_DEMO_462) null else desiredVerifiedDemoStake429(pair)
               when {
+                CHART_ONLY_DEMO_462 ->
+                  if (TouchTestService.readBrokerDemoOrder476(pair) != null)
+                    "PREGĂTIT AUTO DEMO"
+                  else "BLOCAT: MIZĂ / PAYOUT / TIMP QT DEMO NECONFIRMATE"
                 nextStake429 == null -> "BLOCAT: REZULTAT / MIZĂ DEMO NECONFIRMATĂ"
                 nextStake429 == 100L ->
                   TouchTestService.preflightOneDollarDemoOrder(pair)
@@ -5722,7 +5735,7 @@ class ScalpOverlayService : Service() {
         // preparing the next stake field is NOT permission to trade it.
         if (closedHistoryInspectionInProgress) {
           touchProbeStatus?.text = "ISTORIC ÎNCHIS • VERIFICARE READ-ONLY • FĂRĂ ORDIN"
-        } else if (demoRecoveryLedger.isRecovering429() &&
+        } else if (!CHART_ONLY_DEMO_462 && demoRecoveryLedger.isRecovering429() &&
             desiredVerifiedDemoStake429(expectedPair ?: "NEIDENTIFICAT") == null) {
           touchProbeStatus?.text =
             "RECUPERARE DEMO • QUOTE / PAYOUT / SOLD NECONFIRMATE"
@@ -5742,8 +5755,13 @@ class ScalpOverlayService : Service() {
           // A rejection before persistence never licenses an automatic retry
           // of the SAME SHOCK; only a different, new confirmed lock qualifies.
           val tradePair429 = expectedPair ?: "NEIDENTIFICAT"
-          val stake429 = desiredVerifiedDemoStake429(tradePair429)
-          val payout429 = if (stake429 != null)
+          val manualOrder = if (CHART_ONLY_DEMO_462) try {
+            TouchTestService.readBrokerDemoOrder476(tradePair429)
+          } catch (_: Exception) { null } else null
+          val stake429 = if (CHART_ONLY_DEMO_462) manualOrder?.first
+            else desiredVerifiedDemoStake429(tradePair429)
+          val payout429 = if (CHART_ONLY_DEMO_462) manualOrder?.second
+            else if (stake429 != null)
             TouchTestService.readVerifiedDemoPayoutForStake429(tradePair429, stake429)
           else null
           val package429 = TouchTestService.activeDemoExecutorPackageForReview()
@@ -5751,11 +5769,12 @@ class ScalpOverlayService : Service() {
             demoRecoveryLedger.quote(payout429).stakeCents == stake429
           val latestPreflight = try {
             when {
-              CHART_ONLY_DEMO_462 && stake429 != 100L ->
-                "BLOCAT: PILOT DEMO DOAR 1 USD • FĂRĂ MG"
+              CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
+                "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
               CHART_ONLY_DEMO_462 &&
                 !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
                 "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"
+              CHART_ONLY_DEMO_462 -> "PREGĂTIT AUTO DEMO"
               !quoteMatches429 || package429 == null ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
               stake429 == 100L ->
@@ -5784,6 +5803,7 @@ class ScalpOverlayService : Service() {
               .putString("expectedPair429", tradePair429)
               .putString("expectedPackage429", package429)
               .putLong("expectedStakeCents429", stake429 ?: -1L)
+              .putBoolean("brokerStake476", CHART_ONLY_DEMO_462)
               .putInt("expectedPayout429", payout429 ?: -1)
               .putString("expectedSide437", activeSignal)
               .putLong("attemptedAt429", android.os.SystemClock.elapsedRealtime())
@@ -5805,7 +5825,11 @@ class ScalpOverlayService : Service() {
               // was possible. Only THIS case may safely undo a persisted
               // attempted marker, and never replay the old SHOCK lock.
               try {
-                val result = if (stake429 == 100L)
+                val result = if (CHART_ONLY_DEMO_462 && stake429 != 100L)
+                  TouchTestService.pressVerifiedDemoStakeOnce429(
+                    activeSignal, tradePair429, stake429!!, payout429!!
+                  )
+                else if (stake429 == 100L)
                   TouchTestService.pressAutoOneDollarDemoOrderOnce(
                     activeSignal, tradePair429
                   )
@@ -5974,6 +5998,7 @@ class ScalpOverlayService : Service() {
         val recoveryCents451 = recoveryQuote451.stakeCents
         val recoveryActive451 = demoRecoveryLedger.isRecovering429()
         mgText451.text = when {
+          CHART_ONLY_DEMO_462 -> "MIZĂ SETATĂ ÎN BROKER"
           !verifiedDemo451 -> "MG: DOAR QT DEMO"
           unresolvedOld451 || demoRecoveryLedger.verifiedOpenPositionId429() != null ->
             "MG BLOCAT • ORDIN NEVERIFICAT"

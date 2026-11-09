@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 465 G24 continuous $1 DEMO with expiry guard
+name: Build Scalp Atlas 476 G24 with broker-set DEMO stake
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-broker-stake476]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.28'
+          expo['version']='3.2.39'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=465
+          expo['android']['versionCode']=476
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1958,7 +1958,7 @@ jobs:
           print('463 PASS: passive authentic receipt match, no chart-only history clicks or MG bypass')
           PY
 
-      - name: Verify 465 no three-trade cap or seven-minute pause with 5-minute QT DEMO expiry
+      - name: Verify timed rearm with broker stake and 5-minute QT DEMO expiry
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -1977,7 +1977,7 @@ jobs:
           assert 'used >= ' not in pilot
           assert 'getBoolean("attempted", false)' in pilot
           assert 'autoDemoSessionConsumed' in pilot
-          assert 'expectedStake != 100L' in pilot
+          assert 'expectedStake <= 0L' in pilot
           assert 'expectedPayout !in 92..100' in pilot
           assert 'wallAge in 0 until DEMO_TEST_EXPIRY_MS_465' in pilot
           assert 'TouchTestService.priorDemoGestureCooldownComplete()' in pilot
@@ -1986,11 +1986,11 @@ jobs:
           assert 'demoRecoveryLedger.verifiedOpenPositionId429() != null' in pilot
           assert 'demoRecoveryLedger.isRecovering429()' in pilot
           assert 'demoRecoveryLedger.quote(expectedPayout).stakeCents != 100L' in pilot
-          assert 'TouchTestService.preflightOneDollarDemoOrder(visiblePair)' in pilot
+          assert 'TouchTestService.readBrokerDemoOrder476(visiblePair)' in pilot
           assert 'releaseUnknownGestureForExpiredDemoPilot464(' in pilot
           assert 'maybeRearmExpiredDemoPilot464(' in monitor
           assert 'if (CHART_ONLY_DEMO_462) {' in monitor
-          assert 'CHART_ONLY_DEMO_462 && stake429 != 100L' in s
+          assert 'CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null)' in s
           assert 'CHART_ONLY_DEMO_462 &&' in s
           assert 'confirmedFiveMinuteDemoExpiry465()' in s
           assert 'state == State.SUBMITTING || state == State.OPEN' in gate
@@ -2010,7 +2010,7 @@ jobs:
                 'performGlobalAction(', 'pressAutoOneDollarDemoOrderOnce(',
                 'pressVerifiedDemoStakeOnce429('):
             assert forbidden not in pilot, forbidden
-          print('465 PASS: unlimited-count DEMO 1 USD attempts after exact 5-minute configured expiry; no 7min delay, REAL, MG, or history clicks')
+          print('476 PASS: verified broker stake with exact 5-minute QT DEMO expiry and existing order guards')
           PY
 
       - name: Allow Gradle wrapper download on slower GitHub runners
@@ -2134,28 +2134,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-465-DEMO-CONTINUU-1USD-G24.apk
+          cp "$APK" ScalpAtlas-476-MIZA-DIN-BROKER-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-465-DEMO-CONTINUU-1USD-G24
-          path: ScalpAtlas-465-DEMO-CONTINUU-1USD-G24.apk
+          name: ScalpAtlas-476-MIZA-DIN-BROKER-G24
+          path: ScalpAtlas-476-MIZA-DIN-BROKER-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-demo-continuous465'
+        if: github.ref == 'refs/heads/fix/scalpatlas-broker-stake476'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-465-DEMO-CONTINUU-1USD-G24.apk"
+          FILE="ScalpAtlas-476-MIZA-DIN-BROKER-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-continuu465-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-broker-stake476-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 465 - DEMO CONTINUU 1 USD G24 • ${GITHUB_SHA:0:12}" \
-            --notes "465 CANDIDAT QT DEMO Motorola G24 (NETESTAT FIZIC): elimina limita artificiala de 3 incercari si pauza suplimentara de 7 minute din v464. Fiecare semnal SOC nou poate declansa cel mult un gest BUY/SELL 1 USD dupa intervalul de expirare de 5 minute si cooldown-ul Android deja existent; este obligatoriu ca brokerul sa afiseze 00:05:00, QT DEMO, perechea si payout >=92%, suma 1 USD. Nu exista dovada automata a inchiderii brokerului, deci intervalul nu garanteaza absenta suprapunerilor; niciun WIN/LOSS nu este inventat, MG nu se activeaza, ID OPEN real nu este ignorat, REAL ramane blocat. Fara navigare automata in istoricul brokerului. Daca durata de 5 minute nu poate fi citita de accesibilitate, robotul opreste noi gesturi. Compilarea CI nu inseamna test fizic pe Pocket Option. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 476 - MIZA DIN BROKER QT DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "Candidat pentru Motorola G24. QT DEMO: setezi miza in broker, Scalp Atlas o verifica fara sa o modifice si apasa BUY/SELL la un semnal SOC valid. Expirare 5 minute, payout minimum 92%. Testul fizic ramane de facut. Build $GITHUB_SHA." \
           --prerelease
