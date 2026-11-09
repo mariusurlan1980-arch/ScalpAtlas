@@ -46,13 +46,46 @@ object ChartResultProof471 {
     val pairKey = expectedPair.uppercase().replace(Regex("""\s+"""), "")
     if (!canonical.contains(pairKey)) return null
 
+    // Pocket Option "Tooltips" can show the completed trade directly on
+    // the price chart as "TRADE AMOUNT: $1.00 / RESULT: +$1.92".
+    // RESULT here is the GROSS RETURN, not net profit. A $1.00 trade with
+    // 92% payout yields a $1.92 RESULT but only $0.92 NET profit.
+    // This distinct TWO-FIELD popup is already a completed-trade notice;
+    // never confuse it with the BUY/SELL potential payout quote.
+    val moneyPattern = """([+-]?\s*(?:USD\s*)?[$]?\s*\d{1,5}(?:[.,]\d{1,2})?\s*(?:USD)?)"""
+    val popupAmountRx = Regex(
+      """(?i)(?:TRADE\s+AMOUNT|TRANSACTION\s+AMOUNT|SUMA\s+TRANZAC[TȚ]IEI|SUMĂ\s+TRANZAC[TȚ]IEI)\s*:\s*""" + moneyPattern)
+    val popupResultRx = Regex(
+      """(?i)(?:RESULT|REZULTAT)\s*:\s*""" + moneyPattern)
+    val popupStakes = popupAmountRx.findAll(all)
+      .mapNotNull { moneyCents(it.groupValues[1]) }.distinct().toList()
+    val popupReturns = popupResultRx.findAll(all)
+      .mapNotNull { moneyCents(it.groupValues[1]) }.distinct().toList()
+    if (popupStakes.isNotEmpty() || popupReturns.isNotEmpty()) {
+      if (popupStakes.size != 1 || popupStakes.single() != expectedStakeCents ||
+          popupReturns.size != 1) return null
+      val shown = popupReturns.single()
+      val expectedNet = (expectedStakeCents * expectedPayoutPercent + 99L) / 100L
+      // Accept a full-loss result (0 gross or -stake net), a gross payout
+      // equal to stake + expected net, or explicitly reported net profit.
+      // No guessed payout and no breakeven interpretation.
+      val net = when {
+        shown == 0L || shown == -expectedStakeCents -> -expectedStakeCents
+        shown in (expectedStakeCents + expectedNet - 1L)..
+          (expectedStakeCents + expectedNet) -> shown - expectedStakeCents
+        shown in (expectedNet - 1L)..expectedNet -> shown
+        else -> return null
+      }
+      return Candidate(net, listOf("QT_DEMO_TOOLTIPS", pairKey,
+        expectedStakeCents, expectedPayoutPercent, net).joinToString("|"))
+    }
+
     // A selected history tab labeled "Închis" is NOT a closed-trade notice.
     val closedNotice = Regex(
       """(?i)(?:tranzac[tț]i[ae]|ordin(?:ul)?|trade|order|position|pozi[tț]i[ae])\s+.{0,26}?(?:closed|completed|settled|expired|finalizat[ăa]?|[iî]nchis[ăa]?|[iî]ncheiat[ăa]?|expirat[ăa]?)"""
     ).containsMatchIn(all)
     if (!closedNotice) return null
 
-    val moneyPattern = """([+-]?\s*(?:USD\s*)?[$]?\s*\d{1,5}(?:[.,]\d{1,2})?\s*(?:USD)?)"""
     val stakeRx = Regex(
       """(?i)(?:Miză|Miza|Stake|Investment|Investiție|Investitie|Suma|Sumă)\s*:\s*""" + moneyPattern)
     val profitRx = Regex(
