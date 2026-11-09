@@ -874,7 +874,7 @@ jobs:
           grep -Fq 'before.balanceCents < stakeCents' .github/native-overlay/DemoStakeEditor.kt
           grep -Fq 'maybePrepareAutomaticDemoRecoveryStake(' "$O"
           grep -Fq 'readVerifiedDemoPayoutForPair(' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'TRADE RECUPERARE NEACTIVAT' "$O"
+          grep -Fq 'MG DEMO • SUMĂ PREGĂTITĂ • AȘTEAPTĂ ȘOC CONFIRMAT' "$O"
           grep -Fq 'RECUPERARE DEMO • QUOTE / PAYOUT / SOLD NECONFIRMATE' "$O"
           grep -Fq 'advanceDemoClosedHistoryNavigation(' .github/native-overlay/TouchTestService.kt
           grep -Fq 'inspectDemoClosedTradeEvidenceReadOnly(' .github/native-overlay/TouchTestService.kt
