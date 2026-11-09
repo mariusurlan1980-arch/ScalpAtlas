@@ -1892,7 +1892,7 @@ jobs:
           print('459: bound physical Open label fallback, OCR word rect and intact order safety gates')
           PY
 
-      - name: Verify 469 chart-first watchdog never equates navigation with settlement
+      - name: Verify 470 chart-lock prevents history navigation and invented settlement
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -1904,20 +1904,20 @@ jobs:
           assert 'closedHistoryInspectionInProgress' in overlay
           assert 'TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(' in overlay
           assert 'onVerifiedDemoClosed(' in overlay
-          assert 'CHART_ONLY_DEMO_462 = false' in overlay
+          assert 'private const val CHART_ONLY_DEMO_462 = true' in overlay
           assert 'ISTORIC DEMO • ÎNAPOI SPRE GRAFIC' in nav
           assert '✅ LISTĂ GOALĂ 2/2 • REVIN LA GRAFIC' not in nav
-          print('469 PASS: bounded history and no invented settlement')
+          print('470 PASS: chart locked and no invented settlement')
           PY
 
-      - name: Verify 468 authenticated broker history mode and preserved order guards
+      - name: Verify 470 dormant broker history code and preserved order guards
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
-          assert 'private const val CHART_ONLY_DEMO_462 = false' in s
+          assert 'private const val CHART_ONLY_DEMO_462 = true' in s
           monitor=s.split('private fun startBrokerAccountMonitor()',1)[1].split('private fun startDemoClickMonitor()',1)[0]
           assert 'if (CHART_ONLY_DEMO_462) {' in monitor
           before, after=monitor.split('if (CHART_ONLY_DEMO_462) {',1)
@@ -1933,7 +1933,7 @@ jobs:
           assert 'oldShockAttempt && !savedReconciled437 -> false' in s
           assert 'realOrderAdapterAvailable = false' in r
           assert 'fun pressAutoOneDollarDemoOrderOnce(' in t
-          print('468: experimental receipt review enabled; original broker and one-position guards intact')
+          print('470: history review disabled by chart-only gate; broker and position guards preserved')
           PY
 
       - name: Verify 468 strict receipt matching before DemoRecoveryLedger settlement
@@ -1943,7 +1943,7 @@ jobs:
           s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
-          assert 'private const val CHART_ONLY_DEMO_462 = false' in s
+          assert 'private const val CHART_ONLY_DEMO_462 = true' in s
           fn=s.split('private fun inspectPassiveDemoProof463(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
           monitor=s.split('private fun startBrokerAccountMonitor()',1)[1].split('private fun startDemoClickMonitor()',1)[0]
           assert 'TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(' in fn
@@ -2106,7 +2106,7 @@ jobs:
           print('466 PASS: Android cross-check of SELL reversal, QT DEMO $1/5-minute restrictions unchanged')
           PY
 
-      - name: Verify 468 Martingale requires confirmed QT DEMO settlement, not a timer
+      - name: Verify 470 Martingale remains inactive without confirmed QT DEMO settlement
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -2114,7 +2114,7 @@ jobs:
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           ledger=Path('.github/native-overlay/DemoRecoveryLedger.kt').read_text()
           reg=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
-          assert 'private const val CHART_ONLY_DEMO_462 = false' in s
+          assert 'private const val CHART_ONLY_DEMO_462 = true' in s
           assert 'if (!CHART_ONLY_DEMO_462)' in s
           assert 'maybePrepareAutomaticDemoRecoveryStake(' in s
           assert 'setVerifiedDemoRecoveryStakeOnBroker(pair, stake)' in s
