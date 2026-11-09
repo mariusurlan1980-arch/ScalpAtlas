@@ -96,6 +96,20 @@ class TradePositionGate {
     return true
   }
 
+  /**
+   * 471: a QT DEMO broker-rendered CLOSED-trade notification was matched to
+   * the one saved gesture via two separate fresh screenshots. This is NOT
+   * a timeout release or a shortcut for a known broker OPEN ID.
+   * An unknown Android gesture is the only state this can resolve.
+   */
+  @Synchronized
+  fun chartDemoClosedNoticeVerified471(twoBrokerFramesVerified: Boolean): Boolean {
+    if (!twoBrokerFramesVerified || state != State.UNKNOWN ||
+        currentId != null) return false
+    state = State.READY
+    return true
+  }
+
   @Synchronized
   fun resetOnNewVerifiedAccount() {
     currentId = null
