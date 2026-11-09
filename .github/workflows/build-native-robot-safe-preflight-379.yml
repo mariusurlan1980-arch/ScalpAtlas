@@ -973,10 +973,14 @@ jobs:
           cp .github/native-overlay/DemoRecoveryLedger.kt "$JAVA_DIR/DemoRecoveryLedger.kt"
           cp .github/native-overlay/DemoStakeEditor.kt "$JAVA_DIR/DemoStakeEditor.kt"
           cp .github/native-overlay/BrokerAdapterRegistry.kt "$JAVA_DIR/BrokerAdapterRegistry.kt"
-          # Preview branch only: restore exact selected brain art into the Android drawable folder.
+          # Preview 1: rotate the actual selected neon brain, WITHOUT orbit ring.
+          # Android 14 decodes animated WebP in ImageDecoder/AnimatedImageDrawable.
           mkdir -p scalp-atlas-new/android/app/src/main/res/drawable
           base64 --decode .github/native-overlay/galactic_brain_preview.webp.b64 > scalp-atlas-new/android/app/src/main/res/drawable/galactic_brain_preview.webp
-          test -s scalp-atlas-new/android/app/src/main/res/drawable/galactic_brain_preview.webp
+          mkdir -p scalp-atlas-new/android/app/src/main/res/raw
+          cat .github/native-overlay/brain_rotating_part{1,2,3,4}.txt | base64 --decode > scalp-atlas-new/android/app/src/main/res/raw/galactic_brain_rotating.webp
+          echo "1513f6befaa7a67f476771df483763e4ffcb94d0037b6840c6d2b8ad8cfd11fe  scalp-atlas-new/android/app/src/main/res/raw/galactic_brain_rotating.webp" | sha256sum --check
+          file scalp-atlas-new/android/app/src/main/res/raw/galactic_brain_rotating.webp
           for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt DemoRecoveryLedger.kt DemoStakeEditor.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
