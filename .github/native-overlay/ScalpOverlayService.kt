@@ -3328,6 +3328,7 @@ class ScalpOverlayService : Service() {
       var running = false
       var forward = true
       var task: Runnable? = null
+      var rejectedSelections = 0
       var originalOverlayY: Int? = null
       var dockedOverlayY: Int? = null
 
@@ -3392,7 +3393,7 @@ class ScalpOverlayService : Service() {
           beginNavigation()
           val current = pair ?: latestMarket.takeUnless { it == "NEIDENTIFICAT" }
           current?.let { visited.add(it) }
-          select(current, 12, true)
+          after(if (dockForSelector()) 350L else 0L) { select(current, 12, true) }
         } else {
           fxButton.text = "ROTAȚIE • VERIFIC M5"
           verifyChart(checkNotNull(pair), 24)
@@ -3400,6 +3401,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun beginNavigation() {
+        rejectedSelections = 0
         fxRotationNavigating = true
         autoDemoArmed = false
         autoDemoMarket = null
@@ -3473,27 +3475,15 @@ class ScalpOverlayService : Service() {
           stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
           return
         }
-        val location = IntArray(2)
-        root.getLocationOnScreen(location)
-        val window = overlayWindowParams
-        val screenHeight = resources.displayMetrics.heightPixels
-        val headerBottom = (screenHeight * .33f).toInt()
-        if (window != null && location[1] <= headerBottom &&
-            location[0] < resources.displayMetrics.widthPixels * .60f &&
-            originalOverlayY == null) {
-          val targetY = headerBottom + dp(12)
-          if (targetY + root.height < screenHeight - dp(24)) {
-            originalOverlayY = window.y
-            dockedOverlayY = targetY
-            window.y = targetY
-            windowManager.updateViewLayout(root, window)
-            after(350L) { openList(pair, physicalOnly) }
-            return
-          }
+        if (dockForSelector()) {
+          after(350L) { openList(pair, physicalOnly) }
+          return
         }
-        val overlayBounds = Rect(location[0], location[1],
-          location[0] + root.width, location[1] + root.height)
-        if (!TouchTestService.reopenDemoFxList(pair, overlayBounds, physicalOnly)) {
+        if (TouchTestService.demoFxListVisible()) {
+          select(pair, 12, true)
+          return
+        }
+        if (!TouchTestService.reopenDemoFxList(pair, overlayBounds(), physicalOnly)) {
           stop("ROTAȚIE • SELECTOR BLOCAT")
           return
         }
@@ -3509,13 +3499,29 @@ class ScalpOverlayService : Service() {
         else stop("ROTAȚIE • LISTA NU S-A DESCHIS")
       }
 
+      fun dockForSelector(): Boolean {
+        if (originalOverlayY != null) return false
+        val window = overlayWindowParams ?: return false
+        val screenHeight = resources.displayMetrics.heightPixels
+        val targetY = screenHeight - root.height - dp(20)
+        // The temporary position must clear the FX rows as well as the header.
+        // Trading is already paused throughout selector navigation.
+        if (targetY < screenHeight * .70f || overlayBounds().top >= screenHeight * .70f)
+          return false
+        originalOverlayY = window.y
+        dockedOverlayY = targetY
+        window.y = targetY
+        windowManager.updateViewLayout(root, window)
+        return true
+      }
+
       fun overlayBounds(): Rect {
         val location = IntArray(2)
         root.getLocationOnScreen(location)
         return Rect(location[0], location[1], location[0] + root.width, location[1] + root.height)
       }
 
-      fun confirmSelection(pair: String, retryTap: Boolean) {
+      fun confirmSelection(pair: String, previous: String?, retryTap: Boolean) {
         if (tradeBusy()) {
           stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
           return
@@ -3523,11 +3529,18 @@ class ScalpOverlayService : Service() {
         if (!TouchTestService.demoFxListVisible()) {
           restoreOverlay()
           verifyChart(pair, 24)
-        } else if (retryTap &&
-            TouchTestService.navigateOpenDemoFxList(emptySet(), false, forward,
-              overlayBounds(), pair).pair == pair) {
-          after(1_250L) { confirmSelection(pair, false) }
-        } else stop("ROTAȚIE • PERECHEA NU S-A SELECTAT")
+          return
+        }
+        val retry = if (retryTap) TouchTestService.navigateOpenDemoFxList(
+          emptySet(), false, forward, overlayBounds(), pair) else null
+        if (retry?.pair == pair) {
+          after(1_250L) { confirmSelection(pair, previous, false) }
+        } else if (rejectedSelections < 2) {
+          rejectedSelections++
+          visited.add(pair)
+          fxButton.text = "ROTAȚIE • ÎNCERC ALTĂ PERECHE"
+          after(500L) { select(previous, 12, false) }
+        } else stop("ROTAȚIE • " + (retry?.message ?: "PERECHEA NU S-A SELECTAT"))
       }
 
       fun select(previous: String?, scrolls: Int, mayWrap: Boolean, rowChecks: Int = 5) {
@@ -3540,7 +3553,7 @@ class ScalpOverlayService : Service() {
         when {
           pair != null -> {
             fxButton.text = "ROTAȚIE • VERIFIC $pair"
-            after(1_250L) { confirmSelection(pair, true) }
+            after(1_250L) { confirmSelection(pair, previous, true) }
           }
           result.message == "RÂNDURI VALUTE NECITITE" && rowChecks > 0 ->
             after(500L) { select(previous, scrolls, mayWrap, rowChecks - 1) }
@@ -3551,12 +3564,12 @@ class ScalpOverlayService : Service() {
             forward = !forward
             select(previous, 12, false)
           }
-          !mayWrap && previous != null &&
+          !mayWrap && rejectedSelections == 0 && previous != null &&
             (result.message.startsWith("NICIO ALTĂ") || scrolls == 0) -> {
             val same = TouchTestService.navigateOpenDemoFxList(emptySet(), false, forward, overlayBounds())
             val fallback = same.pair
             if (fallback == null) stop("ROTAȚIE • NICIO PERECHE ≥92%")
-            else after(1_250L) { confirmSelection(fallback, true) }
+            else after(1_250L) { confirmSelection(fallback, previous, true) }
           }
           else -> stop("ROTAȚIE • " + result.message)
         }
