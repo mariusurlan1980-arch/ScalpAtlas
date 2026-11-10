@@ -5241,7 +5241,7 @@ class ScalpOverlayService : Service() {
     val buyWickRejected = rawStrategy == "SHOCK" && rawSignal == "BUY" &&
       !result.optBoolean("buyWickEntry", false)
     if (buyWickRejected) shockBlocker = "BUY • AȘTEPT FITIL JOS"
-    val confirmedShock = !buyWickRejected && rawStrategy == "SHOCK" && quality >= 55 &&
+    val confirmedShock = rawStrategy == "SHOCK" && !buyWickRejected && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
       shockFrameFresh && shockBodyPercent > SHOCK_MIN_DEPTH &&
       shockReboundPercent >= SHOCK_MIN_RECOVERY &&
