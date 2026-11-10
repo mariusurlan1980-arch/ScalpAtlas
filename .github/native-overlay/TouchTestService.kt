@@ -392,7 +392,28 @@ class TouchTestService : AccessibilityService() {
     /** Reads only rows with a payout attached to the same accessibility item. */
     fun readVisibleDemoFxQuotes(): List<DemoFxQuote> {
       val (_, _, labels) = activeDemoHistoryNodes(false) ?: return emptyList()
-      val quotes = labels.mapNotNull { (node, bounds) ->
+      fun rowTexts(node: AccessibilityNodeInfo): List<String> =
+        listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+          .map(String::trim).distinct()
+      val currencyHeader = labels.firstOrNull { (node, _) ->
+        rowTexts(node).any { it.equals("Valute", true) || it.equals("Currencies", true) }
+      }?.second ?: return emptyList()
+      val payoutHeader = labels.firstOrNull { (node, rect) ->
+        rect.left > currencyHeader.right &&
+          rect.centerY() in currencyHeader.top until currencyHeader.bottom &&
+          rowTexts(node).any { it.equals("Venit", true) || it.equals("Payout", true) }
+      }?.second ?: return emptyList()
+      val listBottom = labels.filter { (node, rect) ->
+        rect.top > currencyHeader.bottom && rowTexts(node).any {
+          it.equals("Timp", true) || it.equals("Time", true) ||
+            it.equals("Suma", true) || it.equals("Sumă", true) || it.equals("Amount", true)
+        }
+      }.minOfOrNull { it.second.top } ?: Int.MAX_VALUE
+      val listLabels = labels.filter { (_, rect) ->
+        rect.centerY() in currencyHeader.bottom until listBottom
+      }
+      val quotes = listLabels.mapNotNull { (node, bounds) ->
+        if (bounds.centerX() >= payoutHeader.centerX()) return@mapNotNull null
         val values = listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
           .map(String::trim).filter { it.length in 1..75 }.distinct()
         val pairs = values.flatMap { value ->
@@ -404,16 +425,14 @@ class TouchTestService : AccessibilityService() {
         val (base, quote, otc) = pairs.singleOrNull() ?: return@mapNotNull null
         if (base == quote || base !in fiatCodes || quote !in fiatCodes)
           return@mapNotNull null
-        // The number may be in a separate label within the same parent row.
-        val rowValues = if (values.any { fxPayoutLabel.containsMatchIn(it) }) values else {
-          val parent = node.parent ?: return@mapNotNull null
-          labels.filter { (sibling, rect) ->
-            sibling.parent == parent && rect.centerY() in bounds.top until bounds.bottom &&
-              rect.left >= bounds.right
-          }.flatMap { (sibling, _) ->
-            listOfNotNull(sibling.text?.toString(), sibling.contentDescription?.toString())
-              .map(String::trim).filter { fxPayoutLabel.matches(it) }
-          }
+        // Pocket Option exposes the pair and payout in separate columns.
+        // Restrict the match to that row and to the payout column.
+        val rowValues = values + listLabels.filter { (_, rect) ->
+          rect.centerY() in bounds.top until bounds.bottom &&
+            rect.left >= bounds.right &&
+            rect.centerX() >= payoutHeader.left - payoutHeader.width() / 2
+        }.flatMap { (payoutNode, _) ->
+          rowTexts(payoutNode).filter { fxPayoutLabel.matches(it) }
         }
         val payout = rowValues.flatMap { value ->
           fxPayoutLabel.findAll(value).mapNotNull { it.groupValues[1].toIntOrNull() }.toList()
