@@ -5619,12 +5619,13 @@ class ScalpOverlayService : Service() {
     val wickRejected = rawStrategy == "SHOCK" && rawDirectionValid &&
       !result.optBoolean("wickEntry", false)
     if (wickRejected) shockBlocker = if (rawSignal == "BUY")
-      "BUY • AȘTEPT FITIL JOS" else "SELL • AȘTEPT FITIL SUS"
+      "BUY • AȘTEPT REVENIRE TIMPURIE" else "SELL • AȘTEPT REVENIRE TIMPURIE"
     val confirmedShock = rawStrategy == "SHOCK" && !wickRejected && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
       shockFrameFresh && shockBodyPercent > SHOCK_MIN_DEPTH &&
       shockReboundPercent >= SHOCK_MIN_RECOVERY &&
-      wickMeasured >= 1 && shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
+      (wickMeasured >= 1 || result.optBoolean("sameColorContinuation", false)) &&
+      shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
       sameShockDirection && result.optString("shockDirection") == rawSignal
     val scalpGate = result.optBoolean("scalpOpticalVerified", false) &&
       result.optBoolean("scalpSameCandle", false)

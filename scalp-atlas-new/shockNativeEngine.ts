@@ -9,9 +9,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
   var canvas=document.getElementById('c');
   var ctx=canvas.getContext('2d',{willReadFrequently:true});
   var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1,lastObservedAt=0,lastValidCandleAt=0,shockHold=null;
-  function nearRejectionWick(candle,recovery,preShockBody){
+  function nearRejectionWick(candle,recovery,preShockBody,sameColorContinuation){
     var wick=candle.dir==='BUY'?candle.connectedLowerWickPixels:candle.connectedUpperWickPixels;
-    return wick>=Math.max(5,preShockBody*.35) &&
+    return (sameColorContinuation || wick>=Math.max(5,preShockBody*.35)) &&
       recovery>=.20 && recovery<=.55;
   }
   function send(obj){try{AndroidBridge.postMessage(JSON.stringify(obj));}catch(e){}}
@@ -254,10 +254,13 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var displayedDepth=0,displayedDropDuration=0,confirmed=false,dir='NONE';
         var displayedThreshold=Math.round(minShockFraction*100);
         var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
-        var wickEntry=false,wickTurnY=0,wickPullback=0,wickPreShockBody=0;
+        var wickEntry=false,wickTurnY=0,wickPullback=0,wickPreShockBody=0,bodyContinuation=false;
         for(var i=0;i<history.length-1;i++){
           var start=history[i];
           if(start.dir!==candle.dir||start.bodyHeight<minBody)continue;
+          // A retreat inside a green/red body does not create a lower/upper
+          // wick beyond its opening price. Track the observed sequence instead.
+          var sameColorContinuation=history.slice(i).every(function(o){return o.dir===candle.dir;});
           for(var j=i+1;j<history.length;j++){
             var bottom=history[j],fallMs=bottom.t-start.t;
             if(fallMs>maxDropMs)break; // slow movement is not a rapid shock
@@ -293,12 +296,12 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             if(firstRebound<=0||secondRebound<=0)continue;
             var recovery=candle.dir==='BUY'?bottom.y-latest.y:latest.y-bottom.y;
             if(recovery/drop<minRecoveryFraction)continue;
-            var nearWick=nearRejectionWick(candle,recovery/drop,start.bodyHeight);
-            // Relax depth for large bodies only when the early entry has visible wick support.
+            var nearWick=nearRejectionWick(candle,recovery/drop,start.bodyHeight,sameColorContinuation);
+            // A shallow large-body retreat needs a verified early entry.
             if(percent<=minShockFraction*100&&!nearWick)continue;
-            // Require a visible same-candle wick, now >=20% of pre-shock
-            // body. Preserve physical evidence; never infer a wick from color.
-            if(latest.wickPixels<start.bodyHeight*.20)continue;
+            // Accept a visible wick or an observed same-color body continuation.
+            // Body continuation requires the early recovery window as well.
+            if(latest.wickPixels<start.bodyHeight*.20 && !(sameColorContinuation&&nearWick))continue;
             // Trend is an optional CONTRADICTION filter, not a requirement
             // for the measured shock. Missing three prior bodies is common
             // on the G24 chart and must never be fabricated as a trend.
@@ -312,6 +315,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
               wickTurnY=bottom.y;
               wickPullback=drop;
               wickPreShockBody=start.bodyHeight;
+              bodyContinuation=sameColorContinuation&&nearWick;
             }
             if(percent>=confirmedDepth){
               confirmedDepth=percent;
@@ -327,20 +331,20 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // after the rebound yields only ONE callback and never reaches BIP.
         // Hold the SAME physically verified event for at most 3 seconds,
         // only while this fresh frame still shows the original direction,
-        // candle X, wick and no significant reversal of the rebound.
+        // candle X, original entry evidence and no significant reversal of the rebound.
         // Never create a signal from a static candle, missing pixels or
         // a stale/changed chart; reset() clears this hold on every boundary.
         if(confirmed){
           shockHold={at:now,dir:dir,x:candle.x,y:candle.closeY,
             body:candle.bodyHeight,depth:confirmedDepth,
             rebound:confirmedRebound,duration:confirmedDuration,
-            wickTurnY:wickTurnY,wickPullback:wickPullback,wickPreShockBody:wickPreShockBody};
+            wickTurnY:wickTurnY,wickPullback:wickPullback,wickPreShockBody:wickPreShockBody,bodyContinuation:bodyContinuation};
         }else if(shockHold){
           var held=shockHold;
           var against=held.dir==='BUY'?candle.closeY-held.y:held.y-candle.closeY;
           var matching=candle.dir===held.dir &&
             Math.abs(candle.x-held.x)<=tolerance &&
-            candle.wickPixels>=held.body*.20 &&
+            (held.bodyContinuation || candle.wickPixels>=held.body*.20) &&
             against<=minMove &&
             !(candle.trendMeasured && candle.trendDirection!=='NONE' &&
               candle.trendDirection!==held.dir);
@@ -352,7 +356,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             var heldRecovery=held.dir==='BUY'?
               held.wickTurnY-candle.closeY:candle.closeY-held.wickTurnY;
             wickEntry=held.wickPullback>0 && nearRejectionWick(candle,
-              heldRecovery/held.wickPullback,held.wickPreShockBody);
+              heldRecovery/held.wickPullback,held.wickPreShockBody,held.bodyContinuation);
+            bodyContinuation=held.bodyContinuation&&wickEntry;
           }else{
             shockHold=null;
           }
@@ -433,6 +438,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             candidateDirection:emittedDirection,
             shockOpticalVerified:confirmed,shockSameCandle:confirmed,
             wickEntry:wickEntry,
+            sameColorContinuation:bodyContinuation,
             shockRetraced:confirmed,shockRecovered:confirmed,
             // All percentages below refer to the observed forming candle.
             shockRetracementPercent:confirmed?confirmedDepth:displayedDepth,

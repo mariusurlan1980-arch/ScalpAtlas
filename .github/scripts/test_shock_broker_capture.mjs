@@ -222,11 +222,13 @@ for(let n=0;n<8;n++){
   const wickOnly=analyze(144,'BUY','WICK-ONLY OTC',47,'M10',0,true);
   assertQuiet(wickOnly);
 }
-// A real retreat / recovery without a wick must stay silent.
+// A measured same-color body retreat and early recovery qualifies without an opening-price wick.
 let noWick;
 for(const close of [110,128,181,219,211,172,159])
   noWick=analyze(close,'BUY','NO-WICK OTC',50,'M10',0,false);
-assertQuiet(noWick);
+assert.equal(noWick.shockDirection, 'BUY');
+assert.equal(noWick.sameColorContinuation, true);
+assert.equal(noWick.wickEntry, true);
 // Opposite confirmed candle color versus prior measured trend MUST stay silent.
 let againstTrend;
 for(const close of [110,128,181,219,211,172,159])
@@ -387,8 +389,8 @@ for (const [index, side] of ['BUY', 'SELL'].entries()) {
     `${side} remains eligible on a fresh held frame in the entry zone`);
   assert.equal(run([202], earlyPair, true).wickEntry, false,
     `${side} loses eligibility when the price leaves the entry zone`);
-  assert.equal(run([200, 220, 216, 212], `SHORT-${side} OTC`, false).wickEntry, false,
-    `A short wick blocks ${side}`);
+  assert.equal(run([200, 220, 216, 212], `SHORT-${side} OTC`, false).wickEntry, true,
+    `A same-color body retreat with early recovery qualifies for ${side}`);
   assert.equal(run([200, 220, 215, 205], `LATE-${side} OTC`, true).wickEntry, false,
     `A late rebound blocks ${side} despite the long wick`);
 }
@@ -405,9 +407,35 @@ for (const side of ['BUY', 'SELL']) {
   for (const close of [170, 183, 181, 178]) {
     noWick = analyze(price(close), side, `NO-WICK-${side} OTC`, 112, 'M5', 0, false, 'NONE');
   }
-  assertQuiet(noWick);
+  assert.equal(noWick.shockDirection, side);
+  assert.equal(noWick.sameColorContinuation, true);
+  assert.equal(noWick.wickEntry, true);
   assert.equal(smallBody.shockThresholdPercent, 30);
   assert.equal(largeBody.wickEntry, true, `${side} admits a clear 20–25% shock on a large candle`);
   assert.ok(largeBody.shockRetracementPercent > 20 && largeBody.shockRetracementPercent <= 25);
   assertQuiet(smallBody);
 }
+
+// 491 regression: same-color continuation can occur entirely inside the body.
+// The opening-price wick is only 8px, below both legacy wick cutoffs.
+for (const side of ['BUY', 'SELL']) {
+  const price = close => side === 'BUY' ? close : 395 - close;
+  const sample = (closes, pair) => {
+    let result;
+    for (const close of closes)
+      result = analyze(price(close), side, pair, 130, 'M10', 0, false, 'NONE');
+    return result;
+  };
+  const bodyEntry = sample([170, 200, 194, 188], `BODY-CONTINUATION-${side} OTC`);
+  assert.equal(bodyEntry.shockDirection, side);
+  assert.equal(bodyEntry.sameColorContinuation, true);
+  assert.equal(bodyEntry.wickEntry, true);
+  assert.equal(sample([188], `BODY-CONTINUATION-${side} OTC`).wickEntry, true,
+    'Fresh stable frame can supply Android confirmation in the early entry zone');
+  assertQuiet(sample([170, 200, 188], `BODY-SINGLE-REBOUND-${side} OTC`));
+  const late = sample([170, 200, 188, 175], `BODY-LATE-${side} OTC`);
+  assert.notEqual(late.wickEntry, true, 'Body continuation cannot admit a late recovery');
+  const staticBody = sample([188, 188, 188, 188], `BODY-STATIC-${side} OTC`);
+  assertQuiet(staticBody);
+}
+console.log('PASS 491: BUY/SELL body continuation, two-frame rebound, early-entry and static/late rejection');

@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 490 Adaptive SHOCK G24
+name: Build Scalp Atlas 491 Same Color SHOCK G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-shock490]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-continuation491]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.52'
+          expo['version']='3.2.53'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=490
+          expo['android']['versionCode']=491
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1101,7 +1101,7 @@ jobs:
           grep -Fq 'shockRecovered:confirmed' "$E"
           grep -Fq 'shockSameCandle:confirmed' "$E"
           grep -Fq 'if(recovery/drop<minRecoveryFraction)continue;' "$E"
-          grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20)continue;' "$E"
+          grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20 && !(sameColorContinuation&&nearWick))continue;' "$E"
           grep -Fq "candle.trendDirection!==candle.dir" "$E"
           grep -Fq 'var minBody=Math.max(8,Math.min(16,h*.018))' "$E"
           grep -Fq 'var minMove=Math.max(5,Math.min(10,h*.008))' "$E"
@@ -1423,7 +1423,7 @@ jobs:
           O=.github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'var penultimate=history[history.length-2];' "$E"
           grep -Fq 'if(firstRebound<=0||secondRebound<=0)continue;' "$E"
-          grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20)continue;' "$E"
+          grep -Fq 'if(latest.wickPixels<start.bodyHeight*.20 && !(sameColorContinuation&&nearWick))continue;' "$E"
           grep -Fq "candle.trendMeasured && candle.trendDirection!=='NONE'" "$E"
           grep -Fq 'val independentlyOppositeTrend' "$O"
           grep -Fq 'val sameShockDirection = sameOpticalDirection &&' "$O"
@@ -2139,28 +2139,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-490-ROTATIE-30S-QT-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-491-ROTATIE-30S-QT-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-490-ROTATIE-30S-QT-DEMO-G24
-          path: ScalpAtlas-490-ROTATIE-30S-QT-DEMO-G24.apk
+          name: ScalpAtlas-491-ROTATIE-30S-QT-DEMO-G24
+          path: ScalpAtlas-491-ROTATIE-30S-QT-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-shock490'
+        if: github.ref == 'refs/heads/fix/scalpatlas-continuation491'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-490-ROTATIE-30S-QT-DEMO-G24.apk"
+          FILE="ScalpAtlas-491-ROTATIE-30S-QT-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-rotatie490-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-rotatie491-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 490 - ROTATIE 30S QT DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --title "SCALP ATLAS 491 - ROTATIE 30S QT DEMO G24 • ${GITHUB_SHA:0:12}" \
             --notes "Candidat pentru Motorola G24 cu margine Nebuloasa violet si creier albastru rotativ intr-un inel fix de eclipsa aurie. QT DEMO: setezi miza in broker, Scalp Atlas o verifica fara sa o modifice si filtreaza intrarile BUY si SELL dupa fitil si revenirea timpurie pe aceeasi lumanare. Expirare 5 minute, payout minimum 92%. Rotație opțională pe valute M5 la minimum 92%, 30 de secunde pe graficul confirmat. Rotația sare peste perechile sub 92%, inclusiv la pornire, și așteaptă pozițiile în curs. Panoul se mută temporar pentru a elibera selectorul. Testul fizic rămâne de făcut. Build $GITHUB_SHA." \
           --prerelease
