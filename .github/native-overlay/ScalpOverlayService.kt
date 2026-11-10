@@ -3393,23 +3393,29 @@ class ScalpOverlayService : Service() {
 
       fun verifyChart(pair: String, checks: Int) {
         val now = System.currentTimeMillis()
-        val payout = if (!TouchTestService.demoFxListVisible())
-          TouchTestService.readVerifiedDemoPayoutForPair(pair) else null
+        val payout = TouchTestService.readDemoFxChartPayout(pair)
+        if (payout != null && payout < 92) {
+          visited.add(pair)
+          beginNavigation()
+          fxButton.text = "$pair • $payout% • SAR PERECHEA"
+          openList(pair, false)
+          return
+        }
         val chartReady = payout != null && pairReady(now) && currentPair(now) == pair &&
           selectedTimeframe == "M5" && !manualTfConflict &&
           (!tfAutomatic || (tfVerified && now - confirmedTfAt in 0L..TF_STALE_MS)) &&
           observedCandleAt > 0L && now - observedCandleAt in 0L..3500L
         if (!chartReady) {
           if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
-          else stop("ROTAȚIE • GRAFIC M5 NECONFIRMAT")
+          else stop(if (payout == null) "ROTAȚIE • PAYOUT NECITIT"
+            else "ROTAȚIE • GRAFIC M5 NECONFIRMAT")
           return
         }
         if (fxRotationNavigating) clearOnInstrumentChange()
         fxRotationNavigating = false
         autoDemoEntryCycleStartedAt = now
         visited.add(pair)
-        val duration = if (checkNotNull(payout) >= 92) 30_000L else 0L
-        dwell(pair, android.os.SystemClock.elapsedRealtime() + duration, 12)
+        dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {

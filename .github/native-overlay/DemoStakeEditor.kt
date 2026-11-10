@@ -39,7 +39,12 @@ object DemoStakeEditor {
     return whole * 100 + two
   }
 
-  private fun inspect(svc: AccessibilityService): Pair<Screen?, String> {
+  private data class Chart(
+    val root: AccessibilityNodeInfo, val pkg: String, val w: Int, val h: Int,
+    val labels: List<Item>
+  )
+
+  private fun readChart(svc: AccessibilityService): Pair<Chart?, String> {
     val root = svc.rootInActiveWindow ?: return null to "BROKER NECONFIRMAT"
     val pkg = root.packageName?.toString().orEmpty()
     if (!BrokerAdapterRegistry.hasDemoExecutor(pkg))
@@ -84,6 +89,44 @@ object DemoStakeEditor {
     }
     if (!demo || real) return null to "BLOCAT: CONTUL QT DEMO NU ESTE CONFIRMAT"
 
+    return Chart(root, pkg, w, h, labels) to "QT DEMO"
+  }
+
+  private fun readChartPayout(chart: Chart): Pair<Int?, String> {
+    val (_, _, w, h, labels) = chart
+    val actionLabels = labels.filter {
+      it.rect.centerY() > h * .76f && it.rect.centerY() < h * .97f &&
+        Regex("""(?i)^(?:CUMPĂRAȚI|CUMPARATI|VINDEȚI|VINDETI)(?:\s+\d{1,3}\s*%)?$""")
+          .matches(it.value.replace('\n', ' ').trim())
+    }
+    if (!actionLabels.any { it.rect.centerX() < w * .49f } ||
+        !actionLabels.any { it.rect.centerX() > w * .51f })
+      return null to "BLOCAT: BUTOANE BUY/SELL NEIDENTIFICATE"
+    val payoutPattern = Regex("""(?<!\d)(\d{1,3})\s*%(?!\d)""")
+    fun pct(isBuy: Boolean) = labels.filter {
+      it.rect.centerY() > h * .75f && it.rect.centerY() < h * .97f &&
+        (if (isBuy) it.rect.centerX() < w * .49f
+         else it.rect.centerX() > w * .51f)
+    }.mapNotNull { payoutPattern.find(it.value)?.groupValues?.getOrNull(1)?.toIntOrNull() }
+      .distinct().singleOrNull()
+    val buyPayout = pct(true)
+    val sellPayout = pct(false)
+    if (buyPayout == null || buyPayout != sellPayout || buyPayout !in 0..100)
+      return null to "BLOCAT: PAYOUT BUY/SELL NECONFIRMAT"
+
+    return buyPayout to "QT DEMO"
+  }
+
+  fun readRotationPayout(svc: AccessibilityService): Int? {
+    val chart = readChart(svc).first ?: return null
+    val payout = readChartPayout(chart).first ?: return null
+    return payout.takeIf { svc.rootInActiveWindow == chart.root }
+  }
+
+  private fun inspect(svc: AccessibilityService): Pair<Screen?, String> {
+    val (chart, chartReason) = readChart(svc)
+    if (chart == null) return null to chartReason
+    val (_, pkg, w, h, labels) = chart
     val captions = labels.filter {
       it.rect.centerX() > w * .46f &&
       it.rect.centerY() in (h * .62).toInt()..(h * .88).toInt() &&
@@ -112,25 +155,9 @@ object DemoStakeEditor {
         it.id == AccessibilityNodeInfo.ACTION_SET_TEXT
       }) return null to "BLOCAT: CÂMPUL SUMĂ NU SUPORTĂ SET_TEXT"
 
-    val actionLabels = labels.filter {
-      it.rect.centerY() > h * .76f && it.rect.centerY() < h * .97f &&
-        Regex("""(?i)^(?:CUMPĂRAȚI|CUMPARATI|VINDEȚI|VINDETI)(?:\s+\d{1,3}\s*%)?$""")
-          .matches(it.value.replace('\n', ' ').trim())
-    }
-    if (!actionLabels.any { it.rect.centerX() < w * .49f } ||
-        !actionLabels.any { it.rect.centerX() > w * .51f })
-      return null to "BLOCAT: BUTOANE BUY/SELL NEIDENTIFICATE"
-    val payoutPattern = Regex("""(?<!\d)(\d{1,3})\s*%(?!\d)""")
-    fun pct(isBuy: Boolean) = labels.filter {
-      it.rect.centerY() > h * .75f && it.rect.centerY() < h * .97f &&
-        (if (isBuy) it.rect.centerX() < w * .49f
-         else it.rect.centerX() > w * .51f)
-    }.mapNotNull { payoutPattern.find(it.value)?.groupValues?.getOrNull(1)?.toIntOrNull() }
-      .distinct().singleOrNull()
-    val buyPayout = pct(true)
-    val sellPayout = pct(false)
-    if (buyPayout == null || buyPayout != sellPayout || buyPayout !in 92..100)
-      return null to "BLOCAT: PAYOUT BUY/SELL NECONFIRMAT ≥92%"
+    val (buyPayout, payoutReason) = readChartPayout(chart)
+    if (buyPayout == null) return null to payoutReason
+    if (buyPayout < 92) return null to "BLOCAT: PAYOUT BUY/SELL SUB 92%"
 
     val balance = labels.filter {
       it.rect.centerX() in (w * .48f).toInt()..(w * .86f).toInt() &&

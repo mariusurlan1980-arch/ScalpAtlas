@@ -393,6 +393,13 @@ class TouchTestService : AccessibilityService() {
         setOf("XAU", "XAG", "XPD", "XPT", "XTS", "XXX")
     }
 
+    fun readDemoFxChartPayout(pair: String): Int? {
+      val svc = connected ?: return null
+      if (readVisibleDemoPair() != pair || demoFxListVisible()) return null
+      val payout = DemoStakeEditor.readRotationPayout(svc) ?: return null
+      return payout.takeIf { connected === svc && readVisibleDemoPair() == pair }
+    }
+
     fun demoFxListVisible(): Boolean {
       val (_, _, labels) = activeDemoHistoryNodes(false) ?: return false
       return labels.any { (node, _) -> hasFxCurrencyHeader(node) }
