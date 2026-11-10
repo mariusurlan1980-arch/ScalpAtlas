@@ -14,6 +14,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PathMeasure
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Color
 import android.graphics.ColorFilter
@@ -149,6 +150,7 @@ class ScalpOverlayService : Service() {
   // The next independent SHOCK can be considered only AFTER the preceding
   // order has an exact authenticated CLOSED receipt and two ZERO-OPEN reads.
   // The session stays user-approved; QT Real and duplicate orders stay blocked.
+  private var fxRotationNavigating = false
   private var autoDemoSessionRequested = false
   private var autoDemoSessionConsumed = false
   private var autoDemoSessionEndAt = 0L
@@ -3319,6 +3321,190 @@ class ScalpOverlayService : Service() {
     // 1 USD, adequate demo balance, and a unique clickable trade button exist.
     // Verify account and exactly 1 USD without starting a transaction.
     // The current fail-closed error is shown verbatim to diagnose WebView nodes.
+    val fxButton = localButton("ROTAȚIE DEMO • 30 S", Color.rgb(71, 88, 118))
+    fxButton.contentDescription = "Pornește sau oprește rotația perechilor valutare QT Demo"
+    val fxRotation = object {
+      val visited = mutableSetOf<String>()
+      var running = false
+      var forward = true
+      var task: Runnable? = null
+
+      fun stop(message: String) {
+        running = false
+        fxRotationNavigating = false
+        task?.let { mainHandler.removeCallbacks(it) }
+        task = null
+        fxButton.text = message
+      }
+
+      fun tradeBusy(): Boolean =
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+          closedHistoryInspectionInProgress ||
+          listOf(autoShockAttemptPrefs, sell404TestPrefs).any { name ->
+            getSharedPreferences(name, Context.MODE_PRIVATE).getBoolean("attempted", false)
+          }
+
+      fun after(delay: Long, work: () -> Unit) {
+        val callback = Runnable {
+          task = null
+          if (!running || overlayView !== root || shuttingDown || mediaProjection == null)
+            stop("ROTAȚIE DEMO • 30 S")
+          else try {
+            work()
+          } catch (_: Exception) {
+            stop("ROTAȚIE • SELECTOR NECONFIRMAT")
+          }
+        }
+        task = callback
+        mainHandler.postDelayed(callback, delay)
+      }
+
+      fun start() {
+        val pair = TouchTestService.readVisibleDemoPair()
+        val listOpen = TouchTestService.demoFxListVisible()
+        if (mediaProjection == null || (pair == null && !listOpen)) {
+          stop("ROTAȚIE • DESCHIDE QT DEMO")
+          return
+        }
+        if (tradeBusy()) {
+          stop("ROTAȚIE • AȘTEAPTĂ ÎNCHIDEREA")
+          return
+        }
+        visited.clear()
+        forward = true
+        running = true
+        if (listOpen) {
+          beginNavigation()
+          select(pair, 12, true)
+        } else {
+          fxButton.text = "ROTAȚIE • VERIFIC M5"
+          verifyChart(checkNotNull(pair), 24)
+        }
+      }
+
+      fun beginNavigation() {
+        fxRotationNavigating = true
+        autoDemoArmed = false
+        autoDemoMarket = null
+        autoDemoExpiry = 0L
+        autoDemoLastPreflightAt = 0L
+        clearOnInstrumentChange()
+      }
+
+      fun verifyChart(pair: String, checks: Int) {
+        val now = System.currentTimeMillis()
+        val payout = if (!TouchTestService.demoFxListVisible())
+          TouchTestService.readVerifiedDemoPayoutForPair(pair) else null
+        val chartReady = payout != null && pairReady(now) && currentPair(now) == pair &&
+          selectedTimeframe == "M5" && !manualTfConflict &&
+          (!tfAutomatic || (tfVerified && now - confirmedTfAt in 0L..TF_STALE_MS)) &&
+          observedCandleAt > 0L && now - observedCandleAt in 0L..3500L
+        if (!chartReady) {
+          if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
+          else stop("ROTAȚIE • GRAFIC M5 NECONFIRMAT")
+          return
+        }
+        if (fxRotationNavigating) clearOnInstrumentChange()
+        fxRotationNavigating = false
+        autoDemoEntryCycleStartedAt = now
+        visited.add(pair)
+        val duration = if (checkNotNull(payout) >= 92) 30_000L else 0L
+        dwell(pair, android.os.SystemClock.elapsedRealtime() + duration, 12)
+      }
+
+      fun dwell(pair: String, deadline: Long, retries: Int) {
+        if (tradeBusy() || TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
+            .startsWith("QT DEMO • INDICATOR ")) {
+          fxButton.text = "ROTAȚIE • AȘTEPT ÎNCHIDEREA"
+          after(1_000L) { dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12) }
+          return
+        }
+        val remaining = deadline - android.os.SystemClock.elapsedRealtime()
+        if (remaining > 0L) {
+          fxButton.text = "$pair • ${(remaining + 999L) / 1000L} S"
+          after(minOf(remaining, 1_000L)) { dwell(pair, deadline, retries) }
+          return
+        }
+        val now = System.currentTimeMillis()
+        val recentSignal = lockedAt > 0L && now - lockedAt in 0L..5000L
+        val liveCandidate = candidateCount > 0 &&
+          now - candidateLastSeenAt in 0L..CANDIDATE_EVIDENCE_GRACE_MS &&
+          now - candidateStartedAt in 0L..CANDIDATE_MAX_AGE_MS
+        if (recentSignal || liveCandidate) {
+          after(750L) { dwell(pair, deadline, retries) }
+          return
+        }
+        if (!pairReady(now) || currentPair(now) != pair ||
+            TouchTestService.readVisibleDemoPair() != pair) {
+          if (retries > 0) after(750L) { dwell(pair, deadline, retries - 1) }
+          else stop("ROTAȚIE • PERECHE NECONFIRMATĂ")
+          return
+        }
+        beginNavigation()
+        fxButton.text = "ROTAȚIE • DESCHID VALUTE"
+        openList(pair, false)
+      }
+
+      fun openList(pair: String, physicalOnly: Boolean) {
+        if (tradeBusy()) {
+          stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
+          return
+        }
+        val location = IntArray(2)
+        root.getLocationOnScreen(location)
+        val overlayBounds = Rect(location[0], location[1],
+          location[0] + root.width, location[1] + root.height)
+        if (!TouchTestService.reopenDemoFxList(pair, overlayBounds, physicalOnly)) {
+          stop("ROTAȚIE • SELECTOR BLOCAT")
+          return
+        }
+        after(500L) { awaitList(pair, 6, physicalOnly) }
+      }
+
+      fun awaitList(pair: String, checks: Int, physicalOnly: Boolean) {
+        if (TouchTestService.demoFxListVisible()) select(pair, 12, true)
+        else if (checks > 0) after(500L) { awaitList(pair, checks - 1, physicalOnly) }
+        else if (!physicalOnly) openList(pair, true)
+        else stop("ROTAȚIE • LISTA NU S-A DESCHIS")
+      }
+
+      fun select(previous: String?, scrolls: Int, mayWrap: Boolean) {
+        if (tradeBusy()) {
+          stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
+          return
+        }
+        val result = TouchTestService.navigateOpenDemoFxList(visited, scrolls > 0, forward)
+        val pair = result.pair
+        when {
+          pair != null -> {
+            fxButton.text = "ROTAȚIE • VERIFIC $pair"
+            after(750L) { verifyChart(pair, 24) }
+          }
+          result.scrolled -> after(500L) { select(previous, scrolls - 1, mayWrap) }
+          mayWrap && (result.message.startsWith("NICIO ALTĂ") || scrolls == 0) -> {
+            visited.clear()
+            previous?.let { visited.add(it) }
+            forward = !forward
+            select(previous, 12, false)
+          }
+          !mayWrap && previous != null &&
+            (result.message.startsWith("NICIO ALTĂ") || scrolls == 0) -> {
+            val same = TouchTestService.navigateOpenDemoFxList(emptySet(), false, forward)
+            val fallback = same.pair
+            if (fallback == null) stop("ROTAȚIE • NICIO PERECHE ≥92%")
+            else after(750L) { verifyChart(fallback, 24) }
+          }
+          else -> stop("ROTAȚIE • " + result.message)
+        }
+      }
+    }
+    fxButton.setOnClickListener {
+      if (fxRotation.running) fxRotation.stop("ROTAȚIE DEMO • 30 S")
+      else try { fxRotation.start() } catch (_: Exception) {
+        fxRotation.stop("ROTAȚIE • SELECTOR NECONFIRMAT")
+      }
+    }
+    root.addView(fxButton, LinearLayout.LayoutParams(-1, dp(26)))
     val amountCheckRow = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER
@@ -5186,6 +5372,7 @@ class ScalpOverlayService : Service() {
       observedOpticalQuality = 0
       observedCandleAt = 0L
     }
+    if (fxRotationNavigating) return
     val timeframe = selectedTimeframe
     val tPoints = result.optJSONArray("trendVisualPoints")
     val trendMeasured = result.optBoolean("trendMeasured", false)
@@ -5652,7 +5839,7 @@ class ScalpOverlayService : Service() {
       // once in the app. Auto-arming uses EXACTLY the same QT Demo, 1 USD,
       // payout >=92%, visible-pair and unique BUY/SELL checks as the former button.
       // If Android/WebView cannot prove them, NO ORDER is sent.
-      if (autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
+      if (!fxRotationNavigating && autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
           tradePositionGate.state() == TradePositionGate.State.READY &&
           !closedHistoryInspectionInProgress) {
         val nowClock = android.os.SystemClock.elapsedRealtime()
@@ -5740,7 +5927,7 @@ class ScalpOverlayService : Service() {
             .getBoolean("attempted", false) ||
           getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
             .getBoolean("attempted", false)
-        val readyForDemo = brokerConnected &&
+        val readyForDemo = !fxRotationNavigating && brokerConnected &&
           !autoDemoSessionConsumed && !previousDemoUnresolved453 &&
           tradePositionGate.state() == TradePositionGate.State.READY &&
           TouchTestService.ready() && pairReady(now) &&

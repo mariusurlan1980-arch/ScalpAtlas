@@ -380,6 +380,184 @@ class TouchTestService : AccessibilityService() {
       return Triple(svc, root, result)
     }
 
+    data class DemoFxQuote(val pair: String, val payout: Int)
+
+    private data class DemoFxRow(val quote: DemoFxQuote, val node: AccessibilityNodeInfo, val bounds: Rect)
+    data class DemoFxNavigation(val pair: String? = null, val scrolled: Boolean = false,
+      val message: String)
+
+    private val fxPairLabel = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b(?:\s*\(?\s*(OTC)\s*\)?)?""")
+    private val fxPayoutLabel = Regex("""(?<![\d.,-])\+?\s*(\d{1,3})\s*%""")
+    private val fiatCodes by lazy {
+      java.util.Currency.getAvailableCurrencies().map { it.currencyCode }.toSet() -
+        setOf("XAU", "XAG", "XPD", "XPT", "XTS", "XXX")
+    }
+
+    fun demoFxListVisible(): Boolean {
+      val (_, _, labels) = activeDemoHistoryNodes(false) ?: return false
+      return labels.any { (node, _) -> hasFxCurrencyHeader(node) }
+    }
+
+    private fun hasFxCurrencyHeader(node: AccessibilityNodeInfo): Boolean =
+      listOfNotNull(node.text, node.contentDescription).any {
+        val label = it.toString().trim()
+        label.equals("Valute", true) || label.equals("Currencies", true)
+      }
+
+    private fun visibleDemoFxRows(
+      labels: List<Pair<AccessibilityNodeInfo, Rect>>
+    ): List<DemoFxRow> {
+      fun rowTexts(node: AccessibilityNodeInfo): List<String> =
+        listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+          .map(String::trim).distinct()
+      val currencyHeader = labels.firstOrNull { (node, _) ->
+        hasFxCurrencyHeader(node)
+      }?.second ?: return emptyList()
+      val payoutHeader = labels.firstOrNull { (node, rect) ->
+        rect.left > currencyHeader.right &&
+          rect.centerY() in currencyHeader.top until currencyHeader.bottom &&
+          rowTexts(node).any { it.equals("Venit", true) || it.equals("Payout", true) }
+      }?.second ?: return emptyList()
+      val listBottom = labels.filter { (node, rect) ->
+        rect.top > currencyHeader.bottom && rowTexts(node).any {
+          it.equals("Timp", true) || it.equals("Time", true) ||
+            it.equals("Suma", true) || it.equals("Sumă", true) || it.equals("Amount", true)
+        }
+      }.minOfOrNull { it.second.top } ?: Int.MAX_VALUE
+      val listLabels = labels.filter { (_, rect) ->
+        rect.centerY() in currencyHeader.bottom until listBottom
+      }
+      val quotes = listLabels.mapNotNull { (node, bounds) ->
+        if (bounds.centerX() >= payoutHeader.centerX()) return@mapNotNull null
+        val values = listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+          .map(String::trim).filter { it.length in 1..75 }.distinct()
+        val pairs = values.flatMap { value ->
+          fxPairLabel.findAll(value).map { match ->
+            val (_, base, quote, otc) = match.groupValues
+            Triple(base.uppercase(java.util.Locale.ROOT), quote.uppercase(java.util.Locale.ROOT), otc.isNotEmpty())
+          }.toList()
+        }.distinct()
+        val (base, quote, otc) = pairs.singleOrNull() ?: return@mapNotNull null
+        if (base == quote || base !in fiatCodes || quote !in fiatCodes)
+          return@mapNotNull null
+        // Pocket Option exposes the pair and payout in separate columns.
+        // Restrict the match to that row and to the payout column.
+        val rowValues = values + listLabels.filter { (_, rect) ->
+          rect.centerY() in bounds.top until bounds.bottom &&
+            rect.left >= bounds.right &&
+            rect.centerX() >= payoutHeader.left - payoutHeader.width() / 2
+        }.flatMap { (payoutNode, _) ->
+          rowTexts(payoutNode).filter { fxPayoutLabel.matches(it) }
+        }
+        val payout = rowValues.flatMap { value ->
+          fxPayoutLabel.findAll(value).mapNotNull { it.groupValues[1].toIntOrNull() }.toList()
+        }.distinct().singleOrNull()?.takeIf { it in 0..100 } ?: return@mapNotNull null
+        DemoFxRow(DemoFxQuote("$base/$quote" + if (otc) " OTC" else "", payout), node, bounds)
+      }
+      return quotes.groupBy { it.quote.pair }.values.mapNotNull { rows ->
+        if (rows.map { it.quote.payout }.distinct().size != 1) null
+        else rows.distinctBy { it.bounds }.singleOrNull()
+      }.sortedBy { it.bounds.top }
+    }
+
+    /** Reopen the selector from the verified chart's instrument control. */
+    fun reopenDemoFxList(pair: String, overlayBounds: Rect, physicalOnly: Boolean = false): Boolean {
+      if (readVisibleDemoPair() != pair) return false
+      val (svc, root, labels) = activeDemoHistoryNodes(false) ?: return false
+      if (svc.rootInActiveWindow != root ||
+          labels.any { (node, _) -> hasFxCurrencyHeader(node) }) return false
+      val display = android.util.DisplayMetrics()
+      val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+      @Suppress("DEPRECATION")
+      wm.defaultDisplay.getRealMetrics(display)
+      val height = display.heightPixels
+      val width = display.widthPixels
+      val headerTop = (height * .105f).toInt()
+      val headerBottom = (height * .27f).toInt()
+      val headerRight = (width * .60f).toInt()
+      val matches = labels.filter { (node, bounds) ->
+        bounds.centerY() in headerTop..headerBottom &&
+          bounds.centerX() in 1..headerRight &&
+          bounds.height() <= height * .075f &&
+          listOfNotNull(node.text, node.contentDescription).any { text ->
+            val match = fxPairLabel.matchEntire(text.toString().trim())
+            match != null && pair.equals(
+              match.groupValues[1] + "/" + match.groupValues[2] +
+                if (match.groupValues[3].isNotEmpty()) " OTC" else "", true
+            )
+          }
+      }
+      val bounds = matches.map { it.second }.distinct().singleOrNull() ?: return false
+      val action = AccessibilityNodeInfo.ACTION_CLICK
+      val targets = matches.mapNotNull { (node, _) ->
+        generateSequence(node) { it.parent }.take(4).firstOrNull { candidate ->
+          val rect = Rect()
+          candidate.getBoundsInScreen(rect)
+          candidate.isVisibleToUser && candidate.isEnabled && candidate.isClickable &&
+            candidate.packageName == root.packageName &&
+            rect.width() <= width * .65f && rect.height() <= height * .09f &&
+            rect.centerY() in headerTop..headerBottom &&
+            candidate.actionList.any { it.id == action }
+        }
+      }.distinct()
+      if (targets.size > 1 || svc.rootInActiveWindow != root) return false
+      if (!physicalOnly && targets.singleOrNull()?.performAction(action) == true) return true
+
+      // Some Pocket Option WebViews expose an exact pair label with no click action.
+      // Only the uniquely identified header label may receive a physical tap.
+      val x = bounds.centerX()
+      val y = bounds.centerY()
+      if (overlayBounds.contains(x, y) || svc.rootInActiveWindow != root) return false
+      val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 75L)).build()
+      return svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+    }
+
+    /** A single selector action. The caller must verify the resulting chart. */
+    fun navigateOpenDemoFxList(excluded: Set<String>, allowScroll: Boolean, forward: Boolean): DemoFxNavigation {
+      val (svc, root, labels) = activeDemoHistoryNodes(false)
+        ?: return DemoFxNavigation(message = "QT DEMO NECONFIRMAT")
+      if (svc.rootInActiveWindow != root)
+        return DemoFxNavigation(message = "BROKERUL NU ESTE ÎN FAȚĂ")
+      val rows = visibleDemoFxRows(labels)
+      if (rows.isEmpty()) return DemoFxNavigation(message = "DESCHIDE LISTA VALUTE")
+      val next = rows.firstOrNull { it.quote.payout >= 92 && it.quote.pair !in excluded }
+      if (next != null) {
+        val action = AccessibilityNodeInfo.ACTION_CLICK
+        // A row label can be nested inside a clickable row. Limit the search
+        // to ancestors contained in the same vertical band as the row.
+        val target = generateSequence(next.node) { it.parent }.take(5).firstOrNull { node ->
+          val rect = Rect()
+          node.getBoundsInScreen(rect)
+          node.isVisibleToUser && node.isEnabled && node.isClickable &&
+            node.packageName == root.packageName &&
+            rect.top >= next.bounds.top - next.bounds.height() &&
+            rect.bottom <= next.bounds.bottom + next.bounds.height() &&
+            node.actionList.any { it.id == action }
+        } ?: return DemoFxNavigation(message = "RÂND VALUTAR FĂRĂ ACȚIUNE ANDROID")
+        return if (svc.rootInActiveWindow == root && target.performAction(action))
+          DemoFxNavigation(pair = next.quote.pair, message = "VERIFIC PERECHEA")
+        else DemoFxNavigation(message = "ANDROID A REFUZAT SELECTAREA")
+      }
+      if (!allowScroll) return DemoFxNavigation(message = "LIMITĂ TEST DERULARE")
+      val action = if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+        else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+      val first = rows.first()
+      val last = rows.last()
+      val scroll = generateSequence(first.node) { it.parent }.take(8).firstOrNull { node ->
+        val rect = Rect()
+        node.getBoundsInScreen(rect)
+        node.isVisibleToUser && node.isScrollable && node.packageName == root.packageName &&
+          rect.top <= first.bounds.top && rect.bottom >= last.bounds.bottom &&
+          node.actionList.any { it.id == action } &&
+          generateSequence(last.node) { it.parent }.take(8).any { it == node }
+      } ?: return DemoFxNavigation(message = "NICIO ALTĂ PERECHE VERIFICATĂ LA ≥92%")
+      return if (svc.rootInActiveWindow == root && scroll.performAction(action))
+        DemoFxNavigation(scrolled = true, message = "VERIFIC LISTA DERULATĂ")
+      else DemoFxNavigation(message = "DERULARE NECONFIRMATĂ")
+    }
+
     // 454: Pocket Option's Motorola history layout can omit the page
     // title entirely, while showing the Open/Closed tabs AND the selected
     // bottom "Tranzacții" navigation. This identifies the HISTORY PAGE,
