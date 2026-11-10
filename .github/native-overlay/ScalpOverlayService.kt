@@ -170,6 +170,7 @@ class ScalpOverlayService : Service() {
   // 399: REAL/DEMO visible-account checks are read-only. No REAL gesture path.
   private var brokerAccountMonitorRunning = false
   private var lastBrokerAccountStatus = ""
+  private var demoFxListStatus: String? = null
   private var lastDemoTradeStatus = "ÎNCHIDERE NECONFIRMATĂ"
   // 409: two separate broker reads of Transactions > Open > explicitly empty.
   // This is deliberately NOT inferred from a missing badge on the chart.
@@ -1318,6 +1319,14 @@ class ScalpOverlayService : Service() {
           android.util.Log.e("ScalpAtlas399", "Read-only account check failed", error)
           "CONT NECONFIRMAT • FĂRĂ ORDINE"
         }
+        demoFxListStatus = if (diagnostic.startsWith("QT DEMO IDENTIFICAT")) {
+          try {
+            val quotes = TouchTestService.readVisibleDemoFxQuotes()
+            if (quotes.isEmpty()) null
+            else "PERECHI VIZIBILE " + quotes.size +
+              " • PAYOUT ≥92%: " + quotes.count { it.payout >= 92 }
+          } catch (_: Exception) { null }
+        } else null
         if (diagnostic != lastBrokerAccountStatus) {
           lastBrokerAccountStatus = diagnostic
           touchProbeStatus?.text = "" + diagnostic.take(115)
@@ -6158,6 +6167,12 @@ class ScalpOverlayService : Service() {
           activeSignal != "NONE" && activeStrategy == "SHOCK" ->
             "🔒 BIP " + activeSignal + " • ȘOC VALID • ORDIN BLOCAT: ISTORIC"
           else -> "🔒 DEMO • " + TouchTestService.demoEmptyReviewDiagnostic().take(72)
+        }
+      }
+      demoFxListStatus?.let { listStatus ->
+        if (!brokerConnected && !autoDemoSessionConsumed &&
+            tradePositionGate.state() == TradePositionGate.State.READY) {
+          touchProbeStatus?.text = listStatus
         }
       }
       // 433: Present a stable history-mode explanation, not the chart

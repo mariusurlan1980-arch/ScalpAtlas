@@ -380,6 +380,52 @@ class TouchTestService : AccessibilityService() {
       return Triple(svc, root, result)
     }
 
+    data class DemoFxQuote(val pair: String, val payout: Int)
+
+    private val fxPairLabel = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b(?:\s*\(?\s*(OTC)\s*\)?)?""")
+    private val fxPayoutLabel = Regex("""(?<![\d.,-])\+?\s*(\d{1,3})\s*%""")
+    private val fiatCodes by lazy {
+      java.util.Currency.getAvailableCurrencies().map { it.currencyCode }.toSet() -
+        setOf("XAU", "XAG", "XPD", "XPT", "XTS", "XXX")
+    }
+
+    /** Reads only rows with a payout attached to the same accessibility item. */
+    fun readVisibleDemoFxQuotes(): List<DemoFxQuote> {
+      val (_, _, labels) = activeDemoHistoryNodes(false) ?: return emptyList()
+      val quotes = labels.mapNotNull { (node, bounds) ->
+        val values = listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+          .map(String::trim).filter { it.length in 1..75 }.distinct()
+        val pairs = values.flatMap { value ->
+          fxPairLabel.findAll(value).map { match ->
+            val (_, base, quote, otc) = match.groupValues
+            Triple(base.uppercase(java.util.Locale.ROOT), quote.uppercase(java.util.Locale.ROOT), otc.isNotEmpty())
+          }.toList()
+        }.distinct()
+        val (base, quote, otc) = pairs.singleOrNull() ?: return@mapNotNull null
+        if (base == quote || base !in fiatCodes || quote !in fiatCodes)
+          return@mapNotNull null
+        // The number may be in a separate label within the same parent row.
+        val rowValues = if (values.any { fxPayoutLabel.containsMatchIn(it) }) values else {
+          val parent = node.parent ?: return@mapNotNull null
+          labels.filter { (sibling, rect) ->
+            sibling.parent == parent && rect.centerY() in bounds.top until bounds.bottom &&
+              rect.left >= bounds.right
+          }.flatMap { (sibling, _) ->
+            listOfNotNull(sibling.text?.toString(), sibling.contentDescription?.toString())
+              .map(String::trim).filter { fxPayoutLabel.matches(it) }
+          }
+        }
+        val payout = rowValues.flatMap { value ->
+          fxPayoutLabel.findAll(value).mapNotNull { it.groupValues[1].toIntOrNull() }.toList()
+        }.distinct().singleOrNull()?.takeIf { it in 0..100 } ?: return@mapNotNull null
+        DemoFxQuote("$base/$quote" + if (otc) " OTC" else "", payout)
+      }
+      // Conflicting percentages for the same pair are ambiguous. Require
+      // multiple rows so a single chart's payout cannot stand in for a list.
+      return quotes.groupBy { it.pair }.values.mapNotNull { it.distinct().singleOrNull() }
+        .takeIf { it.size >= 2 }.orEmpty()
+    }
+
     // 454: Pocket Option's Motorola history layout can omit the page
     // title entirely, while showing the Open/Closed tabs AND the selected
     // bottom "Tranzacții" navigation. This identifies the HISTORY PAGE,
