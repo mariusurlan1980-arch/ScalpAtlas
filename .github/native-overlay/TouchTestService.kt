@@ -384,7 +384,7 @@ class TouchTestService : AccessibilityService() {
 
     private data class DemoFxRow(val quote: DemoFxQuote, val node: AccessibilityNodeInfo, val bounds: Rect)
     data class DemoFxNavigation(val pair: String? = null, val scrolled: Boolean = false,
-      val message: String)
+      val endOfList: Boolean = false, val rejectedPair: String? = null, val message: String)
 
     private val fxPairLabel = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b(?:\s*\(?\s*(OTC)\s*\)?)?""")
     private val fxPayoutLabel = Regex("""(?<![\d.,-])\+?\s*(\d{1,3})\s*%""")
@@ -534,7 +534,7 @@ class TouchTestService : AccessibilityService() {
     /** A single selector action. The caller must verify the resulting chart. */
     fun navigateOpenDemoFxList(
       excluded: Set<String>, allowScroll: Boolean, forward: Boolean, overlayBounds: Rect,
-      onlyPair: String? = null
+      onlyPair: String? = null, scrollHistory: MutableSet<List<String>>? = null
     ): DemoFxNavigation {
       val (svc, root, labels) = activeDemoHistoryNodes(false)
         ?: return DemoFxNavigation(message = "QT DEMO NECONFIRMAT")
@@ -568,18 +568,21 @@ class TouchTestService : AccessibilityService() {
         val metrics = svc.resources.displayMetrics
         if (x !in (metrics.widthPixels * .15f).toInt()..(metrics.widthPixels * .65f).toInt() ||
             y !in (metrics.heightPixels * .25f).toInt()..(metrics.heightPixels * .70f).toInt())
-          return DemoFxNavigation(message = "RÂND VALUTAR ÎN AFARA ZONEI SIGURE")
+          return DemoFxNavigation(rejectedPair = next.quote.pair, message = "RÂND VALUTAR ÎN AFARA ZONEI SIGURE")
         if (overlayBounds.contains(x, y))
-          return DemoFxNavigation(message = "PANOU PESTE PERECHE")
+          return DemoFxNavigation(rejectedPair = next.quote.pair, message = "PANOU PESTE PERECHE")
         val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
         val gesture = GestureDescription.Builder()
           .addStroke(GestureDescription.StrokeDescription(path, 0L, 75L)).build()
         return if (svc.rootInActiveWindow == root &&
             svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper())))
           DemoFxNavigation(pair = next.quote.pair, message = "VERIFIC PERECHEA")
-        else DemoFxNavigation(message = "ANDROID A REFUZAT SELECTAREA")
+        else DemoFxNavigation(rejectedPair = next.quote.pair, message = "ANDROID A REFUZAT SELECTAREA")
       }
-      if (!allowScroll) return DemoFxNavigation(message = "LIMITĂ TEST DERULARE")
+      if (!allowScroll) return DemoFxNavigation(message = "PERECHE ELIGIBILĂ NEVIZIBILĂ")
+      val end = DemoFxNavigation(endOfList = true, message = "CAPĂT LISTĂ VALUTE")
+      val viewport = rows.map { it.quote.pair }
+      if (scrollHistory?.add(viewport) == false) return end
       val action = if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
         else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
       val first = rows.first()
@@ -591,8 +594,34 @@ class TouchTestService : AccessibilityService() {
           rect.top <= first.bounds.top && rect.bottom >= last.bounds.bottom &&
           node.actionList.any { it.id == action } &&
           generateSequence(last.node) { it.parent }.take(8).any { it == node }
-      } ?: return DemoFxNavigation(message = "NICIO ALTĂ PERECHE VERIFICATĂ LA ≥92%")
-      return if (svc.rootInActiveWindow == root && scroll.performAction(action))
+      }
+      if (svc.rootInActiveWindow != root)
+        return DemoFxNavigation(message = "BROKERUL NU ESTE ÎN FAȚĂ")
+      if (scroll?.performAction(action) == true)
+        return DemoFxNavigation(scrolled = true, message = "VERIFIC LISTA DERULATĂ")
+
+      // Some WebViews do not expose an accessibility scroll action.
+      // Swipe only inside the confirmed list, between recognized FX rows.
+      val x = first.bounds.centerX()
+      val top = first.bounds.centerY()
+      val bottom = last.bounds.centerY()
+      val metrics = svc.resources.displayMetrics
+      if (x !in (metrics.widthPixels * .15f).toInt()..(metrics.widthPixels * .65f).toInt() ||
+          top < metrics.heightPixels * .25f || bottom > metrics.heightPixels * .70f ||
+          bottom - top < metrics.heightPixels * .08f ||
+          (x in overlayBounds.left until overlayBounds.right &&
+            top < overlayBounds.bottom && bottom >= overlayBounds.top)) return end
+      val from = if (forward) bottom else top
+      val distance = (bottom - top) * .70f
+      val to = if (forward) from - distance else from + distance
+      val path = Path().apply {
+        moveTo(x.toFloat(), from.toFloat())
+        lineTo(x.toFloat(), to)
+      }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 450L)).build()
+      return if (svc.rootInActiveWindow == root &&
+          svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper())))
         DemoFxNavigation(scrolled = true, message = "VERIFIC LISTA DERULATĂ")
       else DemoFxNavigation(message = "DERULARE NECONFIRMATĂ")
     }

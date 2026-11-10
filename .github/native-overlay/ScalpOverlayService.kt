@@ -3328,7 +3328,10 @@ class ScalpOverlayService : Service() {
       var running = false
       var forward = true
       var task: Runnable? = null
-      var rejectedSelections = 0
+      val rejectedPairs = mutableSetOf<String>()
+      val scrollHistory = mutableSetOf<List<String>>()
+      var reversed = false
+      var newPass = false
       var originalOverlayY: Int? = null
       var dockedOverlayY: Int? = null
 
@@ -3393,7 +3396,7 @@ class ScalpOverlayService : Service() {
           beginNavigation()
           val current = pair ?: latestMarket.takeUnless { it == "NEIDENTIFICAT" }
           current?.let { visited.add(it) }
-          after(if (dockForSelector()) 350L else 0L) { select(current, 12, true) }
+          after(if (dockForSelector()) 350L else 0L) { select(current) }
         } else {
           fxButton.text = "ROTAȚIE • VERIFIC M5"
           verifyChart(checkNotNull(pair), 24)
@@ -3401,7 +3404,10 @@ class ScalpOverlayService : Service() {
       }
 
       fun beginNavigation() {
-        rejectedSelections = 0
+        rejectedPairs.clear()
+        scrollHistory.clear()
+        reversed = false
+        newPass = false
         fxRotationNavigating = true
         autoDemoArmed = false
         autoDemoMarket = null
@@ -3438,10 +3444,13 @@ class ScalpOverlayService : Service() {
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
-        if (tradeBusy() || TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
-            .startsWith("QT DEMO • INDICATOR ")) {
-          fxButton.text = "ROTAȚIE • AȘTEPT ÎNCHIDEREA"
-          after(1_000L) { dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12) }
+        val waitingForBroker = tradeBusy()
+        val openBadge = !waitingForBroker && TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
+          .startsWith("QT DEMO • INDICATOR ")
+        if (waitingForBroker || openBadge) {
+          fxButton.text = if (openBadge || tradePositionGate.state() == TradePositionGate.State.OPEN)
+            "ROTAȚIE • POZIȚIE DESCHISĂ" else "ROTAȚIE • AȘTEPT CONFIRMAREA ORDINULUI"
+          after(1_000L) { dwell(pair, deadline, retries) }
           return
         }
         val remaining = deadline - android.os.SystemClock.elapsedRealtime()
@@ -3455,7 +3464,7 @@ class ScalpOverlayService : Service() {
         val liveCandidate = candidateCount > 0 &&
           now - candidateLastSeenAt in 0L..CANDIDATE_EVIDENCE_GRACE_MS &&
           now - candidateStartedAt in 0L..CANDIDATE_MAX_AGE_MS
-        if (recentSignal || liveCandidate) {
+        if ((recentSignal || liveCandidate) && remaining > -5_000L) {
           after(750L) { dwell(pair, deadline, retries) }
           return
         }
@@ -3480,7 +3489,7 @@ class ScalpOverlayService : Service() {
           return
         }
         if (TouchTestService.demoFxListVisible()) {
-          select(pair, 12, true)
+          select(pair)
           return
         }
         if (!TouchTestService.reopenDemoFxList(pair, overlayBounds(), physicalOnly)) {
@@ -3492,7 +3501,7 @@ class ScalpOverlayService : Service() {
 
       fun awaitList(pair: String, checks: Int, physicalOnly: Boolean) {
         if (TouchTestService.demoFxListVisible()) {
-          select(pair, 12, true)
+          select(pair)
         }
         else if (checks > 0) after(500L) { awaitList(pair, checks - 1, physicalOnly) }
         else if (!physicalOnly) openList(pair, true)
@@ -3535,41 +3544,57 @@ class ScalpOverlayService : Service() {
           emptySet(), false, forward, overlayBounds(), pair) else null
         if (retry?.pair == pair) {
           after(1_250L) { confirmSelection(pair, previous, false) }
-        } else if (rejectedSelections < 2) {
-          rejectedSelections++
-          visited.add(pair)
+        } else {
+          rejectedPairs.add(pair)
           fxButton.text = "ROTAȚIE • ÎNCERC ALTĂ PERECHE"
-          after(500L) { select(previous, 12, false) }
-        } else stop("ROTAȚIE • " + (retry?.message ?: "PERECHEA NU S-A SELECTAT"))
+          after(500L) { select(previous) }
+        }
       }
 
-      fun select(previous: String?, scrolls: Int, mayWrap: Boolean, rowChecks: Int = 5) {
+      fun select(previous: String?, rowChecks: Int = 5) {
         if (tradeBusy()) {
           stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
           return
         }
-        val result = TouchTestService.navigateOpenDemoFxList(visited, scrolls > 0, forward, overlayBounds())
+        val result = TouchTestService.navigateOpenDemoFxList(
+          visited + rejectedPairs, true, forward, overlayBounds(), scrollHistory = scrollHistory)
         val pair = result.pair
         when {
           pair != null -> {
             fxButton.text = "ROTAȚIE • VERIFIC $pair"
             after(1_250L) { confirmSelection(pair, previous, true) }
           }
+          result.rejectedPair != null -> {
+            rejectedPairs.add(result.rejectedPair)
+            fxButton.text = "ROTAȚIE • ÎNCERC ALTĂ PERECHE"
+            after(500L) { select(previous) }
+          }
           result.message == "RÂNDURI VALUTE NECITITE" && rowChecks > 0 ->
-            after(500L) { select(previous, scrolls, mayWrap, rowChecks - 1) }
-          result.scrolled -> after(500L) { select(previous, scrolls - 1, mayWrap) }
-          mayWrap && (result.message.startsWith("NICIO ALTĂ") || scrolls == 0) -> {
+            after(500L) { select(previous, rowChecks - 1) }
+          result.scrolled -> after(750L) { select(previous) }
+          result.endOfList && !reversed -> {
+            reversed = true
+            forward = !forward
+            scrollHistory.clear()
+            after(0L) { select(previous) }
+          }
+          result.endOfList && !newPass -> {
+            newPass = true
+            reversed = false
             visited.clear()
             previous?.let { visited.add(it) }
-            forward = !forward
-            select(previous, 12, false)
+            scrollHistory.clear()
+            after(0L) { select(previous) }
           }
-          !mayWrap && rejectedSelections == 0 && previous != null &&
-            (result.message.startsWith("NICIO ALTĂ") || scrolls == 0) -> {
-            val same = TouchTestService.navigateOpenDemoFxList(emptySet(), false, forward, overlayBounds())
-            val fallback = same.pair
-            if (fallback == null) stop("ROTAȚIE • NICIO PERECHE ≥92%")
-            else after(1_250L) { confirmSelection(fallback, previous, true) }
+          result.endOfList -> {
+            // With no eligible alternative, return to the current chart if visible.
+            val current = previous?.takeUnless { it in rejectedPairs }?.let {
+              TouchTestService.navigateOpenDemoFxList(
+                emptySet(), false, forward, overlayBounds(), it).pair
+            }
+            if (current == null || current != previous || current in rejectedPairs)
+              stop("ROTAȚIE • NICIO ALTĂ PERECHE ≥92%")
+            else after(1_250L) { confirmSelection(current, previous, false) }
           }
           else -> stop("ROTAȚIE • " + result.message)
         }
