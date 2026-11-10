@@ -3345,61 +3345,125 @@ class ScalpOverlayService : Service() {
         else TouchTestService.preflightOneDollarDemoOrder(pair)
       }
     }
-    val testedFxPairs = mutableSetOf<String>()
-    val fxNavigation = localButton("TEST PERECHE ≥92%", Color.rgb(71, 88, 118)).apply {
-      contentDescription = "În lista Valute deschisă, testează selectarea unei perechi fără ordin"
-      setOnClickListener {
-        if (tradePositionGate.state() != TradePositionGate.State.READY ||
-            closedHistoryInspectionInProgress ||
-            listOf(autoShockAttemptPrefs, sell404TestPrefs).any { name ->
-              getSharedPreferences(name, Context.MODE_PRIVATE).getBoolean("attempted", false)
-            }) {
-          probeStatus.text = "TEST PERECHI BLOCAT • ORDIN NECONFIRMAT"
-          return@setOnClickListener
+    val fxNavigation = localButton("ROTAȚIE DEMO ≥92%", Color.rgb(71, 88, 118))
+    fxNavigation.contentDescription = "Pornește sau oprește rotația de probă fără ordine"
+    val fxRotation = object {
+      val visited = mutableSetOf<String>()
+      var running = false
+      var current: String? = null
+      var forward = true
+      var task: Runnable? = null
+
+      fun stop(message: String) {
+        running = false
+        task?.let { mainHandler.removeCallbacks(it) }
+        task = null
+        fxNavigation.text = "ROTAȚIE DEMO ≥92%"
+        probeStatus.text = message
+      }
+
+      fun canNavigate(): Boolean =
+        overlayView === root && !shuttingDown && mediaProjection != null &&
+          tradePositionGate.state() == TradePositionGate.State.READY &&
+          !closedHistoryInspectionInProgress &&
+          listOf(autoShockAttemptPrefs, sell404TestPrefs).none { name ->
+            getSharedPreferences(name, Context.MODE_PRIVATE).getBoolean("attempted", false)
+          }
+
+      fun after(delay: Long, work: () -> Unit) {
+        val callback = Runnable {
+          task = null
+          if (running && canNavigate() && !autoDemoSessionRequested && !autoDemoArmed) work()
+          else if (running) stop("ROTAȚIE OPRITĂ • STARE DEMO SCHIMBATĂ")
+        }
+        task = callback
+        mainHandler.postDelayed(callback, delay)
+      }
+
+      fun start() {
+        if (!canNavigate()) {
+          stop("ROTAȚIE BLOCATĂ • STARE DEMO NECONFIRMATĂ")
+          return
         }
         if (TouchTestService.readVisibleDemoFxQuotes().isEmpty()) {
-          probeStatus.text = "DESCHIDE LISTA VALUTE ÎN QT DEMO"
-          return@setOnClickListener
+          stop("DESCHIDE LISTA VALUTE ÎN QT DEMO")
+          return
         }
         autoDemoSessionRequested = false
         autoDemoArmed = false
         autoDemoMarket = null
-        latestMarket.takeUnless { it == "NEIDENTIFICAT" }?.let(testedFxPairs::add)
-        isEnabled = false
-        fun finish(message: String) {
-          text = message
-          probeStatus.text = message
-          isEnabled = true
-        }
-        fun verify(pair: String, checks: Int) {
-          if (overlayView !== root || shuttingDown) return
-          val payout = TouchTestService.readVerifiedDemoPayoutForPair(pair)
-          if (payout != null) {
-            testedFxPairs.add(pair)
-            finish(if (payout >= 92) "$pair • $payout% CONFIRMAT" else "$pair • $payout% SUB PRAG")
-          } else if (checks > 0) {
-            mainHandler.postDelayed({ verify(pair, checks - 1) }, 500L)
-          } else finish("GRAFIC NECONFIRMAT")
-        }
-        fun step(scrolls: Int) {
-          if (overlayView !== root || shuttingDown) return
-          val before = TouchTestService.readVisibleDemoFxQuotes()
-          val result = TouchTestService.navigateOpenDemoFxList(testedFxPairs, scrolls > 0)
-          val pair = result.pair
-          text = result.message
-          if (pair != null) {
-            mainHandler.postDelayed({ verify(pair, 7) }, 500L)
-          } else if (result.scrolled && scrolls > 0) {
-            mainHandler.postDelayed({
-              if (overlayView !== root || shuttingDown) return@postDelayed
-              val after = TouchTestService.readVisibleDemoFxQuotes()
-              if (after.isEmpty() || after == before) finish("DERULARE NECONFIRMATĂ")
-              else step(scrolls - 1)
-            }, 500L)
-          } else finish(result.message)
-        }
-        step(3)
+        visited.clear()
+        current = latestMarket.takeUnless { it == "NEIDENTIFICAT" }
+        current?.let { visited.add(it) }
+        forward = true
+        running = true
+        step(12, true)
       }
+
+      fun step(scrolls: Int, mayReverse: Boolean) {
+        val before = TouchTestService.readVisibleDemoFxQuotes()
+        if (before.isEmpty()) {
+          stop("LISTA VALUTE NECONFIRMATĂ")
+          return
+        }
+        val result = TouchTestService.navigateOpenDemoFxList(visited, scrolls > 0, forward)
+        val pair = result.pair
+        when {
+          pair != null -> {
+            fxNavigation.text = "OPREȘTE • VERIFIC $pair"
+            after(500L) { verify(pair, 7) }
+          }
+          result.scrolled -> after(500L) {
+            val next = TouchTestService.readVisibleDemoFxQuotes()
+            if (next.isEmpty()) stop("LISTA VALUTE NECONFIRMATĂ")
+            else if (next == before) reverseOrStop(mayReverse)
+            else step(scrolls - 1, mayReverse)
+          }
+          result.message.startsWith("NICIO ALTĂ PERECHE") -> reverseOrStop(mayReverse)
+          else -> stop(result.message)
+        }
+      }
+
+      fun reverseOrStop(mayReverse: Boolean) {
+        if (!mayReverse) {
+          stop("NICIO ALTĂ PERECHE LA ≥92%")
+          return
+        }
+        visited.clear()
+        current?.let { visited.add(it) }
+        forward = !forward
+        step(12, false)
+      }
+
+      fun verify(pair: String, checks: Int) {
+        val payout = if (TouchTestService.readVisibleDemoFxQuotes().isEmpty())
+          TouchTestService.readVerifiedDemoPayoutForPair(pair) else null
+        val now = System.currentTimeMillis()
+        if (payout == null || !pairReady(now) || currentPair(now) != pair ||
+            selectedTimeframe != "M5" || (tfAutomatic && !tfVerified) || manualTfConflict) {
+          if (checks > 0) after(500L) { verify(pair, checks - 1) }
+          else stop("GRAFIC M5 / PAYOUT NECONFIRMAT")
+          return
+        }
+        current = pair
+        visited.add(pair)
+        fxNavigation.text = if (payout >= 92) "OPREȘTE • $pair • 30 S"
+          else "OPREȘTE • $pair SUB PRAG"
+        after(if (payout >= 92) 30_000L else 0L) {
+          if (!TouchTestService.reopenDemoFxList(pair)) stop("SELECTOR VALUTE NECONFIRMAT")
+          else after(500L) { awaitList(6) }
+        }
+      }
+
+      fun awaitList(checks: Int) {
+        if (TouchTestService.readVisibleDemoFxQuotes().isNotEmpty()) step(12, true)
+        else if (checks > 0) after(500L) { awaitList(checks - 1) }
+        else stop("LISTA VALUTE NU S-A DESCHIS")
+      }
+    }
+    fxNavigation.setOnClickListener {
+      if (fxRotation.running) fxRotation.stop("ROTAȚIE OPRITĂ")
+      else fxRotation.start()
     }
     amountCheckRow.orientation = LinearLayout.VERTICAL
     amountCheckRow.addView(amountCheck, LinearLayout.LayoutParams(-1, dp(31)))

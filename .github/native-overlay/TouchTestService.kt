@@ -455,8 +455,38 @@ class TouchTestService : AccessibilityService() {
       }.sortedBy { it.bounds.top }
     }
 
+    /** Reopen the selector from the verified chart's instrument control. */
+    fun reopenDemoFxList(pair: String): Boolean {
+      if (readVisibleDemoPair() != pair) return false
+      val (svc, root, labels) = activeDemoHistoryNodes(false) ?: return false
+      if (svc.rootInActiveWindow != root || visibleDemoFxRows(labels).isNotEmpty()) return false
+      val height = svc.resources.displayMetrics.heightPixels
+      val width = svc.resources.displayMetrics.widthPixels
+      val action = AccessibilityNodeInfo.ACTION_CLICK
+      val targets = labels.mapNotNull { (node, bounds) ->
+        if (bounds.centerY() !in (height * .105f).toInt()..(height * .33f).toInt() ||
+            bounds.centerX() > width * .70f) return@mapNotNull null
+        val matchesPair = listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+          .any { it.trim().replace(Regex("""\s*/\s*"""), "/")
+            .replace(Regex("""\s*\(OTC\)""", RegexOption.IGNORE_CASE), " OTC")
+            .equals(pair, ignoreCase = true) }
+        if (!matchesPair) return@mapNotNull null
+        generateSequence(node) { it.parent }.take(4).firstOrNull { candidate ->
+          val rect = Rect()
+          candidate.getBoundsInScreen(rect)
+          candidate.isVisibleToUser && candidate.isEnabled && candidate.isClickable &&
+            candidate.packageName == root.packageName &&
+            rect.width() <= width * .7f && rect.height() <= height * .09f &&
+            rect.centerY() in (height * .105f).toInt()..(height * .33f).toInt() &&
+            candidate.actionList.any { it.id == action }
+        }
+      }.distinct()
+      val target = targets.singleOrNull() ?: return false
+      return svc.rootInActiveWindow == root && target.performAction(action)
+    }
+
     /** A single selector action. The caller must verify the resulting chart. */
-    fun navigateOpenDemoFxList(excluded: Set<String>, allowScroll: Boolean): DemoFxNavigation {
+    fun navigateOpenDemoFxList(excluded: Set<String>, allowScroll: Boolean, forward: Boolean): DemoFxNavigation {
       val (svc, root, labels) = activeDemoHistoryNodes(false)
         ?: return DemoFxNavigation(message = "QT DEMO NECONFIRMAT")
       if (svc.rootInActiveWindow != root)
@@ -482,7 +512,8 @@ class TouchTestService : AccessibilityService() {
         else DemoFxNavigation(message = "ANDROID A REFUZAT SELECTAREA")
       }
       if (!allowScroll) return DemoFxNavigation(message = "LIMITĂ TEST DERULARE")
-      val action = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+      val action = if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+        else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
       val first = rows.first()
       val last = rows.last()
       val scroll = generateSequence(first.node) { it.parent }.take(8).firstOrNull { node ->
