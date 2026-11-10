@@ -95,7 +95,7 @@ class ScalpOverlayService : Service() {
     private const val CONFIRMATION_SPACING_MS = 1500L
     private const val REQUIRED_CONFIRMATIONS = 2
     // 428: moderated optical DEMO SHOCK; maintain two confirmations and broker safety.
-    private const val SHOCK_MIN_DEPTH = 25
+    private const val SHOCK_MIN_DEPTH = 20
     private const val SHOCK_MIN_RECOVERY = 20
     private const val SHOCK_MIN_TREND = 25
     private const val SHOCK_MAX_DROP_MS = 18_000L
@@ -6443,7 +6443,7 @@ class ScalpOverlayService : Service() {
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoArmed && !autoDemoSessionConsumed ->
-          "🤖 ȘOC SIMPLU 30/20 + FITIL • " + if (activeStrategy == "SHOCK" &&
+          "🤖 ȘOC ADAPTIV + FITIL • " + if (activeStrategy == "SHOCK" &&
               activeSignal != "NONE") "ȘOC CONFIRMAT"
             else "ȘOC: " + shockBlocker.take(42)
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
@@ -6494,7 +6494,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed && activeSignal == "NONE" ->
             if (scanStatus != "LIVE")
               "🤖 AUTO DEMO • SCAN " + scanStatus
-            else "🤖 ȘOC FLEX 30/20/25 • " + shockBlocker.take(39)
+            else "🤖 ȘOC ADAPTIV • " + shockBlocker.take(39)
           !autoDemoArmed ->
             "🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
           else -> touchProbeStatus?.text?.toString().orEmpty()

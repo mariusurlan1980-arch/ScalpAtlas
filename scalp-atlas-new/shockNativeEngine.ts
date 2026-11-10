@@ -248,10 +248,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // fragile on G24 and could suppress every otherwise visible SHOCK.
         // A clearly observed OPPOSITE trend still vetoes the signal.
         // Screen-relative measurements are NOT win probabilities.
-        var minShockFraction=.30,largeBodyShockFraction=.25;
+        var minShockFraction=.30,largeBodyShockFraction=.20;
         var maxDropMs=18000,minRecoveryFraction=.20;
         var minTrendStrengthPercent=25,scalpTrendThreshold=50;
         var displayedDepth=0,displayedDropDuration=0,confirmed=false,dir='NONE';
+        var displayedThreshold=Math.round(minShockFraction*100);
         var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
         var wickEntry=false,wickTurnY=0,wickPullback=0,wickPreShockBody=0;
         for(var i=0;i<history.length-1;i++){
@@ -271,11 +272,12 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             if(drop<minMove)continue;
             var fraction=drop/start.bodyHeight;
             var percent=Math.min(100,Math.max(0,Math.round(100*fraction)));
+            var threshold=start.bodyHeight>=4*minBody?largeBodyShockFraction:minShockFraction;
             if(percent>=displayedDepth){
               displayedDepth=percent;
               displayedDropDuration=fallMs;
+              displayedThreshold=Math.round(threshold*100);
             }
-            var threshold=start.bodyHeight>=4*minBody?largeBodyShockFraction:minShockFraction;
             if(percent<=threshold*100||j>=history.length-2)continue;
             var reboundMs=latest.t-bottom.t;
             if(reboundMs<300||reboundMs>9000)continue;
@@ -400,7 +402,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         // percentage is NOT an entry. No direction is inferred from color.
         var shockBlocker=confirmed?'ȘOC CONFIRMAT':
           displayedDepth===0?'AȘTEAPTĂ ȘOC':
-          displayedDepth<=30?'ȘOC ≤30%':
+          displayedDepth<=displayedThreshold?'ȘOC ≤'+displayedThreshold+'%':
           candle.trendMeasured && candle.trendDirection!=='NONE' &&
             candle.trendDirection!==candle.dir?'CONTRA TREND':
           candle.wickPixels<minBody*.20?'FITIL SCURT':
@@ -452,7 +454,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             shockWickPercent:candle.wickPercent,
             shockWickPixels:candle.wickPixels,
             shockMaxWindowMs:maxDropMs,
-            shockThresholdPercent:Math.round(minShockFraction*100),
+            shockThresholdPercent:displayedThreshold,
             shockCandleX:Math.round(candle.x),expiry:5,
             candleDetected:true,observedCandleDirection:candle.dir,
             observedCandleX:Math.round(candle.x),opticalQuality:candle.opticalQuality

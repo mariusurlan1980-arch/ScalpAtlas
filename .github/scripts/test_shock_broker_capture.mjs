@@ -135,7 +135,7 @@ assert.ok(buy.trendVisualPoints.length===3,'Mini trend has three observed closes
 assert.ok(buy.trendStrengthPercent>25 && buy.trendStrengthPercent<=100,'BUY trend >25%');
 assert.equal(buy.trendThresholdPercent,0,'450 trend is diagnostic, not a mandatory SHOCK gate');
 assert.ok(buy.trendVisualPoints[2]<buy.trendVisualPoints[0],'BUY mini line rises in price');
-assert.equal(buy.shockThresholdPercent,30);
+assert.equal(buy.shockThresholdPercent,20);
 assert.equal(buy.shockObservedDurationMs,buy.shockDropDurationMs,'seconds must come from measured LIVE frames');
 assert.ok(buy.shockObservedDurationMs>=300 && buy.shockObservedDurationMs<=18000);
 assert.equal(buy.shockDirection,'BUY','Green candle down retracement + recovery must be recognized');
@@ -395,14 +395,19 @@ for (const [index, side] of ['BUY', 'SELL'].entries()) {
 
 for (const side of ['BUY', 'SELL']) {
   const price = close => side === 'BUY' ? close : 395 - close;
-  let largeBody, smallBody;
-  for (const close of [170, 187, 184, 180]) {
+  let largeBody, smallBody, noWick;
+  for (const close of [170, 183, 181, 178]) {
     largeBody = analyze(price(close), side, `LARGE-BODY-${side} OTC`, 110, 'M5', 0, true, 'NONE');
   }
   for (const close of [200, 208, 207, 205]) {
     smallBody = analyze(price(close), side, `SMALL-BODY-${side} OTC`, 111, 'M5', 0, true, 'NONE');
   }
-  assert.equal(largeBody.wickEntry, true, `${side} admits a clear sub-30% shock on a large candle`);
-  assert.ok(largeBody.shockRetracementPercent > 25 && largeBody.shockRetracementPercent <= 30);
+  for (const close of [170, 183, 181, 178]) {
+    noWick = analyze(price(close), side, `NO-WICK-${side} OTC`, 112, 'M5', 0, false, 'NONE');
+  }
+  assertQuiet(noWick);
+  assert.equal(smallBody.shockThresholdPercent, 30);
+  assert.equal(largeBody.wickEntry, true, `${side} admits a clear 20–25% shock on a large candle`);
+  assert.ok(largeBody.shockRetracementPercent > 20 && largeBody.shockRetracementPercent <= 25);
   assertQuiet(smallBody);
 }
