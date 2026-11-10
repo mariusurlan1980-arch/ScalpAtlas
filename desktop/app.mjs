@@ -37,6 +37,44 @@ let frameId = 0;
 let lastSampleAt = -Infinity;
 let dragStart;
 let dragEnd;
+let overlaySummary;
+
+const overlayButton = find('overlay');
+const pictureInPicture = window.documentPictureInPicture;
+overlayButton.hidden = !pictureInPicture;
+if (!pictureInPicture) {
+  find('overlay-status').textContent = 'Pentru suprapunere, deschide panoul în Chrome pe Windows.';
+}
+
+overlayButton.onclick = async () => {
+  overlayButton.disabled = true;
+  find('overlay-status').textContent = '';
+  try {
+    const overlay = await pictureInPicture.requestWindow({ width: 320, height: 130 });
+    const { document } = overlay;
+    document.title = 'Scalp Atlas';
+    document.body.style.cssText = 'margin:0;padding:12px;background:#101822;color:#e6effa;font:16px system-ui';
+    const title = document.createElement('strong');
+    title.textContent = 'SCALP ATLAS · QT DEMO';
+    overlaySummary = document.createElement('p');
+    overlaySummary.style.cssText = 'color:#6feac7;margin:8px 0 0;overflow-wrap:anywhere';
+    overlaySummary.setAttribute('role', 'status');
+    overlaySummary.textContent = find('selection').textContent;
+    document.body.append(title, overlaySummary);
+    overlay.addEventListener('pagehide', () => {
+      overlaySummary = undefined;
+      overlayButton.disabled = false;
+    }, { once: true });
+  } catch {
+    overlayButton.disabled = false;
+    find('overlay-status').textContent = 'Suprapunerea nu s-a putut deschide. Încearcă din fila panoului.';
+  }
+};
+
+function showSelection(summary) {
+  if (find('selection').textContent !== summary) find('selection').textContent = summary;
+  if (overlaySummary && overlaySummary.textContent !== summary) overlaySummary.textContent = summary;
+}
 
 function invalidate(chart) {
   chart.epoch++;
@@ -73,6 +111,7 @@ function stop() {
   find('start').disabled = false;
   find('stop').disabled = true;
   find('status').textContent = 'Captură oprită.';
+  showSelection('Captură oprită');
 }
 
 find('start').onclick = async () => {
@@ -181,6 +220,6 @@ setInterval(() => {
   }
   const summary = winner
     ? winner.result.brokerPair + ' · ' + winner.result.signal + ' · ȘOC ' + winner.result.shockRetracementPercent + '%'
-    : 'Aștept un ȘOC confirmat';
-  if (find('selection').textContent !== summary) find('selection').textContent = summary;
+    : stream ? 'Aștept un ȘOC confirmat' : 'Captură oprită';
+  showSelection(summary);
 }, 250);
