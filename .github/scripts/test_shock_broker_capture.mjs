@@ -369,3 +369,26 @@ assertQuiet(goneHold);
 for(let n=0;n<6;n++)assertQuiet(
   analyze(217,'BUY','G24-STATIC-WICK OTC',96,'M10',0,true,'NONE'));
 console.log('PASS DEMO 450: simple same-candle SHOCK, two-frame rebound, wick and opposite-trend veto');
+
+
+// The Android BUY gate uses this flag before emitting a BIP or placing an order.
+let earlyBuy, shortWickBuy, lateBuy;
+for (const close of [200, 220, 216, 212]) {
+  earlyBuy = analyze(close, 'BUY', 'EARLY-BUY OTC', 101, 'M5', 0, true, 'NONE');
+}
+assert.equal(earlyBuy.shockDirection, 'BUY');
+assert.equal(earlyBuy.buyWickEntry, true, 'Long lower wick and early recovery qualify');
+assert.equal(analyze(212, 'BUY', 'EARLY-BUY OTC', 101, 'M5', 0, true, 'NONE').buyWickEntry, true,
+  'A fresh held frame still in the entry zone qualifies');
+assert.equal(analyze(202, 'BUY', 'EARLY-BUY OTC', 101, 'M5', 0, true, 'NONE').buyWickEntry, false,
+  'The held signal loses entry eligibility when price leaves the zone');
+for (const close of [200, 220, 216, 212]) {
+  shortWickBuy = analyze(close, 'BUY', 'SHORT-WICK OTC', 102, 'M5', 0, false, 'NONE');
+}
+assert.equal(shortWickBuy.shockDirection, 'BUY');
+assert.equal(shortWickBuy.buyWickEntry, false, 'A short lower wick blocks BUY');
+for (const close of [200, 220, 215, 205]) {
+  lateBuy = analyze(close, 'BUY', 'LATE-BUY OTC', 103, 'M5', 0, true, 'NONE');
+}
+assert.equal(lateBuy.shockDirection, 'BUY');
+assert.equal(lateBuy.buyWickEntry, false, 'A late rebound blocks BUY despite the long wick');
