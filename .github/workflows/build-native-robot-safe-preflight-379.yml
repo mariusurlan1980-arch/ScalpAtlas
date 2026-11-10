@@ -2,7 +2,7 @@ name: Build Scalp Atlas 474 fixed-demo recovery with luminous brain
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, fix/scalpatlas-rollback-473-brain, fix/scalpatlas-474-demo-migration]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, fix/scalpatlas-demo-continuous465, fix/scalpatlas-confirmed-sell-pullback466, feature/scalpatlas-rotating-brain467, fix/scalpatlas-rollback-473-brain, fix/scalpatlas-474-demo-migration, feature/android-demo-fx-rotation]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -87,16 +87,17 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-          import json
+          import json, os
+          rotation=os.environ.get("GITHUB_REF") == "refs/heads/feature/android-demo-fx-rotation"
           p=Path('scalp-atlas-new/app.json')
           cfg=json.loads(p.read_text(encoding='utf-8'))
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.32'
+          expo['version']='3.2.34' if rotation else '3.2.32'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=474
+          expo['android']['versionCode']=476 if rotation else 474
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2230,9 +2231,16 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk
+          if [ "$GITHUB_REF" = "refs/heads/feature/android-demo-fx-rotation" ]; then
+            grep -Fq '30_000L' "$SERVICE"
+            grep -Fq 'TouchTestService.reopenDemoFxList(pair)' "$SERVICE"
+            cp "$APK" ScalpAtlas-476-ROTATIE-DEMO-G24.apk
+          else
+            cp "$APK" ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk
+          fi
 
       - uses: actions/upload-artifact@v4
+        if: github.ref != 'refs/heads/feature/android-demo-fx-rotation'
         with:
           name: ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24
           path: ScalpAtlas-474-DEMO-FIX-1USD-CREIER-G24.apk
@@ -2255,3 +2263,24 @@ jobs:
             --title "SCALP ATLAS 474 - DEMO FIX 1 USD + CREIER • ${GITHUB_SHA:0:12}" \
             --notes "474: motorul 467 plus creier albastru rotativ. FARA MG: revine la miza DEMO fixa 1 USD doar dupa citire confirmata QT Demo, suma 1 USD, payout >=92%, expirare 5 minute si fara ID OPEN verificat. Flagul de ordin incercat si cooldown-ul raman active pentru prevenirea ordinelor duplicate; nu sunt sterse la migrare. BUY/SELL arata procentul SOC de retragere, NU probabilitate de castig. CI compileaza si verifica semnatura dar NU este test pe Motorola. Nicio tranzactie QT Real; nu se garanteaza profit sau ordine. Build $GITHUB_SHA." \
           --prerelease
+
+
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/feature/android-demo-fx-rotation'
+        with:
+          name: ScalpAtlas-476-ROTATIE-DEMO-G24
+          path: ScalpAtlas-476-ROTATIE-DEMO-G24.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish rotation pilot APK
+        if: github.ref == 'refs/heads/feature/android-demo-fx-rotation'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "scalp-atlas-rotation476-${GITHUB_SHA:0:12}" \
+            ScalpAtlas-476-ROTATIE-DEMO-G24.apk \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "Scalp Atlas 476 · rotație QT Demo · Motorola G24" \
+            --notes "Pilot Android pentru rotația M5, 30 s per pereche eligibilă la minimum 92%. Rotația testează navigarea fără ordine. Compilarea nu confirmă funcționarea pe Motorola."
