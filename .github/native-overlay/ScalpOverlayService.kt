@@ -3345,7 +3345,65 @@ class ScalpOverlayService : Service() {
         else TouchTestService.preflightOneDollarDemoOrder(pair)
       }
     }
+    val testedFxPairs = mutableSetOf<String>()
+    val fxNavigation = localButton("TEST PERECHE ≥92%", Color.rgb(71, 88, 118)).apply {
+      contentDescription = "În lista Valute deschisă, testează selectarea unei perechi fără ordin"
+      setOnClickListener {
+        if (tradePositionGate.state() != TradePositionGate.State.READY ||
+            closedHistoryInspectionInProgress ||
+            listOf(autoShockAttemptPrefs, sell404TestPrefs).any { name ->
+              getSharedPreferences(name, Context.MODE_PRIVATE).getBoolean("attempted", false)
+            }) {
+          probeStatus.text = "TEST PERECHI BLOCAT • ORDIN NECONFIRMAT"
+          return@setOnClickListener
+        }
+        if (TouchTestService.readVisibleDemoFxQuotes().isEmpty()) {
+          probeStatus.text = "DESCHIDE LISTA VALUTE ÎN QT DEMO"
+          return@setOnClickListener
+        }
+        autoDemoSessionRequested = false
+        autoDemoArmed = false
+        autoDemoMarket = null
+        latestMarket.takeUnless { it == "NEIDENTIFICAT" }?.let(testedFxPairs::add)
+        isEnabled = false
+        fun finish(message: String) {
+          text = message
+          probeStatus.text = message
+          isEnabled = true
+        }
+        fun verify(pair: String, checks: Int) {
+          if (overlayView !== root || shuttingDown) return
+          val payout = TouchTestService.readVerifiedDemoPayoutForPair(pair)
+          if (payout != null) {
+            testedFxPairs.add(pair)
+            finish(if (payout >= 92) "$pair • $payout% CONFIRMAT" else "$pair • $payout% SUB PRAG")
+          } else if (checks > 0) {
+            mainHandler.postDelayed({ verify(pair, checks - 1) }, 500L)
+          } else finish("GRAFIC NECONFIRMAT")
+        }
+        fun step(scrolls: Int) {
+          if (overlayView !== root || shuttingDown) return
+          val before = TouchTestService.readVisibleDemoFxQuotes()
+          val result = TouchTestService.navigateOpenDemoFxList(testedFxPairs, scrolls > 0)
+          val pair = result.pair
+          text = result.message
+          if (pair != null) {
+            mainHandler.postDelayed({ verify(pair, 7) }, 500L)
+          } else if (result.scrolled && scrolls > 0) {
+            mainHandler.postDelayed({
+              if (overlayView !== root || shuttingDown) return@postDelayed
+              val after = TouchTestService.readVisibleDemoFxQuotes()
+              if (after.isEmpty() || after == before) finish("DERULARE NECONFIRMATĂ")
+              else step(scrolls - 1)
+            }, 500L)
+          } else finish(result.message)
+        }
+        step(3)
+      }
+    }
+    amountCheckRow.orientation = LinearLayout.VERTICAL
     amountCheckRow.addView(amountCheck, LinearLayout.LayoutParams(-1, dp(31)))
+    amountCheckRow.addView(fxNavigation, LinearLayout.LayoutParams(-1, dp(31)))
     root.addView(amountCheckRow)
     demoAmountCheckRow = amountCheckRow
 

@@ -382,6 +382,10 @@ class TouchTestService : AccessibilityService() {
 
     data class DemoFxQuote(val pair: String, val payout: Int)
 
+    private data class DemoFxRow(val quote: DemoFxQuote, val node: AccessibilityNodeInfo, val bounds: Rect)
+    data class DemoFxNavigation(val pair: String? = null, val scrolled: Boolean = false,
+      val message: String)
+
     private val fxPairLabel = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})\b(?:\s*\(?\s*(OTC)\s*\)?)?""")
     private val fxPayoutLabel = Regex("""(?<![\d.,-])\+?\s*(\d{1,3})\s*%""")
     private val fiatCodes by lazy {
@@ -392,6 +396,12 @@ class TouchTestService : AccessibilityService() {
     /** Reads only rows with a payout attached to the same accessibility item. */
     fun readVisibleDemoFxQuotes(): List<DemoFxQuote> {
       val (_, _, labels) = activeDemoHistoryNodes(false) ?: return emptyList()
+      return visibleDemoFxRows(labels).map { it.quote }
+    }
+
+    private fun visibleDemoFxRows(
+      labels: List<Pair<AccessibilityNodeInfo, Rect>>
+    ): List<DemoFxRow> {
       fun rowTexts(node: AccessibilityNodeInfo): List<String> =
         listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
           .map(String::trim).distinct()
@@ -437,12 +447,55 @@ class TouchTestService : AccessibilityService() {
         val payout = rowValues.flatMap { value ->
           fxPayoutLabel.findAll(value).mapNotNull { it.groupValues[1].toIntOrNull() }.toList()
         }.distinct().singleOrNull()?.takeIf { it in 0..100 } ?: return@mapNotNull null
-        DemoFxQuote("$base/$quote" + if (otc) " OTC" else "", payout)
+        DemoFxRow(DemoFxQuote("$base/$quote" + if (otc) " OTC" else "", payout), node, bounds)
       }
-      // Conflicting percentages for the same pair are ambiguous. Require
-      // multiple rows so a single chart's payout cannot stand in for a list.
-      return quotes.groupBy { it.pair }.values.mapNotNull { it.distinct().singleOrNull() }
-        .takeIf { it.size >= 2 }.orEmpty()
+      return quotes.groupBy { it.quote.pair }.values.mapNotNull { rows ->
+        if (rows.map { it.quote.payout }.distinct().size != 1) null
+        else rows.distinctBy { it.bounds }.singleOrNull()
+      }.sortedBy { it.bounds.top }
+    }
+
+    /** A single selector action. The caller must verify the resulting chart. */
+    fun navigateOpenDemoFxList(excluded: Set<String>, allowScroll: Boolean): DemoFxNavigation {
+      val (svc, root, labels) = activeDemoHistoryNodes(false)
+        ?: return DemoFxNavigation(message = "QT DEMO NECONFIRMAT")
+      if (svc.rootInActiveWindow != root)
+        return DemoFxNavigation(message = "BROKERUL NU ESTE ÎN FAȚĂ")
+      val rows = visibleDemoFxRows(labels)
+      if (rows.isEmpty()) return DemoFxNavigation(message = "DESCHIDE LISTA VALUTE")
+      val next = rows.firstOrNull { it.quote.payout >= 92 && it.quote.pair !in excluded }
+      if (next != null) {
+        val action = AccessibilityNodeInfo.ACTION_CLICK
+        // A row label can be nested inside a clickable row. Limit the search
+        // to ancestors contained in the same vertical band as the row.
+        val target = generateSequence(next.node) { it.parent }.take(5).firstOrNull { node ->
+          val rect = Rect()
+          node.getBoundsInScreen(rect)
+          node.isVisibleToUser && node.isEnabled && node.isClickable &&
+            node.packageName == root.packageName &&
+            rect.top >= next.bounds.top - next.bounds.height() &&
+            rect.bottom <= next.bounds.bottom + next.bounds.height() &&
+            node.actionList.any { it.id == action }
+        } ?: return DemoFxNavigation(message = "RÂND VALUTAR FĂRĂ ACȚIUNE ANDROID")
+        return if (svc.rootInActiveWindow == root && target.performAction(action))
+          DemoFxNavigation(pair = next.quote.pair, message = "VERIFIC PERECHEA")
+        else DemoFxNavigation(message = "ANDROID A REFUZAT SELECTAREA")
+      }
+      if (!allowScroll) return DemoFxNavigation(message = "LIMITĂ TEST DERULARE")
+      val action = AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+      val first = rows.first()
+      val last = rows.last()
+      val scroll = generateSequence(first.node) { it.parent }.take(8).firstOrNull { node ->
+        val rect = Rect()
+        node.getBoundsInScreen(rect)
+        node.isVisibleToUser && node.isScrollable && node.packageName == root.packageName &&
+          rect.top <= first.bounds.top && rect.bottom >= last.bounds.bottom &&
+          node.actionList.any { it.id == action } &&
+          generateSequence(last.node) { it.parent }.take(8).any { it == node }
+      } ?: return DemoFxNavigation(message = "NICIO ALTĂ PERECHE VERIFICATĂ LA ≥92%")
+      return if (svc.rootInActiveWindow == root && scroll.performAction(action))
+        DemoFxNavigation(scrolled = true, message = "VERIFIC LISTA DERULATĂ")
+      else DemoFxNavigation(message = "DERULARE NECONFIRMATĂ")
     }
 
     // 454: Pocket Option's Motorola history layout can omit the page
