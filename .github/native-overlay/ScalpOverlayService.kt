@@ -2324,13 +2324,7 @@ class ScalpOverlayService : Service() {
       setStroke(dp(1), strokeColor)
     }
 
-  /**
-   * 434: continuous circular LED motion AROUND the rounded status pill.
-   * Only draws within its own background bounds; never adds a window,
-   * changes touch coordinates, blocks broker controls, or affects SHOCK.
-   * A dim mint ring stays visible for the complete overlay lifetime while
-   * a brighter green-to-cyan arc travels once around the whole perimeter.
-   */
+  /** A violet halo with a magenta nebula and starlight traveling along the rim. */
   private class TravelingNeonEdge434(private val density: Float) :
     android.graphics.drawable.Drawable() {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -2342,6 +2336,7 @@ class ScalpOverlayService : Service() {
       strokeCap = Paint.Cap.ROUND
       strokeJoin = Paint.Join.ROUND
     }
+    private val starPosition = FloatArray(2)
     var progress = 0f
       set(value) {
         field = value
@@ -2358,8 +2353,11 @@ class ScalpOverlayService : Service() {
       val inset = 4f * density
       val inner = RectF(outer).apply { inset(inset, inset) }
       val corner = (radius - inset).coerceAtLeast(3f * density)
-      stroke.strokeWidth = 1.5f * density
-      stroke.color = Color.argb(160, 49, 197, 159)
+      stroke.strokeWidth = 7f * density
+      stroke.color = Color.argb(72, 138, 55, 255)
+      canvas.drawRoundRect(inner, corner, corner, stroke)
+      stroke.strokeWidth = 1.8f * density
+      stroke.color = Color.rgb(125, 56, 207)
       canvas.drawRoundRect(inner, corner, corner, stroke)
 
       val perimeter = Path().apply {
@@ -2368,8 +2366,7 @@ class ScalpOverlayService : Service() {
       val measure = PathMeasure(perimeter, true)
       val total = measure.length
       if (total <= 0f) return
-      // Trailing 28% luminous arc with green -> teal highlights, traveling
-      // around ALL four sides and the rounded corners continuously.
+      // The moving glow blends from violet to magenta and pale lavender.
       val tail = total * 0.28f
       val head = ((progress % 1f) + 1f) % 1f * total
       val steps = 16
@@ -2385,18 +2382,22 @@ class ScalpOverlayService : Service() {
           measure.getSegment(0f, next - total, segment, true)
         }
         val t = i.toFloat() / (steps - 1)
-        val r = (104f - 68f * t).toInt()
-        val g = (225f - 7f * t).toInt()
-        val b = (88f + 132f * t).toInt()
-        stroke.color = Color.argb((28 + 82 * t).toInt(), r, g, b)
+        stroke.color = Color.argb((35 + 115 * t).toInt(), 164, 55, 255)
         stroke.strokeWidth = 7.5f * density
         canvas.drawPath(segment, stroke)
-        stroke.color = Color.argb((80 + 135 * t).toInt(), r, g, b)
+        stroke.color = Color.argb((90 + 165 * t).toInt(), (167 + 88 * t).toInt(), 68, 230)
         stroke.strokeWidth = 3.5f * density
         canvas.drawPath(segment, stroke)
-        stroke.color = Color.argb((150 + 105 * t).toInt(), r, g, b)
+        stroke.color = Color.argb((130 + 125 * t).toInt(), (202 + 53 * t).toInt(), (112 + 120 * t).toInt(), 255)
         stroke.strokeWidth = 1.7f * density
         canvas.drawPath(segment, stroke)
+      }
+      stroke.strokeWidth = 1.5f * density
+      for (i in 0 until 4) {
+        val distance = (head + total - tail * i * 0.19f) % total
+        measure.getPosTan(distance, starPosition, null)
+        stroke.color = Color.argb(255 - 42 * i, 255, 235, 255)
+        canvas.drawPoint(starPosition[0], starPosition[1], stroke)
       }
     }
 
@@ -2763,7 +2764,20 @@ class ScalpOverlayService : Service() {
       isClickable = false
       importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
-    header.addView(rotatingBrain467, LinearLayout.LayoutParams(dp(35), dp(28)))
+    val brainEclipse = android.widget.FrameLayout(this).apply {
+      val corona = View(this@ScalpOverlayService).apply {
+        background = GradientDrawable().apply {
+          shape = GradientDrawable.OVAL
+          gradientType = GradientDrawable.RADIAL_GRADIENT
+          gradientRadius = dp(14).toFloat()
+          colors = intArrayOf(Color.rgb(14, 15, 37), Color.rgb(25, 24, 53), Color.rgb(185, 85, 24))
+          setStroke(dp(1), Color.rgb(255, 193, 75))
+        }
+      }
+      addView(corona, android.widget.FrameLayout.LayoutParams(dp(28), dp(28), Gravity.CENTER))
+      addView(rotatingBrain467, android.widget.FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
+    }
+    header.addView(brainEclipse, LinearLayout.LayoutParams(dp(35), dp(28)))
     rotatingBrainAnimator467?.cancel()
     rotatingBrainAnimator467 = android.animation.ObjectAnimator.ofFloat(
       rotatingBrain467, "rotationY", 0f, 360f
