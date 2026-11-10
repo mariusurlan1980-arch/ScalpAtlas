@@ -2324,13 +2324,7 @@ class ScalpOverlayService : Service() {
       setStroke(dp(1), strokeColor)
     }
 
-  /**
-   * 434: continuous circular LED motion AROUND the rounded status pill.
-   * Only draws within its own background bounds; never adds a window,
-   * changes touch coordinates, blocks broker controls, or affects SHOCK.
-   * A dim mint ring stays visible for the complete overlay lifetime while
-   * a brighter green-to-cyan arc travels once around the whole perimeter.
-   */
+  /** A continuous gold corona with a brighter solar flare traveling along the rim. */
   private class TravelingNeonEdge434(private val density: Float) :
     android.graphics.drawable.Drawable() {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -2358,8 +2352,11 @@ class ScalpOverlayService : Service() {
       val inset = 4f * density
       val inner = RectF(outer).apply { inset(inset, inset) }
       val corner = (radius - inset).coerceAtLeast(3f * density)
-      stroke.strokeWidth = 1.5f * density
-      stroke.color = Color.argb(160, 49, 197, 159)
+      stroke.strokeWidth = 7f * density
+      stroke.color = Color.argb(55, 255, 117, 20)
+      canvas.drawRoundRect(inner, corner, corner, stroke)
+      stroke.strokeWidth = 1.8f * density
+      stroke.color = Color.rgb(224, 128, 27)
       canvas.drawRoundRect(inner, corner, corner, stroke)
 
       val perimeter = Path().apply {
@@ -2368,8 +2365,7 @@ class ScalpOverlayService : Service() {
       val measure = PathMeasure(perimeter, true)
       val total = measure.length
       if (total <= 0f) return
-      // Trailing 28% luminous arc with green -> teal highlights, traveling
-      // around ALL four sides and the rounded corners continuously.
+      // The moving flare fades from orange at its tail to pale gold at its tip.
       val tail = total * 0.28f
       val head = ((progress % 1f) + 1f) % 1f * total
       val steps = 16
@@ -2385,16 +2381,13 @@ class ScalpOverlayService : Service() {
           measure.getSegment(0f, next - total, segment, true)
         }
         val t = i.toFloat() / (steps - 1)
-        val r = (104f - 68f * t).toInt()
-        val g = (225f - 7f * t).toInt()
-        val b = (88f + 132f * t).toInt()
-        stroke.color = Color.argb((28 + 82 * t).toInt(), r, g, b)
+        stroke.color = Color.argb((35 + 115 * t).toInt(), 255, 100, 22)
         stroke.strokeWidth = 7.5f * density
         canvas.drawPath(segment, stroke)
-        stroke.color = Color.argb((80 + 135 * t).toInt(), r, g, b)
+        stroke.color = Color.argb((90 + 165 * t).toInt(), 255, (132 + 68 * t).toInt(), 33)
         stroke.strokeWidth = 3.5f * density
         canvas.drawPath(segment, stroke)
-        stroke.color = Color.argb((150 + 105 * t).toInt(), r, g, b)
+        stroke.color = Color.argb((130 + 125 * t).toInt(), 255, (178 + 65 * t).toInt(), (49 + 145 * t).toInt())
         stroke.strokeWidth = 1.7f * density
         canvas.drawPath(segment, stroke)
       }

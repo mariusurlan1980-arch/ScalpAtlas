@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 478 G24 with lower-wick DEMO BUY filter
+name: Build Scalp Atlas 479 Golden Eclipse G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-buy-lower-wick]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, feature/scalpatlas-golden-eclipse]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.41'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=478
+          expo['android']['versionCode']=479
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2139,28 +2139,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-478-BUY-FITIL-JOS-QT-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-479-ECLIPSA-AURIE-QT-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-478-BUY-FITIL-JOS-QT-DEMO-G24
-          path: ScalpAtlas-478-BUY-FITIL-JOS-QT-DEMO-G24.apk
+          name: ScalpAtlas-479-ECLIPSA-AURIE-QT-DEMO-G24
+          path: ScalpAtlas-479-ECLIPSA-AURIE-QT-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/experiment/scalpatlas-buy-lower-wick'
+        if: github.ref == 'refs/heads/feature/scalpatlas-golden-eclipse'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-478-BUY-FITIL-JOS-QT-DEMO-G24.apk"
+          FILE="ScalpAtlas-479-ECLIPSA-AURIE-QT-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-buy-fitil-jos478-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-eclipsa-aurie479-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 478 - BUY FITIL JOS QT DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "Candidat pentru Motorola G24 cu creier albastru rotativ. QT DEMO: setezi miza in broker, Scalp Atlas o verifica fara sa o modifice si filtreaza intrarile BUY dupa fitilul inferior si revenirea timpurie. Expirare 5 minute, payout minimum 92%. Testul fizic ramane de facut. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 479 - ECLIPSA AURIE QT DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "Candidat pentru Motorola G24 cu margine Eclipsa aurie si creier albastru rotativ. QT DEMO: setezi miza in broker, Scalp Atlas o verifica fara sa o modifice si filtreaza intrarile BUY dupa fitilul inferior si revenirea timpurie. Expirare 5 minute, payout minimum 92%. Testul fizic ramane de facut. Build $GITHUB_SHA." \
           --prerelease
