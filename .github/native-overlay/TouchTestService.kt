@@ -421,9 +421,12 @@ class TouchTestService : AccessibilityService() {
         hasFxCurrencyHeader(node)
       }?.second ?: return emptyList()
       val payoutHeader = labels.firstOrNull { (node, rect) ->
-        rect.left > currencyHeader.right &&
-          rect.centerY() in currencyHeader.top until currencyHeader.bottom &&
-          rowTexts(node).any { it.equals("Venit", true) || it.equals("Payout", true) }
+        rect.centerX() > currencyHeader.centerX() &&
+          kotlin.math.abs(rect.centerY() - currencyHeader.centerY()) <=
+            maxOf(currencyHeader.height(), rect.height()) / 2 &&
+          rowTexts(node).any {
+            Regex("""(?i)^(?:Venit|Payout)\s*[⌄▾▼▲△▽]?$""").matches(it)
+          }
       }?.second ?: return emptyList()
       val listBottom = labels.filter { (node, rect) ->
         rect.top > currencyHeader.bottom && rowTexts(node).any {
@@ -450,8 +453,9 @@ class TouchTestService : AccessibilityService() {
         // Pocket Option exposes the pair and payout in separate columns.
         // Restrict the match to that row and to the payout column.
         val rowValues = values + listLabels.filter { (_, rect) ->
-          rect.centerY() in bounds.top until bounds.bottom &&
-            rect.left >= bounds.right &&
+          kotlin.math.abs(rect.centerY() - bounds.centerY()) <=
+            maxOf(bounds.height(), rect.height()) / 2 &&
+            rect.centerX() > bounds.centerX() &&
             rect.centerX() >= payoutHeader.left - payoutHeader.width() / 2
         }.flatMap { (payoutNode, _) ->
           rowTexts(payoutNode).filter { fxPayoutLabel.matches(it) }
@@ -463,7 +467,9 @@ class TouchTestService : AccessibilityService() {
       }
       return quotes.groupBy { it.quote.pair }.values.mapNotNull { rows ->
         if (rows.map { it.quote.payout }.distinct().size != 1) null
-        else rows.distinctBy { it.bounds }.singleOrNull()
+        else rows.minByOrNull { it.bounds.height() }?.takeIf { narrow ->
+          rows.all { it.bounds.contains(narrow.bounds.centerX(), narrow.bounds.centerY()) }
+        }
       }.sortedBy { it.bounds.top }
     }
 
@@ -526,14 +532,20 @@ class TouchTestService : AccessibilityService() {
     }
 
     /** A single selector action. The caller must verify the resulting chart. */
-    fun navigateOpenDemoFxList(excluded: Set<String>, allowScroll: Boolean, forward: Boolean): DemoFxNavigation {
+    fun navigateOpenDemoFxList(
+      excluded: Set<String>, allowScroll: Boolean, forward: Boolean, overlayBounds: Rect,
+      onlyPair: String? = null
+    ): DemoFxNavigation {
       val (svc, root, labels) = activeDemoHistoryNodes(false)
         ?: return DemoFxNavigation(message = "QT DEMO NECONFIRMAT")
       if (svc.rootInActiveWindow != root)
         return DemoFxNavigation(message = "BROKERUL NU ESTE ÎN FAȚĂ")
       val rows = visibleDemoFxRows(labels)
-      if (rows.isEmpty()) return DemoFxNavigation(message = "DESCHIDE LISTA VALUTE")
-      val next = rows.firstOrNull { it.quote.payout >= 92 && it.quote.pair !in excluded }
+      if (rows.isEmpty()) return DemoFxNavigation(message = "RÂNDURI VALUTE NECITITE")
+      val next = rows.firstOrNull {
+        it.quote.payout >= 92 && it.quote.pair !in excluded &&
+          (onlyPair == null || onlyPair == it.quote.pair)
+      }
       if (next != null) {
         val action = AccessibilityNodeInfo.ACTION_CLICK
         // A row label can be nested inside a clickable row. Limit the search
@@ -546,8 +558,24 @@ class TouchTestService : AccessibilityService() {
             rect.top >= next.bounds.top - next.bounds.height() &&
             rect.bottom <= next.bounds.bottom + next.bounds.height() &&
             node.actionList.any { it.id == action }
-        } ?: return DemoFxNavigation(message = "RÂND VALUTAR FĂRĂ ACȚIUNE ANDROID")
-        return if (svc.rootInActiveWindow == root && target.performAction(action))
+        }
+        if (svc.rootInActiveWindow != root)
+          return DemoFxNavigation(message = "BROKERUL NU ESTE ÎN FAȚĂ")
+        if (onlyPair == null && target?.performAction(action) == true)
+          return DemoFxNavigation(pair = next.quote.pair, message = "VERIFIC PERECHEA")
+        val x = next.bounds.centerX()
+        val y = next.bounds.centerY()
+        val metrics = svc.resources.displayMetrics
+        if (x !in (metrics.widthPixels * .15f).toInt()..(metrics.widthPixels * .65f).toInt() ||
+            y !in (metrics.heightPixels * .25f).toInt()..(metrics.heightPixels * .70f).toInt())
+          return DemoFxNavigation(message = "RÂND VALUTAR ÎN AFARA ZONEI SIGURE")
+        if (overlayBounds.contains(x, y))
+          return DemoFxNavigation(message = "PANOU PESTE PERECHE")
+        val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+        val gesture = GestureDescription.Builder()
+          .addStroke(GestureDescription.StrokeDescription(path, 0L, 75L)).build()
+        return if (svc.rootInActiveWindow == root &&
+            svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper())))
           DemoFxNavigation(pair = next.quote.pair, message = "VERIFIC PERECHEA")
         else DemoFxNavigation(message = "ANDROID A REFUZAT SELECTAREA")
       }

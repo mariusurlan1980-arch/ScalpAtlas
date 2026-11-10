@@ -3390,7 +3390,9 @@ class ScalpOverlayService : Service() {
         running = true
         if (listOpen) {
           beginNavigation()
-          select(pair, 12, true)
+          val current = pair ?: latestMarket.takeUnless { it == "NEIDENTIFICAT" }
+          current?.let { visited.add(it) }
+          select(current, 12, true)
         } else {
           fxButton.text = "ROTAȚIE • VERIFIC M5"
           verifyChart(checkNotNull(pair), 24)
@@ -3500,7 +3502,6 @@ class ScalpOverlayService : Service() {
 
       fun awaitList(pair: String, checks: Int, physicalOnly: Boolean) {
         if (TouchTestService.demoFxListVisible()) {
-          restoreOverlay()
           select(pair, 12, true)
         }
         else if (checks > 0) after(500L) { awaitList(pair, checks - 1, physicalOnly) }
@@ -3508,18 +3509,41 @@ class ScalpOverlayService : Service() {
         else stop("ROTAȚIE • LISTA NU S-A DESCHIS")
       }
 
-      fun select(previous: String?, scrolls: Int, mayWrap: Boolean) {
+      fun overlayBounds(): Rect {
+        val location = IntArray(2)
+        root.getLocationOnScreen(location)
+        return Rect(location[0], location[1], location[0] + root.width, location[1] + root.height)
+      }
+
+      fun confirmSelection(pair: String, retryTap: Boolean) {
         if (tradeBusy()) {
           stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
           return
         }
-        val result = TouchTestService.navigateOpenDemoFxList(visited, scrolls > 0, forward)
+        if (!TouchTestService.demoFxListVisible()) {
+          restoreOverlay()
+          verifyChart(pair, 24)
+        } else if (retryTap &&
+            TouchTestService.navigateOpenDemoFxList(emptySet(), false, forward,
+              overlayBounds(), pair).pair == pair) {
+          after(1_250L) { confirmSelection(pair, false) }
+        } else stop("ROTAȚIE • PERECHEA NU S-A SELECTAT")
+      }
+
+      fun select(previous: String?, scrolls: Int, mayWrap: Boolean, rowChecks: Int = 5) {
+        if (tradeBusy()) {
+          stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
+          return
+        }
+        val result = TouchTestService.navigateOpenDemoFxList(visited, scrolls > 0, forward, overlayBounds())
         val pair = result.pair
         when {
           pair != null -> {
             fxButton.text = "ROTAȚIE • VERIFIC $pair"
-            after(750L) { verifyChart(pair, 24) }
+            after(1_250L) { confirmSelection(pair, true) }
           }
+          result.message == "RÂNDURI VALUTE NECITITE" && rowChecks > 0 ->
+            after(500L) { select(previous, scrolls, mayWrap, rowChecks - 1) }
           result.scrolled -> after(500L) { select(previous, scrolls - 1, mayWrap) }
           mayWrap && (result.message.startsWith("NICIO ALTĂ") || scrolls == 0) -> {
             visited.clear()
@@ -3529,10 +3553,10 @@ class ScalpOverlayService : Service() {
           }
           !mayWrap && previous != null &&
             (result.message.startsWith("NICIO ALTĂ") || scrolls == 0) -> {
-            val same = TouchTestService.navigateOpenDemoFxList(emptySet(), false, forward)
+            val same = TouchTestService.navigateOpenDemoFxList(emptySet(), false, forward, overlayBounds())
             val fallback = same.pair
             if (fallback == null) stop("ROTAȚIE • NICIO PERECHE ≥92%")
-            else after(750L) { verifyChart(fallback, 24) }
+            else after(1_250L) { confirmSelection(fallback, true) }
           }
           else -> stop("ROTAȚIE • " + result.message)
         }
