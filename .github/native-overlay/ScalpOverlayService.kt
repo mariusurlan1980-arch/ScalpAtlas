@@ -3333,6 +3333,7 @@ class ScalpOverlayService : Service() {
       var reversed = false
       var newPass = false
       var lastChartPair: String? = null
+      var recoveryAttempts = 0
       var originalOverlayY: Int? = null
       var dockedOverlayY: Int? = null
 
@@ -3385,7 +3386,7 @@ class ScalpOverlayService : Service() {
           else try {
             work()
           } catch (_: Exception) {
-            stop("ROTAȚIE • SELECTOR NECONFIRMAT")
+            recoverNavigation(lastChartPair, "SELECTOR NECONFIRMAT")
           }
         }
         task = callback
@@ -3404,6 +3405,7 @@ class ScalpOverlayService : Service() {
           return
         }
         visited.clear()
+        recoveryAttempts = 0
         lastChartPair = pair ?: latestMarket.takeUnless { it == "NEIDENTIFICAT" }
         forward = true
         running = true
@@ -3447,8 +3449,8 @@ class ScalpOverlayService : Service() {
           observedCandleAt > 0L && now - observedCandleAt in 0L..3500L
         if (!chartReady) {
           if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
-          else stop(if (payout == null) "ROTAȚIE • PAYOUT NECITIT"
-            else "ROTAȚIE • GRAFIC M5 NECONFIRMAT")
+          else recoverNavigation(pair, if (payout == null) "PAYOUT NECITIT"
+            else "GRAFIC M5 NECONFIRMAT")
           return
         }
         if (fxRotationNavigating) {
@@ -3466,6 +3468,7 @@ class ScalpOverlayService : Service() {
           }
         }
         lastChartPair = pair
+        recoveryAttempts = 0
         fxRotationNavigating = false
         autoDemoEntryCycleStartedAt = now
         visited.add(pair)
@@ -3502,7 +3505,7 @@ class ScalpOverlayService : Service() {
         if (TouchTestService.readDemoFxChartPayout(pair) == null &&
             !TouchTestService.demoFxListVisible()) {
           if (retries > 0) after(750L) { dwell(pair, deadline, retries - 1) }
-          else stop("ROTAȚIE • PERECHE NECONFIRMATĂ")
+          else recoverNavigation(pair, "PERECHE NECONFIRMATĂ")
           return
         }
         beginNavigation()
@@ -3510,9 +3513,48 @@ class ScalpOverlayService : Service() {
         openList(pair, false)
       }
 
+      fun recoverNavigation(previous: String?, reason: String) {
+        // A transient list/chart mismatch must not cancel unattended rotation.
+        // Preserve visited pairs, and re-read the foreground broker before any action.
+        fxRotationNavigating = true
+        val delay = when (recoveryAttempts) {
+          0 -> 3_000L
+          1 -> 10_000L
+          else -> 30_000L
+        }
+        recoveryAttempts = (recoveryAttempts + 1).coerceAtMost(2)
+        fxButton.text = "REÎNCERC ÎN ${delay / 1000} S • $reason"
+        after(delay) {
+          if (tradeBusy() || TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
+              .startsWith("QT DEMO • INDICATOR ")) {
+            recoverNavigation(previous, "AȘTEPT CONFIRMAREA ORDINULUI")
+          } else if (TouchTestService.demoFxListVisible()) {
+            scrollHistory.clear()
+            reversed = false
+            newPass = false
+            if (dockForSelector()) after(350L) { select(previous) }
+            else select(previous)
+          } else if (dockForSelector()) {
+            recoverNavigation(previous, "VERIFIC GRAFICUL QT DEMO")
+          } else {
+            val current = TouchTestService.readVisibleDemoPair()
+            if (current == null || TouchTestService.readDemoFxChartPayout(current) == null) {
+              recoverNavigation(previous, "AȘTEPT GRAFICUL QT DEMO")
+            } else if (current != previous && current != lastChartPair) {
+              restoreOverlay()
+              verifyChart(current, 24)
+            } else {
+              visited.add(current)
+              beginNavigation()
+              openList(current, false)
+            }
+          }
+        }
+      }
+
       fun openList(pair: String, physicalOnly: Boolean) {
         if (tradeBusy()) {
-          stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
+          recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
           return
         }
         if (dockForSelector()) {
@@ -3524,7 +3566,7 @@ class ScalpOverlayService : Service() {
           return
         }
         if (!TouchTestService.reopenDemoFxList(pair, overlayBounds(), physicalOnly)) {
-          stop("ROTAȚIE • SELECTOR BLOCAT")
+          recoverNavigation(pair, "SELECTOR BLOCAT")
           return
         }
         after(500L) { awaitList(pair, 6, physicalOnly) }
@@ -3536,7 +3578,7 @@ class ScalpOverlayService : Service() {
         }
         else if (checks > 0) after(500L) { awaitList(pair, checks - 1, physicalOnly) }
         else if (!physicalOnly) openList(pair, true)
-        else stop("ROTAȚIE • LISTA NU S-A DESCHIS")
+        else recoverNavigation(pair, "LISTA NU S-A DESCHIS")
       }
 
       fun dockForSelector(): Boolean {
@@ -3563,7 +3605,7 @@ class ScalpOverlayService : Service() {
 
       fun confirmSelection(pair: String, previous: String?, retryTap: Boolean) {
         if (tradeBusy()) {
-          stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
+          recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
           return
         }
         if (!TouchTestService.demoFxListVisible()) {
@@ -3584,7 +3626,7 @@ class ScalpOverlayService : Service() {
 
       fun select(previous: String?, rowChecks: Int = 5) {
         if (tradeBusy()) {
-          stop("ROTAȚIE • POZIȚIE NEVERIFICATĂ")
+          recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
           return
         }
         val result = TouchTestService.navigateOpenDemoFxList(
@@ -3602,6 +3644,8 @@ class ScalpOverlayService : Service() {
           }
           result.message == "RÂNDURI VALUTE NECITITE" && rowChecks > 0 ->
             after(500L) { select(previous, rowChecks - 1) }
+          result.message == "RÂNDURI VALUTE NECITITE" ->
+            recoverNavigation(previous, result.message)
           result.scrolled -> after(750L) { select(previous) }
           result.endOfList && !reversed -> {
             reversed = true
@@ -3624,10 +3668,10 @@ class ScalpOverlayService : Service() {
                 emptySet(), false, forward, overlayBounds(), it).pair
             }
             if (current == null || current != previous || current in rejectedPairs)
-              stop("ROTAȚIE • NICIO ALTĂ PERECHE ≥92%")
+              recoverNavigation(previous, "NICIO ALTĂ PERECHE ≥92%")
             else after(1_250L) { confirmSelection(current, previous, false) }
           }
-          else -> stop("ROTAȚIE • " + result.message)
+          else -> recoverNavigation(previous, result.message)
         }
       }
     }
