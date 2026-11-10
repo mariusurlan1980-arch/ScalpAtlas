@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ro">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scalp Atlas · Șase grafice</title>
+<style>
+  :root { color-scheme: dark; font: 16px system-ui; }
+  body { max-width: 1050px; margin: 2rem auto; padding: 0 1rem; background: #101822; color: #e6effa; }
+  button, input, select { font: inherit; padding: .45rem; }
+  button { cursor: pointer; }
+  canvas { width: 100%; height: auto; background: #172638; touch-action: none; cursor: crosshair; }
+  #charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .75rem; margin: 1rem 0; }
+  .chart { padding: .75rem; border: 1px solid #395571; border-radius: .5rem; }
+  .winner { border-color: #42edbb; }
+  iframe { display: none; }
+  #selection { color: #6feac7; }
+</style>
+<h1>Scalp Atlas · Șase grafice</h1>
+<p>Monitorizare QT Demo · M5 · Selecție de semnale</p>
+<p>Partajează ecranul pe care sunt vizibile graficele. Mută acest panou pe alt ecran sau lasă-l în fundal după configurare. Pentru fiecare pereche, selectează o poziție și trasează în previzualizare zona lumânărilor, fără butoanele brokerului.</p>
+<button id="start">Pornește captura</button>
+<button id="stop" disabled>Oprește captura</button>
+<label>Grafic <select id="slot"></select></label>
+<p id="status" role="status"></p>
+<h2 id="selection" aria-live="polite">Aștept un ȘOC confirmat</h2>
+<div id="charts"></div>
+<canvas id="preview" width="960" height="540" aria-label="Previzualizare pentru delimitarea graficelor"></canvas>
+<script type="module" src="./app.mjs"></script>
+</html>
