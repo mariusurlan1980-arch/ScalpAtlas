@@ -3328,12 +3328,27 @@ class ScalpOverlayService : Service() {
       var running = false
       var forward = true
       var task: Runnable? = null
+      var originalOverlayY: Int? = null
+      var dockedOverlayY: Int? = null
+
+      fun restoreOverlay() {
+        val originalY = originalOverlayY ?: return
+        val dockedY = dockedOverlayY
+        originalOverlayY = null
+        dockedOverlayY = null
+        val window = overlayWindowParams ?: return
+        if (overlayView === root && !shuttingDown && window.y == dockedY) {
+          window.y = originalY
+          try { windowManager.updateViewLayout(root, window) } catch (_: Exception) {}
+        }
+      }
 
       fun stop(message: String) {
         running = false
         fxRotationNavigating = false
         task?.let { mainHandler.removeCallbacks(it) }
         task = null
+        restoreOverlay()
         fxButton.text = message
       }
 
@@ -3458,6 +3473,22 @@ class ScalpOverlayService : Service() {
         }
         val location = IntArray(2)
         root.getLocationOnScreen(location)
+        val window = overlayWindowParams
+        val screenHeight = resources.displayMetrics.heightPixels
+        val headerBottom = (screenHeight * .33f).toInt()
+        if (window != null && location[1] <= headerBottom &&
+            location[0] < resources.displayMetrics.widthPixels * .60f &&
+            originalOverlayY == null) {
+          val targetY = headerBottom + dp(12)
+          if (targetY + root.height < screenHeight - dp(24)) {
+            originalOverlayY = window.y
+            dockedOverlayY = targetY
+            window.y = targetY
+            windowManager.updateViewLayout(root, window)
+            after(350L) { openList(pair, physicalOnly) }
+            return
+          }
+        }
         val overlayBounds = Rect(location[0], location[1],
           location[0] + root.width, location[1] + root.height)
         if (!TouchTestService.reopenDemoFxList(pair, overlayBounds, physicalOnly)) {
@@ -3468,7 +3499,10 @@ class ScalpOverlayService : Service() {
       }
 
       fun awaitList(pair: String, checks: Int, physicalOnly: Boolean) {
-        if (TouchTestService.demoFxListVisible()) select(pair, 12, true)
+        if (TouchTestService.demoFxListVisible()) {
+          restoreOverlay()
+          select(pair, 12, true)
+        }
         else if (checks > 0) after(500L) { awaitList(pair, checks - 1, physicalOnly) }
         else if (!physicalOnly) openList(pair, true)
         else stop("ROTAȚIE • LISTA NU S-A DESCHIS")

@@ -480,15 +480,18 @@ class TouchTestService : AccessibilityService() {
       val height = display.heightPixels
       val width = display.widthPixels
       val headerTop = (height * .105f).toInt()
-      val headerBottom = (height * .27f).toInt()
+      val headerBottom = (height * .33f).toInt()
       val headerRight = (width * .60f).toInt()
+      val selectorSuffix = Regex("""\s*(?:\+?\d{1,3}\s*%\s*)?[⌄▾▼]?\s*""")
       val matches = labels.filter { (node, bounds) ->
         bounds.centerY() in headerTop..headerBottom &&
           bounds.centerX() in 1..headerRight &&
           bounds.height() <= height * .075f &&
           listOfNotNull(node.text, node.contentDescription).any { text ->
-            val match = fxPairLabel.matchEntire(text.toString().trim())
-            match != null && pair.equals(
+            val label = text.toString().trim()
+            val match = fxPairLabel.find(label)
+            match != null && match.range.first == 0 &&
+              selectorSuffix.matches(label.substring(match.range.last + 1)) && pair.equals(
               match.groupValues[1] + "/" + match.groupValues[2] +
                 if (match.groupValues[3].isNotEmpty()) " OTC" else "", true
             )
@@ -504,6 +507,7 @@ class TouchTestService : AccessibilityService() {
             candidate.packageName == root.packageName &&
             rect.width() <= width * .65f && rect.height() <= height * .09f &&
             rect.centerY() in headerTop..headerBottom &&
+            rect.centerX() in 1..headerRight &&
             candidate.actionList.any { it.id == action }
         }
       }.distinct()
