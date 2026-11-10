@@ -3332,6 +3332,7 @@ class ScalpOverlayService : Service() {
       val scrollHistory = mutableSetOf<List<String>>()
       var reversed = false
       var newPass = false
+      var lastChartPair: String? = null
       var originalOverlayY: Int? = null
       var dockedOverlayY: Int? = null
 
@@ -3356,12 +3357,25 @@ class ScalpOverlayService : Service() {
         fxButton.text = message
       }
 
-      fun tradeBusy(): Boolean =
-        tradePositionGate.state() != TradePositionGate.State.READY ||
-          closedHistoryInspectionInProgress ||
-          listOf(autoShockAttemptPrefs, sell404TestPrefs).any { name ->
-            getSharedPreferences(name, Context.MODE_PRIVATE).getBoolean("attempted", false)
-          }
+      fun tradeBusy(): Boolean {
+        val state = tradePositionGate.state()
+        if (closedHistoryInspectionInProgress || state == TradePositionGate.State.SUBMITTING ||
+            state == TradePositionGate.State.OPEN ||
+            demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+            getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted", false))
+          return true
+        val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("attempted", false)) return state != TradePositionGate.State.READY
+        val attemptedAt = prefs.getLong("attemptedAt429", -1L)
+        val attemptedWall = prefs.getLong("attemptedWallAt454", -1L)
+        val elapsedAge = android.os.SystemClock.elapsedRealtime() - attemptedAt
+        val wallAge = System.currentTimeMillis() - attemptedWall
+        // Navigation can continue after the known DEMO window. The persisted
+        // attempt and order gate still block execution until normal reconciliation.
+        return attemptedAt <= 0L || attemptedWall <= 0L ||
+          elapsedAge < DEMO_TEST_EXPIRY_MS_465 || wallAge < DEMO_TEST_EXPIRY_MS_465 ||
+          kotlin.math.abs(wallAge - elapsedAge) > 60_000L
+      }
 
       fun after(delay: Long, work: () -> Unit) {
         val callback = Runnable {
@@ -3390,6 +3404,7 @@ class ScalpOverlayService : Service() {
           return
         }
         visited.clear()
+        lastChartPair = pair ?: latestMarket.takeUnless { it == "NEIDENTIFICAT" }
         forward = true
         running = true
         if (listOpen) {
@@ -3436,7 +3451,21 @@ class ScalpOverlayService : Service() {
             else "ROTAȚIE • GRAFIC M5 NECONFIRMAT")
           return
         }
-        if (fxRotationNavigating) clearOnInstrumentChange()
+        if (fxRotationNavigating) {
+          clearOnInstrumentChange()
+          // Retire a display signal belonging to the previous chart only.
+          // The persistent order gate and gesture cooldown are independent.
+          if (lastChartPair != null && lastChartPair != pair && !tradeBusy()) {
+            lockedDir = null
+            lockedUntil = 0L
+            lockedAt = 0L
+            activeStrategy = "NONE"
+            lastConfirmedShockPercent = 0
+            lastConfirmedScalpPercent = 0
+            lastConfirmedShockDurationMs = 0L
+          }
+        }
+        lastChartPair = pair
         fxRotationNavigating = false
         autoDemoEntryCycleStartedAt = now
         visited.add(pair)
@@ -3468,8 +3497,10 @@ class ScalpOverlayService : Service() {
           after(750L) { dwell(pair, deadline, retries) }
           return
         }
-        if (!pairReady(now) || currentPair(now) != pair ||
-            TouchTestService.readVisibleDemoPair() != pair) {
+        // Navigation uses the fresh broker pair and chart proof. Temporary
+        // OCR loss at the end of a dwell does not stop a verified selector.
+        if (TouchTestService.readDemoFxChartPayout(pair) == null &&
+            !TouchTestService.demoFxListVisible()) {
           if (retries > 0) after(750L) { dwell(pair, deadline, retries - 1) }
           else stop("ROTAȚIE • PERECHE NECONFIRMATĂ")
           return
@@ -5793,6 +5824,13 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  private fun currentOverlayBounds488(): Rect {
+    val view = overlayView ?: return Rect()
+    val location = IntArray(2)
+    view.getLocationOnScreen(location)
+    return Rect(location[0], location[1], location[0] + view.width, location[1] + view.height)
+  }
+
   private fun updateOverlay(
     signal: String, details: String, model: String, entryFrameId: Long = -1L
   ) {
@@ -5971,9 +6009,7 @@ class ScalpOverlayService : Service() {
               val nextStake429 = if (CHART_ONLY_DEMO_462) null else desiredVerifiedDemoStake429(pair)
               when {
                 CHART_ONLY_DEMO_462 ->
-                  if (TouchTestService.readBrokerDemoOrder476(pair) != null)
-                    "PREGĂTIT AUTO DEMO"
-                  else "BLOCAT: MIZĂ / PAYOUT / TIMP QT DEMO NECONFIRMATE"
+                  TouchTestService.inspectBrokerDemoOrder488(pair, currentOverlayBounds488())
                 nextStake429 == null -> "BLOCAT: REZULTAT / MIZĂ DEMO NECONFIRMATĂ"
                 nextStake429 == 100L ->
                   TouchTestService.preflightOneDollarDemoOrder(pair)
@@ -6111,7 +6147,8 @@ class ScalpOverlayService : Service() {
               CHART_ONLY_DEMO_462 &&
                 !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
                 "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"
-              CHART_ONLY_DEMO_462 -> "PREGĂTIT AUTO DEMO"
+              CHART_ONLY_DEMO_462 ->
+                TouchTestService.inspectBrokerDemoOrder488(tradePair429, currentOverlayBounds488())
               !quoteMatches429 || package429 == null ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
               stake429 == 100L ->

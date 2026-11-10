@@ -2497,20 +2497,40 @@ class TouchTestService : AccessibilityService() {
       return values.size == 1 && values.single() == "00:05:00"
     }
 
-    fun readBrokerDemoOrder476(expectedPair: String): Pair<Long, Int>? {
-      if (!priorDemoGestureCooldownComplete() ||
-          !confirmedFiveMinuteDemoExpiry465() ||
-          readVisibleDemoPair() != expectedPair) return null
+    private fun readBrokerDemoOrder488(
+      expectedPair: String, overlayBounds: Rect?
+    ): Pair<Pair<Long, Int>?, String> {
+      if (!priorDemoGestureCooldownComplete()) return null to "BLOCAT: COOLDOWN DEMO 5 MIN"
+      if (readVisibleDemoPair() != expectedPair) return null to "BLOCAT: PERECHE DEMO NECONFIRMATĂ"
+      if (!confirmedFiveMinuteDemoExpiry465())
+        return null to "BLOCAT: EXPIRARE DEMO 00:05:00 NECONFIRMATĂ"
       val buy = checkOneDollarDemoTarget("BUY", true, null)
       val sell = checkOneDollarDemoTarget("SELL", true, null)
-      val stake = buy.stakeCents ?: return null
-      val payout = buy.payoutPercent ?: return null
-      if (buy.target == null || sell.target == null ||
+      val buyTarget = buy.target ?: return null to buy.reason
+      val sellTarget = sell.target ?: return null to sell.reason
+      val stake = buy.stakeCents
+      val payout = buy.payoutPercent
+      if (stake == null || payout == null ||
           sell.stakeCents != stake || sell.payoutPercent != payout ||
-          buy.target.activePackage != sell.target.activePackage ||
-          readVisibleDemoPair() != expectedPair) return null
-      return stake to payout
+          buyTarget.activePackage != sellTarget.activePackage ||
+          readVisibleDemoPair() != expectedPair)
+        return null to "BLOCAT: BUY/SELL AU DATE DIFERITE SAU BROKERUL S-A SCHIMBAT"
+      if (overlayBounds != null) {
+        for ((side, target) in listOf("BUY" to buyTarget, "SELL" to sellTarget)) {
+          val bounds = Rect()
+          target.node.getBoundsInScreen(bounds)
+          if (overlayBounds.contains(bounds.centerX(), bounds.centerY()))
+            return null to "BLOCAT: PANOU PESTE $side • MUTĂ PANOU"
+        }
+      }
+      return (stake to payout) to "PREGĂTIT AUTO DEMO"
     }
+
+    fun readBrokerDemoOrder476(expectedPair: String): Pair<Long, Int>? =
+      readBrokerDemoOrder488(expectedPair, null).first
+
+    fun inspectBrokerDemoOrder488(expectedPair: String, overlayBounds: Rect): String =
+      readBrokerDemoOrder488(expectedPair, overlayBounds).second
 
     fun preflightOneDollarDemoOrder(expectedPair: String): String {
       // 465: the previous broker attempt can remain open if the user
