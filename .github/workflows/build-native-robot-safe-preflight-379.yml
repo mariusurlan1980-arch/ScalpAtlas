@@ -700,7 +700,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'private var autoDemoLastPreflightReason' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '"🤖 ȘOC SIMPLU 30/20 + FITIL • "' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"🤖 ȘOC ADAPTIV + FITIL • "' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '"🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeStatus.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
 
