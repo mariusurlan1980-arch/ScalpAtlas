@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 480 Violet Nebula G24
+name: Build Scalp Atlas 481 Shock Continuation G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, feature/scalpatlas-violet-nebula]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-shock-continuation]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.41'
+          expo['version']='3.2.43'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=480
+          expo['android']['versionCode']=481
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -745,10 +745,10 @@ jobs:
       - name: Verify 406 moderate DEMO SHOCK and persistent-order safety
         run: |
           set -euo pipefail
-          grep -Fq 'minShockFraction=.30,maxDropMs=18000,minRecoveryFraction=.20' scalp-atlas-new/shockNativeEngine.ts
+          grep -Fq 'minShockFraction=.30,largeBodyShockFraction=.25' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'minTrendStrengthPercent=25,scalpTrendThreshold=50' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'var rowSupport=Math.max(2,Math.ceil(width*.8))' scalp-atlas-new/shockNativeEngine.ts
-          grep -Fq 'private const val SHOCK_MIN_DEPTH = 30' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private const val SHOCK_MIN_DEPTH = 25' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'private const val SHOCK_MIN_RECOVERY = 20' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'private const val SHOCK_MIN_TREND = 25' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SHOCK_MAX_DROP_MS = 18_000L' .github/native-overlay/ScalpOverlayService.kt
@@ -923,7 +923,7 @@ jobs:
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
           # 428: narrow signal relaxation only; never remove the one-position
           # guard or the confirmed QT Demo / amount / payout checks.
-          grep -Fq 'private const val SHOCK_MIN_DEPTH = 30' "$O"
+          grep -Fq 'private const val SHOCK_MIN_DEPTH = 25' "$O"
           grep -Fq 'private const val SHOCK_MIN_RECOVERY = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_TREND = 25' "$O"
           grep -Fq 'val scalpAlertAllowed = false' "$O"
@@ -2139,28 +2139,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-480-NEBULOASA-VIOLET-QT-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-481-SOC-CONTINUARE-QT-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-480-NEBULOASA-VIOLET-QT-DEMO-G24
-          path: ScalpAtlas-480-NEBULOASA-VIOLET-QT-DEMO-G24.apk
+          name: ScalpAtlas-481-SOC-CONTINUARE-QT-DEMO-G24
+          path: ScalpAtlas-481-SOC-CONTINUARE-QT-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/feature/scalpatlas-violet-nebula'
+        if: github.ref == 'refs/heads/experiment/scalpatlas-shock-continuation'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-480-NEBULOASA-VIOLET-QT-DEMO-G24.apk"
+          FILE="ScalpAtlas-481-SOC-CONTINUARE-QT-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-nebuloasa-violet480-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-soc-continuare481-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 480 - NEBULOASA VIOLET QT DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "Candidat pentru Motorola G24 cu margine Nebuloasa violet si creier albastru rotativ intr-un inel fix de eclipsa aurie. QT DEMO: setezi miza in broker, Scalp Atlas o verifica fara sa o modifice si filtreaza intrarile BUY dupa fitilul inferior si revenirea timpurie. Expirare 5 minute, payout minimum 92%. Testul fizic ramane de facut. Build $GITHUB_SHA." \
+            --title "SCALP ATLAS 481 - SOC CONTINUARE QT DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "Candidat pentru Motorola G24 cu margine Nebuloasa violet si creier albastru rotativ intr-un inel fix de eclipsa aurie. QT DEMO: setezi miza in broker, Scalp Atlas o verifica fara sa o modifice si filtreaza intrarile BUY si SELL dupa fitil si revenirea timpurie pe aceeasi lumanare. Expirare 5 minute, payout minimum 92%. Testul fizic ramane de facut. Build $GITHUB_SHA." \
           --prerelease

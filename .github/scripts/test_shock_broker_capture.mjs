@@ -371,24 +371,38 @@ for(let n=0;n<6;n++)assertQuiet(
 console.log('PASS DEMO 450: simple same-candle SHOCK, two-frame rebound, wick and opposite-trend veto');
 
 
-// The Android BUY gate uses this flag before emitting a BIP or placing an order.
-let earlyBuy, shortWickBuy, lateBuy;
-for (const close of [200, 220, 216, 212]) {
-  earlyBuy = analyze(close, 'BUY', 'EARLY-BUY OTC', 101, 'M5', 0, true, 'NONE');
+// Android requires a long wick and early rebound in either direction.
+for (const [index, side] of ['BUY', 'SELL'].entries()) {
+  const price = close => side === 'BUY' ? close : 395 - close;
+  const run = (closes, pair, wick) => {
+    let result;
+    for (const close of closes) result = analyze(price(close), side, pair, 101 + index, 'M5', 0, wick, 'NONE');
+    assert.equal(result.shockDirection, side);
+    return result;
+  };
+  const earlyPair = `EARLY-${side} OTC`;
+  assert.equal(run([200, 220, 216, 212], earlyPair, true).wickEntry, true,
+    `${side} qualifies near the long wick`);
+  assert.equal(run([212], earlyPair, true).wickEntry, true,
+    `${side} remains eligible on a fresh held frame in the entry zone`);
+  assert.equal(run([202], earlyPair, true).wickEntry, false,
+    `${side} loses eligibility when the price leaves the entry zone`);
+  assert.equal(run([200, 220, 216, 212], `SHORT-${side} OTC`, false).wickEntry, false,
+    `A short wick blocks ${side}`);
+  assert.equal(run([200, 220, 215, 205], `LATE-${side} OTC`, true).wickEntry, false,
+    `A late rebound blocks ${side} despite the long wick`);
 }
-assert.equal(earlyBuy.shockDirection, 'BUY');
-assert.equal(earlyBuy.buyWickEntry, true, 'Long lower wick and early recovery qualify');
-assert.equal(analyze(212, 'BUY', 'EARLY-BUY OTC', 101, 'M5', 0, true, 'NONE').buyWickEntry, true,
-  'A fresh held frame still in the entry zone qualifies');
-assert.equal(analyze(202, 'BUY', 'EARLY-BUY OTC', 101, 'M5', 0, true, 'NONE').buyWickEntry, false,
-  'The held signal loses entry eligibility when price leaves the zone');
-for (const close of [200, 220, 216, 212]) {
-  shortWickBuy = analyze(close, 'BUY', 'SHORT-WICK OTC', 102, 'M5', 0, false, 'NONE');
+
+for (const side of ['BUY', 'SELL']) {
+  const price = close => side === 'BUY' ? close : 395 - close;
+  let largeBody, smallBody;
+  for (const close of [170, 187, 184, 180]) {
+    largeBody = analyze(price(close), side, `LARGE-BODY-${side} OTC`, 110, 'M5', 0, true, 'NONE');
+  }
+  for (const close of [200, 208, 207, 205]) {
+    smallBody = analyze(price(close), side, `SMALL-BODY-${side} OTC`, 111, 'M5', 0, true, 'NONE');
+  }
+  assert.equal(largeBody.wickEntry, true, `${side} admits a clear sub-30% shock on a large candle`);
+  assert.ok(largeBody.shockRetracementPercent > 25 && largeBody.shockRetracementPercent <= 30);
+  assertQuiet(smallBody);
 }
-assert.equal(shortWickBuy.shockDirection, 'BUY');
-assert.equal(shortWickBuy.buyWickEntry, false, 'A short lower wick blocks BUY');
-for (const close of [200, 220, 215, 205]) {
-  lateBuy = analyze(close, 'BUY', 'LATE-BUY OTC', 103, 'M5', 0, true, 'NONE');
-}
-assert.equal(lateBuy.shockDirection, 'BUY');
-assert.equal(lateBuy.buyWickEntry, false, 'A late rebound blocks BUY despite the long wick');

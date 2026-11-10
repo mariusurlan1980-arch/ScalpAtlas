@@ -94,7 +94,7 @@ class ScalpOverlayService : Service() {
     private const val CONFIRMATION_SPACING_MS = 1500L
     private const val REQUIRED_CONFIRMATIONS = 2
     // 428: moderated optical DEMO SHOCK; maintain two confirmations and broker safety.
-    private const val SHOCK_MIN_DEPTH = 30
+    private const val SHOCK_MIN_DEPTH = 25
     private const val SHOCK_MIN_RECOVERY = 20
     private const val SHOCK_MIN_TREND = 25
     private const val SHOCK_MAX_DROP_MS = 18_000L
@@ -5252,10 +5252,11 @@ class ScalpOverlayService : Service() {
     val sameScalpDirection = sameOpticalDirection && observedTrendMeasured &&
       observedTrendDirection == rawSignal &&
       observedTrendStrengthPercent > SCALP_MIN_TREND
-    val buyWickRejected = rawStrategy == "SHOCK" && rawSignal == "BUY" &&
-      !result.optBoolean("buyWickEntry", false)
-    if (buyWickRejected) shockBlocker = "BUY • AȘTEPT FITIL JOS"
-    val confirmedShock = rawStrategy == "SHOCK" && !buyWickRejected && quality >= 55 &&
+    val wickRejected = rawStrategy == "SHOCK" && rawDirectionValid &&
+      !result.optBoolean("wickEntry", false)
+    if (wickRejected) shockBlocker = if (rawSignal == "BUY")
+      "BUY • AȘTEPT FITIL JOS" else "SELL • AȘTEPT FITIL SUS"
+    val confirmedShock = rawStrategy == "SHOCK" && !wickRejected && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
       shockFrameFresh && shockBodyPercent > SHOCK_MIN_DEPTH &&
       shockReboundPercent >= SHOCK_MIN_RECOVERY &&
@@ -5282,7 +5283,7 @@ class ScalpOverlayService : Service() {
     val confirmedSignal = if (confirmedShock || scalpAlertAllowed) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK"
       else if (scalpAlertAllowed) "SCALP_TREND" else "NONE"
-    val rejectionText = if (buyWickRejected) shockBlocker
+    val rejectionText = if (wickRejected) shockBlocker
       else if (rawStrategy == "SCALP_TREND")
       "SCALP TREND neconfirmat" else "ȘOC / SCALP în așteptare"
     val expiry = 5 // five-minute DEMO alert timer, not an automatic broker order
@@ -5348,7 +5349,7 @@ class ScalpOverlayService : Service() {
 
     if (confirmedSignal != "BUY" && confirmedSignal != "SELL") {
       val candidateStillFresh =
-        !buyWickRejected && candidateDir != null &&
+        !wickRejected && candidateDir != null &&
         candidateCount > 0 &&
         candidateLastSeenAt > 0L &&
         now - candidateLastSeenAt <= CANDIDATE_EVIDENCE_GRACE_MS &&
@@ -5449,7 +5450,7 @@ class ScalpOverlayService : Service() {
       confirmedSignal,
       "Scor orientativ " + score + " • Durată " + if (expiry > 0) expiry.toString() + " min" else "—",
       pattern + " • direcție estimată " + if (directionMax > 0) directionMax.toString() + " min" else timeframe,
-      buyEntryFrameId = if (confirmedSignal == "BUY") result.optLong("frameId", -1L) else -1L
+      entryFrameId = result.optLong("frameId", -1L)
     )
   }
 
@@ -5504,7 +5505,7 @@ class ScalpOverlayService : Service() {
   }
 
   private fun updateOverlay(
-    signal: String, details: String, model: String, buyEntryFrameId: Long = -1L
+    signal: String, details: String, model: String, entryFrameId: Long = -1L
   ) {
     mainHandler.post {
       val now = System.currentTimeMillis()
@@ -5750,11 +5751,10 @@ class ScalpOverlayService : Service() {
           !manualTfConflict &&
           (!tfAutomatic || (tfVerified &&
             now - confirmedTfAt in 0L..TF_STALE_MS))
-        // A displayed BUY lock must never replay an entry from an older frame.
-        val buyFrameCurrent = activeSignal != "BUY" ||
-          (buyEntryFrameId > 0L && buyEntryFrameId == frameCount &&
-            now - lastFrameAt in 0L..MAX_ALERT_ANALYSIS_AGE_MS)
-        val newShock = activeSignal != "NONE" && buyFrameCurrent &&
+        // A displayed signal lock must never replay an entry from an older frame.
+        val entryFrameCurrent = entryFrameId > 0L && entryFrameId == frameCount &&
+          now - lastFrameAt in 0L..MAX_ALERT_ANALYSIS_AGE_MS
+        val newShock = activeSignal != "NONE" && entryFrameCurrent &&
           activeStrategy == "SHOCK" &&
           lastConfirmedShockPercent > SHOCK_MIN_DEPTH &&
           lockedAt > 0L && now - lockedAt in 0L..5000L &&
