@@ -9,8 +9,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
   var canvas=document.getElementById('c');
   var ctx=canvas.getContext('2d',{willReadFrequently:true});
   var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1,lastObservedAt=0,lastValidCandleAt=0,shockHold=null;
-  function buyNearLowerWick(candle,recovery){
-    return candle.connectedLowerWickPixels>=Math.max(5,candle.bodyHeight*.5) &&
+  function nearRejectionWick(candle,recovery){
+    var wick=candle.dir==='BUY'?candle.connectedLowerWickPixels:candle.connectedUpperWickPixels;
+    return wick>=Math.max(5,candle.bodyHeight*.5) &&
       recovery>=.20 && recovery<=.55;
   }
   function send(obj){try{AndroidBridge.postMessage(JSON.stringify(obj));}catch(e){}}
@@ -100,12 +101,13 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     // Observe the narrow center wick outside the filled candle body.
     // Do not fabricate a wick from unobserved highs or lows.
     var centerX=Math.round((candle.start+candle.end)/2);
-    var wickMin=top,wickMax=bottom,connectedLowerWickPixels=0;
+    var wickMin=top,wickMax=bottom,connectedLowerWickPixels=0,connectedUpperWickPixels=0;
     for(var wy=minY;wy<maxY;wy++){
       var supported=false;
       for(var wx=Math.max(candle.start,centerX-1);wx<=Math.min(candle.end,centerX+1);wx++){
         if(isColor(p,(wy*w+wx)*4)===candle.dir){supported=true;break;}
       }
+      if(wy<top)connectedUpperWickPixels=supported?connectedUpperWickPixels+1:0;
       if(supported && wy===bottom+connectedLowerWickPixels+1)connectedLowerWickPixels++;
       if(supported){wickMin=Math.min(wickMin,wy);wickMax=Math.max(wickMax,wy);}
     }
@@ -159,6 +161,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       width:width,bodyHeight:bottom-top,wickPixels:wickPixels,wickPercent:wickPercent,
       topWickPixels:upperWickPixels,bottomWickPixels:lowerWickPixels,
       connectedLowerWickPixels:connectedLowerWickPixels,
+      connectedUpperWickPixels:connectedUpperWickPixels,
       trendDirection:trend,trendMeasured:trendMeasured,
       trendStrengthPercent:trendStrengthPercent,trendVisualPoints:trendVisualPoints,
       trendHistoryCount:trendHistoryCount,
@@ -249,7 +252,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         var minTrendStrengthPercent=25,scalpTrendThreshold=50;
         var displayedDepth=0,displayedDropDuration=0,confirmed=false,dir='NONE';
         var confirmedDepth=0,confirmedRebound=0,confirmedDuration=0;
-        var buyWickEntry=false,buyWickTrough=0,buyWickDrop=0;
+        var wickEntry=false,wickTurnY=0,wickPullback=0;
         for(var i=0;i<history.length-1;i++){
           var start=history[i];
           if(start.dir!==candle.dir||start.bodyHeight<minBody)continue;
@@ -297,10 +300,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             // Both ends must be the same live candle, detected in its
             // original direction after the recovery, not the opposite candle.
             confirmed=true;
-            if(candle.dir==='BUY' && !buyWickEntry && buyNearLowerWick(candle,recovery/drop)){
-              buyWickEntry=true;
-              buyWickTrough=bottom.y;
-              buyWickDrop=drop;
+            if(!wickEntry && nearRejectionWick(candle,recovery/drop)){
+              wickEntry=true;
+              wickTurnY=bottom.y;
+              wickPullback=drop;
             }
             if(percent>=confirmedDepth){
               confirmedDepth=percent;
@@ -323,7 +326,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           shockHold={at:now,dir:dir,x:candle.x,y:candle.closeY,
             body:candle.bodyHeight,depth:confirmedDepth,
             rebound:confirmedRebound,duration:confirmedDuration,
-            buyWickTrough:buyWickTrough,buyWickDrop:buyWickDrop};
+            wickTurnY:wickTurnY,wickPullback:wickPullback};
         }else if(shockHold){
           var held=shockHold;
           var against=held.dir==='BUY'?candle.closeY-held.y:held.y-candle.closeY;
@@ -338,8 +341,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             confirmedDepth=held.depth;
             confirmedRebound=held.rebound;
             confirmedDuration=held.duration;
-            buyWickEntry=held.buyWickDrop>0 && buyNearLowerWick(candle,
-              (held.buyWickTrough-candle.closeY)/held.buyWickDrop);
+            var heldRecovery=held.dir==='BUY'?
+              held.wickTurnY-candle.closeY:candle.closeY-held.wickTurnY;
+            wickEntry=held.wickPullback>0 && nearRejectionWick(candle,
+              heldRecovery/held.wickPullback);
           }else{
             shockHold=null;
           }
@@ -419,7 +424,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             scalpPullbackDurationMs:scalpConfirmed?scalpDuration:0,
             candidateDirection:emittedDirection,
             shockOpticalVerified:confirmed,shockSameCandle:confirmed,
-            buyWickEntry:buyWickEntry,
+            wickEntry:wickEntry,
             shockRetraced:confirmed,shockRecovered:confirmed,
             // All percentages below refer to the observed forming candle.
             shockRetracementPercent:confirmed?confirmedDepth:displayedDepth,
