@@ -4117,12 +4117,23 @@ class ScalpOverlayService : Service() {
           }
           "RESULT" -> {
             val result = payload.optJSONObject("result") ?: return
-            if (result.optLong("frameId", -1L) != activeFrameId) return
-            analysisBusy = false
-            activeFrameId = -1L
-            resultCount += 1
-            lastAnalysisResultAt = System.currentTimeMillis()
-            handleResult(result)
+            val resultFrameId = result.optLong("frameId", -1L)
+            if (resultFrameId != activeFrameId) return
+            mainHandler.post {
+              if (shuttingDown || resultFrameId != activeFrameId) return@post
+              try {
+                resultCount += 1
+                lastAnalysisResultAt = System.currentTimeMillis()
+                handleResult(result)
+              } finally {
+                // Keep this frame current until the confirmed-signal entry
+                // check has run. A new capture must not invalidate it in the queue.
+                if (activeFrameId == resultFrameId) {
+                  activeFrameId = -1L
+                  analysisBusy = false
+                }
+              }
+            }
           }
           "ERROR" -> {
             val failedId = payload.optLong("frameId", -1L)
@@ -5879,7 +5890,7 @@ class ScalpOverlayService : Service() {
   private fun updateOverlay(
     signal: String, details: String, model: String, entryFrameId: Long = -1L
   ) {
-    mainHandler.post {
+    val update = Runnable {
       val now = System.currentTimeMillis()
       // The accessibility service can bind/unbind while LIVE is running.
       // Refresh only on state changes; never erase a SIM BUY/SELL test result.
@@ -6485,6 +6496,7 @@ class ScalpOverlayService : Service() {
       if (autoDemoSessionRequested && !autoDemoSessionConsumed &&
           lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")) {
         touchProbeStatus?.text = when {
+          fxRotationNavigating -> "VERIFIC PERECHEA • AȘTEPT GRAFICUL"
           // A real SCALP TREND alert may legitimately BIP on M5; only SHOCK
           // is permitted to submit a DEMO broker order in this build.
           activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
@@ -6495,7 +6507,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed && activeSignal == "NONE" ->
             if (scanStatus != "LIVE")
               "🤖 AUTO DEMO • SCAN " + scanStatus
-            else "🤖 ȘOC ADAPTIV • " + shockBlocker.take(39)
+            else "🤖 DEMO ARMAT • " + shockBlocker.take(39)
           !autoDemoArmed ->
             "🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
           else -> touchProbeStatus?.text?.toString().orEmpty()
@@ -6575,6 +6587,11 @@ class ScalpOverlayService : Service() {
       lastRenderedDetails = details
       lastRenderedModel = model
     }
+    // A confirmed signal is evaluated while its analyzer frame is still held.
+    // Ordinary visual refreshes retain their queued behavior.
+    if (entryFrameId > 0L && Looper.myLooper() == Looper.getMainLooper())
+      update.run()
+    else mainHandler.post(update)
   }
 
   override fun onDestroy() {
