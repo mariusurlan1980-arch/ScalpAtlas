@@ -44,7 +44,7 @@ object DemoStakeEditor {
     val labels: List<Item>
   )
 
-  private fun readChart(svc: AccessibilityService): Pair<Chart?, String> {
+  private fun readChart(svc: AccessibilityService, realAccount: Boolean = false): Pair<Chart?, String> {
     val root = svc.rootInActiveWindow ?: return null to "BROKER NECONFIRMAT"
     val pkg = root.packageName?.toString().orEmpty()
     if (!BrokerAdapterRegistry.hasDemoExecutor(pkg))
@@ -87,7 +87,8 @@ object DemoStakeEditor {
     val real = labels.any {
       Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.value)
     }
-    if (!demo || real) return null to "BLOCAT: CONTUL QT DEMO NU ESTE CONFIRMAT"
+    if (if (realAccount) !real || demo else !demo || real)
+      return null to "BLOCAT: CONTUL QT NU ESTE CONFIRMAT"
 
     return Chart(root, pkg, w, h, labels) to "QT DEMO"
   }
@@ -117,8 +118,8 @@ object DemoStakeEditor {
     return buyPayout to "QT DEMO"
   }
 
-  fun readRotationPayout(svc: AccessibilityService): Int? {
-    val chart = readChart(svc).first ?: return null
+  fun readRotationPayout(svc: AccessibilityService, realAccount: Boolean = false): Int? {
+    val chart = readChart(svc, realAccount).first ?: return null
     val payout = readChartPayout(chart).first ?: return null
     return payout.takeIf { svc.rootInActiveWindow == chart.root }
   }

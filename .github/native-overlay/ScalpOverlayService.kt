@@ -3321,11 +3321,12 @@ class ScalpOverlayService : Service() {
     // 1 USD, adequate demo balance, and a unique clickable trade button exist.
     // Verify account and exactly 1 USD without starting a transaction.
     // The current fail-closed error is shown verbatim to diagnose WebView nodes.
-    val fxButton = localButton("ROTAȚIE DEMO • 30 S", Color.rgb(71, 88, 118))
-    fxButton.contentDescription = "Pornește sau oprește rotația perechilor valutare QT Demo"
+    val fxButton = localButton("ROTAȚIE • 30 S", Color.rgb(71, 88, 118))
+    fxButton.contentDescription = "Pornește sau oprește rotația perechilor valutare QT Demo sau QT Real"
     val fxRotation = object {
       val visited = mutableSetOf<String>()
       var running = false
+      var realAccount = false
       var forward = true
       var task: Runnable? = null
       val rejectedPairs = mutableSetOf<String>()
@@ -3359,6 +3360,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun tradeBusy(): Boolean {
+        if (realAccount) return false
         val state = tradePositionGate.state()
         if (closedHistoryInspectionInProgress || state == TradePositionGate.State.SUBMITTING ||
             state == TradePositionGate.State.OPEN ||
@@ -3382,7 +3384,7 @@ class ScalpOverlayService : Service() {
         val callback = Runnable {
           task = null
           if (!running || overlayView !== root || shuttingDown || mediaProjection == null)
-            stop("ROTAȚIE DEMO • 30 S")
+            stop("ROTAȚIE • 30 S")
           else try {
             work()
           } catch (_: Exception) {
@@ -3394,10 +3396,11 @@ class ScalpOverlayService : Service() {
       }
 
       fun start() {
-        val pair = TouchTestService.readVisibleDemoPair()
-        val listOpen = TouchTestService.demoFxListVisible()
+        realAccount = TouchTestService.realFxAccountVisible()
+        val pair = TouchTestService.readVisibleFxPair(realAccount)
+        val listOpen = TouchTestService.fxListVisible(realAccount)
         if (mediaProjection == null || (pair == null && !listOpen)) {
-          stop("ROTAȚIE • DESCHIDE QT DEMO")
+          stop("ROTAȚIE • DESCHIDE GRAFICUL QT")
           return
         }
         if (tradeBusy()) {
@@ -3435,7 +3438,7 @@ class ScalpOverlayService : Service() {
 
       fun verifyChart(pair: String, checks: Int) {
         val now = System.currentTimeMillis()
-        val payout = TouchTestService.readDemoFxChartPayout(pair)
+        val payout = TouchTestService.readFxChartPayout(pair, realAccount)
         if (payout != null && payout < 92) {
           visited.add(pair)
           beginNavigation()
@@ -3502,8 +3505,8 @@ class ScalpOverlayService : Service() {
         }
         // Navigation uses the fresh broker pair and chart proof. Temporary
         // OCR loss at the end of a dwell does not stop a verified selector.
-        if (TouchTestService.readDemoFxChartPayout(pair) == null &&
-            !TouchTestService.demoFxListVisible()) {
+        if (TouchTestService.readFxChartPayout(pair, realAccount) == null &&
+            !TouchTestService.fxListVisible(realAccount)) {
           if (retries > 0) after(750L) { dwell(pair, deadline, retries - 1) }
           else recoverNavigation(pair, "PERECHE NECONFIRMATĂ")
           return
@@ -3528,18 +3531,18 @@ class ScalpOverlayService : Service() {
           if (tradeBusy() || TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
               .startsWith("QT DEMO • INDICATOR ")) {
             recoverNavigation(previous, "AȘTEPT CONFIRMAREA ORDINULUI")
-          } else if (TouchTestService.demoFxListVisible()) {
+          } else if (TouchTestService.fxListVisible(realAccount)) {
             scrollHistory.clear()
             reversed = false
             newPass = false
             if (dockForSelector()) after(350L) { select(previous) }
             else select(previous)
           } else if (dockForSelector()) {
-            recoverNavigation(previous, "VERIFIC GRAFICUL QT DEMO")
+            recoverNavigation(previous, "VERIFIC GRAFICUL QT")
           } else {
-            val current = TouchTestService.readVisibleDemoPair()
-            if (current == null || TouchTestService.readDemoFxChartPayout(current) == null) {
-              recoverNavigation(previous, "AȘTEPT GRAFICUL QT DEMO")
+            val current = TouchTestService.readVisibleFxPair(realAccount)
+            if (current == null || TouchTestService.readFxChartPayout(current, realAccount) == null) {
+              recoverNavigation(previous, "AȘTEPT GRAFICUL QT")
             } else if (current != previous && current != lastChartPair) {
               restoreOverlay()
               verifyChart(current, 24)
@@ -3561,11 +3564,11 @@ class ScalpOverlayService : Service() {
           after(350L) { openList(pair, physicalOnly) }
           return
         }
-        if (TouchTestService.demoFxListVisible()) {
+        if (TouchTestService.fxListVisible(realAccount)) {
           select(pair)
           return
         }
-        if (!TouchTestService.reopenDemoFxList(pair, overlayBounds(), physicalOnly)) {
+        if (!TouchTestService.reopenFxList(pair, overlayBounds(), physicalOnly, realAccount)) {
           recoverNavigation(pair, "SELECTOR BLOCAT")
           return
         }
@@ -3573,7 +3576,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun awaitList(pair: String, checks: Int, physicalOnly: Boolean) {
-        if (TouchTestService.demoFxListVisible()) {
+        if (TouchTestService.fxListVisible(realAccount)) {
           select(pair)
         }
         else if (checks > 0) after(500L) { awaitList(pair, checks - 1, physicalOnly) }
@@ -3608,13 +3611,13 @@ class ScalpOverlayService : Service() {
           recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
           return
         }
-        if (!TouchTestService.demoFxListVisible()) {
+        if (!TouchTestService.fxListVisible(realAccount)) {
           restoreOverlay()
           verifyChart(pair, 24)
           return
         }
-        val retry = if (retryTap) TouchTestService.navigateOpenDemoFxList(
-          emptySet(), false, forward, overlayBounds(), pair) else null
+        val retry = if (retryTap) TouchTestService.navigateOpenFxList(
+          emptySet(), false, forward, overlayBounds(), pair, realAccount = realAccount) else null
         if (retry?.pair == pair) {
           after(1_250L) { confirmSelection(pair, previous, false) }
         } else {
@@ -3629,8 +3632,8 @@ class ScalpOverlayService : Service() {
           recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
           return
         }
-        val result = TouchTestService.navigateOpenDemoFxList(
-          visited + rejectedPairs, true, forward, overlayBounds(), scrollHistory = scrollHistory)
+        val result = TouchTestService.navigateOpenFxList(
+          visited + rejectedPairs, true, forward, overlayBounds(), scrollHistory = scrollHistory, realAccount = realAccount)
         val pair = result.pair
         when {
           pair != null -> {
@@ -3664,8 +3667,8 @@ class ScalpOverlayService : Service() {
           result.endOfList -> {
             // With no eligible alternative, return to the current chart if visible.
             val current = previous?.takeUnless { it in rejectedPairs }?.let {
-              TouchTestService.navigateOpenDemoFxList(
-                emptySet(), false, forward, overlayBounds(), it).pair
+              TouchTestService.navigateOpenFxList(
+                emptySet(), false, forward, overlayBounds(), it, realAccount = realAccount).pair
             }
             if (current == null || current != previous || current in rejectedPairs)
               recoverNavigation(previous, "NICIO ALTĂ PERECHE ≥92%")
@@ -3676,7 +3679,7 @@ class ScalpOverlayService : Service() {
       }
     }
     fxButton.setOnClickListener {
-      if (fxRotation.running) fxRotation.stop("ROTAȚIE DEMO • 30 S")
+      if (fxRotation.running) fxRotation.stop("ROTAȚIE • 30 S")
       else try { fxRotation.start() } catch (_: Exception) {
         fxRotation.stop("ROTAȚIE • SELECTOR NECONFIRMAT")
       }

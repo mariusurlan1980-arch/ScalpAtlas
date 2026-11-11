@@ -230,7 +230,9 @@ class TouchTestService : AccessibilityService() {
      * Returns just one unambiguous instrument label, otherwise null.
      * This never clicks broker buttons or submits orders.
      */
-    fun readVisibleDemoPair(): String? {
+    fun readVisibleDemoPair(): String? = readVisibleFxPair(false)
+
+    fun readVisibleFxPair(realAccount: Boolean): String? {
       val svc = connected ?: return null
       val root = readOnlyBrokerRoot(svc) ?: return null
       val pkg = root.packageName?.toString().orEmpty()
@@ -270,7 +272,7 @@ class TouchTestService : AccessibilityService() {
       val all = labels.map { it.first }
       val demo = all.any { Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it) }
       val real = all.any { Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it) }
-      if (!demo || real) return null
+      if (if (realAccount) !real || demo else !demo || real) return null
       val pattern = Regex("""(?i)(?<![A-Z])([A-Z]{3})\s*/\s*([A-Z]{3})\b(?:\s*\(?\s*(OTC)\s*\)?)?""")
       val instruments = labels.mapNotNull { (value, bounds) ->
         if (bounds.centerY() !in
@@ -332,7 +334,7 @@ class TouchTestService : AccessibilityService() {
       else demoHistoryNavigationStatus
 
     private fun activeDemoHistoryNodes(
-      cachedDemoVerifiedOnChart: Boolean
+      cachedDemoVerifiedOnChart: Boolean, realAccount: Boolean = false
     ): Triple<TouchTestService, AccessibilityNodeInfo, List<Pair<AccessibilityNodeInfo, Rect>>>? {
       val svc = connected ?: return null
       // 443: Collect READ-ONLY broker labels from the same visible,
@@ -376,7 +378,9 @@ class TouchTestService : AccessibilityService() {
         for (i in 0 until node.childCount.coerceAtMost(35))
           node.getChild(i)?.let(queue::addLast)
       }
-      if (seenReal || (!seenDemo && !cachedDemoVerifiedOnChart)) return null
+      if (realAccount) {
+        if (!seenReal || seenDemo) return null
+      } else if (seenReal || (!seenDemo && !cachedDemoVerifiedOnChart)) return null
       return Triple(svc, root, result)
     }
 
@@ -393,15 +397,17 @@ class TouchTestService : AccessibilityService() {
         setOf("XAU", "XAG", "XPD", "XPT", "XTS", "XXX")
     }
 
-    fun readDemoFxChartPayout(pair: String): Int? {
+    fun realFxAccountVisible(): Boolean = activeDemoHistoryNodes(false, true) != null
+
+    fun readFxChartPayout(pair: String, realAccount: Boolean): Int? {
       val svc = connected ?: return null
-      if (readVisibleDemoPair() != pair || demoFxListVisible()) return null
-      val payout = DemoStakeEditor.readRotationPayout(svc) ?: return null
-      return payout.takeIf { connected === svc && readVisibleDemoPair() == pair }
+      if (readVisibleFxPair(realAccount) != pair || fxListVisible(realAccount)) return null
+      val payout = DemoStakeEditor.readRotationPayout(svc, realAccount) ?: return null
+      return payout.takeIf { connected === svc && readVisibleFxPair(realAccount) == pair }
     }
 
-    fun demoFxListVisible(): Boolean {
-      val (_, _, labels) = activeDemoHistoryNodes(false) ?: return false
+    fun fxListVisible(realAccount: Boolean): Boolean {
+      val (_, _, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
       return labels.any { (node, _) -> hasFxCurrencyHeader(node) }
     }
 
@@ -474,9 +480,9 @@ class TouchTestService : AccessibilityService() {
     }
 
     /** Reopen the selector from the verified chart's instrument control. */
-    fun reopenDemoFxList(pair: String, overlayBounds: Rect, physicalOnly: Boolean = false): Boolean {
-      if (readVisibleDemoPair() != pair) return false
-      val (svc, root, labels) = activeDemoHistoryNodes(false) ?: return false
+    fun reopenFxList(pair: String, overlayBounds: Rect, physicalOnly: Boolean, realAccount: Boolean): Boolean {
+      if (readVisibleFxPair(realAccount) != pair) return false
+      val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
       if (svc.rootInActiveWindow != root ||
           labels.any { (node, _) -> hasFxCurrencyHeader(node) }) return false
       val display = android.util.DisplayMetrics()
@@ -532,12 +538,12 @@ class TouchTestService : AccessibilityService() {
     }
 
     /** A single selector action. The caller must verify the resulting chart. */
-    fun navigateOpenDemoFxList(
+    fun navigateOpenFxList(
       excluded: Set<String>, allowScroll: Boolean, forward: Boolean, overlayBounds: Rect,
-      onlyPair: String? = null, scrollHistory: MutableSet<List<String>>? = null
+      onlyPair: String? = null, scrollHistory: MutableSet<List<String>>? = null, realAccount: Boolean
     ): DemoFxNavigation {
-      val (svc, root, labels) = activeDemoHistoryNodes(false)
-        ?: return DemoFxNavigation(message = "QT DEMO NECONFIRMAT")
+      val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount)
+        ?: return DemoFxNavigation(message = "CONT QT NECONFIRMAT")
       if (svc.rootInActiveWindow != root)
         return DemoFxNavigation(message = "BROKERUL NU ESTE ÎN FAȚĂ")
       val rows = visibleDemoFxRows(labels)
