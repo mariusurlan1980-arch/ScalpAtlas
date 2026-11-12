@@ -1262,12 +1262,19 @@ class ScalpOverlayService : Service() {
     val visiblePair = TouchTestService.readVisibleDemoPair() ?: return null
     if (!pairReady(nowWall) || currentPair(nowWall) != visiblePair)
       return "464 • PERECHE LIVE NECONFIRMATĂ • FĂRĂ ORDIN"
+    // 496: The former generic "AȘTEPT CONFIRMAREA MIZEI" hid the real
+    // reason (account banner, balance, expiry, pair, amount or BUY/SELL).
+    // Use the SAME read-only preflight as the order path; a failure does
+    // not clear the old attempt marker or release the position gate.
     val preflight = try {
-      if (TouchTestService.readBrokerDemoOrder476(visiblePair) != null)
-        "PREGĂTIT AUTO DEMO" else "BLOCAT: MIZĂ DEMO NECONFIRMATĂ"
-    } catch (_: Throwable) { "BLOCAT: PRECHECK QT DEMO" }
+      TouchTestService.inspectBrokerDemoOrder488(
+        visiblePair, currentOverlayBounds488()
+      )
+    } catch (error: Exception) {
+      "BLOCAT: PRECHECK ANDROID " + error.javaClass.simpleName.take(22)
+    }
     if (!preflight.startsWith("PREGĂTIT AUTO DEMO"))
-      return "464 • AȘTEPT CONFIRMAREA MIZEI DEMO • FĂRĂ ORDIN"
+      return "496 • " + preflight.take(84) + " • FĂRĂ ORDIN"
     if (TouchTestService.activeDemoExecutorPackageForReview() != visiblePackage)
       return "464 • FEREASTRĂ DEMO SCHIMBATĂ • FĂRĂ ORDIN"
 
@@ -1319,6 +1326,11 @@ class ScalpOverlayService : Service() {
           brokerAccountMonitorRunning = false
           return
         }
+        // 496: On Moto G24 the movable pill can sit over QT Demo/balance
+        // in the upper-right corner. Uncover this safety-critical header
+        // before any read-only account/preflight check. No broker gesture,
+        // account inference or position-state change is performed here.
+        uncoverDemoHeader496()
         val diagnostic = try {
           TouchTestService.inspectBrokerAccountReadOnly()
         } catch (error: Exception) {
@@ -5924,6 +5936,41 @@ class ScalpOverlayService : Service() {
         }
       } catch (_: Throwable) {}
     }
+  }
+
+  /**
+   * 496: Uncover the account/balance banner so Android Accessibility can
+   * independently read QT Demo, the actual stake and the broker balance.
+   * The user can drag the pill elsewhere, but if it covers the top-right
+   * account region on a later monitor tick, park it above the FX selector
+   * at the upper-left. Cosmetic move only, never arms or submits an order.
+   */
+  private fun uncoverDemoHeader496(): Boolean {
+    val view = overlayView ?: return false
+    val params = overlayWindowParams ?: return false
+    if (shuttingDown || mediaProjection == null ||
+        !(autoDemoSessionRequested || autoDemoSessionConsumed)) return false
+    val width = resources.displayMetrics.widthPixels
+    val height = resources.displayMetrics.heightPixels
+    if (width < dp(240) || height < dp(450) || view.width <= 0 || view.height <= 0)
+      return false
+    val actual = currentOverlayBounds488()
+    // QT Demo and the displayed DEMO balance are on the right of the
+    // top account row. This also handles a user-dragged overlay there.
+    val accountRegion = Rect(
+      (width * .44f).toInt(), 0, width, (height * .23f).toInt()
+    )
+    if (!Rect.intersects(actual, accountRegion) ||
+        actual.left < (width * .38f).toInt()) return false
+    val targetX = dp(8)
+    val targetY = dp(8)
+    if (params.x == targetX && params.y == targetY) return false
+    params.x = targetX
+    params.y = targetY
+    return try {
+      windowManager.updateViewLayout(view, params)
+      true
+    } catch (_: Throwable) { false }
   }
 
   private fun currentOverlayBounds488(): Rect {
