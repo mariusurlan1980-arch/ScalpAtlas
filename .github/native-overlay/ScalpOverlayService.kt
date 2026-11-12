@@ -3395,23 +3395,36 @@ class ScalpOverlayService : Service() {
         mainHandler.postDelayed(callback, delay)
       }
 
-      fun start() {
+      // 495: Never abandon continuous rotation because the broker WebView
+      // briefly exposes no accessible pair while Android changes focus.
+      // Wait read-only and retry; only independently verified QT Demo controls
+      // may be navigated. An old/active order still blocks ALL new trades.
+      fun seekChart() {
+        if (!running) return
+        if (!TouchTestService.ready()) {
+          fxButton.text = "ROTAȚIE • AȘTEPT ACCESIBILITATE"
+          after(3_000L) { seekChart() }
+          return
+        }
         realAccount = TouchTestService.realFxAccountVisible()
-        val pair = TouchTestService.readVisibleFxPair(realAccount)
-        val listOpen = TouchTestService.fxListVisible(realAccount)
-        if (mediaProjection == null || (pair == null && !listOpen)) {
-          stop("ROTAȚIE • DESCHIDE GRAFICUL QT")
+        if (realAccount) {
+          fxButton.text = "ROTAȚIE • QT REAL BLOCAT • NUMAI DEMO"
+          after(3_000L) { seekChart() }
+          return
+        }
+        val pair = TouchTestService.readVisibleFxPair(false)
+        val listOpen = TouchTestService.fxListVisible(false)
+        if (pair == null && !listOpen) {
+          fxButton.text = "ROTAȚIE • AȘTEPT GRAFICUL QT DEMO"
+          after(3_000L) { seekChart() }
           return
         }
         if (tradeBusy()) {
-          stop("ROTAȚIE • AȘTEAPTĂ ÎNCHIDEREA")
+          fxButton.text = "ROTAȚIE • AȘTEPT ORDINUL PRECEDENT"
+          after(3_000L) { seekChart() }
           return
         }
-        visited.clear()
-        recoveryAttempts = 0
         lastChartPair = pair ?: latestMarket.takeUnless { it == "NEIDENTIFICAT" }
-        forward = true
-        running = true
         if (listOpen) {
           beginNavigation()
           val current = pair ?: latestMarket.takeUnless { it == "NEIDENTIFICAT" }
@@ -3421,6 +3434,21 @@ class ScalpOverlayService : Service() {
           fxButton.text = "ROTAȚIE • VERIFIC M5"
           verifyChart(checkNotNull(pair), 24)
         }
+      }
+
+      fun start() {
+        if (mediaProjection == null) {
+          stop("ROTAȚIE • AȘTEPT LIVE")
+          return
+        }
+        visited.clear()
+        rejectedPairs.clear()
+        scrollHistory.clear()
+        recoveryAttempts = 0
+        lastChartPair = null
+        forward = true
+        running = true
+        seekChart()
       }
 
       fun beginNavigation() {
@@ -3990,6 +4018,17 @@ class ScalpOverlayService : Service() {
     overlayWindowParams = params
     windowManager.addView(root, params)
     startNeonEdge434()
+    // 495: The user already authorized LIVE screen capture and requested
+    // continuous 30-second QT Demo pair rotation, without a second ON press.
+    // Defer until the overlay is attached; seekChart retries transient focus
+    // gaps without a broker gesture and never unlocks unresolved orders.
+    mainHandler.postDelayed({
+      if (overlayView === root && !shuttingDown &&
+          mediaProjection != null && !fxRotation.running) {
+        try { fxRotation.start() }
+        catch (_: Exception) { fxRotation.stop("ROTAȚIE • VERIFICĂ ACCESIBILITATE") }
+      }
+    }, 1_200L)
   }
 
   /**
