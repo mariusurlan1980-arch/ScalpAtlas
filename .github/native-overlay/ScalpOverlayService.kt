@@ -1274,7 +1274,7 @@ class ScalpOverlayService : Service() {
       "BLOCAT: PRECHECK ANDROID " + error.javaClass.simpleName.take(22)
     }
     if (!preflight.startsWith("PREGĂTIT AUTO DEMO"))
-      return "496 • " + preflight.take(84) + " • FĂRĂ ORDIN"
+      return "497 • " + preflight.take(84) + " • FĂRĂ ORDIN"
     if (TouchTestService.activeDemoExecutorPackageForReview() != visiblePackage)
       return "464 • FEREASTRĂ DEMO SCHIMBATĂ • FĂRĂ ORDIN"
 
@@ -5939,31 +5939,39 @@ class ScalpOverlayService : Service() {
   }
 
   /**
-   * 496: Uncover the account/balance banner so Android Accessibility can
-   * independently read QT Demo, the actual stake and the broker balance.
-   * The user can drag the pill elsewhere, but if it covers the top-right
-   * account region on a later monitor tick, park it above the FX selector
-   * at the upper-left. Cosmetic move only, never arms or submits an order.
+   * 497: The compact overlay must never block the verified QT Demo account
+   * banner or BUY/SELL controls. Screenshot on Moto G24 showed the bottom-
+   * right overlay physically covering the broker SELL button. Reposition the
+   * pill to the left chart HISTORY area, below the currency selector, when
+   * it obstructs either protected region.
+   *
+   * No broker gestures, no account inference, no rearming. While the
+   * selector is being navigated, leave its own docking/restore routine alone.
    */
   private fun uncoverDemoHeader496(): Boolean {
     val view = overlayView ?: return false
     val params = overlayWindowParams ?: return false
-    if (shuttingDown || mediaProjection == null ||
+    if (shuttingDown || mediaProjection == null || fxRotationNavigating ||
         !(autoDemoSessionRequested || autoDemoSessionConsumed)) return false
     val width = resources.displayMetrics.widthPixels
     val height = resources.displayMetrics.heightPixels
     if (width < dp(240) || height < dp(450) || view.width <= 0 || view.height <= 0)
       return false
     val actual = currentOverlayBounds488()
-    // QT Demo and the displayed DEMO balance are on the right of the
-    // top account row. This also handles a user-dragged overlay there.
     val accountRegion = Rect(
       (width * .44f).toInt(), 0, width, (height * .23f).toInt()
     )
-    if (!Rect.intersects(actual, accountRegion) ||
-        actual.left < (width * .38f).toInt()) return false
+    val orderRegion = Rect(
+      0, (height * .75f).toInt(), width, (height * .97f).toInt()
+    )
+    val coversAccount = actual.left >= (width * .38f).toInt() &&
+      Rect.intersects(actual, accountRegion)
+    val coversOrder = Rect.intersects(actual, orderRegion)
+    if (!coversAccount && !coversOrder) return false
     val targetX = dp(8)
-    val targetY = dp(8)
+    // The pair selector occupies the first ~20% of the screen; put the pill
+    // below it on the historical (left) part of the candle chart.
+    val targetY = (height * .225f).toInt()
     if (params.x == targetX && params.y == targetY) return false
     params.x = targetX
     params.y = targetY
