@@ -1966,17 +1966,57 @@ class TouchTestService : AccessibilityService() {
             " NU ESTE 1 USD"
         })
 
-      // Validate that demo balance is visible in the narrow account region;
-      // the chart quotes have more decimal places and cannot count as balance.
-      val balanceValues = labels.filter {
-        it.rect.centerX() in (w * 0.48).toInt()..(w * 0.86).toInt() &&
-        it.rect.centerY() < h * 0.17
-      }.mapNotNull {
-        Regex("""(?<!\d)(\d{1,5}[.,]\d{2})(?!\d)""").find(it.value)
-          ?.groupValues?.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
+      // 497: Pocket Option QT Demo on Moto G24 renders e.g. "QT Demo USD"
+      // over "20" (integer USD), not necessarily "20.00". The former
+      // decimal-only parser rejected a real visible 20 USD balance.
+      //
+      // IMPORTANT: Never accept an isolated chart price, candle value,
+      // payout, or arbitrary number as account balance. Require a UNIQUE
+      // account-header QT Demo anchor, nearby explicit USD currency, and
+      // an exact, canonical integer/decimal amount in the SAME narrow tile.
+      val accountAnchors497 = labels.filter {
+        it.rect.centerX() in (w * .42f).toInt()..(w * .90f).toInt() &&
+        it.rect.centerY() < h * .19f &&
+        it.rect.width() <= (w * .62f).toInt() &&
+        it.rect.height() <= (h * .15f).toInt() &&
+        Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it.value)
+      }
+      fun inAccountTile497(label: VisibleLabel): Boolean =
+        label.rect.centerX() in (w * .46f).toInt()..(w * .90f).toInt() &&
+        label.rect.centerY() < h * .20f &&
+        label.rect.width() <= (w * .60f).toInt() &&
+        label.rect.height() <= (h * .14f).toInt() &&
+        accountAnchors497.any { anchor ->
+          label.rect.centerX() >= anchor.rect.left - (w * .08f).toInt() &&
+          label.rect.centerX() <= anchor.rect.right + (w * .08f).toInt() &&
+          label.rect.centerY() >= anchor.rect.top - (h * .03f).toInt() &&
+          label.rect.centerY() <= anchor.rect.bottom + (h * .075f).toInt()
+        }
+      val accountLabels497 = labels.filter(::inAccountTile497)
+      val usdAccount497 = accountLabels497.any {
+        Regex("""(?i)\bUSD\b""").containsMatchIn(it.value)
+      }
+      if (accountAnchors497.isEmpty() || !usdAccount497)
+        return DemoOrderCheck(reason = "BLOCAT: ANTET QT DEMO USD NECITIT")
+      val balanceFormat497 =
+        Regex("""(?i)^(?:(?:USD|\$)\s*)?(\d{1,5})(?:[.,](\d{1,2}))?(?:\s*(?:USD|\$))?$""")
+      val balanceValues497 = accountLabels497.mapNotNull { label ->
+        val text = label.value.replace(Regex("""\s+"""), " ").trim()
+          .replace(Regex("""(?i)^QT\s*Demo\b"""), "").trim()
+        val match = balanceFormat497.matchEntire(text) ?: return@mapNotNull null
+        val whole = match.groupValues[1].toLongOrNull() ?: return@mapNotNull null
+        val fraction = match.groupValues[2]
+        val cents = when (fraction.length) {
+          0 -> 0L
+          1 -> fraction.toLongOrNull()?.times(10L) ?: return@mapNotNull null
+          else -> fraction.toLongOrNull() ?: return@mapNotNull null
+        }
+        whole * 100L + cents
       }.distinct()
-      if (balanceValues.size != 1 || balanceValues[0] < verifiedStakeCents / 100.0)
-        return DemoOrderCheck(reason = "BLOCAT: SOLD DEMO NECONFIRMAT SAU INSUFICIENT")
+      if (balanceValues497.size != 1)
+        return DemoOrderCheck(reason = "BLOCAT: SOLD QT DEMO USD NECITIT/AMBIGUU")
+      if (balanceValues497.single() < verifiedStakeCents)
+        return DemoOrderCheck(reason = "BLOCAT: SOLD QT DEMO INSUFICIENT")
 
       val expression = if (side == "BUY")
         Regex("""(?i)^\s*(?:CUMPĂRAȚI|CUMPARATI)(?:\s+\d{1,3}\s*%)?\s*$""")
