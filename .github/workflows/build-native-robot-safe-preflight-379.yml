@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 496 DEMO Verificare Clară G24
+name: Build Scalp Atlas 497 Sold Demo Intreg G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.58'
+          expo['version']='3.2.59'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=496
+          expo['android']['versionCode']=497
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -159,6 +159,15 @@ jobs:
           grep -Fq 'private fun uncoverDemoHeader496()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.inspectBrokerDemoOrder488(' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'FĂRĂ ORDIN' .github/native-overlay/ScalpOverlayService.kt
+          # 497: integer QT Demo USD is allowed only by an account-anchored
+          # parser, with the old order locks and both broker buttons untouched.
+          grep -Fq 'val balanceValues497' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'val accountAnchors497' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'val usdAccount497' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'balanceValues497.single() < verifiedStakeCents' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'val orderRegion = Rect(' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fxRotationNavigating' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'return "497 • " + preflight.take(84)' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Install dependencies
         working-directory: scalp-atlas-new
@@ -2166,28 +2175,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-496-DEMO-PREFLIGHT-G24.apk
+          cp "$APK" ScalpAtlas-497-SOLD-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-496-DEMO-PREFLIGHT-G24
-          path: ScalpAtlas-496-DEMO-PREFLIGHT-G24.apk
+          name: ScalpAtlas-497-SOLD-DEMO-G24
+          path: ScalpAtlas-497-SOLD-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-demo-preflight-visibility496'
+        if: github.ref == 'refs/heads/fix/scalpatlas-balance20-overlay497'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-496-DEMO-PREFLIGHT-G24.apk"
+          FILE="ScalpAtlas-497-SOLD-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-preflight496-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-sold-demo497-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 496 - DEMO PREFLIGHT G24 • ${GITHUB_SHA:0:12}" \
-            --notes "SCALP ATLAS 496 pentru Motorola G24: păstrează rotația 495, M5, 30 secunde/pereche, payout ≥92%, strategie ȘOC două lumânări. NOU: mută automat panoul plutitor dacă acoperă antetul QT Demo/soldului și afișează eroarea reală de verificare a brokerului, în loc de mesajul generic despre miză. Nicio relaxare a validării QT Demo, a mizei sau a cooldown-ului. Ordinul anterior neconfirmat rămâne blocat; NO Martingale, NO cont real. Compilarea pe GitHub nu confirmă încă funcționarea fizică pe Motorola. Commit $GITHUB_SHA." \
+            --title "SCALP ATLAS 497 - SOLD DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "SCALP ATLAS 497 pentru Motorola G24: repară citirea soldului QT Demo USD afișat ca 20, 20.0 sau 20.00, doar lângă antetul explicit QT Demo USD, fără a interpreta prețuri din grafic drept sold. Eliberează panoul plutitor de pe zona BUY/SELL și antetul brokerului, păstrând rotația automată de 30 secunde la M5 și payout minimum 92%. Nu șterge marcajele ordinelor anterioare, nu înlătură siguranța DEMO/Real și nu activează Martingale. Compilarea pe GitHub nu dovedește încă armarea sau intrarea pe Motorola; test fizic necesar. Commit $GITHUB_SHA." \
           --prerelease
