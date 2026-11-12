@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 495 Rotație Continuă G24
+name: Build Scalp Atlas 496 DEMO Verificare Clară G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.57'
+          expo['version']='3.2.58'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=495
+          expo['android']['versionCode']=496
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -155,6 +155,10 @@ jobs:
           grep -Fq 'ROTAȚIE • QT REAL BLOCAT • NUMAI DEMO' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (tradeBusy())' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotation.start()' .github/native-overlay/ScalpOverlayService.kt
+          # 496: precise preflight diagnostics and UI-only account header fix.
+          grep -Fq 'private fun uncoverDemoHeader496()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.inspectBrokerDemoOrder488(' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'FĂRĂ ORDIN' .github/native-overlay/ScalpOverlayService.kt
 
       - name: Install dependencies
         working-directory: scalp-atlas-new
@@ -2162,28 +2166,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-495-ROTATIE-RECONNECT-G24.apk
+          cp "$APK" ScalpAtlas-496-DEMO-PREFLIGHT-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-495-ROTATIE-RECONNECT-G24
-          path: ScalpAtlas-495-ROTATIE-RECONNECT-G24.apk
+          name: ScalpAtlas-496-DEMO-PREFLIGHT-G24
+          path: ScalpAtlas-496-DEMO-PREFLIGHT-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-rotation-reconnect495'
+        if: github.ref == 'refs/heads/fix/scalpatlas-demo-preflight-visibility496'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-495-ROTATIE-RECONNECT-G24.apk"
+          FILE="ScalpAtlas-496-DEMO-PREFLIGHT-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-rotatie-reconnect495-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-preflight496-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 495 - ROTATIE RECONNECT G24 • ${GITHUB_SHA:0:12}" \
-            --notes "SCALP ATLAS 495 pentru Motorola G24. Corecție: rotația perechilor QT DEMO începe automat după autorizarea LIVE și reîncearcă la fiecare 3 secunde dacă Android nu expune temporar graficul sau serviciul de Accesibilitate. Nu efectuează gesturi în QT REAL. M5, 30 secunde/pereche, payout ≥92%, aceeași strategie ȘOC pe lumânarea 2 de aceeași culoare. Ordinul vechi neverificat NU este șters și NU autorizează tranzacții duble; robotul poate rămâne neînarmat până la dovadă din broker. Martingale nu este activat. Build compilat automat, testul fizic pe Motorola rămâne necesar. Commit $GITHUB_SHA." \
+            --title "SCALP ATLAS 496 - DEMO PREFLIGHT G24 • ${GITHUB_SHA:0:12}" \
+            --notes "SCALP ATLAS 496 pentru Motorola G24: păstrează rotația 495, M5, 30 secunde/pereche, payout ≥92%, strategie ȘOC două lumânări. NOU: mută automat panoul plutitor dacă acoperă antetul QT Demo/soldului și afișează eroarea reală de verificare a brokerului, în loc de mesajul generic despre miză. Nicio relaxare a validării QT Demo, a mizei sau a cooldown-ului. Ordinul anterior neconfirmat rămâne blocat; NO Martingale, NO cont real. Compilarea pe GitHub nu confirmă încă funcționarea fizică pe Motorola. Commit $GITHUB_SHA." \
           --prerelease
