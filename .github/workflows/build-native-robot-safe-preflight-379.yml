@@ -2018,7 +2018,7 @@ jobs:
           assert 'demoRecoveryLedger.verifiedOpenPositionId429() != null' in pilot
           assert 'demoRecoveryLedger.isRecovering429()' in pilot
           assert 'demoRecoveryLedger.quote(expectedPayout).stakeCents != 100L' in pilot
-          assert 'TouchTestService.readBrokerDemoOrder476(visiblePair)' in pilot
+          assert 'TouchTestService.inspectBrokerDemoOrder488(' in pilot
           assert 'releaseUnknownGestureForExpiredDemoPilot464(' in pilot
           assert 'maybeRearmExpiredDemoPilot464(' in monitor
           assert 'if (CHART_ONLY_DEMO_462) {' in monitor
