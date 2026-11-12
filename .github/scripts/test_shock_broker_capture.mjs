@@ -439,3 +439,18 @@ for (const side of ['BUY', 'SELL']) {
   assertQuiet(staticBody);
 }
 console.log('PASS 491: BUY/SELL body continuation, two-frame rebound, early-entry and static/late rejection');
+
+for (const side of ['BUY', 'SELL']) {
+  const opposite = side === 'BUY' ? 'SELL' : 'BUY';
+  const price = close => side === 'BUY' ? close : 395 - close;
+  for (const previous of [side, opposite, 'NONE']) {
+    let result;
+    for (const close of [200, 220, 216, 212]) {
+      result = analyze(price(close), side, `TWO-CANDLES-${side}-${previous} OTC`,
+        140, 'M5', 0, true, previous);
+    }
+    if (previous !== opposite) assert.equal(result.shockDirection, side);
+    assert.equal(result.previousCandleDirection, previous);
+  }
+}
+console.log('PASS 494: M5 previous candle evidence for BUY and SELL');

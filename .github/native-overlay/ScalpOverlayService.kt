@@ -5634,7 +5634,9 @@ class ScalpOverlayService : Service() {
       !result.optBoolean("wickEntry", false)
     if (wickRejected) shockBlocker = if (rawSignal == "BUY")
       "BUY • AȘTEPT REVENIRE TIMPURIE" else "SELL • AȘTEPT REVENIRE TIMPURIE"
-    val confirmedShock = rawStrategy == "SHOCK" && !wickRejected && quality >= 55 &&
+    val sameCandleColors = rawDirectionValid && sameOpticalDirection &&
+      result.optString("previousCandleDirection") == rawSignal
+    val confirmedShock = sameCandleColors && rawStrategy == "SHOCK" && !wickRejected && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
       shockFrameFresh && shockBodyPercent > SHOCK_MIN_DEPTH &&
       shockReboundPercent >= SHOCK_MIN_RECOVERY &&
@@ -5662,7 +5664,9 @@ class ScalpOverlayService : Service() {
     val confirmedSignal = if (confirmedShock || scalpAlertAllowed) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK"
       else if (scalpAlertAllowed) "SCALP_TREND" else "NONE"
-    val rejectionText = if (wickRejected) shockBlocker
+    val rejectionText = if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)
+      "ȘOC • AȘTEPT DOUĂ LUMÂNĂRI DE ACEEAȘI CULOARE"
+      else if (wickRejected) shockBlocker
       else if (rawStrategy == "SCALP_TREND")
       "SCALP TREND neconfirmat" else "ȘOC / SCALP în așteptare"
     val expiry = 5 // five-minute DEMO alert timer, not an automatic broker order

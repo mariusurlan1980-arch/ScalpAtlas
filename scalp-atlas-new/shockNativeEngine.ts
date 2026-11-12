@@ -95,6 +95,25 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       lastBodyY=bodyRows[ri];
     }
     if(longestBodyRun<5)return null;
+    // Read the adjacent group so an unreadable candle cannot be skipped.
+    var candleIndex=groups.indexOf(candle);
+    var adjacent=groups[candleIndex-1],previousCandleDirection='NONE';
+    if(candleIndex===groups.length-1 && viable.indexOf(adjacent)!==-1 &&
+       candle.start-adjacent.end<=width*2){
+      var previousWidth=adjacent.end-adjacent.start+1;
+      var previousBodyRun=0;
+      for(var py=minY;py<maxY;py++){
+        var previousFill=0;
+        for(var px=adjacent.start;px<=adjacent.end;px++){
+          if(isColor(p,(py*w+px)*4)===adjacent.dir)previousFill++;
+        }
+        previousBodyRun=previousFill>=Math.ceil(previousWidth*.8)?previousBodyRun+1:0;
+        if(previousBodyRun>=5){
+          previousCandleDirection=adjacent.dir;
+          break;
+        }
+      }
+    }
     var top=bodyRows[0],bottom=bodyRows[bodyRows.length-1];
     if(bottom-top>h*.35)return null; // large colored panels are not candles
     var close=candle.dir==='BUY'?top:bottom;
@@ -157,7 +176,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         });
       }
     }
-    return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,
+    return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,previousCandleDirection:previousCandleDirection,
       width:width,bodyHeight:bottom-top,wickPixels:wickPixels,wickPercent:wickPercent,
       topWickPixels:upperWickPixels,bottomWickPixels:lowerWickPixels,
       connectedLowerWickPixels:connectedLowerWickPixels,
@@ -439,6 +458,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             shockOpticalVerified:confirmed,shockSameCandle:confirmed,
             wickEntry:wickEntry,
             sameColorContinuation:bodyContinuation,
+            previousCandleDirection:candle.previousCandleDirection,
             shockRetraced:confirmed,shockRecovered:confirmed,
             // All percentages below refer to the observed forming candle.
             shockRetracementPercent:confirmed?confirmedDepth:displayedDepth,

@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 493 Real Scan G24
+name: Build Scalp Atlas 494 Două Lumânări G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, feature/scalpatlas-real-scan493]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.55'
+          expo['version']='3.2.56'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=493
+          expo['android']['versionCode']=494
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2104,7 +2104,7 @@ jobs:
           grep -q 'observedTrendStrengthPercent > SHOCK_MIN_TREND' "$SERVICE"
           grep -q 'PANTĂ ≤25%' "$SERVICE"
           grep -q 'val confirmedScalp = rawStrategy == "SCALP_TREND"' "$SERVICE"
-          grep -q 'val confirmedShock = rawStrategy == "SHOCK"' "$SERVICE"
+          grep -q 'val confirmedShock = sameCandleColors && rawStrategy == "SHOCK"' "$SERVICE"
           grep -q 'candidateStrategy != confirmedStrategy' "$SERVICE"
           grep -q 'activeStrategy == "SCALP_TREND"' "$SERVICE"
           grep -q 'Never clear lockedDir/lockedUntil' "$SERVICE"
@@ -2156,28 +2156,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-493-ROTATIE-30S-G24.apk
+          cp "$APK" ScalpAtlas-494-SOC-2-LUMANARI-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-493-ROTATIE-30S-G24
-          path: ScalpAtlas-493-ROTATIE-30S-G24.apk
+          name: ScalpAtlas-494-SOC-2-LUMANARI-G24
+          path: ScalpAtlas-494-SOC-2-LUMANARI-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/feature/scalpatlas-real-scan493'
+        if: github.ref == 'refs/heads/experiment/scalpatlas-second-candle494'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-493-ROTATIE-30S-G24.apk"
+          FILE="ScalpAtlas-494-SOC-2-LUMANARI-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-rotatie493-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-soc-2-lumanari494-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 493 - ROTATIE 30S G24 • ${GITHUB_SHA:0:12}" \
+            --title "SCALP ATLAS 494 - SOC 2 LUMANARI G24 • ${GITHUB_SHA:0:12}" \
             --notes "QT Real: rotație și semnale, cu ordine plasate manual. Candidat pentru Motorola G24 cu margine Nebuloasa violet si creier albastru rotativ intr-un inel fix de eclipsa aurie. QT DEMO: setezi miza in broker, Scalp Atlas o verifica fara sa o modifice si filtreaza intrarile BUY si SELL dupa fitil si revenirea timpurie pe aceeasi lumanare. Expirare 5 minute, payout minimum 92%. Rotație opțională pe valute M5 la minimum 92%, 30 de secunde pe graficul confirmat. Rotația sare peste perechile sub 92%, inclusiv la pornire, și așteaptă pozițiile în curs. Panoul se mută temporar pentru a elibera selectorul. Testul fizic rămâne de făcut. Build $GITHUB_SHA." \
           --prerelease
