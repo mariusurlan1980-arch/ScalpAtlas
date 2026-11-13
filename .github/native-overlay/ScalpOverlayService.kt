@@ -2744,7 +2744,8 @@ class ScalpOverlayService : Service() {
   private fun createOverlay() {
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
-      setPadding(dp(9), dp(6), dp(9), dp(8))
+      // 499: narrow lightweight pill while preserving the original full layout.
+      setPadding(dp(5), dp(3), dp(5), dp(4))
       // 434: border LED stays on in compact and expanded modes.
       // It replaces only the white CARD drawable, not the broker overlay UI.
       neonEdgeDrawable434 = TravelingNeonEdge434(resources.displayMetrics.density)
@@ -2792,6 +2793,9 @@ class ScalpOverlayService : Service() {
       addView(rotatingBrain467, android.widget.FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
     }
     header.addView(brainEclipse, LinearLayout.LayoutParams(dp(35), dp(28)))
+    // 499: the brain can also be tapped to cycle corners, or dragged.
+    brainEclipse.isClickable = true
+    brainEclipse.contentDescription = "Atinge creierul pentru alt colț, sau trage panoul"
     rotatingBrainAnimator467?.cancel()
     rotatingBrainAnimator467 = android.animation.ObjectAnimator.ofFloat(
       rotatingBrain467, "rotationY", 0f, 360f
@@ -2806,7 +2810,7 @@ class ScalpOverlayService : Service() {
     header.addView(headerGap, LinearLayout.LayoutParams(0, dp(1), 1f))
     val compactStatus = TextView(this).apply {
       text = "ȘOC —%"
-      textSize = 13f
+      textSize = 12f
       gravity = Gravity.CENTER
       setTextColor(Color.rgb(74, 93, 106))
       setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -3885,13 +3889,28 @@ class ScalpOverlayService : Service() {
       body.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
       trendRow.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
       note.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
-      // Minimal autonomous overlay: only status and live indicators.
+      // 499: compact without losing DEMO/SHOCK diagnostics, X or the brain.
+      // Remove a duplicate stake label (the stake remains visible in broker).
+      root.setPadding(
+        dp(if (minimized) 5 else 9),
+        dp(if (minimized) 3 else 6),
+        dp(if (minimized) 5 else 9),
+        dp(if (minimized) 4 else 8)
+      )
+      martingaleStatusText?.visibility = if (minimized) View.GONE else View.VISIBLE
+      probeStatus.maxLines = if (minimized) 3 else 3
+      probeStatus.setPadding(dp(2), dp(1), dp(2), dp(1))
+      val rotationParams499 = fxButton.layoutParams
+      rotationParams499.height = dp(if (minimized) 23 else 26)
+      fxButton.layoutParams = rotationParams499
+      fxButton.textSize = if (minimized) 9.5f else 10f
+      compactStatus.textSize = if (minimized) 12f else 13f
       // No manual SELL test button and no additional gesture controls.
       touchProbeToggle.visibility = View.GONE
       testBipControl.visibility = View.GONE
       brokerAutoRow.visibility = View.GONE // Session auto-arms after Android LIVE consent.
       probeStatus.visibility = View.VISIBLE
-      probeStatus.textSize = if (minimized) 9f else 10f
+      probeStatus.textSize = if (minimized) 8.5f else 10f
       compactStatus.visibility = if (minimized) View.VISIBLE else View.GONE
       headerGap.visibility = if (minimized) View.GONE else View.VISIBLE
       if (minimized) {
@@ -3925,7 +3944,7 @@ class ScalpOverlayService : Service() {
       minimizeToggle.contentDescription = if (minimized)
         "Extinde panoul Scalp Atlas" else "Micșorează panoul Scalp Atlas"
       val window = overlayWindowParams ?: return
-      window.width = dp(if (minimized) 176 else 224)
+      window.width = dp(if (minimized) 144 else 224)
       val metrics = resources.displayMetrics
       window.x = window.x.coerceIn(0, (metrics.widthPixels - window.width).coerceAtLeast(0))
       root.post { positionSavedCorner498() }
@@ -3937,7 +3956,7 @@ class ScalpOverlayService : Service() {
     applyCompactMode()
 
     val params = WindowManager.LayoutParams(
-      dp(176),
+      dp(144),
       WindowManager.LayoutParams.WRAP_CONTENT,
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -3952,16 +3971,16 @@ class ScalpOverlayService : Service() {
       // Initial location stays below the broker currency selector.
     }
 
-    // 498: drag the status panel to ANY of the four chart corners.
-    // Releasing it snaps to the nearest corner and remembers that choice.
-    // The bottom corners end ABOVE the broker's BUY/SELL panel.
-    // The X remains a separate clickable child and always stops LIVE.
+    // 499: drag easily using the header, status or the large ROTATION bar.
+    // Single tap on ROTATION still toggles the same function; tap on the
+    // brain cycles through the four safe corners without any dragging.
+    // The X stays independent and always stops LIVE.
     var startX = 0
     var startY = 0
     var touchX = 0f
     var touchY = 0f
     var moved498 = false
-    val dragListener = View.OnTouchListener { _, event ->
+    val dragListener = View.OnTouchListener { hitView499, event ->
       when (event.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
           startX = params.x
@@ -3974,12 +3993,12 @@ class ScalpOverlayService : Service() {
         MotionEvent.ACTION_MOVE -> {
           val dx = (event.rawX - touchX).toInt()
           val dy = (event.rawY - touchY).toInt()
-          if (kotlin.math.abs(dx) > dp(6) || kotlin.math.abs(dy) > dp(6))
+          if (kotlin.math.abs(dx) > dp(3) || kotlin.math.abs(dy) > dp(3))
             moved498 = true
           if (moved498) {
             val metrics = resources.displayMetrics
-            val cardW = root.width.takeIf { it > 0 } ?: dp(176)
-            val cardH = root.height.takeIf { it > 0 } ?: dp(130)
+            val cardW = root.width.takeIf { it > 0 } ?: dp(144)
+            val cardH = root.height.takeIf { it > 0 } ?: dp(115)
             val margin = dp(8)
             val minY = (metrics.heightPixels * .205f).toInt()
             val maxY = ((metrics.heightPixels * .69f).toInt() - cardH -
@@ -3995,8 +4014,8 @@ class ScalpOverlayService : Service() {
         MotionEvent.ACTION_UP -> {
           if (moved498) {
             val metrics = resources.displayMetrics
-            val cardW = root.width.takeIf { it > 0 } ?: dp(176)
-            val cardH = root.height.takeIf { it > 0 } ?: dp(130)
+            val cardW = root.width.takeIf { it > 0 } ?: dp(144)
+            val cardH = root.height.takeIf { it > 0 } ?: dp(115)
             val minY = (metrics.heightPixels * .205f).toInt()
             val maxY = ((metrics.heightPixels * .69f).toInt() - cardH -
               dp(8)).coerceAtLeast(minY)
@@ -4007,6 +4026,22 @@ class ScalpOverlayService : Service() {
             getSharedPreferences("scalp_overlay_position498", Context.MODE_PRIVATE)
               .edit().putString("corner", corner).apply()
             positionSavedCorner498()
+          } else if (hitView499 === brainEclipse) {
+            // No broker input or arm change: just cycle the remembered corner.
+            val saved499 = getSharedPreferences(
+              "scalp_overlay_position498", Context.MODE_PRIVATE
+            )
+            val next499 = when (saved499.getString("corner", "TR")) {
+              "TR" -> "BR"
+              "BR" -> "BL"
+              "BL" -> "TL"
+              else -> "TR"
+            }
+            saved499.edit().putString("corner", next499).apply()
+            positionSavedCorner498()
+          } else if (hitView499 === fxButton) {
+            // A genuine tap must retain the original ROTATION toggle.
+            fxButton.performClick()
           }
           true
         }
@@ -4018,7 +4053,11 @@ class ScalpOverlayService : Service() {
       }
     }
     root.setOnTouchListener(dragListener)
+    header.setOnTouchListener(dragListener)
+    brainEclipse.setOnTouchListener(dragListener)
     compactStatus.setOnTouchListener(dragListener)
+    probeStatus.setOnTouchListener(dragListener)
+    fxButton.setOnTouchListener(dragListener)
     overlayView = root
     overlayWindowParams = params
     windowManager.addView(root, params)
@@ -5917,8 +5956,8 @@ class ScalpOverlayService : Service() {
     val params = overlayWindowParams ?: return false
     if (shuttingDown) return false
     val metrics = resources.displayMetrics
-    val cardW = view.width.takeIf { it > 0 } ?: dp(176)
-    val cardH = view.height.takeIf { it > 0 } ?: dp(130)
+    val cardW = view.width.takeIf { it > 0 } ?: dp(144)
+    val cardH = view.height.takeIf { it > 0 } ?: dp(115)
     val margin = dp(8)
     val corner = getSharedPreferences(
       "scalp_overlay_position498", Context.MODE_PRIVATE
