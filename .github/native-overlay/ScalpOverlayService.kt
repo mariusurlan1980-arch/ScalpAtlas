@@ -3971,9 +3971,9 @@ class ScalpOverlayService : Service() {
       // Initial location stays below the broker currency selector.
     }
 
-    // 499: drag easily using the header, status or the large ROTATION bar.
-    // Single tap on ROTATION still toggles the same function; tap on the
-    // brain cycles through the four safe corners without any dragging.
+    // 500: drag freely to any screen edge, including far up or far down.
+    // Releasing the panel SAVES the exact coordinates, not an artificial
+    // middle-chart corner. Tap the brain to cycle four TRUE screen corners.
     // The X stays independent and always stops LIVE.
     var startX = 0
     var startY = 0
@@ -3999,10 +3999,11 @@ class ScalpOverlayService : Service() {
             val metrics = resources.displayMetrics
             val cardW = root.width.takeIf { it > 0 } ?: dp(144)
             val cardH = root.height.takeIf { it > 0 } ?: dp(115)
-            val margin = dp(8)
-            val minY = (metrics.heightPixels * .205f).toInt()
-            val maxY = ((metrics.heightPixels * .69f).toInt() - cardH -
-              margin).coerceAtLeast(minY)
+            // 500: the previous .205f-.69f band prevented reaching the
+            // actual top and bottom. Respect the OS content window instead.
+            val margin = dp(4)
+            val minY = margin
+            val maxY = (metrics.heightPixels - cardH - margin).coerceAtLeast(minY)
             params.x = (startX + dx).coerceIn(
               margin, (metrics.widthPixels - cardW - margin).coerceAtLeast(margin)
             )
@@ -4013,18 +4014,19 @@ class ScalpOverlayService : Service() {
         }
         MotionEvent.ACTION_UP -> {
           if (moved498) {
+            // 500: the exact manually dragged location persists across
+            // pair rotation, visual updates, and application restarts.
             val metrics = resources.displayMetrics
+            val margin = dp(4)
             val cardW = root.width.takeIf { it > 0 } ?: dp(144)
             val cardH = root.height.takeIf { it > 0 } ?: dp(115)
-            val minY = (metrics.heightPixels * .205f).toInt()
-            val maxY = ((metrics.heightPixels * .69f).toInt() - cardH -
-              dp(8)).coerceAtLeast(minY)
-            val right = params.x + cardW / 2 >= metrics.widthPixels / 2
-            val bottom = kotlin.math.abs(params.y - maxY) <
-              kotlin.math.abs(params.y - minY)
-            val corner = (if (bottom) "B" else "T") + (if (right) "R" else "L")
+            val safeX = params.x.coerceIn(
+              margin, (metrics.widthPixels - cardW - margin).coerceAtLeast(margin))
+            val safeY = params.y.coerceIn(
+              margin, (metrics.heightPixels - cardH - margin).coerceAtLeast(margin))
             getSharedPreferences("scalp_overlay_position498", Context.MODE_PRIVATE)
-              .edit().putString("corner", corner).apply()
+              .edit().putBoolean("freePosition500", true)
+              .putInt("freeX500", safeX).putInt("freeY500", safeY).apply()
             positionSavedCorner498()
           } else if (hitView499 === brainEclipse) {
             // No broker input or arm change: just cycle the remembered corner.
@@ -4037,7 +4039,8 @@ class ScalpOverlayService : Service() {
               "BL" -> "TL"
               else -> "TR"
             }
-            saved499.edit().putString("corner", next499).apply()
+            saved499.edit().putString("corner", next499)
+              .putBoolean("freePosition500", false).apply()
             positionSavedCorner498()
           } else if (hitView499 === fxButton) {
             // A genuine tap must retain the original ROTATION toggle.
@@ -5946,10 +5949,12 @@ class ScalpOverlayService : Service() {
   }
 
   /**
-   * 498: all four positions are corners of the usable chart region, below
-   * the QT account/pair selector and ABOVE broker BUY/SELL controls.
-   * User's selection is kept across rotation, monitor updates, and process
-   * restarts. This function changes only window geometry, never an order.
+   * 500: unrestricted manual overlay location within Android's visible app
+   * window. The earlier fake "bottom" at 69% was near screen CENTER.
+   * Exact manual X/Y coordinates are preferred; tapping the brain switches
+   * to real top/bottom corners. This modifies no broker order state.
+   * An overlay that physically obscures a broker safety field must still
+   * fail the independent DEMO/amount/payout/gesture preflight.
    */
   private fun positionSavedCorner498(): Boolean {
     val view = overlayView ?: return false
@@ -5958,17 +5963,19 @@ class ScalpOverlayService : Service() {
     val metrics = resources.displayMetrics
     val cardW = view.width.takeIf { it > 0 } ?: dp(144)
     val cardH = view.height.takeIf { it > 0 } ?: dp(115)
-    val margin = dp(8)
-    val corner = getSharedPreferences(
-      "scalp_overlay_position498", Context.MODE_PRIVATE
-    ).getString("corner", "TR") ?: "TR"
+    val margin = dp(4)
     val left = margin
     val right = (metrics.widthPixels - cardW - margin).coerceAtLeast(margin)
-    val top = (metrics.heightPixels * .205f).toInt()
-    val bottom = ((metrics.heightPixels * .69f).toInt() - cardH -
-      margin).coerceAtLeast(top)
-    val newX = if (corner.endsWith("R")) right else left
-    val newY = if (corner.startsWith("B")) bottom else top
+    val top = margin
+    val bottom = (metrics.heightPixels - cardH - margin).coerceAtLeast(top)
+    val prefs = getSharedPreferences("scalp_overlay_position498", Context.MODE_PRIVATE)
+    val corner = prefs.getString("corner", "TR") ?: "TR"
+    val newX = if (prefs.getBoolean("freePosition500", false))
+      prefs.getInt("freeX500", left).coerceIn(left, right)
+    else if (corner.endsWith("R")) right else left
+    val newY = if (prefs.getBoolean("freePosition500", false))
+      prefs.getInt("freeY500", top).coerceIn(top, bottom)
+    else if (corner.startsWith("B")) bottom else top
     if (params.x == newX && params.y == newY) return false
     params.x = newX
     params.y = newY
