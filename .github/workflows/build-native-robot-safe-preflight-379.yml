@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 497 Sold Demo Intreg G24
+name: Build Scalp Atlas 498 Patru Colturi G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.59'
+          expo['version']='3.2.60'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=497
+          expo['android']['versionCode']=498
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -165,7 +165,11 @@ jobs:
           grep -Fq 'val accountAnchors497' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val usdAccount497' .github/native-overlay/TouchTestService.kt
           grep -Fq 'balanceValues497.single() < verifiedStakeCents' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'val orderRegion = Rect(' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private fun positionSavedCorner498()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '"scalp_overlay_position498"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'MotionEvent.ACTION_UP' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fun dockForSelector(): Boolean' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val bottom = ((metrics.heightPixels * .69f)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationNavigating' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'return "497 • " + preflight.take(84)' .github/native-overlay/ScalpOverlayService.kt
 
@@ -2175,28 +2179,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-497-SOLD-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-498-PATRU-COLTURI-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-497-SOLD-DEMO-G24
-          path: ScalpAtlas-497-SOLD-DEMO-G24.apk
+          name: ScalpAtlas-498-PATRU-COLTURI-G24
+          path: ScalpAtlas-498-PATRU-COLTURI-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-balance20-overlay497'
+        if: github.ref == 'refs/heads/fix/scalpatlas-four-corners498'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-497-SOLD-DEMO-G24.apk"
+          FILE="ScalpAtlas-498-PATRU-COLTURI-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-sold-demo497-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-patru-colturi498-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 497 - SOLD DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "SCALP ATLAS 497 pentru Motorola G24: repară citirea soldului QT Demo USD afișat ca 20, 20.0 sau 20.00, doar lângă antetul explicit QT Demo USD, fără a interpreta prețuri din grafic drept sold. Eliberează panoul plutitor de pe zona BUY/SELL și antetul brokerului, păstrând rotația automată de 30 secunde la M5 și payout minimum 92%. Nu șterge marcajele ordinelor anterioare, nu înlătură siguranța DEMO/Real și nu activează Martingale. Compilarea pe GitHub nu dovedește încă armarea sau intrarea pe Motorola; test fizic necesar. Commit $GITHUB_SHA." \
+            --title "SCALP ATLAS 498 - PATRU COLTURI G24 • ${GITHUB_SHA:0:12}" \
+            --notes "SCALP ATLAS 498 pentru Motorola G24: poți muta panoul plutitor prin glisare în oricare din cele patru colțuri ale graficului - sus/stânga, sus/dreapta, jos/stânga, jos/dreapta. La eliberare se fixează și se memorează poziția. Colțurile de jos sunt deasupra butoanelor BUY/SELL; repoziționarea automată peste grafic a fost eliminată. Păstrează rotația perechilor la 30 de secunde, M5, analiza ȘOC, verificarea soldului QT Demo USD (inclusiv întreg) și toate protecțiile ordinelor. Nu activează Martingale sau QT Real. Compilarea nu garantează funcționarea pe telefon; test fizic necesar. Commit $GITHUB_SHA." \
           --prerelease
