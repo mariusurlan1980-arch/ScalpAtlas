@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 502 Rotație Permanentă G24
+name: Build Scalp Atlas 503 Rotație 30 Secunde G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.64'
+          expo['version']='3.2.65'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=502
+          expo['android']['versionCode']=503
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -179,17 +179,17 @@ jobs:
           grep -Fq 'prefs.getInt("freeY500", top)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val maxY = (metrics.heightPixels - cardH - margin)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'putBoolean("freePosition500", false)' .github/native-overlay/ScalpOverlayService.kt
-          # 501: two-phase FX rotation retains verified developing M5 SHOCK
-          # without bypassing any of the broker/order/SHOCK confirmation gates.
-          grep -Fq 'dwell(pair, m5DwellStartedAt501 + 30_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'val developingShock501 =' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'val mayObserveLonger501 =' .github/native-overlay/ScalpOverlayService.kt
+          # 503: use a strict 30s normal rotation, with no 501 adaptive
+          # 5-minute observation. Keep independent order/receipt protections.
+          grep -Fq 'dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -Fq 'mayObserveLonger501' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -Fq 'extendedM5Dwell501' .github/native-overlay/ScalpOverlayService.kt
           # 502: main drag/status bar may RESTART but may not STOP the scan.
           grep -Fq 'if (!fxRotation.running) {' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROTAȚIE ACTIVĂ • OBSERV GRAFICUL' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROTAȚIE ACTIVĂ • SCHIMB PERECHEA' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'if (fxRotation.running) fxRotation.stop("ROTAȚIE • 30 S")' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'm5DwellStartedAt501 + 5 * 60_000L' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if ((recentSignal || liveCandidate) && remaining > -5_000L)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoSessionRequested && !autoDemoSessionConsumed' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'observedShockPercent >= 15' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (tradeBusy())' .github/native-overlay/ScalpOverlayService.kt
@@ -2216,28 +2216,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-502-ROTATIE-PERMANENTA-G24.apk
+          cp "$APK" ScalpAtlas-503-ROTATIE-30S-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-502-ROTATIE-PERMANENTA-G24
-          path: ScalpAtlas-502-ROTATIE-PERMANENTA-G24.apk
+          name: ScalpAtlas-503-ROTATIE-30S-G24
+          path: ScalpAtlas-503-ROTATIE-30S-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-rotation-guard502'
+        if: github.ref == 'refs/heads/fix/scalpatlas-rotation-30s503'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-502-ROTATIE-PERMANENTA-G24.apk"
+          FILE="ScalpAtlas-503-ROTATIE-30S-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-rotatie-permanenta502-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-rotatie-30s503-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 502 - ROTATIE PERMANENTA G24 • ${GITHUB_SHA:0:12}" \
-            --notes "SCALP ATLAS 502 Motorola G24: rezolvă oprirea accidentală a rotației atunci când utilizatorul atinge bara mare folosită și pentru tragerea panoului. Rotația începe automat la LIVE, iar bara poate doar să o repornească dacă este oprită; o atingere în timpul funcționării afișează starea ACTIVĂ fără oprire mascată de textul 30 S. Păstrează 501: 30s verificare inițială și maximum 5 minute M5 doar pentru retragere măsurată sau candidat ȘOC; fără promisiuni de tranzacții. Păstrează exact aceeași strategie ȘOC două lumânări, miza în broker, QT DEMO exclusiv, payout minimum 92%, protecția ordinelor și panoul liber la margini. Fără Martingale sau cont real. Test fizic pe Motorola necesar. Commit $GITHUB_SHA." \
+            --title "SCALP ATLAS 503 - ROTATIE 30 SECUNDE G24 • ${GITHUB_SHA:0:12}" \
+            --notes "SCALP ATLAS 503 Motorola G24: revine la scanarea de 30 de secunde pe fiecare pereche valutară, fără prelungirea de observare M5 până la cinci minute din 501/502. Doar un semnal tocmai confirmat, ordin încă deschis sau o verificare nereușită pot amâna trecerea; nu se forțează tranzacții. Păstrează rotația automată LIVE, bara care nu mai oprește accidental scanarea, panoul compact și liber la margini, strategia ȘOC cu două lumânări de aceeași culoare, M5, expirare 5 minute, payout minim 92%, miza în broker și protecția QT Demo împotriva ordinelor duble. Fără Martingale și fără QT Real. Test fizic necesar pe Motorola G24. Commit $GITHUB_SHA." \
           --prerelease
