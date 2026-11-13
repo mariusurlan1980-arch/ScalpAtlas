@@ -552,12 +552,12 @@ jobs:
           grep -Fq 'val accessibilityPair = TouchTestService.readVisibleDemoPair()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'accessibilityPair != pairs[0]' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'PERECHE PIERDUTĂ • AUTO SIM OPRIT' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'freeAssetHeaderTop' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'positionSavedCorner498()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeModeActive = visible' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'hiddenBody?.visibility' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'MAI MULT ▸' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'body.visibility = if (minimized || probeModeActive)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'window.x = dp(8)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val corner = (if (bottom) "B" else "T")' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'PREGĂTEȘTE DEMO 1$' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'QT DEMO NECONFIRMAT' .github/native-overlay/TouchTestService.kt
           grep -Fq 'QT REAL PE ECRAN' .github/native-overlay/TouchTestService.kt
