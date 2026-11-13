@@ -3315,7 +3315,9 @@ class ScalpOverlayService : Service() {
     // Verify account and exactly 1 USD without starting a transaction.
     // The current fail-closed error is shown verbatim to diagnose WebView nodes.
     val fxButton = localButton("ROTAȚIE • 30 S", Color.rgb(71, 88, 118))
-    fxButton.contentDescription = "Pornește sau oprește rotația perechilor valutare QT Demo sau QT Real"
+    // 502: the robot is continuous; the large draggable status bar must NOT
+    // silently turn FX rotation off on an accidental tap or tiny drag.
+    fxButton.contentDescription = "Status rotație continuă; trage panoul sau atinge pentru a relua rotația QT Demo"
     val fxRotation = object {
       val visited = mutableSetOf<String>()
       var running = false
@@ -3379,7 +3381,7 @@ class ScalpOverlayService : Service() {
         val callback = Runnable {
           task = null
           if (!running || overlayView !== root || shuttingDown || mediaProjection == null)
-            stop("ROTAȚIE • 30 S")
+            stop("ROTAȚIE OPRITĂ • LIVE INDISPONIBIL")
           else try {
             work()
           } catch (_: Exception) {
@@ -3739,9 +3741,18 @@ class ScalpOverlayService : Service() {
       }
     }
     fxButton.setOnClickListener {
-      if (fxRotation.running) fxRotation.stop("ROTAȚIE • 30 S")
-      else try { fxRotation.start() } catch (_: Exception) {
-        fxRotation.stop("ROTAȚIE • SELECTOR NECONFIRMAT")
+      // 502: one-way restart, never a hidden stop. The user's requested
+      // continuous scanning starts automatically with LIVE; tapping the bar
+      // when already running must not turn rotation off during a drag.
+      if (!fxRotation.running) {
+        try { fxRotation.start() }
+        catch (_: Exception) {
+          fxRotation.stop("ROTAȚIE • SELECTOR NECONFIRMAT")
+        }
+      } else if (fxRotationNavigating) {
+        fxButton.text = "ROTAȚIE ACTIVĂ • SCHIMB PERECHEA"
+      } else {
+        fxButton.text = "ROTAȚIE ACTIVĂ • OBSERV GRAFICUL"
       }
     }
     root.addView(fxButton, LinearLayout.LayoutParams(-1, dp(26)))
