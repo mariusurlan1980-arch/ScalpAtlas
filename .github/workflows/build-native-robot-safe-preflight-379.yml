@@ -568,7 +568,7 @@ jobs:
           grep -Fq 'hiddenBody?.visibility' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'MAI MULT ▸' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'body.visibility = if (minimized || probeModeActive)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'val corner = (if (bottom) "B" else "T")' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '.putInt("freeX500", safeX).putInt("freeY500", safeY).apply()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'PREGĂTEȘTE DEMO 1$' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'QT DEMO NECONFIRMAT' .github/native-overlay/TouchTestService.kt
           grep -Fq 'QT REAL PE ECRAN' .github/native-overlay/TouchTestService.kt
