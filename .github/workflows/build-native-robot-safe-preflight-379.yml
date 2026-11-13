@@ -1277,7 +1277,7 @@ jobs:
           grep -Fq 'background = neonEdgeDrawable434' "$O"
           grep -Fq 'startNeonEdge434()' "$O"
           grep -Fq 'stopNeonEdge434()' "$O"
-          grep -Fq 'window.width = dp(if (minimized) 176 else 224)' "$O"
+          grep -Fq 'window.width = dp(if (minimized) 144 else 224)' "$O"
           # 448: a missing historic receipt must never clear a prior gesture.
           grep -Fq 'val savedOldShock = when {' "$O"
           grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
