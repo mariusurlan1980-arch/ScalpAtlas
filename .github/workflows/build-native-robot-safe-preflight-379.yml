@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 498 Patru Colturi G24
+name: Build Scalp Atlas 499 Mini Panou G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.60'
+          expo['version']='3.2.61'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=498
+          expo['android']['versionCode']=499
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -142,7 +142,7 @@ jobs:
       - name: Verify Android overlay source
         run: |
           test -s .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'dp(176)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'dp(144)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fun applyCompactMode()' .github/native-overlay/ScalpOverlayService.kt
           grep -q 'Închide suprapunerea și oprește LIVE' .github/native-overlay/ScalpOverlayService.kt
           ! grep -q 'text = "Scalp Atlas 3.2.7"' .github/native-overlay/ScalpOverlayService.kt
@@ -168,6 +168,12 @@ jobs:
           grep -Fq 'private fun positionSavedCorner498()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '"scalp_overlay_position498"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'MotionEvent.ACTION_UP' .github/native-overlay/ScalpOverlayService.kt
+          # 499: compact dimensions and easy, independent movement targets.
+          grep -Fq 'fxButton.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'brainEclipse.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'probeStatus.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'martingaleStatusText?.visibility = if (minimized) View.GONE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val next499 = when' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fun dockForSelector(): Boolean' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val bottom = ((metrics.heightPixels * .69f)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationNavigating' .github/native-overlay/ScalpOverlayService.kt
@@ -2116,7 +2122,7 @@ jobs:
           # Fail the build if the native overlay still exposes legacy controls.
           SERVICE="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt"
           ! grep -q 'text = "Scalp Atlas 3.2.7"' "$SERVICE"
-          grep -Fq 'dp(176)' "$SERVICE"
+          grep -Fq 'dp(144)' "$SERVICE"
           grep -Fq 'fun applyCompactMode()' "$SERVICE"
           grep -Fq 'compactStatusText?.text' "$SERVICE"
           grep -q 'override fun onTaskRemoved' "$SERVICE"
@@ -2188,28 +2194,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-498-PATRU-COLTURI-G24.apk
+          cp "$APK" ScalpAtlas-499-MINI-PANOU-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-498-PATRU-COLTURI-G24
-          path: ScalpAtlas-498-PATRU-COLTURI-G24.apk
+          name: ScalpAtlas-499-MINI-PANOU-G24
+          path: ScalpAtlas-499-MINI-PANOU-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-four-corners498'
+        if: github.ref == 'refs/heads/fix/scalpatlas-compact-easy-drag499'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-498-PATRU-COLTURI-G24.apk"
+          FILE="ScalpAtlas-499-MINI-PANOU-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-patru-colturi498-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-mini-panou499-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 498 - PATRU COLTURI G24 • ${GITHUB_SHA:0:12}" \
-            --notes "SCALP ATLAS 498 pentru Motorola G24: poți muta panoul plutitor prin glisare în oricare din cele patru colțuri ale graficului - sus/stânga, sus/dreapta, jos/stânga, jos/dreapta. La eliberare se fixează și se memorează poziția. Colțurile de jos sunt deasupra butoanelor BUY/SELL; repoziționarea automată peste grafic a fost eliminată. Păstrează rotația perechilor la 30 de secunde, M5, analiza ȘOC, verificarea soldului QT Demo USD (inclusiv întreg) și toate protecțiile ordinelor. Nu activează Martingale sau QT Real. Compilarea nu garantează funcționarea pe telefon; test fizic necesar. Commit $GITHUB_SHA." \
+            --title "SCALP ATLAS 499 - MINI PANOU G24 • ${GITHUB_SHA:0:12}" \
+            --notes "SCALP ATLAS 499 pentru Motorola G24: panou compact cu lățime 144dp în loc de 176dp, informații esențiale ȘOC/DEMO, elimină rândul duplicat privind miza din suprapunerea compactă. Se poate trage de cap, de status sau de bara ROTAȚIE; o atingere normală pe bară își păstrează funcția, atingerea creierului mută panoul la următorul colț. Păstrează cele 4 poziții memorate, rotația M5/30 secunde, broker QT Demo și toate protecțiile împotriva ordinelor duble. Nu activează Martingale/cont real. Este necesar test fizic după instalare. Commit $GITHUB_SHA." \
           --prerelease
