@@ -3330,12 +3330,6 @@ class ScalpOverlayService : Service() {
       var newPass = false
       var lastChartPair: String? = null
       var recoveryAttempts = 0
-      // 501: a quick 30-second screening pass must not throw away a
-      // DEVELOPING optical SHOCK on M5. Watch only an already observed
-      // partial retreat/candidate, never invent a signal from a new pair.
-      var m5DwellStartedAt501 = 0L
-      var developingShockSeen501 = false
-      var extendedM5Dwell501 = false
       var originalOverlayY: Int? = null
       var dockedOverlayY: Int? = null
 
@@ -3443,9 +3437,6 @@ class ScalpOverlayService : Service() {
         scrollHistory.clear()
         recoveryAttempts = 0
         lastChartPair = null
-        m5DwellStartedAt501 = 0L
-        developingShockSeen501 = false
-        extendedM5Dwell501 = false
         forward = true
         running = true
         seekChart()
@@ -3503,12 +3494,9 @@ class ScalpOverlayService : Service() {
         fxRotationNavigating = false
         autoDemoEntryCycleStartedAt = now
         visited.add(pair)
-        m5DwellStartedAt501 = android.os.SystemClock.elapsedRealtime()
-        developingShockSeen501 = false
-        extendedM5Dwell501 = false
-        // First 30 seconds remain the fast scan for ordinary pairs.
-        // Only genuinely measured early SHOCK activity earns an M5 hold.
-        dwell(pair, m5DwellStartedAt501 + 30_000L, 12)
+        // 503: restore the requested 30-second interval for EVERY pair.
+        // This is a rotation timer, NOT a relaxation of SHOCK rules.
+        dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
@@ -3521,55 +3509,20 @@ class ScalpOverlayService : Service() {
           after(1_000L) { dwell(pair, deadline, retries) }
           return
         }
-        val now = System.currentTimeMillis()
-        val liveCandidate = candidateCount > 0 &&
-          candidateLastSeenAt > 0L && candidateStartedAt > 0L &&
-          now - candidateLastSeenAt in 0L..CANDIDATE_EVIDENCE_GRACE_MS &&
-          now - candidateStartedAt in 0L..CANDIDATE_MAX_AGE_MS
-        // Screen-read physical retracement is a WATCH reason, not a BUY/SELL
-        // signal or win probability. It must be on this verified M5 chart,
-        // recent, and never inherited from another FX instrument.
-        val developingShock501 =
-          observedShockPercent >= 15 && observedShockAt > 0L &&
-          now - observedShockAt in 0L..5_000L
-        if (selectedTimeframe == "M5" && pairReady(now) &&
-            currentPair(now) == pair &&
-            (developingShock501 || liveCandidate)) {
-          developingShockSeen501 = true
-        }
         val remaining = deadline - android.os.SystemClock.elapsedRealtime()
         if (remaining > 0L) {
-          fxButton.text = if (extendedM5Dwell501)
-            "$pair • OBSERV M5 • ${(remaining + 999L) / 1000L} S"
-          else "$pair • ${(remaining + 999L) / 1000L} S"
+          fxButton.text = "$pair • ${(remaining + 999L) / 1000L} S"
           after(minOf(remaining, 1_000L)) { dwell(pair, deadline, retries) }
           return
         }
-        // 501: the previous unconditional 30s rotation reset the same-
-        // candle history before an M5 retracement/rebound could finish.
-        // A verified early optical retreat/candidate extends observation
-        // to a HARD MAXIMUM of five minutes for THIS pair and only in DEMO.
-        // The underlying SHOCK, time, payout, amount, stale-frame, and
-        // order-uniqueness gates remain unchanged and may still reject it.
-        val mayObserveLonger501 =
-          !extendedM5Dwell501 && developingShockSeen501 &&
-          !realAccount && !fxRotationNavigating &&
-          autoDemoSessionRequested && !autoDemoSessionConsumed &&
-          selectedTimeframe == "M5" && pairReady(now) &&
-          currentPair(now) == pair &&
-          (lockedDir == null || now >= lockedUntil) &&
-          m5DwellStartedAt501 > 0L
-        if (mayObserveLonger501) {
-          val hardEnd = m5DwellStartedAt501 + 5 * 60_000L
-          val extra = hardEnd - android.os.SystemClock.elapsedRealtime()
-          if (extra > 1_000L) {
-            extendedM5Dwell501 = true
-            fxButton.text = "$pair • URMĂRESC ȘOC M5"
-            after(750L) { dwell(pair, hardEnd, retries) }
-            return
-          }
-        }
+        // 503: no extra five-minute observation after 30 seconds.
+        // Allow a few seconds ONLY if an already confirmed fresh SHOCK or
+        // candidate is being verified, to avoid aborting order preflight.
+        val now = System.currentTimeMillis()
         val recentSignal = lockedAt > 0L && now - lockedAt in 0L..5000L
+        val liveCandidate = candidateCount > 0 &&
+          now - candidateLastSeenAt in 0L..CANDIDATE_EVIDENCE_GRACE_MS &&
+          now - candidateStartedAt in 0L..CANDIDATE_MAX_AGE_MS
         if ((recentSignal || liveCandidate) && remaining > -5_000L) {
           after(750L) { dwell(pair, deadline, retries) }
           return
