@@ -4051,38 +4051,11 @@ class ScalpOverlayService : Service() {
    * uncovered, genuine QT Demo header.
    */
   private fun dockOverlayForBrokerHistory447() {
-    val view = overlayView ?: return
-    val window = overlayWindowParams ?: return
-    val metrics = resources.displayMetrics
-    if (metrics.widthPixels < dp(240) ||
-        metrics.heightPixels < dp(360)) return
-    val safeHistoryTitleTop = (metrics.heightPixels * 0.135f).toInt()
-    val targetX = dp(8)
-    val targetY = minOf(
-      dp(24),
-      (safeHistoryTitleTop - view.height - dp(6)).coerceAtLeast(0)
-    )
-    if (window.x == targetX && window.y == targetY) return
-    // 449: Pending DEMO history is allowed to uncover the account header
-    // BEFORE history navigation; 447 required the page already opened.
-    // Purely visual: no gesture, no account trust, no trade state reset.
-    val safePendingReview449 = autoDemoSessionConsumed &&
-      !lastBrokerAccountStatus.contains("QT REAL") &&
-      TouchTestService.activeDemoExecutorPackageForReview() != null
-    mainHandler.post {
-      if (shuttingDown || overlayView !== view ||
-          !(historyPageVisible433 || safePendingReview449)) return@post
-      val current = overlayWindowParams ?: return@post
-      // Do not let a user-expanded window invade the account banner.
-      // Compacted mode is already the default; keep that geometry stable.
-      current.x = targetX
-      current.y = targetY
-      try {
-        windowManager.updateViewLayout(view, current)
-      } catch (_: Throwable) {
-        // No failure may change account verification or order locks.
-      }
-    }
+    // 498: Preserve the user-selected corner even when the history screen
+    // is displayed. All four allowed corners stay below the QT Demo header.
+    // The existing independent read-only broker receipts and order gate
+    // continue to fail closed if any required broker view is obstructed.
+    positionSavedCorner498()
   }
 
   /**
