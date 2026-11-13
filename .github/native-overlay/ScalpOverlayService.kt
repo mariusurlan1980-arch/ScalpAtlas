@@ -2893,22 +2893,8 @@ class ScalpOverlayService : Service() {
         if (visible) {
           // Shift the card upward if its expanded test controls would go
           // below the screen edge. This prevents tap-through at the edge.
-          root.post {
-            val window = overlayWindowParams ?: return@post
-            // Keep test targets in the chart region, well above the
-            // broker's bottom trade controls even if user dragged the card.
-            val screenHeight = resources.displayMetrics.heightPixels
-            // Keep the entire expanded test card below the broker asset
-            // selector, and above the underlying broker BUY/SELL area.
-            val freeAssetHeaderTop = (screenHeight * 0.20f).toInt()
-            val maxTop = ((screenHeight * 0.76f).toInt() - root.height -
-              dp(18)).coerceAtLeast(0)
-            val targetTop = if (maxTop >= freeAssetHeaderTop)
-              window.y.coerceIn(freeAssetHeaderTop, maxTop) else maxTop
-            window.x = dp(8)
-            window.y = targetTop
-            try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
-          }
+          // 498: expanding diagnostics does not override the chosen corner.
+          root.post { positionSavedCorner498() }
         }
       }
     }
@@ -3310,17 +3296,8 @@ class ScalpOverlayService : Service() {
           if (extraTestControlsVisible) View.VISIBLE else View.GONE
         // Any pending order confirmation times out after 8 seconds.
         // Folding detail rows never performs an order.
-        root.post {
-          val window = overlayWindowParams ?: return@post
-          val height = resources.displayMetrics.heightPixels
-          val freeHeader = (height * 0.20f).toInt()
-          val maxTop = ((height * 0.76f).toInt() - root.height -
-            dp(18)).coerceAtLeast(0)
-          window.y = if (maxTop >= freeHeader)
-            window.y.coerceIn(freeHeader, maxTop) else maxTop
-          window.x = dp(8)
-          try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
-        }
+        // 498: details do not drag the user-selected position into the chart.
+        root.post { positionSavedCorner498() }
       }
     }
     moreRow.addView(moreTests, LinearLayout.LayoutParams(-1, dp(30)))
@@ -3351,15 +3328,11 @@ class ScalpOverlayService : Service() {
       var dockedOverlayY: Int? = null
 
       fun restoreOverlay() {
-        val originalY = originalOverlayY ?: return
-        val dockedY = dockedOverlayY
+        // 498: selection never owns the position of the floating panel.
+        // Reassert the user's corner, without modifying order safety.
         originalOverlayY = null
         dockedOverlayY = null
-        val window = overlayWindowParams ?: return
-        if (overlayView === root && !shuttingDown && window.y == dockedY) {
-          window.y = originalY
-          try { windowManager.updateViewLayout(root, window) } catch (_: Exception) {}
-        }
+        positionSavedCorner498()
       }
 
       fun stop(message: String) {
@@ -3625,19 +3598,10 @@ class ScalpOverlayService : Service() {
       }
 
       fun dockForSelector(): Boolean {
-        if (originalOverlayY != null) return false
-        val window = overlayWindowParams ?: return false
-        val screenHeight = resources.displayMetrics.heightPixels
-        val targetY = screenHeight - root.height - dp(20)
-        // The temporary position must clear the FX rows as well as the header.
-        // Trading is already paused throughout selector navigation.
-        if (targetY < screenHeight * .70f || overlayBounds().top >= screenHeight * .70f)
-          return false
-        originalOverlayY = window.y
-        dockedOverlayY = targetY
-        window.y = targetY
-        windowManager.updateViewLayout(root, window)
-        return true
+        // 498: never move the status panel over BUY/SELL while rotating pairs.
+        // A currency row obscured by the panel is safely skipped by the
+        // pre-existing gesture/overlayBounds checks, not tapped through it.
+        return false
       }
 
       fun overlayBounds(): Rect {
@@ -3964,10 +3928,7 @@ class ScalpOverlayService : Service() {
       window.width = dp(if (minimized) 176 else 224)
       val metrics = resources.displayMetrics
       window.x = window.x.coerceIn(0, (metrics.widthPixels - window.width).coerceAtLeast(0))
-      root.post {
-        window.y = window.y.coerceIn(0, (metrics.heightPixels - root.height - dp(16)).coerceAtLeast(0))
-        try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
-      }
+      root.post { positionSavedCorner498() }
     }
     minimizeToggle.setOnClickListener {
       minimized = !minimized
@@ -3991,34 +3952,66 @@ class ScalpOverlayService : Service() {
       // Initial location stays below the broker currency selector.
     }
 
-    // Drag the white card on its background; bell and X remain clickable.
+    // 498: drag the status panel to ANY of the four chart corners.
+    // Releasing it snaps to the nearest corner and remembers that choice.
+    // The bottom corners end ABOVE the broker's BUY/SELL panel.
+    // The X remains a separate clickable child and always stops LIVE.
     var startX = 0
     var startY = 0
     var touchX = 0f
     var touchY = 0f
+    var moved498 = false
     val dragListener = View.OnTouchListener { _, event ->
-      when (event.action) {
+      when (event.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
           startX = params.x
           startY = params.y
           touchX = event.rawX
           touchY = event.rawY
+          moved498 = false
           true
         }
         MotionEvent.ACTION_MOVE -> {
-          val metrics = resources.displayMetrics
-          params.x = (startX + (event.rawX - touchX).toInt())
-            .coerceIn(0, (metrics.widthPixels - params.width).coerceAtLeast(0))
-          val limitBottom = if (touchProbeRow?.visibility == View.VISIBLE)
-            (metrics.heightPixels * 0.76f).toInt()
-            else metrics.heightPixels
-          val maxTop = (limitBottom - root.height - dp(22)).coerceAtLeast(0)
-          val minTop = if (touchProbeRow?.visibility == View.VISIBLE &&
-              maxTop >= (metrics.heightPixels * 0.20f).toInt())
-            (metrics.heightPixels * 0.20f).toInt() else 0
-          params.y = (startY + (event.rawY - touchY).toInt())
-            .coerceIn(minTop, maxTop)
-          overlayView?.let { windowManager.updateViewLayout(it, params) }
+          val dx = (event.rawX - touchX).toInt()
+          val dy = (event.rawY - touchY).toInt()
+          if (kotlin.math.abs(dx) > dp(6) || kotlin.math.abs(dy) > dp(6))
+            moved498 = true
+          if (moved498) {
+            val metrics = resources.displayMetrics
+            val cardW = root.width.takeIf { it > 0 } ?: dp(176)
+            val cardH = root.height.takeIf { it > 0 } ?: dp(130)
+            val margin = dp(8)
+            val minY = (metrics.heightPixels * .205f).toInt()
+            val maxY = ((metrics.heightPixels * .69f).toInt() - cardH -
+              margin).coerceAtLeast(minY)
+            params.x = (startX + dx).coerceIn(
+              margin, (metrics.widthPixels - cardW - margin).coerceAtLeast(margin)
+            )
+            params.y = (startY + dy).coerceIn(minY, maxY)
+            try { windowManager.updateViewLayout(root, params) } catch (_: Throwable) {}
+          }
+          true
+        }
+        MotionEvent.ACTION_UP -> {
+          if (moved498) {
+            val metrics = resources.displayMetrics
+            val cardW = root.width.takeIf { it > 0 } ?: dp(176)
+            val cardH = root.height.takeIf { it > 0 } ?: dp(130)
+            val minY = (metrics.heightPixels * .205f).toInt()
+            val maxY = ((metrics.heightPixels * .69f).toInt() - cardH -
+              dp(8)).coerceAtLeast(minY)
+            val right = params.x + cardW / 2 >= metrics.widthPixels / 2
+            val bottom = kotlin.math.abs(params.y - maxY) <
+              kotlin.math.abs(params.y - minY)
+            val corner = (if (bottom) "B" else "T") + (if (right) "R" else "L")
+            getSharedPreferences("scalp_overlay_position498", Context.MODE_PRIVATE)
+              .edit().putString("corner", corner).apply()
+            positionSavedCorner498()
+          }
+          true
+        }
+        MotionEvent.ACTION_CANCEL -> {
+          positionSavedCorner498()
           true
         }
         else -> false
@@ -4029,6 +4022,8 @@ class ScalpOverlayService : Service() {
     overlayView = root
     overlayWindowParams = params
     windowManager.addView(root, params)
+    // 498: restore the personally selected corner after the window is laid out.
+    root.post { positionSavedCorner498() }
     startNeonEdge434()
     // 495: The user already authorized LIVE screen capture and requested
     // continuous 30-second QT Demo pair rotation, without a second ON press.
@@ -5939,47 +5934,42 @@ class ScalpOverlayService : Service() {
   }
 
   /**
-   * 497: The compact overlay must never block the verified QT Demo account
-   * banner or BUY/SELL controls. Screenshot on Moto G24 showed the bottom-
-   * right overlay physically covering the broker SELL button. Reposition the
-   * pill to the left chart HISTORY area, below the currency selector, when
-   * it obstructs either protected region.
-   *
-   * No broker gestures, no account inference, no rearming. While the
-   * selector is being navigated, leave its own docking/restore routine alone.
+   * 498: all four positions are corners of the usable chart region, below
+   * the QT account/pair selector and ABOVE broker BUY/SELL controls.
+   * User's selection is kept across rotation, monitor updates, and process
+   * restarts. This function changes only window geometry, never an order.
    */
-  private fun uncoverDemoHeader496(): Boolean {
+  private fun positionSavedCorner498(): Boolean {
     val view = overlayView ?: return false
     val params = overlayWindowParams ?: return false
-    if (shuttingDown || mediaProjection == null || fxRotationNavigating ||
-        !(autoDemoSessionRequested || autoDemoSessionConsumed)) return false
-    val width = resources.displayMetrics.widthPixels
-    val height = resources.displayMetrics.heightPixels
-    if (width < dp(240) || height < dp(450) || view.width <= 0 || view.height <= 0)
-      return false
-    val actual = currentOverlayBounds488()
-    val accountRegion = Rect(
-      (width * .44f).toInt(), 0, width, (height * .23f).toInt()
-    )
-    val orderRegion = Rect(
-      0, (height * .75f).toInt(), width, (height * .97f).toInt()
-    )
-    val coversAccount = actual.left >= (width * .38f).toInt() &&
-      Rect.intersects(actual, accountRegion)
-    val coversOrder = Rect.intersects(actual, orderRegion)
-    if (!coversAccount && !coversOrder) return false
-    val targetX = dp(8)
-    // The pair selector occupies the first ~20% of the screen; put the pill
-    // below it on the historical (left) part of the candle chart.
-    val targetY = (height * .225f).toInt()
-    if (params.x == targetX && params.y == targetY) return false
-    params.x = targetX
-    params.y = targetY
+    if (shuttingDown) return false
+    val metrics = resources.displayMetrics
+    val cardW = view.width.takeIf { it > 0 } ?: dp(176)
+    val cardH = view.height.takeIf { it > 0 } ?: dp(130)
+    val margin = dp(8)
+    val corner = getSharedPreferences(
+      "scalp_overlay_position498", Context.MODE_PRIVATE
+    ).getString("corner", "TR") ?: "TR"
+    val left = margin
+    val right = (metrics.widthPixels - cardW - margin).coerceAtLeast(margin)
+    val top = (metrics.heightPixels * .205f).toInt()
+    val bottom = ((metrics.heightPixels * .69f).toInt() - cardH -
+      margin).coerceAtLeast(top)
+    val newX = if (corner.endsWith("R")) right else left
+    val newY = if (corner.startsWith("B")) bottom else top
+    if (params.x == newX && params.y == newY) return false
+    params.x = newX
+    params.y = newY
     return try {
       windowManager.updateViewLayout(view, params)
       true
     } catch (_: Throwable) { false }
   }
+
+  // 498: no more auto-centering when checking broker balance or orders.
+  // Uncovered chart corners are used by positionSavedCorner498. A manual
+  // obstruction must continue to FAIL the independent broker preflight.
+  private fun uncoverDemoHeader496(): Boolean = false
 
   private fun currentOverlayBounds488(): Rect {
     val view = overlayView ?: return Rect()
