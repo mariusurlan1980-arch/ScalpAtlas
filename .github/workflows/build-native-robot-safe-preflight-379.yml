@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 499 Mini Panou G24
+name: Build Scalp Atlas 500 Mișcare Liberă G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.61'
+          expo['version']='3.2.62'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=499
+          expo['android']['versionCode']=500
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -174,8 +174,13 @@ jobs:
           grep -Fq 'probeStatus.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'martingaleStatusText?.visibility = if (minimized) View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val next499 = when' .github/native-overlay/ScalpOverlayService.kt
+          # 500: use true screen edges and remember the exact manual position.
+          grep -Fq 'putBoolean("freePosition500", true)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'prefs.getInt("freeY500", top)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val maxY = (metrics.heightPixels - cardH - margin)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'putBoolean("freePosition500", false)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fun dockForSelector(): Boolean' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'val bottom = ((metrics.heightPixels * .69f)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val bottom = (metrics.heightPixels - cardH - margin)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationNavigating' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'return "497 • " + preflight.take(84)' .github/native-overlay/ScalpOverlayService.kt
 
@@ -1501,23 +1506,26 @@ jobs:
           node - <<'NODE'
           const assert=require('node:assert/strict');
           const screen={w:688,h:1536},pill={w:290,h:114},margin=14;
-          const top=screen.h*.205;
-          const bottom=Math.max(top,screen.h*.69-pill.h-margin);
+          const top=margin;
+          const bottom=screen.h-pill.h-margin;
           const corners=[
             {name:'top-left',x:margin,y:top},
             {name:'top-right',x:screen.w-pill.w-margin,y:top},
             {name:'bottom-left',x:margin,y:bottom},
             {name:'bottom-right',x:screen.w-pill.w-margin,y:bottom}
           ];
-          const intersects=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
-          for(const corner of corners) {
-            const placed={...corner,...pill};
-            assert.equal(intersects(placed,{x:370,y:65,w:200,h:105}),false,'QT Demo must be unobscured');
-            assert.equal(intersects(placed,{x:32,y:200,w:165,h:55}),false,'broker heading must be unobscured');
-            assert.equal(intersects(placed,{x:40,y:1200,w:620,h:130}),false,'BUY/SELL must be unobscured');
+          // 500: full screen range is intentional; manually obstructing a
+          // broker account/control must NOT bypass its independent preflight.
+          for(const c of corners) {
+            assert(c.x>=margin&&c.x+pill.w<=screen.w-margin);
+            assert(c.y>=margin&&c.y+pill.h<=screen.h-margin);
           }
+          assert(top<screen.h*.1&&bottom>screen.h*.8);
+          const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+          assert.equal(clamp(450,margin,screen.w-pill.w-margin),384);
+          assert.equal(clamp(910,margin,screen.h-pill.h-margin),910);
           assert.equal(new Set(corners.map(x=>x.x+','+x.y)).size,4);
-          console.log('498: four user-selected chart corners avoid account, history and BUY/SELL');
+          console.log('500: saved manual locations and true screen-edge corners stay within Android window');
           NODE
 
       - name: Verify 446 split OCR row pairing and ambiguity rejection
@@ -2194,28 +2202,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-499-MINI-PANOU-G24.apk
+          cp "$APK" ScalpAtlas-500-MISCARE-LIBERA-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-499-MINI-PANOU-G24
-          path: ScalpAtlas-499-MINI-PANOU-G24.apk
+          name: ScalpAtlas-500-MISCARE-LIBERA-G24
+          path: ScalpAtlas-500-MISCARE-LIBERA-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-compact-easy-drag499'
+        if: github.ref == 'refs/heads/fix/scalpatlas-free-drag-edges500'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-499-MINI-PANOU-G24.apk"
+          FILE="ScalpAtlas-500-MISCARE-LIBERA-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-mini-panou499-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-miscare-libera500-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 499 - MINI PANOU G24 • ${GITHUB_SHA:0:12}" \
-            --notes "SCALP ATLAS 499 pentru Motorola G24: panou compact cu lățime 144dp în loc de 176dp, informații esențiale ȘOC/DEMO, elimină rândul duplicat privind miza din suprapunerea compactă. Se poate trage de cap, de status sau de bara ROTAȚIE; o atingere normală pe bară își păstrează funcția, atingerea creierului mută panoul la următorul colț. Păstrează cele 4 poziții memorate, rotația M5/30 secunde, broker QT Demo și toate protecțiile împotriva ordinelor duble. Nu activează Martingale/cont real. Este necesar test fizic după instalare. Commit $GITHUB_SHA." \
+            --title "SCALP ATLAS 500 - MISCARE LIBERA G24 • ${GITHUB_SHA:0:12}" \
+            --notes "SCALP ATLAS 500 pentru Motorola G24: panoul mic poate fi tras liber până aproape de marginile de sus și de jos ale ecranului. Eliminată vechea limită verticală 20,5%-69% care îl lăsa în centrul graficului; la eliberare rămâne în poziția EXACTĂ, memorată și pentru relansare, fără snap automat. Atingerea creierului mută panoul succesiv în cele patru colțuri reale. Dacă acoperi manual informații de siguranță ale brokerului, armarea/execuția rămâne blocată până sunt vizibile. Păstrează strategia ȘOC, rotația 30s, QT Demo, M5, protecțiile ordinelor; fără Martingale și fără cont real. APK-ul compilat necesită test fizic pe G24. Commit $GITHUB_SHA." \
           --prerelease
