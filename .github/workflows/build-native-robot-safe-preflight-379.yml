@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 504 Reconectare Motor G24
+name: Build Scalp Atlas 505 Rotație Fără Repetări G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.66'
+          expo['version']='3.2.67'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=504
+          expo['android']['versionCode']=505
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -192,6 +192,15 @@ jobs:
           grep -Fq 'analyzerWebView?.reload()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoLockedAt = lockedAt' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'brokerWebView?.reload()' .github/native-overlay/ScalpOverlayService.kt
+          # 505: retain per-round exclusion until several distinct selector
+          # viewports have been independently observed; never re-dwell.
+          grep -Fq 'val eligibleSeen505 = mutableSetOf<String>()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val viewportsSeen505 = mutableSetOf<List<String>>()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fxRotationNavigating && pair in visited' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if (viewportsSeen505.size < 3 || unexplored505)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'observedEligible: MutableSet<String>? = null' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'observedViewports: MutableSet<List<String>>? = null' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'observedViewports?.add(rows.map { it.quote.pair })' .github/native-overlay/TouchTestService.kt
           # 502: main drag/status bar may RESTART but may not STOP the scan.
           grep -Fq 'if (!fxRotation.running) {' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROTAȚIE ACTIVĂ • OBSERV GRAFICUL' .github/native-overlay/ScalpOverlayService.kt
@@ -2224,28 +2233,28 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-504-RECONNECT-MOTOR-G24.apk
+          cp "$APK" ScalpAtlas-505-UNIQUE-PAIRS-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-504-RECONNECT-MOTOR-G24
-          path: ScalpAtlas-504-RECONNECT-MOTOR-G24.apk
+          name: ScalpAtlas-505-UNIQUE-PAIRS-G24
+          path: ScalpAtlas-505-UNIQUE-PAIRS-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-analyzer-watchdog504'
+        if: github.ref == 'refs/heads/fix/scalpatlas-unique-fx-sweep505'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-504-RECONNECT-MOTOR-G24.apk"
+          FILE="ScalpAtlas-505-UNIQUE-PAIRS-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-reconnect-motor504-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-unique-pairs505-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 504 - RECONNECT MOTOR G24 • ${GITHUB_SHA:0:12}" \
-            --notes "SCALP ATLAS 504 Motorola G24: recuperare automată doar pentru motorul INTERN de analiză dacă Android trimite în continuare cadre LIVE dar motorul nu returnează rezultate cel puțin 20 de secunde. Reîncărcarea motorului este limitată la maximum o încercare la 60 de secunde, invalidează cadrele vechi și NU reîncarcă pagina brokerului, NU apasă butoane și NU deblochează un ordin DEMO anterior. Acest watchdog încearcă să evite blocajele după ore de rulare; dacă pagina QT Demo sau accesibilitatea au înghețat, este necesară verificarea separată. Păstrează strategia ȘOC două lumânări M5, payout minim 92%, expirare 5 minute, miza în broker, rotația 30s, panoul compact mobil și toate blocajele contra ordinelor duble; fără Martingale sau QT Real. Test fizic necesar pe Motorola G24. Commit $GITHUB_SHA." \
+            --title "SCALP ATLAS 505 - UNIQUE FX PAIRS G24 • ${GITHUB_SHA:0:12}" \
+            --notes "SCALP ATLAS 505 Motorola G24: o singură analiză de 30s pentru fiecare pereche dintr-un tur verificat. Memorează perechile analizate și cele inaccesibile între schimbările de grafice, evită reanalizarea unei perechi deja vizitate și NU golește lista după numai câteva valute dacă selectorul nu a demonstrat cel puțin trei ferestre diferite ale listei. Dacă selectorul nu mai arată alte perechi, afișează LISTĂ INCOMPLETĂ și încearcă să exploreze lista, fără a executa BUY/SELL fără semnal. După un tur complet verificat poate începe alt tur. Păstrează ȘOC două lumânări, M5, 30 secunde/pereche, QT Demo, payout minim 92%, expirare 5 min, miză broker și reconectarea motorului din 504. Fără Martingale/QT Real. Test fizic necesar pe Motorola G24. Commit $GITHUB_SHA."
           --prerelease
