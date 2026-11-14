@@ -513,11 +513,19 @@ class TouchTestService : AccessibilityService() {
       // coordinates in the broker header. When the WebView changed layout,
       // that could hit the account chooser instead of the FX selector.
       // No physical header tap, no broad clickable ancestor, no QT Real.
-      if (realAccount || physicalOnly || matches.size != 1) return false
-      val (pairNode, bounds) = matches.single()
+      // 509: QT WebView can duplicate the SAME pair label across nodes, and
+      // several nested ancestors may report ACTION_CLICK. These do NOT mean
+      // several different currency selectors. De-duplicate matching bounds,
+      // then prefer the smallest eligible clickable control on the pair path.
+      // Never fall back to physical tapping in the broker account header.
+      if (realAccount || physicalOnly) return false
+      val distinctBounds = matches.map { it.second }.distinct()
+      if (distinctBounds.size != 1) return false
+      val bounds = distinctBounds.single()
       val action = AccessibilityNodeInfo.ACTION_CLICK
-      val candidates = generateSequence(pairNode) { it.parent }.take(3)
-        .filter { candidate ->
+      val candidates = matches.flatMap { (pairNode, _) ->
+        generateSequence(pairNode) { it.parent }.take(3).toList()
+      }.distinct().filter { candidate ->
           val rect = Rect()
           candidate.getBoundsInScreen(rect)
           val values = listOfNotNull(
@@ -532,9 +540,13 @@ class TouchTestService : AccessibilityService() {
             rect.width() <= width * .40f &&
             rect.height() <= height * .065f &&
             values.none { Regex("""(?i)\bQT\s*(?:Demo|Real)\b""").containsMatchIn(it) }
-        }.toList()
-      if (candidates.size != 1 ||
-          overlayBounds.contains(bounds.centerX(), bounds.centerY()) ||
+        }
+      val target = candidates.minByOrNull { candidate ->
+        val rect = Rect()
+        candidate.getBoundsInScreen(rect)
+        rect.width().toLong() * rect.height().toLong()
+      } ?: return false
+      if (overlayBounds.contains(bounds.centerX(), bounds.centerY()) ||
           svc.rootInActiveWindow != root) return false
       // Re-read visible account identity immediately before a broker click.
       val fresh = activeDemoHistoryNodes(false, false) ?: return false
@@ -544,7 +556,7 @@ class TouchTestService : AccessibilityService() {
               Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.toString())
             }
           }) return false
-      return candidates.single().performAction(action)
+      return svc.rootInActiveWindow == root && target.performAction(action)
     }
 
     /**
@@ -662,9 +674,26 @@ class TouchTestService : AccessibilityService() {
         val x = next.bounds.centerX()
         val y = next.bounds.centerY()
         val metrics = svc.resources.displayMetrics
-        // 508: never place a fallback tap in the account/header band.
-        if (x !in (metrics.widthPixels * .15f).toInt()..(metrics.widthPixels * .65f).toInt() ||
-            y !in (metrics.heightPixels * .32f).toInt()..(metrics.heightPixels * .70f).toInt())
+        // 509: allow a verified FX row slightly above the old 32% cutoff,
+        // but only BELOW the independently observed "Valute" list header.
+        // Re-read the active QT Demo list before any physical row gesture:
+        // a stale row coordinate must NEVER become an account-header tap.
+        val currentList = activeDemoHistoryNodes(false, false)
+          ?: return DemoFxNavigation(message = "CONT DEMO NECONFIRMAT")
+        if (currentList.first !== svc || currentList.second != root ||
+            !currentList.third.any { (node, _) -> hasFxCurrencyHeader(node) })
+          return DemoFxNavigation(message = "LISTA VALUTELOR NU MAI ESTE DESCHISĂ")
+        val freshRow = visibleDemoFxRows(currentList.third)
+          .singleOrNull { it.quote == next.quote }
+          ?: return DemoFxNavigation(message = "RÂND VALUTAR NECONFIRMAT")
+        val headerBottom = currentList.third.firstOrNull { (node, _) ->
+          hasFxCurrencyHeader(node)
+        }?.second?.bottom ?: return DemoFxNavigation(message = "ANTET VALUTE NECONFIRMAT")
+        if (kotlin.math.abs(freshRow.bounds.centerX() - x) > metrics.widthPixels * .015f ||
+            kotlin.math.abs(freshRow.bounds.centerY() - y) > metrics.heightPixels * .012f ||
+            x !in (metrics.widthPixels * .15f).toInt()..(metrics.widthPixels * .65f).toInt() ||
+            y <= headerBottom || y < (metrics.heightPixels * .28f).toInt() ||
+            y > (metrics.heightPixels * .70f).toInt())
           return DemoFxNavigation(rejectedPair = next.quote.pair, message = "RÂND VALUTAR ÎN AFARA ZONEI SIGURE")
         if (overlayBounds.contains(x, y))
           return DemoFxNavigation(rejectedPair = next.quote.pair, message = "PANOU PESTE PERECHE")
