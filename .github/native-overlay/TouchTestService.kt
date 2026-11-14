@@ -520,8 +520,17 @@ class TouchTestService : AccessibilityService() {
       // Never fall back to physical tapping in the broker account header.
       if (realAccount || physicalOnly) return false
       val distinctBounds = matches.map { it.second }.distinct()
-      if (distinctBounds.size != 1) return false
-      val bounds = distinctBounds.single()
+      // 510: Android WebView often exposes the SAME pair as nested text and
+      // selector nodes with slightly different overlapping bounds. Reject
+      // separate/nonoverlapping labels, but do not reject one verified control.
+      val bounds = distinctBounds.minByOrNull {
+        it.width().toLong() * it.height().toLong()
+      } ?: return false
+      if (distinctBounds.any { other ->
+          !Rect.intersects(bounds, other) ||
+            kotlin.math.abs(bounds.centerY() - other.centerY()) > height * .030f ||
+            other.right > width * .53f
+        }) return false
       val action = AccessibilityNodeInfo.ACTION_CLICK
       val candidates = matches.flatMap { (pairNode, _) ->
         generateSequence(pairNode) { it.parent }.take(3).toList()
@@ -535,9 +544,10 @@ class TouchTestService : AccessibilityService() {
             candidate.isClickable && candidate.packageName == root.packageName &&
             candidate.actionList.any { it.id == action } &&
             !rect.isEmpty && rect.contains(bounds.centerX(), bounds.centerY()) &&
-            rect.centerX() in 1 until (width * .52f).toInt() &&
+            rect.centerX() in 1 until (width * .50f).toInt() &&
+            rect.left >= width * .03f && rect.right <= width * .53f &&
             rect.centerY() in headerTop..headerBottom &&
-            rect.width() <= width * .40f &&
+            rect.width() <= width * .48f &&
             rect.height() <= height * .065f &&
             values.none { Regex("""(?i)\bQT\s*(?:Demo|Real)\b""").containsMatchIn(it) }
         }
