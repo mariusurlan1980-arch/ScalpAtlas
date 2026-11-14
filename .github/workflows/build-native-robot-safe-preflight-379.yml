@@ -531,7 +531,8 @@ jobs:
           grep -Fq 'trendHistoryCount:candle.trendHistoryCount' scalp-atlas-new/shockNativeEngine.ts
           grep -Fq 'ISTORIC ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'LATERAL • FĂRĂ SEMNAL' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'val shockObserved = brokerConnected && opticalFresh' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val shockObserved = !fxRotationNavigating && brokerConnected && opticalFresh' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fxRotationNavigating -> "ȘOC PAUZĂ • ROTAȚIE"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val shockDisplay = if (percentFromCandle > 0 || shockObserved)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'brokerAutoRow.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' .github/native-overlay/ScalpOverlayService.kt
