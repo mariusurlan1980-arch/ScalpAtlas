@@ -531,7 +531,7 @@ class TouchTestService : AccessibilityService() {
             rect.centerY() in headerTop..headerBottom &&
             rect.width() <= width * .40f &&
             rect.height() <= height * .065f &&
-            values.none { Regex("""(?i)\\bQT\\s*(?:Demo|Real)\\b""").containsMatchIn(it) }
+            values.none { Regex("""(?i)\bQT\s*(?:Demo|Real)\b""").containsMatchIn(it) }
         }.toList()
       if (candidates.size != 1 ||
           overlayBounds.contains(bounds.centerX(), bounds.centerY()) ||
@@ -541,7 +541,7 @@ class TouchTestService : AccessibilityService() {
       if (fresh.first !== svc || fresh.second != root ||
           fresh.third.any { (node, _) ->
             listOfNotNull(node.text, node.contentDescription).any {
-              Regex("""(?i)\\bQT\\s*Real\\b""").containsMatchIn(it.toString())
+              Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.toString())
             }
           }) return false
       return candidates.single().performAction(action)
