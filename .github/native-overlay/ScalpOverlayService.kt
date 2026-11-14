@@ -3642,7 +3642,9 @@ class ScalpOverlayService : Service() {
           select(pair)
         }
         else if (checks > 0) after(500L) { awaitList(pair, checks - 1, physicalOnly) }
-        else if (!physicalOnly) openList(pair, true)
+        // 510: 509 disabled raw-header physical fallback for QT DEMO safety.
+        // Do not run a guaranteed-failing physicalOnly call after a missed
+        // WebView transition: recover and retry only fresh verified AX clicks.
         else recoverNavigation(pair, "LISTA NU S-A DESCHIS")
       }
 
