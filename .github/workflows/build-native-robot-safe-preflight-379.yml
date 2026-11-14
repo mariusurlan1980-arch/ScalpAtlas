@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 507 Selector Auto-Recovery G24
+name: Build Scalp Atlas 508 QT Demo Account Guard G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.68'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=507
+          expo['android']['versionCode']=508
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -209,6 +209,21 @@ jobs:
           grep -Fq 'if (seeking506 != null)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'searchChecks506++ < 4' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROTAȚIE • SELECTOR NECONFIRMAT ' .github/native-overlay/ScalpOverlayService.kt
+          # 508: fail closed when a QT Demo FX header cannot be mapped to
+          # precisely one small clickable pair control. NO raw header tap.
+          python3 - <<'PY508'
+          from pathlib import Path
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          block=t.split('fun reopenFxList(',1)[1].split('fun searchVisibleFxPair506(',1)[0]
+          assert 'if (realAccount || physicalOnly || matches.size != 1) return false' in block
+          assert 'activeDemoHistoryNodes(false, false)' in block
+          assert 'return candidates.single().performAction(action)' in block
+          assert 'dispatchGesture(' not in block
+          assert 'if (realAccount)' in t
+          assert 'y !in (metrics.heightPixels * .32f).toInt()' in t
+          assert r'Regex("""(?i)\bQT\s*Real\b""")' in block
+          print('508 PASS: DEMO only, no raw account/header physical taps')
+          PY508
           # 502: main drag/status bar may RESTART but may not STOP the scan.
           grep -Fq 'if (!fxRotation.running) {' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROTAȚIE ACTIVĂ • OBSERV GRAFICUL' .github/native-overlay/ScalpOverlayService.kt
@@ -2242,17 +2257,17 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-507-FX-RECOVERY-G24.apk
+          cp "$APK" ScalpAtlas-508-DEMO-ACCOUNT-GUARD-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-507-FX-RECOVERY-G24
+          name: ScalpAtlas-508-DEMO-ACCOUNT-GUARD-G24
           path: ScalpAtlas-507-FX-RECOVERY-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-selector-recovery507'
+        if: github.ref == 'refs/heads/fix/scalpatlas-demo-account-touch-guard508'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -2260,9 +2275,9 @@ jobs:
           FILE="ScalpAtlas-507-FX-RECOVERY-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-fx-recovery507-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-account-guard508-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 507 - AUTORECUPERARE SELECTOR G24 • ${GITHUB_SHA:0:12}" \
-            --notes "507: Rotația QT DEMO nu se mai oprește definitiv când selectorul devine temporar inaccesibil. Păstrează perechile deja analizate, închide doar lista identificată și reîncearcă verificat după 15/30/60/120 secunde, fără ordine forțate sau repetări în același tur. Câmpul de căutare poate ocupa până la 96% din lățime dacă este UNIC și situat deasupra antetului Valute. Păstrează regula de 30 secunde/pereche, payout minim 92%, ȘOC M5/5 minute, miza setată în broker și toate blocajele pentru ordine neverificate. Doar QT DEMO. Necesită test fizic Motorola G24 înainte de utilizare continuă. Commit $GITHUB_SHA."
+            --title "SCALP ATLAS 508 - PROTECTIE CONT DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "508: Fix preventiv pentru posibile atingeri ale selectorului CONT REAL din antet: eliminat fallback-ul de tap fizic in zona superioara, permis doar CLICK pe unicul control FX mic identificat, cu verificare noua QT Demo. La control ambiguu, navigarea nu face gest; ordinele reale raman blocate. Rotatie 30 sec/pereche, payout minim 92%, SOC M5/5 min, protectii ordine anterioare pastrate. Necesita verificare si test pe Motorola G24 in QT DEMO inainte de autorizare AUTO. Commit $GITHUB_SHA."
