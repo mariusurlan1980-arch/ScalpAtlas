@@ -540,7 +540,12 @@ class TouchTestService : AccessibilityService() {
     /** A single selector action. The caller must verify the resulting chart. */
     fun navigateOpenFxList(
       excluded: Set<String>, allowScroll: Boolean, forward: Boolean, overlayBounds: Rect,
-      onlyPair: String? = null, scrollHistory: MutableSet<List<String>>? = null, realAccount: Boolean
+      onlyPair: String? = null, scrollHistory: MutableSet<List<String>>? = null,
+      // 505: retain what was ACTUALLY seen in the selector during this round.
+      // These are diagnostics/round-completion evidence, never trade signals.
+      observedEligible: MutableSet<String>? = null,
+      observedViewports: MutableSet<List<String>>? = null,
+      realAccount: Boolean
     ): DemoFxNavigation {
       val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount)
         ?: return DemoFxNavigation(message = "CONT QT NECONFIRMAT")
@@ -548,6 +553,13 @@ class TouchTestService : AccessibilityService() {
         return DemoFxNavigation(message = "BROKERUL NU ESTE ÎN FAȚĂ")
       val rows = visibleDemoFxRows(labels)
       if (rows.isEmpty()) return DemoFxNavigation(message = "RÂNDURI VALUTE NECITITE")
+      // 505: distinguish several genuinely different selector viewports
+      // from the SAME five currencies reopened over and over. No assumed
+      // total list length, and no automatic resetting of an incomplete pass.
+      observedViewports?.add(rows.map { it.quote.pair })
+      rows.filter { it.quote.payout >= 92 }.forEach {
+        observedEligible?.add(it.quote.pair)
+      }
       val next = rows.firstOrNull {
         it.quote.payout >= 92 && it.quote.pair !in excluded &&
           (onlyPair == null || onlyPair == it.quote.pair)
