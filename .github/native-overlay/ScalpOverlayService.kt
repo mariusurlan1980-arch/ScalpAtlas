@@ -3511,7 +3511,9 @@ class ScalpOverlayService : Service() {
           return
         }
         if (fxRotationNavigating) {
-          clearOnInstrumentChange()
+          // 507: beginNavigation() already cleared stale SHOCK evidence once.
+          // Clearing it again exactly when the new chart becomes readable
+          // discarded the first live optical sample and delayed detection.
           // Retire a display signal belonging to the previous chart only.
           // The persistent order gate and gesture cooldown are independent.
           if (lastChartPair != null && lastChartPair != pair && !tradeBusy()) {
@@ -6611,7 +6613,10 @@ class ScalpOverlayService : Service() {
       }
       setPulseRing(activeSignal)
       setSignalBlink(activeSignal)
-      val percentFromCandle = when {
+      // 507: never display a fabricated "0% shock" while the FX selector
+      // covers the chart or a safe recovery is in progress. SHOCK analysis
+      // will resume only after a fresh verified M5 chart is visible.
+      val percentFromCandle = if (fxRotationNavigating) 0 else when {
         brokerConnected && (green || red) &&
           lockedDir == signal && now < lockedUntil &&
           activeStrategy == "SCALP_TREND" -> lastConfirmedScalpPercent
@@ -6624,12 +6629,14 @@ class ScalpOverlayService : Service() {
       }
       // A valid LIVE candle with no qualifying pullback means zero
       // DETECTED shock, not missing capture. Never portray 0% as entry.
-      val shockObserved = brokerConnected && opticalFresh
+      val shockObserved = !fxRotationNavigating && brokerConnected && opticalFresh
       val shockDisplay = if (percentFromCandle > 0 || shockObserved)
         percentFromCandle.toString() + "%" else "—%"
       qualityText?.text = shockDisplay
-      compactStatusText?.text = when (activeSignal) {
-        "BUY", "SELL" -> activeSignal + " " + shockDisplay
+      compactStatusText?.text = when {
+        fxRotationNavigating -> "ȘOC PAUZĂ • ROTAȚIE"
+        activeSignal == "BUY" || activeSignal == "SELL" ->
+          activeSignal + " " + shockDisplay
         else -> "ȘOC " + shockDisplay
       }
       compactStatusText?.setTextColor(when (activeSignal) {
@@ -6649,9 +6656,11 @@ class ScalpOverlayService : Service() {
       }
       shockDurationText?.text = if (measuredTime > 0L)
         ((measuredTime / 100f).roundToInt() / 10f).toString() + " s" else "— s"
-      shockReasonText?.text = if (brokerConnected) {
-        if (green || red) "BIP CONFIRMAT" else shockBlocker
-      } else "FĂRĂ DATE LIVE"
+      shockReasonText?.text = when {
+        fxRotationNavigating -> "ȘOC ÎN PAUZĂ • SELECTOR"
+        brokerConnected -> if (green || red) "BIP CONFIRMAT" else shockBlocker
+        else -> "FĂRĂ DATE LIVE"
+      }
       wickText?.text = if (brokerConnected && observedWickAt > 0L &&
         now-observedWickAt in 0L..3000L) "FITIL " + observedWickPercent + "%"
         else "FITIL —%"
