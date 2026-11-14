@@ -509,32 +509,42 @@ class TouchTestService : AccessibilityService() {
             )
           }
       }
-      val bounds = matches.map { it.second }.distinct().singleOrNull() ?: return false
+      // 508 DEMO account safety: the previous fallback tapped raw screen
+      // coordinates in the broker header. When the WebView changed layout,
+      // that could hit the account chooser instead of the FX selector.
+      // No physical header tap, no broad clickable ancestor, no QT Real.
+      if (realAccount || physicalOnly || matches.size != 1) return false
+      val (pairNode, bounds) = matches.single()
       val action = AccessibilityNodeInfo.ACTION_CLICK
-      val targets = matches.mapNotNull { (node, _) ->
-        generateSequence(node) { it.parent }.take(4).firstOrNull { candidate ->
+      val candidates = generateSequence(pairNode) { it.parent }.take(3)
+        .filter { candidate ->
           val rect = Rect()
           candidate.getBoundsInScreen(rect)
-          candidate.isVisibleToUser && candidate.isEnabled && candidate.isClickable &&
-            candidate.packageName == root.packageName &&
-            rect.width() <= width * .65f && rect.height() <= height * .09f &&
+          val values = listOfNotNull(
+            candidate.text?.toString(), candidate.contentDescription?.toString()
+          )
+          candidate.isVisibleToUser && candidate.isEnabled &&
+            candidate.isClickable && candidate.packageName == root.packageName &&
+            candidate.actionList.any { it.id == action } &&
+            !rect.isEmpty && rect.contains(bounds.centerX(), bounds.centerY()) &&
+            rect.centerX() in 1 until (width * .52f).toInt() &&
             rect.centerY() in headerTop..headerBottom &&
-            rect.centerX() in 1..headerRight &&
-            candidate.actionList.any { it.id == action }
-        }
-      }.distinct()
-      if (targets.size > 1 || svc.rootInActiveWindow != root) return false
-      if (!physicalOnly && targets.singleOrNull()?.performAction(action) == true) return true
-
-      // Some Pocket Option WebViews expose an exact pair label with no click action.
-      // Only the uniquely identified header label may receive a physical tap.
-      val x = bounds.centerX()
-      val y = bounds.centerY()
-      if (overlayBounds.contains(x, y) || svc.rootInActiveWindow != root) return false
-      val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
-      val gesture = GestureDescription.Builder()
-        .addStroke(GestureDescription.StrokeDescription(path, 0L, 75L)).build()
-      return svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+            rect.width() <= width * .40f &&
+            rect.height() <= height * .065f &&
+            values.none { Regex("""(?i)\\bQT\\s*(?:Demo|Real)\\b""").containsMatchIn(it) }
+        }.toList()
+      if (candidates.size != 1 ||
+          overlayBounds.contains(bounds.centerX(), bounds.centerY()) ||
+          svc.rootInActiveWindow != root) return false
+      // Re-read visible account identity immediately before a broker click.
+      val fresh = activeDemoHistoryNodes(false, false) ?: return false
+      if (fresh.first !== svc || fresh.second != root ||
+          fresh.third.any { (node, _) ->
+            listOfNotNull(node.text, node.contentDescription).any {
+              Regex("""(?i)\\bQT\\s*Real\\b""").containsMatchIn(it.toString())
+            }
+          }) return false
+      return candidates.single().performAction(action)
     }
 
     /**
@@ -652,8 +662,9 @@ class TouchTestService : AccessibilityService() {
         val x = next.bounds.centerX()
         val y = next.bounds.centerY()
         val metrics = svc.resources.displayMetrics
+        // 508: never place a fallback tap in the account/header band.
         if (x !in (metrics.widthPixels * .15f).toInt()..(metrics.widthPixels * .65f).toInt() ||
-            y !in (metrics.heightPixels * .25f).toInt()..(metrics.heightPixels * .70f).toInt())
+            y !in (metrics.heightPixels * .32f).toInt()..(metrics.heightPixels * .70f).toInt())
           return DemoFxNavigation(rejectedPair = next.quote.pair, message = "RÂND VALUTAR ÎN AFARA ZONEI SIGURE")
         if (overlayBounds.contains(x, y))
           return DemoFxNavigation(rejectedPair = next.quote.pair, message = "PANOU PESTE PERECHE")
