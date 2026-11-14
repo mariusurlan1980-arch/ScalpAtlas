@@ -577,8 +577,12 @@ class TouchTestService : AccessibilityService() {
           node.getBoundsInScreen(rect)
           if (!rect.isEmpty &&
               rect.centerY() in bandTop until bandBottom &&
-              rect.left >= (w * .06f).toInt() &&
-              rect.right <= (w * .68f).toInt() &&
+              // 507: QT WebView often makes its SEARCH box span nearly
+              // the full selector width. The OLD .68 right edge wrongly
+              // rejected that uniquely editable field. Keep it ABOVE the
+              // independently verified currency header, never near trades.
+              rect.left >= (w * .03f).toInt() &&
+              rect.right <= (w * .96f).toInt() &&
               rect.height() <= h * .085f) inputs.add(node)
         }
         for (i in 0 until node.childCount.coerceAtMost(35))

@@ -3334,6 +3334,9 @@ class ScalpOverlayService : Service() {
       val searchTried506 = mutableSetOf<String>()
       var pendingSearch506: String? = null
       var searchChecks506 = 0
+      // 507: do not turn a temporary inaccessible QT Demo selector into
+      // a permanently stopped 30s rotation. Keep visited pairs intact.
+      var selectorRecovery507 = 0
       var running = false
       var realAccount = false
       var forward = true
@@ -3453,6 +3456,7 @@ class ScalpOverlayService : Service() {
         searchTried506.clear()
         pendingSearch506 = null
         searchChecks506 = 0
+        selectorRecovery507 = 0
         scrollHistory.clear()
         recoveryAttempts = 0
         lastChartPair = null
@@ -3507,7 +3511,9 @@ class ScalpOverlayService : Service() {
           return
         }
         if (fxRotationNavigating) {
-          clearOnInstrumentChange()
+          // 507: beginNavigation() already cleared stale SHOCK evidence once.
+          // Clearing it again exactly when the new chart becomes readable
+          // discarded the first live optical sample and delayed detection.
           // Retire a display signal belonging to the previous chart only.
           // The persistent order gate and gesture cooldown are independent.
           if (lastChartPair != null && lastChartPair != pair && !tradeBusy()) {
@@ -3522,6 +3528,7 @@ class ScalpOverlayService : Service() {
         }
         lastChartPair = pair
         recoveryAttempts = 0
+        selectorRecovery507 = 0
         fxRotationNavigating = false
         autoDemoEntryCycleStartedAt = now
         visited.add(pair)
@@ -3702,7 +3709,25 @@ class ScalpOverlayService : Service() {
         val done = visited.size
         try { TouchTestService.closeVisibleFxList506(realAccount) }
         catch (_: Exception) {}
-        stop("ROTAȚIE • SELECTOR BLOCAT " + done + "/" + total + " • VERIFICĂ LISTA")
+        // 507: close only a verified list and retry later from the current
+        // broker screen. DO NOT erase visited/eligibleSeen505/rejectedPairs.
+        // No broker gesture is permitted before a fresh accessibility,
+        // QT Demo, selector and order-gate proof in seekChart/openList.
+        // Gradual backoff avoids endlessly hammering a broken WebView.
+        val delay = when (selectorRecovery507) {
+          0 -> 15_000L
+          1 -> 30_000L
+          2 -> 60_000L
+          else -> 120_000L
+        }
+        selectorRecovery507 = (selectorRecovery507 + 1).coerceAtMost(3)
+        searchTried506.clear()
+        pendingSearch506 = null
+        searchChecks506 = 0
+        fxRotationNavigating = true
+        fxButton.text = "ROTAȚIE • SELECTOR NECONFIRMAT " +
+          done + "/" + total + " • REÎNCERC ÎN " + delay / 1000L + " S"
+        after(delay) { seekChart() }
       }
 
       fun select(previous: String?, rowChecks: Int = 5) {
@@ -6588,7 +6613,10 @@ class ScalpOverlayService : Service() {
       }
       setPulseRing(activeSignal)
       setSignalBlink(activeSignal)
-      val percentFromCandle = when {
+      // 507: never display a fabricated "0% shock" while the FX selector
+      // covers the chart or a safe recovery is in progress. SHOCK analysis
+      // will resume only after a fresh verified M5 chart is visible.
+      val percentFromCandle = if (fxRotationNavigating) 0 else when {
         brokerConnected && (green || red) &&
           lockedDir == signal && now < lockedUntil &&
           activeStrategy == "SCALP_TREND" -> lastConfirmedScalpPercent
@@ -6601,12 +6629,14 @@ class ScalpOverlayService : Service() {
       }
       // A valid LIVE candle with no qualifying pullback means zero
       // DETECTED shock, not missing capture. Never portray 0% as entry.
-      val shockObserved = brokerConnected && opticalFresh
+      val shockObserved = !fxRotationNavigating && brokerConnected && opticalFresh
       val shockDisplay = if (percentFromCandle > 0 || shockObserved)
         percentFromCandle.toString() + "%" else "—%"
       qualityText?.text = shockDisplay
-      compactStatusText?.text = when (activeSignal) {
-        "BUY", "SELL" -> activeSignal + " " + shockDisplay
+      compactStatusText?.text = when {
+        fxRotationNavigating -> "ȘOC PAUZĂ • ROTAȚIE"
+        activeSignal == "BUY" || activeSignal == "SELL" ->
+          activeSignal + " " + shockDisplay
         else -> "ȘOC " + shockDisplay
       }
       compactStatusText?.setTextColor(when (activeSignal) {
@@ -6626,9 +6656,11 @@ class ScalpOverlayService : Service() {
       }
       shockDurationText?.text = if (measuredTime > 0L)
         ((measuredTime / 100f).roundToInt() / 10f).toString() + " s" else "— s"
-      shockReasonText?.text = if (brokerConnected) {
-        if (green || red) "BIP CONFIRMAT" else shockBlocker
-      } else "FĂRĂ DATE LIVE"
+      shockReasonText?.text = when {
+        fxRotationNavigating -> "ȘOC ÎN PAUZĂ • SELECTOR"
+        brokerConnected -> if (green || red) "BIP CONFIRMAT" else shockBlocker
+        else -> "FĂRĂ DATE LIVE"
+      }
       wickText?.text = if (brokerConnected && observedWickAt > 0L &&
         now-observedWickAt in 0L..3000L) "FITIL " + observedWickPercent + "%"
         else "FITIL —%"
