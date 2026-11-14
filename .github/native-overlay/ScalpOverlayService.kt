@@ -3334,6 +3334,9 @@ class ScalpOverlayService : Service() {
       val searchTried506 = mutableSetOf<String>()
       var pendingSearch506: String? = null
       var searchChecks506 = 0
+      // 507: do not turn a temporary inaccessible QT Demo selector into
+      // a permanently stopped 30s rotation. Keep visited pairs intact.
+      var selectorRecovery507 = 0
       var running = false
       var realAccount = false
       var forward = true
@@ -3453,6 +3456,7 @@ class ScalpOverlayService : Service() {
         searchTried506.clear()
         pendingSearch506 = null
         searchChecks506 = 0
+        selectorRecovery507 = 0
         scrollHistory.clear()
         recoveryAttempts = 0
         lastChartPair = null
@@ -3522,6 +3526,7 @@ class ScalpOverlayService : Service() {
         }
         lastChartPair = pair
         recoveryAttempts = 0
+        selectorRecovery507 = 0
         fxRotationNavigating = false
         autoDemoEntryCycleStartedAt = now
         visited.add(pair)
@@ -3702,7 +3707,25 @@ class ScalpOverlayService : Service() {
         val done = visited.size
         try { TouchTestService.closeVisibleFxList506(realAccount) }
         catch (_: Exception) {}
-        stop("ROTAȚIE • SELECTOR BLOCAT " + done + "/" + total + " • VERIFICĂ LISTA")
+        // 507: close only a verified list and retry later from the current
+        // broker screen. DO NOT erase visited/eligibleSeen505/rejectedPairs.
+        // No broker gesture is permitted before a fresh accessibility,
+        // QT Demo, selector and order-gate proof in seekChart/openList.
+        // Gradual backoff avoids endlessly hammering a broken WebView.
+        val delay = when (selectorRecovery507) {
+          0 -> 15_000L
+          1 -> 30_000L
+          2 -> 60_000L
+          else -> 120_000L
+        }
+        selectorRecovery507 = (selectorRecovery507 + 1).coerceAtMost(3)
+        searchTried506.clear()
+        pendingSearch506 = null
+        searchChecks506 = 0
+        fxRotationNavigating = true
+        fxButton.text = "ROTAȚIE • SELECTOR NECONFIRMAT " +
+          done + "/" + total + " • REÎNCERC ÎN " + delay / 1000L + " S"
+        after(delay) { seekChart() }
       }
 
       fun select(previous: String?, rowChecks: Int = 5) {
