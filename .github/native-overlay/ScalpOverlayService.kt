@@ -3925,9 +3925,9 @@ class ScalpOverlayService : Service() {
     root.addView(demoOrderRow)
     demoBrokerOrderRow = demoOrderRow
 
-    // One explicit ON press arms at most ONE fresh SHOCK DEMO order.
-    // Never starts automatically on launch. Real money is forbidden and
-    // all strict verification gates remain mandatory before arming/clicking.
+    // 510: LIVE capture requests an ongoing QT Demo auto-arm session; this
+    // optional control may recheck readiness but must never toggle it OFF.
+    // QT Real and unresolved/duplicate orders remain blocked.
     val brokerAutoRow = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER
@@ -3936,20 +3936,20 @@ class ScalpOverlayService : Service() {
     }
     val brokerAutoButton = localButton("🤖 PORNEȘTE • ON", Color.rgb(88, 62, 115)).apply {
       textSize = 11f
-      contentDescription = "Pornește roboțelul automat numai pentru QT Demo, un singur ordin cu suma aleasă în broker la ȘOC valid. Atinge din nou pentru oprire."
+      contentDescription = "Verifică starea armată automată pe QT Demo; numai X sau oprirea LIVE încheie sesiunea."
       setOnClickListener {
         try {
           if (autoDemoArmed) {
-            autoDemoArmed = false
-            autoDemoMarket = null
-            autoDemoExpiry = 0L
-            text = "🤖 PORNEȘTE • ON"
-            probeStatus.text = "ROBOT OPRIT • FĂRĂ ORDINE NOI"
+            // 510: a second touch is not an OFF switch. The user's LIVE
+            // consent is the session boundary; no new broker gesture here.
+            text = "🤖 AUTO ACTIV • QT DEMO"
+            probeStatus.text = "🤖 ARMAT • AȘTEAPTĂ ȘOC NOU • NUMAI DEMO"
           } else {
             val wallNow = System.currentTimeMillis()
-            val clockNow = android.os.SystemClock.elapsedRealtime()
             val pair = currentPair(wallNow)
             val condition = when {
+              mediaProjection == null || !autoDemoSessionRequested ||
+                autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO / ORDIN ANTERIOR NEVERIFICAT"
               onePairEvalEnabled -> "BLOCAT: OPREȘTE AUTO SIM"
               !bellEnabled -> "BLOCAT: ACTIVEAZĂ BIPUL"
               !TouchTestService.ready() -> TouchTestService.accessDiagnostic(this@ScalpOverlayService)
@@ -3971,8 +3971,8 @@ class ScalpOverlayService : Service() {
               autoDemoArmed = true
               autoDemoMarket = pair
               autoDemoLockedAt = lockedAt // never replay a previous BIP
-              autoDemoExpiry = clockNow + 10 * 60_000L
-              text = "🤖 ROBOT ON • OPREȘTE"
+              autoDemoExpiry = autoDemoSessionEndAt
+              text = "🤖 AUTO ACTIV • QT DEMO"
               probeStatus.text = "ON QT DEMO • " + pair +
                 " • 1 SINGUR ȘOC NOU • MIZĂ DIN BROKER • PAYOUT ≥92%"
             }
@@ -6806,7 +6806,7 @@ class ScalpOverlayService : Service() {
       if (autoDemoSessionRequested && !autoDemoSessionConsumed &&
           lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")) {
         touchProbeStatus?.text = when {
-          fxRotationNavigating -> "VERIFIC PERECHEA • AȘTEPT GRAFICUL"
+          fxRotationNavigating -> "🤖 AUTO ACTIV • ROTAȚIE • EXECUȚIE ÎN PAUZĂ"
           // A real SCALP TREND alert may legitimately BIP on M5; only SHOCK
           // is permitted to submit a DEMO broker order in this build.
           activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
@@ -6819,7 +6819,7 @@ class ScalpOverlayService : Service() {
               "🤖 AUTO DEMO • SCAN " + scanStatus
             else "🤖 DEMO ARMAT • " + shockBlocker.take(39)
           !autoDemoArmed ->
-            "🤖 DEMO NEARMAT • " + autoDemoLastPreflightReason.take(62)
+            "🤖 AUTO ACTIV • VERIFICARE DEMO: " + autoDemoLastPreflightReason.take(49)
           else -> touchProbeStatus?.text?.toString().orEmpty()
         }
       }
