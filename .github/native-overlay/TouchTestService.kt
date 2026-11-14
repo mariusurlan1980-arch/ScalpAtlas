@@ -537,6 +537,70 @@ class TouchTestService : AccessibilityService() {
       return svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
     }
 
+    /**
+     * 506: If a two-way selector sweep still leaves known eligible rows
+     * unvisited, use its verified SEARCH input instead of cycling forever.
+     * This mutates ONLY the currency-list search text, not stake, expiration,
+     * trading controls or chart. It is unavailable unless QT Demo/Real
+     * identity, list header and ONE editable input are independently proven.
+     */
+    fun searchVisibleFxPair506(pair: String, realAccount: Boolean): Boolean {
+      if (!Regex("""^[A-Z]{3}/[A-Z]{3}(?: OTC)?$""").matches(pair)) return false
+      val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
+      if (svc.rootInActiveWindow != root) return false
+      val header = labels.firstOrNull { (node, _) -> hasFxCurrencyHeader(node) }
+        ?.second ?: return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      // The selector screenshot has SEARCH above "Valute"; all order
+      // controls and the amount editor are below the list. Require a
+      // uniquely isolated editable input inside THIS verified search band.
+      val bandTop = (h * .12f).toInt()
+      val bandBottom = header.top
+      if (bandBottom <= bandTop) return false
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      val inputs = ArrayList<AccessibilityNodeInfo>()
+      queue.add(root)
+      var nodes = 0
+      while (queue.isNotEmpty() && nodes++ < 350) {
+        val node = queue.removeFirst()
+        if (node.packageName == root.packageName &&
+            node.isVisibleToUser && node.isEnabled && node.isEditable &&
+            node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }) {
+          val rect = Rect()
+          node.getBoundsInScreen(rect)
+          if (!rect.isEmpty &&
+              rect.centerY() in bandTop until bandBottom &&
+              rect.left >= (w * .06f).toInt() &&
+              rect.right <= (w * .68f).toInt() &&
+              rect.height() <= h * .085f) inputs.add(node)
+        }
+        for (i in 0 until node.childCount.coerceAtMost(35))
+          node.getChild(i)?.let { queue.addLast(it) }
+      }
+      val input = inputs.distinct().singleOrNull() ?: return false
+      if (svc.rootInActiveWindow != root) return false
+      val args = android.os.Bundle().apply {
+        putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+          pair.removeSuffix(" OTC"))
+      }
+      return input.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+    }
+
+    /** 506: exit a verified broker currency selector without a broker trade. */
+    fun closeVisibleFxList506(realAccount: Boolean): Boolean {
+      val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
+      if (svc.rootInActiveWindow != root ||
+          labels.none { (node, _) -> hasFxCurrencyHeader(node) }) return false
+      return svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+    }
+
     /** A single selector action. The caller must verify the resulting chart. */
     fun navigateOpenFxList(
       excluded: Set<String>, allowScroll: Boolean, forward: Boolean, overlayBounds: Rect,
