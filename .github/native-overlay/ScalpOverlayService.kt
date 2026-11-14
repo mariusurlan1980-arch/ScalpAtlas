@@ -337,7 +337,12 @@ class ScalpOverlayService : Service() {
   private var captureHandler: Handler? = null
 
   private var analyzerWebView: WebView? = null
-  private var analyzerReady = false
+  @Volatile private var analyzerReady = false
+  // 504: a long-lived LIVE capture can continue delivering screenshots
+  // after the embedded WebView analyzer has stopped returning results.
+  // Reload ONLY that private engine, never Pocket Option/the broker page.
+  @Volatile private var analyzerLoadingAt504 = 0L
+  @Volatile private var analyzerLastReloadAt504 = 0L
   @Volatile private var analysisBusy = false
   @Volatile private var analysisStartedAt = 0L
   @Volatile private var lastFrameAt = 0L
@@ -4144,6 +4149,7 @@ class ScalpOverlayService : Service() {
 
   private fun createAnalyzer() {
     mainHandler.post {
+      analyzerLoadingAt504 = System.currentTimeMillis()
       val web = WebView(this).apply {
         settings.javaScriptEnabled = true
         settings.loadsImagesAutomatically = true
@@ -4192,6 +4198,7 @@ class ScalpOverlayService : Service() {
         when (payload.optString("type")) {
           "READY" -> {
             analyzerReady = true
+            analyzerLoadingAt504 = System.currentTimeMillis()
             analysisBusy = false
             updateOverlay("AȘTEAPTĂ", "LIVE • motor ACTIV", "Cadre " + frameCount + " • Rez " + resultCount + " • Erori " + errorCount)
           }
@@ -5337,6 +5344,43 @@ class ScalpOverlayService : Service() {
           lastStatusRefreshAt = now
           updateOverlay(if (lockedDir != null && now < lockedUntil) lockedDir!! else "AȘTEAPTĂ",
             "Stare flux LIVE", "Verificare captură și OCR")
+        }
+        // 504: if Android is still producing FRESH frames but the internal
+        // HTML analyzer stops reporting for >=20 seconds, the old code only
+        // timed out individual frames forever. Gently reload the PRIVATE
+        // analysis WebView at most once every 60 seconds. Never refresh the
+        // broker, reuse a stale SHOCK, rearm an old order, or touch BUY/SELL.
+        val liveImage504 = lastCapturedImageAt > 0L &&
+          now - lastCapturedImageAt in 0L..3500L
+        val motorDeadline504 = maxOf(lastAnalysisResultAt, analyzerLoadingAt504)
+        val staleAnalysis504 = liveImage504 && analyzerWebView != null &&
+          motorDeadline504 > 0L &&
+          now - motorDeadline504 > 20_000L &&
+          (!analyzerReady ||
+            (lastFrameAt > 0L && now - lastFrameAt in 0L..3500L))
+        if (staleAnalysis504 &&
+            (analyzerLastReloadAt504 == 0L ||
+             now - analyzerLastReloadAt504 >= 60_000L)) {
+          analyzerLastReloadAt504 = now
+          mainHandler.post {
+            if (!shuttingDown && mediaProjection != null &&
+                analyzerWebView != null && overlayView != null &&
+                lastCapturedImageAt > 0L &&
+                System.currentTimeMillis() - lastCapturedImageAt in 0L..3500L) {
+              // Invalidate any pending JS callback BEFORE reload. Global
+              // signal/order locks and the account/payout gate are unchanged.
+              analyzerReady = false
+              resetSignalState()
+              autoDemoLockedAt = lockedAt
+              analyzerLoadingAt504 = System.currentTimeMillis()
+              touchProbeStatus?.text = "MOTOR • RECONEXIUNE AUTOMATĂ • FĂRĂ ORDIN"
+              try {
+                analyzerWebView?.reload()
+              } catch (error: Exception) {
+                android.util.Log.e("ScalpAtlas504", "Private analyzer reload failed", error)
+              }
+            }
+          }
         }
         // A refused signal isn't a frozen Android screen stream.
         if (lastCapturedImageAt > 0L &&
