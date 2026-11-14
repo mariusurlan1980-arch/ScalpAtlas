@@ -3329,6 +3329,11 @@ class ScalpOverlayService : Service() {
       // mistake reopening the same short viewport for a complete sweep.
       val eligibleSeen505 = mutableSetOf<String>()
       val viewportsSeen505 = mutableSetOf<List<String>>()
+      // 506: one targeted selector search per previously unseen pair.
+      // No unbounded "LISTĂ INCOMPLETĂ • CAUT RESTUL" spin.
+      val searchTried506 = mutableSetOf<String>()
+      var pendingSearch506: String? = null
+      var searchChecks506 = 0
       var running = false
       var realAccount = false
       var forward = true
@@ -3445,6 +3450,9 @@ class ScalpOverlayService : Service() {
         rejectedPairs.clear()
         eligibleSeen505.clear()
         viewportsSeen505.clear()
+        searchTried506.clear()
+        pendingSearch506 = null
+        searchChecks506 = 0
         scrollHistory.clear()
         recoveryAttempts = 0
         lastChartPair = null
@@ -3456,6 +3464,8 @@ class ScalpOverlayService : Service() {
       fun beginNavigation() {
         // 505: rejected or already-scanned pairs remain excluded across EVERY
         // chart switch; reset them only after a proven full selector sweep.
+        pendingSearch506 = null
+        searchChecks506 = 0
         scrollHistory.clear()
         reversed = false
         newPass = false
@@ -3663,9 +3673,64 @@ class ScalpOverlayService : Service() {
         }
       }
 
+      fun searchUnvisited506(previous: String?) {
+        // 506: a full two-way list pass discovered unvisited pairs but cannot
+        // scroll to them. Use the unique QT selector search field for ONE
+        // specific >=92% pair, never a generic tap or broker order.
+        val target = eligibleSeen505.firstOrNull {
+          it !in visited && it !in rejectedPairs && it !in searchTried506
+        }
+        if (target != null) {
+          searchTried506.add(target)
+          val searchSet = try {
+            TouchTestService.searchVisibleFxPair506(target, realAccount)
+          } catch (_: Exception) { false }
+          if (searchSet) {
+            pendingSearch506 = target
+            searchChecks506 = 0
+            scrollHistory.clear()
+            fxButton.text = "ROTAȚIE • CAUT DIRECT " + target
+            after(900L) { select(previous) }
+            return
+          }
+        }
+        // No verified search control or every attempted target failed.
+        // Do not spin forever with the broker selector covering the chart.
+        // Close only an independently confirmed currency list, then stop
+        // navigation with a truthful diagnostic. All DEMO order locks stay.
+        val total = eligibleSeen505.size
+        val done = visited.size
+        try { TouchTestService.closeVisibleFxList506(realAccount) }
+        catch (_: Exception) {}
+        stop("ROTAȚIE • SELECTOR BLOCAT " + done + "/" + total + " • VERIFICĂ LISTA")
+      }
+
       fun select(previous: String?, rowChecks: Int = 5) {
         if (tradeBusy()) {
           recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
+          return
+        }
+        val seeking506 = pendingSearch506
+        if (seeking506 != null) {
+          // An ACTION_SET_TEXT may need 1-2 WebView updates before the
+          // filtered row appears. Only the exact previously observed pair
+          // may be selected; never treat a search hit as confirmed chart.
+          val found506 = TouchTestService.navigateOpenFxList(
+            visited + rejectedPairs, false, forward, overlayBounds(),
+            onlyPair = seeking506, realAccount = realAccount)
+          if (found506.pair == seeking506) {
+            pendingSearch506 = null
+            searchChecks506 = 0
+            fxButton.text = "ROTAȚIE • VERIFIC " + seeking506
+            after(1_250L) { confirmSelection(seeking506, previous, true) }
+          } else if (searchChecks506++ < 4) {
+            after(750L) { select(previous) }
+          } else {
+            pendingSearch506 = null
+            searchChecks506 = 0
+            fxButton.text = "ROTAȚIE • PERECHE NEVIZIBILĂ • CAUT ALTA"
+            after(200L) { searchUnvisited506(previous) }
+          }
           return
         }
         val result = TouchTestService.navigateOpenFxList(
@@ -3706,11 +3771,8 @@ class ScalpOverlayService : Service() {
             }
             if (viewportsSeen505.size < 3 || unexplored505) {
               fxButton.text = "ROTAȚIE • LISTĂ INCOMPLETĂ " +
-                visited.size + "/" + eligibleSeen505.size + " • CAUT RESTUL"
-              reversed = false
-              forward = true
-              scrollHistory.clear()
-              after(3_000L) { select(previous) }
+                visited.size + "/" + eligibleSeen505.size + " • CAUT DIRECT"
+              searchUnvisited506(previous)
             } else {
               newPass = true
               reversed = false
@@ -3719,6 +3781,9 @@ class ScalpOverlayService : Service() {
               rejectedPairs.clear()
               eligibleSeen505.clear()
               viewportsSeen505.clear()
+              searchTried506.clear()
+              pendingSearch506 = null
+              searchChecks506 = 0
               previous?.let { visited.add(it) }
               scrollHistory.clear()
               fxButton.text = "ROTAȚIE • TUR COMPLET • ÎNCEP TUR NOU"
