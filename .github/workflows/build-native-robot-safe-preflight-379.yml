@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 509 Safe DEMO FX Rotation G24
+name: Build Scalp Atlas 510 Safe DEMO FX Rotation G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-demo-safe-fx-rotation509]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-selector-safe-tap510]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.68'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=509
+          expo['android']['versionCode']=510
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -216,7 +216,11 @@ jobs:
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           block=t.split('fun reopenFxList(',1)[1].split('fun searchVisibleFxPair506(',1)[0]
           assert 'if (realAccount || physicalOnly) return false' in block
-          assert 'distinctBounds.size != 1' in block
+          assert 'Rect.intersects(bounds, other)' in block
+          assert 'rect.right <= width * .53f' in block
+          assert 'rect.width() <= width * .48f' in block
+          service=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          assert 'else if (!physicalOnly) openList(pair, true)' not in service
           assert 'minByOrNull' in block
           assert 'activeDemoHistoryNodes(false, false)' in block
           assert 'target.performAction(action)' in block
@@ -225,7 +229,7 @@ jobs:
           assert 'val freshRow = visibleDemoFxRows(currentList.third)' in t
           assert 'y < (metrics.heightPixels * .28f).toInt()' in t
           assert r'Regex("""(?i)\bQT\s*Real\b""")' in block
-          print('509 PASS: DEMO only, safe FX pair clicks and fresh verified FX list rows')
+          print('510 PASS: DEMO only, safe FX pair clicks and fresh verified FX list rows')
           PY508
           # 502: main drag/status bar may RESTART but may not STOP the scan.
           grep -Fq 'if (!fxRotation.running) {' .github/native-overlay/ScalpOverlayService.kt
@@ -2260,27 +2264,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-509-DEMO-FX-ROTATION-G24.apk
+          cp "$APK" ScalpAtlas-510-SELECTOR-FX-GUARD-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-509-DEMO-FX-ROTATION-G24
-          path: ScalpAtlas-509-DEMO-FX-ROTATION-G24.apk
+          name: ScalpAtlas-510-SELECTOR-FX-GUARD-G24
+          path: ScalpAtlas-510-SELECTOR-FX-GUARD-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-demo-safe-fx-rotation509'
+        if: github.ref == 'refs/heads/fix/scalpatlas-selector-safe-tap510'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-509-DEMO-FX-ROTATION-G24.apk"
+          FILE="ScalpAtlas-510-SELECTOR-FX-GUARD-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-fx-rotation509-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-demo-fx-rotation510-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 509 - ROTATIE VALUTE DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "509: Restabilire rotatie FX exclusiv QT Demo: etichete duplicate ale ACELEIASI perechi se normalizeaza, se apasa doar cel mai mic control FX verificat prin accesibilitate, fara tap fizic in antetul contului. In lista Valute, randul este reverificat imediat inainte de un gest, cu margine sub antetul listei. Pastreaza 30 sec/pereche, payout 92%, SOC M5/5 min si blocarea tranzactiilor pe Real. Necesita test fizic Motorola G24; nu se garanteaza functionarea pana la verificare. Commit $GITHUB_SHA."
+            --title "SCALP ATLAS 510 - ROTATIE VALUTE DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "510: Remediere blocaj selector FX exclusiv QT Demo: permite etichete ale aceleiasi perechi cu dreptunghiuri suprapuse si butoane latime pana la 48% din ecran, mentinand limita dreapta 53% pentru a exclude contul. Fara tap fizic in antet. In lista Valute, randul este reverificat imediat inainte de un gest, cu margine sub antetul listei. Pastreaza 30 sec/pereche, payout 92%, SOC M5/5 min si blocarea tranzactiilor pe Real. Necesita test fizic Motorola G24; nu se garanteaza functionarea pana la verificare. Commit $GITHUB_SHA."
