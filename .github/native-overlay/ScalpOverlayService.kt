@@ -3325,6 +3325,10 @@ class ScalpOverlayService : Service() {
     fxButton.contentDescription = "Status rotație continuă; trage panoul sau atinge pentru a relua rotația QT Demo"
     val fxRotation = object {
       val visited = mutableSetOf<String>()
+      // 505: cycle-wide proof of distinct accessible FX list pages; never
+      // mistake reopening the same short viewport for a complete sweep.
+      val eligibleSeen505 = mutableSetOf<String>()
+      val viewportsSeen505 = mutableSetOf<List<String>>()
       var running = false
       var realAccount = false
       var forward = true
@@ -3439,6 +3443,8 @@ class ScalpOverlayService : Service() {
         }
         visited.clear()
         rejectedPairs.clear()
+        eligibleSeen505.clear()
+        viewportsSeen505.clear()
         scrollHistory.clear()
         recoveryAttempts = 0
         lastChartPair = null
@@ -3448,7 +3454,8 @@ class ScalpOverlayService : Service() {
       }
 
       fun beginNavigation() {
-        rejectedPairs.clear()
+        // 505: rejected or already-scanned pairs remain excluded across EVERY
+        // chart switch; reset them only after a proven full selector sweep.
         scrollHistory.clear()
         reversed = false
         newPass = false
@@ -3461,6 +3468,15 @@ class ScalpOverlayService : Service() {
       }
 
       fun verifyChart(pair: String, checks: Int) {
+        // 505: never spend another 30-second dwell on a pair already visited
+        // in the current round, including after an ambiguous selector tap.
+        // This is rotation-only; it cannot authorize a broker order.
+        if (fxRotationNavigating && pair in visited) {
+          fxButton.text = "ROTAȚIE • SAR PERECHE DEJA ANALIZATĂ"
+          beginNavigation()
+          openList(pair, false)
+          return
+        }
         val now = System.currentTimeMillis()
         val payout = TouchTestService.readFxChartPayout(pair, realAccount)
         if (payout != null && payout < 92) {
@@ -3653,7 +3669,9 @@ class ScalpOverlayService : Service() {
           return
         }
         val result = TouchTestService.navigateOpenFxList(
-          visited + rejectedPairs, true, forward, overlayBounds(), scrollHistory = scrollHistory, realAccount = realAccount)
+          visited + rejectedPairs, true, forward, overlayBounds(),
+          scrollHistory = scrollHistory, observedEligible = eligibleSeen505,
+          observedViewports = viewportsSeen505, realAccount = realAccount)
         val pair = result.pair
         when {
           pair != null -> {
@@ -3677,12 +3695,35 @@ class ScalpOverlayService : Service() {
             after(0L) { select(previous) }
           }
           result.endOfList && !newPass -> {
-            newPass = true
-            reversed = false
-            visited.clear()
-            previous?.let { visited.add(it) }
-            scrollHistory.clear()
-            after(0L) { select(previous) }
+            // 505: 503/504 unconditionally forgot the visited set here.
+            // When the selector stalled after exposing only a small subset,
+            // that re-selected the same 5-7 pairs indefinitely. Recycle the
+            // round only after seeing at least 3 DISTINCT scroll viewports
+            // and no unprocessed eligible rows from those views. Otherwise
+            // keep every visited pair excluded and retry list exploration.
+            val unexplored505 = eligibleSeen505.any {
+              it !in visited && it !in rejectedPairs
+            }
+            if (viewportsSeen505.size < 3 || unexplored505) {
+              fxButton.text = "ROTAȚIE • LISTĂ INCOMPLETĂ " +
+                visited.size + "/" + eligibleSeen505.size + " • CAUT RESTUL"
+              reversed = false
+              forward = true
+              scrollHistory.clear()
+              after(3_000L) { select(previous) }
+            } else {
+              newPass = true
+              reversed = false
+              forward = true
+              visited.clear()
+              rejectedPairs.clear()
+              eligibleSeen505.clear()
+              viewportsSeen505.clear()
+              previous?.let { visited.add(it) }
+              scrollHistory.clear()
+              fxButton.text = "ROTAȚIE • TUR COMPLET • ÎNCEP TUR NOU"
+              after(0L) { select(previous) }
+            }
           }
           result.endOfList -> {
             // With no eligible alternative, return to the current chart if visible.
