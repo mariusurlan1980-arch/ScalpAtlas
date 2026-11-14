@@ -2262,7 +2262,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ScalpAtlas-508-DEMO-ACCOUNT-GUARD-G24
-          path: ScalpAtlas-507-FX-RECOVERY-G24.apk
+          path: ScalpAtlas-508-DEMO-ACCOUNT-GUARD-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2272,7 +2272,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-507-FX-RECOVERY-G24.apk"
+          FILE="ScalpAtlas-508-DEMO-ACCOUNT-GUARD-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
           TAG="scalp-atlas-demo-account-guard508-${GITHUB_SHA:0:12}"
