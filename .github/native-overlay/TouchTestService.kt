@@ -690,7 +690,7 @@ class TouchTestService : AccessibilityService() {
       if (svc.rootInActiveWindow != root) return false
       val args = android.os.Bundle().apply {
         putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-          pair.removeSuffix(" OTC"))
+          pair.removeSuffix(" OTC").replace("/", "").lowercase(java.util.Locale.ROOT))
       }
       return input.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }

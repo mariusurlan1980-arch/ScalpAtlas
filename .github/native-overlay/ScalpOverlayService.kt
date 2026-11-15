@@ -4135,8 +4135,8 @@ class ScalpOverlayService : Service() {
           } else {
             pendingSearch506 = null
             searchChecks506 = 0
-            fxButton.text = "ROTAȚIE • PERECHE NEVIZIBILĂ • CAUT ALTA"
-            after(200L) { searchUnvisited506(previous) }
+            fxButton.text = "ROTAȚIE • VERIFIC PERECHILE VIZIBILE"
+            after(200L) { select(previous) }
           }
           return
         }
