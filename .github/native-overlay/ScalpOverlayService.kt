@@ -152,6 +152,11 @@ class ScalpOverlayService : Service() {
   // order has an exact authenticated CLOSED receipt and two ZERO-OPEN reads.
   // The session stays user-approved; QT Real and duplicate orders stay blocked.
   private var fxRotationNavigating = false
+  // 513: the user's LIVE authorization keeps the ROBOT ARMED in scan mode
+  // through FX rotation, pending receipts and temporary accessibility gaps.
+  // Distinct from autoDemoArmed, which is the STRICT permission to dispatch
+  // ONE verified QT DEMO order on the CURRENT chart. Never arm real trading.
+  private var robotArmedContinuously513 = false
   private var autoDemoSessionRequested = false
   private var autoDemoSessionConsumed = false
   private var autoDemoSessionEndAt = 0L
@@ -544,6 +549,7 @@ class ScalpOverlayService : Service() {
           val priorSell404Attempt = getSharedPreferences(
             sell404TestPrefs, Context.MODE_PRIVATE
           ).getBoolean("attempted", false)
+          robotArmedContinuously513 = true
           autoDemoSessionRequested = !priorAutoShockAttempt && !priorSell404Attempt
           autoDemoSessionConsumed = priorAutoShockAttempt || priorSell404Attempt
           autoDemoEntryCycleStartedAt = if (autoDemoSessionRequested)
@@ -589,6 +595,7 @@ class ScalpOverlayService : Service() {
     val liveCaptureActive = mediaProjection != null &&
       overlayView != null && !shuttingDown
     if (!liveCaptureActive) {
+      robotArmedContinuously513 = false
       demoClickTestPending = false
       autoDemoSessionRequested = false
       autoDemoSessionConsumed = true
@@ -603,10 +610,10 @@ class ScalpOverlayService : Service() {
       // the at-most-one-order guard when the user opens the broker.
       mainHandler.post {
         touchProbeStatus?.text = when {
+          autoDemoSessionConsumed -> "🤖 ARMAT • ORDIN ANTERIOR NECONFIRMAT"
+          autoDemoArmed -> "🤖 ARMAT • QT DEMO • AȘTEAPTĂ ȘOC"
+          robotArmedContinuously513 -> "🤖 ARMAT • SCANEZ / VERIFIC PERECHEA"
           brokerAccountMonitorRunning -> "🤖 SCANARE CONT • FĂRĂ ORDINE"
-          autoDemoSessionConsumed -> "🤖 SCANARE LIVE • FĂRĂ ORDINE"
-          autoDemoArmed -> "🤖 DEMO AUTO ACTIV • AȘTEAPTĂ ȘOC"
-          autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"
           else -> "🤖 ROBOT BLOCAT • FĂRĂ SESIUNE"
         }
       }
@@ -3668,6 +3675,8 @@ class ScalpOverlayService : Service() {
         observedShockAt = 0L
         qualityText?.text = "—%"
         compactStatusText?.text = "ȘOC —% • ROTAȚIE"
+        // 513: suspend ONLY the per-pair execution permit. The persistent
+        // robotArmedContinuously513 LIVE arm remains true while navigating.
         autoDemoArmed = false
         autoDemoMarket = null
         autoDemoExpiry = 0L
@@ -5593,6 +5602,7 @@ class ScalpOverlayService : Service() {
         // so the user knows WHY LIVE vanished, but never auto-resume capture
         // or attempt trades without a new explicit user consent.
         if (shuttingDown) return
+        robotArmedContinuously513 = false
         mainHandler.post { clearMoneyBurst512() }
         demoClickTestPending = false
         autoDemoSessionRequested = false
@@ -6652,9 +6662,11 @@ class ScalpOverlayService : Service() {
           autoDemoArmed = false
           autoDemoMarket = null
           autoDemoExpiry = 0L
-          autoDemoButton?.text = "🤖 PORNEȘTE • ON"
-          touchProbeStatus?.text =
-            "AUTO DEMO OPRIT • PERECHE/SERVICIU/EXPIRARE"
+          autoDemoButton?.text = if (robotArmedContinuously513)
+            "🤖 ARMAT • QT DEMO" else "🤖 PORNEȘTE • ON"
+          touchProbeStatus?.text = if (robotArmedContinuously513)
+            "🤖 ARMAT • EXECUȚIE ÎN PAUZĂ • REVERIFIC PERECHEA"
+          else "AUTO DEMO OPRIT • LIVE INDISPONIBIL"
         } else if (newShock) {
         // 408: A rejected optical/freshness check is NOT a broker order attempt.
         // Never replay this candle, but keep the DEMO session armed so the
@@ -6957,6 +6969,25 @@ class ScalpOverlayService : Service() {
           else Color.rgb(97, 108, 119)
         )
       }
+      // 513: persistent user-selected ARM is a LIVE scanning mode, not a
+      // broker-order permission. It must be visible while the per-pair
+      // preflight is paused by rotation, Real account or unresolved trades.
+      val persistentRobotStatus513 = if (!robotArmedContinuously513 ||
+          mediaProjection == null || shuttingDown) null else when {
+        lastBrokerAccountStatus.contains("QT REAL IDENTIFICAT") ->
+          "🤖 ARMAT • REAL BLOCAT • FĂRĂ ORDINE"
+        autoDemoSessionConsumed ||
+          tradePositionGate.state() != TradePositionGate.State.READY ->
+          "🤖 ARMAT • ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE"
+        fxRotationNavigating ->
+          "🤖 ARMAT • ROTAȚIE • " +
+            (fxButton.text?.toString() ?: "AȘTEPT GRAFICUL").take(43)
+        !TouchTestService.ready() ->
+          "🤖 ARMAT • AȘTEPT ACCESIBILITATEA"
+        autoDemoArmed && autoDemoSessionRequested ->
+          "🤖 ARMAT • QT DEMO • AȘTEPT ȘOC NOU"
+        else -> "🤖 ARMAT • PREFLIGHT: " + autoDemoLastPreflightReason.take(51)
+      }
       // Reuse the existing narrow footer; no extra controls in compact mode.
       // Display a reason, not a false probability of winning.
       signalGateNote?.text = when {
@@ -6978,8 +7009,8 @@ class ScalpOverlayService : Service() {
         }
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
           if (autoDemoSessionRequested)
-            "DEMO NEARMAT • " + autoDemoLastPreflightReason.take(65)
-          else "DEMO AUTO OPRIT • " + autoDemoLastPreflightReason.take(65)
+            "ARMAT • EXECUȚIE ÎN PAUZĂ: " + autoDemoLastPreflightReason.take(53)
+          else "ARMAT • FĂRĂ SESIUNE EXECUTABILĂ"
         lastBrokerAccountStatus.contains("BROKER NECONFIGURAT") -> {
           // 401: show the actual active Android package and SHOCK gate,
           // so a screenshot distinguishes Chrome/PWA/overlay from the
@@ -7086,6 +7117,12 @@ class ScalpOverlayService : Service() {
       if (!autoDemoSessionRequested && !autoDemoSessionConsumed) {
         sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
       }
+      // 513: final compact-panel status is stable and never says NEARMAT
+      // merely because the scanner is between two FX pairs. No order gate
+      // is loosened. The panel only says ARMAT while Android LIVE is active.
+      if (persistentRobotStatus513 != null) {
+        touchProbeStatus?.text = persistentRobotStatus513
+      }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
       captureStatusText?.setTextColor(
@@ -7104,6 +7141,7 @@ class ScalpOverlayService : Service() {
   }
 
   override fun onDestroy() {
+    robotArmedContinuously513 = false
     demoClickTestPending = false
     demoClickMonitorRunning = false
     brokerAccountMonitorRunning = false
