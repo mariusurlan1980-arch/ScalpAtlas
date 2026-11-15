@@ -4194,6 +4194,11 @@ class ScalpOverlayService : Service() {
       // continuous scanning starts automatically with LIVE; tapping the bar
       // when already running must not turn rotation off during a drag.
       if (!fxRotation.running) {
+        if (realAccountSafetyStop517 && mediaProjection != null &&
+            TouchTestService.readVisibleDemoPair() != null &&
+            !TouchTestService.realFxAccountVisible()) {
+          realAccountSafetyStop517 = false
+        }
         try { fxRotation.start() }
         catch (_: Exception) {
           fxRotation.stop("ROTAȚIE • SELECTOR NECONFIRMAT")
