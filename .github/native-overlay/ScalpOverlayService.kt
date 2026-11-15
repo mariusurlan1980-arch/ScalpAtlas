@@ -152,6 +152,7 @@ class ScalpOverlayService : Service() {
   // order has an exact authenticated CLOSED receipt and two ZERO-OPEN reads.
   // The session stays user-approved; QT Real and duplicate orders stay blocked.
   private var fxRotationStatusButton513: TextView? = null
+  private var retryDemoRotationAfterLiveRestart: (() -> Unit)? = null
   private var fxRotationNavigating = false
   // 516: LIVE scanning may be armed while FX rotation pauses for an active
   // QT DEMO order. Never confuse a rotation pause with order settlement.
@@ -583,7 +584,7 @@ class ScalpOverlayService : Service() {
           // This is session-local; no user bell preference is overwritten.
           bellEnabled = true
           startProjection(resultCode, data)
-          retryDemoRotationAfterLiveRestart()
+          retryDemoRotationAfterLiveRestart?.invoke()
           startBrokerAccountMonitor()
         } else {
           updateOverlay("AȘTEAPTĂ", "LIVE • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
@@ -1336,28 +1337,6 @@ class ScalpOverlayService : Service() {
     autoDemoEntryCycleStartedAt = System.currentTimeMillis()
     autoDemoLastPreflightReason = "QT DEMO • MIZĂ DIN BROKER • REZULTAT PRECEDENT NECUNOSCUT"
     return "476 • DEMO REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
-  }
-
-  private fun retryDemoRotationAfterLiveRestart() {
-    val projection = mediaProjection ?: return
-    if (!realAccountSafetyStop517) return
-
-    mainHandler.post(object : Runnable {
-      private var remainingChecks = 20
-
-      override fun run() {
-        if (shuttingDown || mediaProjection !== projection || !realAccountSafetyStop517) return
-        // The app or Android's capture dialog can still own foreground focus
-        // when LIVE is started. Give the user time to return to the demo chart.
-        if (!TouchTestService.demoFxAccountInForeground()) {
-          if (--remainingChecks > 0) mainHandler.postDelayed(this, 1_000L)
-          return
-        }
-        realAccountSafetyStop517 = false
-        try { fxRotation.start() }
-        catch (_: Exception) { fxRotation.stop("ROTAȚIE • VERIFICĂ ACCESIBILITATE") }
-      }
-    })
   }
 
   private fun startBrokerAccountMonitor() {
@@ -4607,6 +4586,27 @@ class ScalpOverlayService : Service() {
     // 498: restore the personally selected corner after the window is laid out.
     root.post { positionSavedCorner498() }
     startNeonEdge434()
+    retryDemoRotationAfterLiveRestart = retry@{
+      val projection = mediaProjection ?: return@retry
+      if (!realAccountSafetyStop517) return@retry
+
+      mainHandler.post(object : Runnable {
+        private var remainingChecks = 20
+
+        override fun run() {
+          if (overlayView !== root || shuttingDown || mediaProjection !== projection || !realAccountSafetyStop517) return
+          // The app or Android's capture dialog can still own foreground focus
+          // when LIVE is started. Give the user time to return to the demo chart.
+          if (!TouchTestService.demoFxAccountInForeground()) {
+            if (--remainingChecks > 0) mainHandler.postDelayed(this, 1_000L)
+            return
+          }
+          realAccountSafetyStop517 = false
+          try { fxRotation.start() }
+          catch (_: Exception) { fxRotation.stop("ROTAȚIE • VERIFICĂ ACCESIBILITATE") }
+        }
+      })
+    }
     // 495: The user already authorized LIVE screen capture and requested
     // continuous 30-second QT Demo pair rotation, without a second ON press.
     // Defer until the overlay is attached; seekChart retries transient focus
@@ -7397,6 +7397,7 @@ class ScalpOverlayService : Service() {
       try { analyzerWebView?.destroy() } catch (_: Throwable) {}
       analyzerWebView = null
       try { overlayView?.let { windowManager.removeView(it) } } catch (_: Throwable) {}
+      retryDemoRotationAfterLiveRestart = null
       overlayView = null
     }
 
