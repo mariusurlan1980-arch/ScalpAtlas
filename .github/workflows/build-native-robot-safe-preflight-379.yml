@@ -579,7 +579,7 @@ jobs:
           ! grep -Fq 'recoverNavigation(previous, "AȘTEPT CONFIRMAREA ORDINULUI")' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fun tradeBusy(): Boolean' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'tradePositionGate.state() == TradePositionGate.State.READY' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'TouchTestService.realFxAccountVisible()' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'TouchTestService.realFxAccountVisible()' .github/native-overlay/ScalpOverlayService.kt
           # 513: persistent ARM is independent of STRICT per-pair order approval.
           grep -Fq 'private var robotArmedContinuously513 = false' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'robotArmedContinuously513 = true' .github/native-overlay/ScalpOverlayService.kt
