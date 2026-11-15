@@ -3634,7 +3634,8 @@ class ScalpOverlayService : Service() {
         }
         val wasPaused = fxRotationTradePaused516
         fxRotationTradePaused516 = false
-        tradePauseStart516 = 0L
+        // Keep the expired pause anchored while the same active hint persists.
+        if (!orderMayBeActive) tradePauseStart516 = 0L
         // A timed-out or unverified order is NEVER marked CLOSED. Its
         // original persisted safety lock still prevents ANY new broker tap.
         if (wasPaused) {
