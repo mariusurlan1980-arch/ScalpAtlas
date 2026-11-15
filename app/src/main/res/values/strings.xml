@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Scalp Atlas Demo</string>
+    <string name="accessibility_description">Citește fereastra activă Pocket Option și permite apăsări doar pe QT Demo confirmat.</string>
+    <string name="open_accessibility">Setări de accesibilitate</string>
+    <string name="accessibility_connected">Serviciul de accesibilitate este conectat.</string>
+    <string name="accessibility_disconnected">Serviciul de accesibilitate este deconectat.</string>
+    <string name="chart_demo_unconfirmed">Ultima verificare: QT Demo neconfirmat.</string>
+    <string name="chart_m5_unavailable">Ultima verificare: datele M5 nu sunt disponibile.</string>
+    <string name="chart_m5_available">Ultima verificare: datele M5 sunt disponibile.</string>
+    <string name="start_live_preview">Pornește testul LIVE</string>
+    <string name="live_preview_signal">Ultimul semnal ȘOC: %1$s</string>
+</resources>

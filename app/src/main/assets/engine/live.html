@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<script type="module">
+import { createM5Candles } from './m5-candles.mjs';
+import { detectShock } from './shock.mjs';
+
+const observe = createM5Candles();
+setInterval(() => {
+  const frame = JSON.parse(AtlasChart.read());
+  const candles = observe(frame);
+  const signal = candles && detectShock(candles.previous, candles.current);
+  if (signal) AtlasChart.report(signal.side);
+}, 750);
+</script>

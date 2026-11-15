@@ -1,0 +1,30 @@
+plugins {
+    id 'com.android.application' version '8.7.3'
+    id 'org.jetbrains.kotlin.android' version '2.0.21'
+}
+
+android {
+    namespace 'com.scalpatlas.fresh'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.scalpatlas.fresh'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1'
+    }
+}
+
+def generatedEngineAssets = layout.buildDirectory.dir('generated/engineAssets')
+def copyEngineAssets = tasks.register('copyEngineAssets', Sync) {
+    from(rootProject.projectDir) {
+        include '*.mjs', 'bancnote.gif'
+    }
+    into(generatedEngineAssets.map { it.dir('engine') })
+}
+
+android.sourceSets.main.assets.srcDir(generatedEngineAssets)
+tasks.named('preBuild').configure {
+    dependsOn(copyEngineAssets)
+}
