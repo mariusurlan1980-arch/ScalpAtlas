@@ -136,11 +136,18 @@ class ScalpOverlayModule(
         val candleDirection = prefs.getString("candleDirection", "NONE") ?: "NONE"
         val candleState = if (opticalQuality > 0 && candleDirection != "NONE")
           "LUMÂNARE: detectată" else "LUMÂNARE: neconfirmată"
+        val m5State = when {
+          tf != "M5" -> "M5: neconfirmat"
+          opticalQuality <= 0 || candleDirection == "NONE" -> "M5: date indisponibile"
+          else -> "M5: lumânare detectată"
+        }
+        val account = TouchTestService.inspectBrokerAccountReadOnly().substringBefore(" •")
         val shockBlock = prefs.getString("shockBlocker", "NECONFIRMAT") ?: "NECONFIRMAT"
         val scalpBlock = prefs.getString("scalpBlocker", "NECONFIRMAT") ?: "NECONFIRMAT"
         promise.resolve(
           "FLUX " + stage + " · TF " + tf + " · " + pair + "\n" +
             "Citire TF: " + tfSource + " · " + candleState + "\n" +
+            account + " · " + m5State + "\n" +
             "ȘOC: " + shockBlock + " · SCALP: " + scalpBlock + "\n" +
             "Cadre " + frames + " · Analize " + results + " · Erori " + errors +
             "\n" + reason
