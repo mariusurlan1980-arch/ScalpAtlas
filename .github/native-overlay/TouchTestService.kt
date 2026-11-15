@@ -494,7 +494,8 @@ class TouchTestService : AccessibilityService() {
     }
 
     /** Reopen the selector from the verified chart's instrument control. */
-    fun reopenFxList(pair: String, overlayBounds: Rect, physicalOnly: Boolean, realAccount: Boolean): Boolean {
+    fun reopenFxList(pair: String, overlayBounds: Rect, physicalOnly: Boolean, realAccount: Boolean,
+      alternateClickable519: Boolean = false): Boolean {
       if (realAccount || realFxAccountVisible() ||
           readVisibleFxPair(realAccount) != pair) return false
       val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
@@ -572,11 +573,16 @@ class TouchTestService : AccessibilityService() {
             rect.height() <= height * .065f &&
             values.none { Regex("""(?i)\bQT\s*(?:Demo|Real)\b""").containsMatchIn(it) }
         }
-      val target = candidates.minByOrNull { candidate ->
+      // 519: WebView may acknowledge ACTION_CLICK on the smallest text node
+      // but never open Valute. Retry ONE other independently clickable
+      // ancestor for the SAME verified FX label, not a physical screen tap.
+      val ranked = candidates.sortedBy { candidate ->
         val rect = Rect()
         candidate.getBoundsInScreen(rect)
         rect.width().toLong() * rect.height().toLong()
-      } ?: return false
+      }
+      val target = (if (alternateClickable519) ranked.drop(1).firstOrNull()
+        else ranked.firstOrNull()) ?: return false
       if (overlayBounds.contains(bounds.centerX(), bounds.centerY()) ||
           svc.rootInActiveWindow != root) return false
       // Re-read visible account identity immediately before a broker click.
@@ -587,6 +593,22 @@ class TouchTestService : AccessibilityService() {
               Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.toString())
             }
           }) return false
+      // A clickable pair node must be physically below the QT Demo account
+      // label; never climb to a parent covering the account dropdown.
+      val targetBounds = Rect()
+      target.getBoundsInScreen(targetBounds)
+      val demoHeaders = fresh.third.filter { (node, rect) ->
+        rect.centerY() < height * .17f &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
+            Regex("""(?i)\\bQT\\s*Demo\\b""").containsMatchIn(it)
+          }
+      }
+      val accountBottom = demoHeaders.map { it.second.bottom }.filter {
+        it < height * .19f
+      }.maxOrNull() ?: return false
+      if (targetBounds.top < accountBottom + (height * .008f).toInt() ||
+          targetBounds.right > width * .53f || realFxAccountVisible())
+        return false
       return svc.rootInActiveWindow == root && target.performAction(action)
     }
 
