@@ -3972,11 +3972,35 @@ class ScalpOverlayService : Service() {
           after(500L) { awaitList(pair, checks - 1, physicalOnly) }
           return
         }
-        // 517: The physical fallback runs near the broker ACCOUNT chooser.
-        // Disable it completely: no unintended transition to QT Real.
-        // Accessibility ACTION_CLICK on a verified instrument remains
-        // available in reopenFxList. Unclear selector => fail closed.
-        recoverNavigation(pair, "SELECTOR NECONFIRMAT • FĂRĂ TAP LÂNGĂ CONT")
+        // 519: The WebView sometimes reports ACTION_CLICK successful without
+        // opening Valute. Retry exactly ONE different, small Accessibility
+        // clickable ancestor of the SAME, independently confirmed instrument.
+        // No physical tap, no touching the account chooser.
+        if (!physicalOnly && !realAccount &&
+            TouchTestService.reopenFxList(pair, overlayBounds(),
+              false, false, alternateClickable519 = true)) {
+          fxButton.text = "ROTAȚIE • A DOUA ÎNCERCARE SELECTOR • VERIFIC"
+          after(700L) { awaitList(pair, 4, true) }
+          return
+        }
+        // If the selector cannot be opened safely, do not remain in a
+        // permanent navigation state that silences SHOCK analysis. A verified
+        // preferred QT Demo chart may continue receiving analysis; the next
+        // rotation attempt can only use the safe accessibility control.
+        val current = TouchTestService.readVisibleFxPair(false)
+        val currentPayout = current?.let {
+          TouchTestService.readFxChartPayout(it, false)
+        }
+        if (current == pair && TouchTestService.isPreferredFxPair517(pair) &&
+            currentPayout != null && currentPayout >= 92 &&
+            !TouchTestService.realFxAccountVisible()) {
+          fxRotationNavigating = false
+          fxButton.text = "SELECTOR NEDISPONIBIL • SCANEZ $pair • REIAU ROTATIA"
+          verifyChart(pair, 12)
+        } else {
+          // Unknown or exotic chart: no order, no blind header tap.
+          recoverNavigation(pair, "SELECTOR NECONFIRMAT • FĂRĂ TAP LÂNGĂ CONT")
+        }
       }
 
       fun dockForSelector(): Boolean {
