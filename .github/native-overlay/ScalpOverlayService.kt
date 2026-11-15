@@ -153,6 +153,9 @@ class ScalpOverlayService : Service() {
   // The session stays user-approved; QT Real and duplicate orders stay blocked.
   private var fxRotationStatusButton513: TextView? = null
   private var fxRotationNavigating = false
+  // 516: LIVE scanning may be armed while FX rotation pauses for an active
+  // QT DEMO order. Never confuse a rotation pause with order settlement.
+  private var fxRotationTradePaused516 = false
   // 513: the user's LIVE authorization keeps the ROBOT ARMED in scan mode
   // through FX rotation, pending receipts and temporary accessibility gaps.
   // Distinct from autoDemoArmed, which is the STRICT permission to dispatch
@@ -3546,6 +3549,82 @@ class ScalpOverlayService : Service() {
       var recoveryAttempts = 0
       var originalOverlayY: Int? = null
       var dockedOverlayY: Int? = null
+      var tradePauseStart516 = 0L
+      var tradeBadgePositiveReads516 = 0
+      var tradeBadgeMissingReads516 = 0
+      var tradeBadgeBurstShown516 = false
+
+      // 516: The 30-second FX rotation pauses while a QT Demo trade is
+      // visibly active (small bottom-nav counter) or a newly dispatched
+      // automated 5-minute order has not yet reached its expiry window.
+      // A badge is ONLY a navigation hint, never a WIN/LOSS or CLOSED proof.
+      // Its maximum hold is bounded to prevent another multi-hour stall.
+      fun pauseForTrade516(): Boolean {
+        if (realAccount || TouchTestService.realFxAccountVisible()) {
+          fxRotationTradePaused516 = false
+          tradePauseStart516 = 0L
+          return false
+        }
+        val elapsed = android.os.SystemClock.elapsedRealtime()
+        val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+        val attemptedAt = prefs.getLong("attemptedAt429", 0L)
+        val pendingFiveMinuteOrder = prefs.getBoolean("attempted", false) &&
+          attemptedAt > 0L &&
+          elapsed - attemptedAt in 0L..(DEMO_TEST_EXPIRY_MS_465 + 15_000L)
+        val badge = readDemoBadgeForEffect512()
+        if (badge != null && badge > 0) {
+          tradeBadgePositiveReads516 = (tradeBadgePositiveReads516 + 1).coerceAtMost(3)
+          tradeBadgeMissingReads516 = 0
+          if (tradeBadgePositiveReads516 >= 2 && !tradeBadgeBurstShown516) {
+            // Visual-only event. Positive badge is not authenticated OPEN ID.
+            tradeBadgeBurstShown516 = true
+            val pairForBurst = TouchTestService.readVisibleFxPair(false)
+            if (!pairForBurst.isNullOrBlank()) {
+              showMoneyBurstOnVerifiedDemoVisualEvent512(
+                "badge516:" + pairForBurst + ":" + System.currentTimeMillis()
+              )
+            }
+          }
+        } else {
+          tradeBadgePositiveReads516 = 0
+          if (badge == 0) {
+            tradeBadgeMissingReads516 = (tradeBadgeMissingReads516 + 1).coerceAtMost(3)
+            if (tradeBadgeMissingReads516 >= 2) tradeBadgeBurstShown516 = false
+          } else tradeBadgeMissingReads516 = 0
+        }
+        val visuallyActive = tradeBadgePositiveReads516 > 0
+        val verifiedOpen = demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+          tradePositionGate.state() == TradePositionGate.State.OPEN
+        val orderMayBeActive = pendingFiveMinuteOrder || visuallyActive || verifiedOpen
+        if (orderMayBeActive && tradePauseStart516 == 0L)
+          tradePauseStart516 = elapsed
+        val insideBound = tradePauseStart516 > 0L &&
+          elapsed - tradePauseStart516 in 0L..(DEMO_TEST_EXPIRY_MS_465 + 45_000L)
+        if (orderMayBeActive && insideBound) {
+          fxRotationTradePaused516 = true
+          fxRotationNavigating = false
+          fxButton.text = "🤖 ARMAT • TRADE DEMO ÎN CURS • ROTAȚIE PAUZĂ"
+          after(1_000L) { seekChart() }
+          return true
+        }
+        val wasPaused = fxRotationTradePaused516
+        fxRotationTradePaused516 = false
+        tradePauseStart516 = 0L
+        // A timed-out or unverified order is NEVER marked CLOSED. Its
+        // original persisted safety lock still prevents ANY new broker tap.
+        if (wasPaused) {
+          fxButton.text = "ROTAȚIE • VERIFIC PERECHEA DUPĂ TRADE"
+          after(250L) {
+            val pair = TouchTestService.readVisibleFxPair(false)
+            if (pair != null && !TouchTestService.realFxAccountVisible()) {
+              beginNavigation()
+              openList(pair, false)
+            } else seekChart()
+          }
+          return true
+        }
+        return false
+      }
 
       fun restoreOverlay() {
         // 498: selection never owns the position of the floating panel.
@@ -3558,6 +3637,8 @@ class ScalpOverlayService : Service() {
       fun stop(message: String) {
         running = false
         fxRotationNavigating = false
+        fxRotationTradePaused516 = false
+        tradePauseStart516 = 0L
         task?.let { mainHandler.removeCallbacks(it) }
         task = null
         restoreOverlay()
@@ -3627,6 +3708,7 @@ class ScalpOverlayService : Service() {
         // 514: scanning a different verified QT Demo chart is NOT a trade.
         // Pending/UNKNOWN orders block BUY/SELL through the independent
         // order gate, but must not freeze the 30-second pair rotation.
+        if (pauseForTrade516()) return
         if (tradeBusy()) {
           fxButton.text = "🤖 ARMAT • SCANEZ FĂRĂ ORDINE NOI"
         }
@@ -3660,6 +3742,11 @@ class ScalpOverlayService : Service() {
         lastChartPair = null
         forward = true
         running = true
+        fxRotationTradePaused516 = false
+        tradePauseStart516 = 0L
+        tradeBadgePositiveReads516 = 0
+        tradeBadgeMissingReads516 = 0
+        tradeBadgeBurstShown516 = false
         seekChart()
       }
 
@@ -3744,6 +3831,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
+        if (pauseForTrade516()) return
         // 514: the little "Tranzacții" badge can remain nonzero for a
         // past order and is NOT proof of an active position. Do not keep
         // rescheduling this same chart forever. Trading remains blocked by
@@ -3819,6 +3907,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun openList(pair: String, physicalOnly: Boolean) {
+        if (pauseForTrade516()) return
         // QT Demo FX selector operations must still be verified by Android
         // accessibility and reject QT Real before any UI navigation.
         // Prior trades block ORDERS, not independent chart scanning.
@@ -3877,6 +3966,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun confirmSelection(pair: String, previous: String?, retryTap: Boolean) {
+        if (pauseForTrade516()) return
         if (!TouchTestService.fxListVisible(realAccount)) {
           restoreOverlay()
           verifyChart(pair, 24)
@@ -3944,6 +4034,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun select(previous: String?, rowChecks: Int = 5) {
+        if (pauseForTrade516()) return
         val seeking506 = pendingSearch506
         if (seeking506 != null) {
           // An ACTION_SET_TEXT may need 1-2 WebView updates before the
@@ -6980,6 +7071,8 @@ class ScalpOverlayService : Service() {
           mediaProjection == null || shuttingDown) null else when {
         lastBrokerAccountStatus.contains("QT REAL IDENTIFICAT") ->
           "🤖 ARMAT • REAL BLOCAT • FĂRĂ ORDINE"
+        fxRotationTradePaused516 ->
+          "🤖 ARMAT • TRADE ÎN CURS • ROTAȚIE PAUZĂ"
         autoDemoSessionConsumed ||
           tradePositionGate.state() != TradePositionGate.State.READY ->
           "🤖 ARMAT • ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE"
