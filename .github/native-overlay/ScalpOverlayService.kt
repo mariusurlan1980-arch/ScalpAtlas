@@ -3982,14 +3982,14 @@ class ScalpOverlayService : Service() {
         after(500L) { awaitList(pair, 6, physicalOnly) }
       }
 
-      fun awaitList(pair: String, checks: Int, physicalOnly: Boolean) {
+      fun awaitList(pair: String, checks: Int, physicalOnly: Boolean, verifiedTapTried: Boolean = false) {
         if (stopOnReal517()) return
         if (TouchTestService.fxListVisible(realAccount)) {
           select(pair)
           return
         }
         if (checks > 0) {
-          after(500L) { awaitList(pair, checks - 1, physicalOnly) }
+          after(500L) { awaitList(pair, checks - 1, physicalOnly, verifiedTapTried) }
           return
         }
         // 519: The WebView sometimes reports ACTION_CLICK successful without
@@ -4001,6 +4001,14 @@ class ScalpOverlayService : Service() {
               false, false, alternateClickable519 = true)) {
           fxButton.text = "ROTAȚIE • A DOUA ÎNCERCARE SELECTOR • VERIFIC"
           after(700L) { awaitList(pair, 4, true) }
+          return
+        }
+        // WebView may expose the exact pair label without a working click action.
+        // The guarded fallback verifies that label below the Demo account tile.
+        if (!verifiedTapTried && !realAccount &&
+            TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())) {
+          fxButton.text = "ROTAȚIE • VERIFIC LISTA VALUTE"
+          after(500L) { awaitList(pair, 6, true, verifiedTapTried = true) }
           return
         }
         // If the selector cannot be opened safely, do not remain in a
