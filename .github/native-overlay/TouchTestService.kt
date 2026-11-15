@@ -513,7 +513,7 @@ class TouchTestService : AccessibilityService() {
       alternateClickable519: Boolean = false): Boolean {
       if (realAccount || realFxAccountVisible() ||
           readVisibleFxPair(realAccount) != pair) return false
-      val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
+      val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount, foregroundOnly = true) ?: return false
       if (svc.rootInActiveWindow != root ||
           labels.any { (node, _) -> hasFxCurrencyHeader(node) }) return false
       val display = android.util.DisplayMetrics()
@@ -570,7 +570,7 @@ class TouchTestService : AccessibilityService() {
         }) return false
       val action = AccessibilityNodeInfo.ACTION_CLICK
       val candidates = matches.flatMap { (pairNode, _) ->
-        generateSequence(pairNode) { it.parent }.take(3).toList()
+        generateSequence(pairNode) { it.parent }.take(6).toList()
       }.distinct().filter { candidate ->
           val rect = Rect()
           candidate.getBoundsInScreen(rect)
@@ -599,7 +599,7 @@ class TouchTestService : AccessibilityService() {
       if (overlayBounds.contains(bounds.centerX(), bounds.centerY()) ||
           svc.rootInActiveWindow != root) return false
       // Re-read visible account identity immediately before a broker click.
-      val fresh = activeDemoHistoryNodes(false, false) ?: return false
+      val fresh = activeDemoHistoryNodes(false, foregroundOnly = true) ?: return false
       if (fresh.first !== svc || fresh.second != root ||
           fresh.third.any { (node, _) ->
             listOfNotNull(node.text, node.contentDescription).any {
@@ -609,14 +609,14 @@ class TouchTestService : AccessibilityService() {
       // A clickable pair node must be physically below the QT Demo account
       // label; never climb to a parent covering the account dropdown.
       val demoHeaders = fresh.third.filter { (node, rect) ->
-        rect.centerY() < height * .17f &&
+        rect.centerX() >= width * .42f && rect.centerX() <= width * .90f &&
+          rect.centerY() < height * .19f &&
+          rect.width() <= width * .62f && rect.height() <= height * .15f &&
           listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
             Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it)
           }
       }
-      val accountBottom = demoHeaders.map { it.second.bottom }.filter {
-        it < height * .19f
-      }.maxOrNull() ?: return false
+      val accountBottom = demoHeaders.maxOfOrNull { it.second.bottom } ?: return false
       val safeTargets = ranked.filter { candidate ->
         val candidateBounds = Rect()
         candidate.getBoundsInScreen(candidateBounds)
