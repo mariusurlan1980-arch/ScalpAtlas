@@ -3653,13 +3653,16 @@ class ScalpOverlayService : Service() {
       }
 
       fun stopOnReal517(realVisible: Boolean = false): Boolean {
-        if (!realAccountSafetyStop517 && !realVisible &&
-            !TouchTestService.realFxAccountInForeground())
-          return false
-        realAccountSafetyStop517 = true
-        autoDemoArmed = false
-        autoDemoSessionRequested = false
-        autoDemoSessionConsumed = true
+        val realConfirmed = realVisible || TouchTestService.realFxAccountInForeground()
+        if (!realAccountSafetyStop517 && !realConfirmed) return false
+        // A prior stop blocks navigation while a fresh LIVE start checks QT Demo.
+        // Only current QT Real evidence may consume the new session.
+        if (realConfirmed) {
+          realAccountSafetyStop517 = true
+          autoDemoArmed = false
+          autoDemoSessionRequested = false
+          autoDemoSessionConsumed = true
+        }
         stop("ROBOT OPRIT • VERIFICĂ QT DEMO")
         return true
       }
@@ -4585,7 +4588,8 @@ class ScalpOverlayService : Service() {
       mainHandler.post(object : Runnable {
 
         override fun run() {
-          if (overlayView !== root || shuttingDown || mediaProjection !== projection || !realAccountSafetyStop517) return
+          if (overlayView !== root || shuttingDown || mediaProjection !== projection ||
+              !realAccountSafetyStop517 || fxRotation.running) return
           // The app or Android's capture dialog can still own foreground focus
           // when LIVE is started. Give the user time to return to the demo chart.
           if (!TouchTestService.demoFxAccountInForeground()) {
@@ -4604,7 +4608,7 @@ class ScalpOverlayService : Service() {
     // gaps without a broker gesture and never unlocks unresolved orders.
     mainHandler.postDelayed({
       if (overlayView === root && !shuttingDown &&
-          mediaProjection != null && !fxRotation.running) {
+          mediaProjection != null && !realAccountSafetyStop517 && !fxRotation.running) {
         try { fxRotation.start() }
         catch (_: Exception) { fxRotation.stop("ROTAȚIE • VERIFICĂ ACCESIBILITATE") }
       }
