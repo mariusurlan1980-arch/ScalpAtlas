@@ -612,7 +612,7 @@ jobs:
           grep -Fq 'val discoverablePairs518 = listOf(' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val moreUnsearched518 = discoverablePairs518.any {' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'discoverablePairs518.asSequence()' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '"PLN", "SEK", "NOK", "DKK", "SGD", "HKD"' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'return base != quote && base in fiatCodes && quote in fiatCodes' .github/native-overlay/TouchTestService.kt
           grep -Fq 'it.quote.payout >= 92 && isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun isPreferredFxPair517(pair: String): Boolean' .github/native-overlay/TouchTestService.kt
           grep -Fq 'isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
