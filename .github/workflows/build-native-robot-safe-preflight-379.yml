@@ -1,3 +1,4 @@
+517 PASS: no physical selector gesture, strict QT Demo and major-pair gate
 name: Build Scalp Atlas 520 Safe Selector Recovery + Chart Scan G24
 
 on:
@@ -222,7 +223,7 @@ jobs:
           service=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
           assert 'else if (!physicalOnly) openList(pair, true)' not in service
           assert 'minByOrNull' in block
-          assert 'activeDemoHistoryNodes(false, false, foregroundOnly = true)' in block
+          assert 'activeDemoHistoryNodes(false, foregroundOnly = true)' in block
           assert 'target.performAction(action)' in block
           assert 'dispatchGesture(' not in block
           # 515: separately sandboxed physical gesture only after a verified,
