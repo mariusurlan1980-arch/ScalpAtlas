@@ -3624,10 +3624,11 @@ class ScalpOverlayService : Service() {
           after(3_000L) { seekChart() }
           return
         }
+        // 514: scanning a different verified QT Demo chart is NOT a trade.
+        // Pending/UNKNOWN orders block BUY/SELL through the independent
+        // order gate, but must not freeze the 30-second pair rotation.
         if (tradeBusy()) {
-          fxButton.text = "ROTAȚIE • AȘTEPT ORDINUL PRECEDENT"
-          after(3_000L) { seekChart() }
-          return
+          fxButton.text = "🤖 ARMAT • SCANEZ FĂRĂ ORDINE NOI"
         }
         lastChartPair = pair ?: latestMarket.takeUnless { it == "NEIDENTIFICAT" }
         if (listOpen) {
@@ -3743,15 +3744,10 @@ class ScalpOverlayService : Service() {
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
-        val waitingForBroker = tradeBusy()
-        val openBadge = !waitingForBroker && TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
-          .startsWith("QT DEMO • INDICATOR ")
-        if (waitingForBroker || openBadge) {
-          fxButton.text = if (openBadge || tradePositionGate.state() == TradePositionGate.State.OPEN)
-            "ROTAȚIE • POZIȚIE DESCHISĂ" else "ROTAȚIE • AȘTEPT CONFIRMAREA ORDINULUI"
-          after(1_000L) { dwell(pair, deadline, retries) }
-          return
-        }
+        // 514: the little "Tranzacții" badge can remain nonzero for a
+        // past order and is NOT proof of an active position. Do not keep
+        // rescheduling this same chart forever. Trading remains blocked by
+        // persisted attempt markers and TradePositionGate independently.
         val remaining = deadline - android.os.SystemClock.elapsedRealtime()
         if (remaining > 0L) {
           fxButton.text = "$pair • ${(remaining + 999L) / 1000L} S"
@@ -3795,10 +3791,10 @@ class ScalpOverlayService : Service() {
         recoveryAttempts = (recoveryAttempts + 1).coerceAtMost(2)
         fxButton.text = "REÎNCERC ÎN ${delay / 1000} S • $reason"
         after(delay) {
-          if (tradeBusy() || TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
-              .startsWith("QT DEMO • INDICATOR ")) {
-            recoverNavigation(previous, "AȘTEPT CONFIRMAREA ORDINULUI")
-          } else if (TouchTestService.fxListVisible(realAccount)) {
+          // 514: navigation recovery is safe read-only/list-only even when
+          // a previous order is pending. Unknown trade state MUST prevent
+          // execution, never permanently trap the FX scanner.
+          if (TouchTestService.fxListVisible(realAccount)) {
             scrollHistory.clear()
             reversed = false
             newPass = false
@@ -3823,10 +3819,9 @@ class ScalpOverlayService : Service() {
       }
 
       fun openList(pair: String, physicalOnly: Boolean) {
-        if (tradeBusy()) {
-          recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
-          return
-        }
+        // QT Demo FX selector operations must still be verified by Android
+        // accessibility and reject QT Real before any UI navigation.
+        // Prior trades block ORDERS, not independent chart scanning.
         if (dockForSelector()) {
           after(350L) { openList(pair, physicalOnly) }
           return
@@ -3867,10 +3862,6 @@ class ScalpOverlayService : Service() {
       }
 
       fun confirmSelection(pair: String, previous: String?, retryTap: Boolean) {
-        if (tradeBusy()) {
-          recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
-          return
-        }
         if (!TouchTestService.fxListVisible(realAccount)) {
           restoreOverlay()
           verifyChart(pair, 24)
@@ -3938,10 +3929,6 @@ class ScalpOverlayService : Service() {
       }
 
       fun select(previous: String?, rowChecks: Int = 5) {
-        if (tradeBusy()) {
-          recoverNavigation(lastChartPair, "POZIȚIE NEVERIFICATĂ")
-          return
-        }
         val seeking506 = pendingSearch506
         if (seeking506 != null) {
           // An ACTION_SET_TEXT may need 1-2 WebView updates before the
