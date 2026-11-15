@@ -3830,16 +3830,13 @@ class ScalpOverlayService : Service() {
           openList(pair, false)
           return
         }
-        val chartReady = payout != null && pairReady(now) && currentPair(now) == pair &&
-          selectedTimeframe == "M5" && !manualTfConflict &&
-          (!tfAutomatic || (tfVerified && now - confirmedTfAt in 0L..TF_STALE_MS)) &&
-          observedCandleAt > 0L && now - observedCandleAt in 0L..3500L
-        if (!chartReady) {
+        if (TouchTestService.readVisibleFxPair(false) != pair) {
           if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
-          else recoverNavigation(pair, if (payout == null) "PAYOUT NECITIT"
-            else "GRAFIC M5 NECONFIRMAT")
+          else recoverNavigation(pair, "PERECHE NECONFIRMATĂ")
           return
         }
+        // Start the scan timer once the chart switch is verified. The order
+        // preflight independently checks payout, M5 and fresh candle evidence.
         if (fxRotationNavigating) {
           // 507: beginNavigation() already cleared stale SHOCK evidence once.
           // Clearing it again exactly when the new chart becomes readable
@@ -3891,14 +3888,8 @@ class ScalpOverlayService : Service() {
           after(750L) { dwell(pair, deadline, retries) }
           return
         }
-        // Navigation uses the fresh broker pair and chart proof. Temporary
-        // OCR loss at the end of a dwell does not stop a verified selector.
-        if (TouchTestService.readFxChartPayout(pair, realAccount) == null &&
-            !TouchTestService.fxListVisible(realAccount)) {
-          if (retries > 0) after(750L) { dwell(pair, deadline, retries - 1) }
-          else recoverNavigation(pair, "PERECHE NECONFIRMATĂ")
-          return
-        }
+        // The selector independently verifies the foreground account and pair.
+        // A missing chart payout must not prevent leaving this chart.
         beginNavigation()
         fxButton.text = "ROTAȚIE • DESCHID VALUTE"
         openList(pair, false)
