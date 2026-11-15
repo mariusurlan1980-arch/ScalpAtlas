@@ -1504,9 +1504,14 @@ class ScalpOverlayService : Service() {
                 receiptIndependentlyVerified = true
               )
               if (stored) {
-                // 512: celebrate a genuinely verified QT DEMO OPEN receipt,
-                // NEVER a BIP, attempted gesture, timer, WIN or LOSS guess.
-                showMoneyBurstOnConfirmedDemoOpen512(openReceipt429.positionId)
+                // 512: an independently verified QT DEMO OPEN receipt is the
+                // strongest visual trigger. Share the gesture event key with
+                // a previously observed new demo badge to avoid double bursts.
+                val wallAttempt512 = pendingPrefs429.getLong("attemptedWallAt454", -1L)
+                showMoneyBurstOnVerifiedDemoVisualEvent512(
+                  if (wallAttempt512 > 0L) "attempt:" + wallAttempt512
+                  else "open:" + openReceipt429.positionId
+                )
                 touchProbeStatus?.text = "✅ ORDIN DESCHIS DEMO • ID VERIFICAT 2/2"
                 returnToChartAfterReview458(
                                   true,
@@ -2541,17 +2546,17 @@ class ScalpOverlayService : Service() {
     moneyBurstView512 = null
   }
 
-  private fun showMoneyBurstOnConfirmedDemoOpen512(positionId: String) {
+  private fun showMoneyBurstOnVerifiedDemoVisualEvent512(positionId: String) {
     if (Looper.myLooper() != Looper.getMainLooper()) {
-      mainHandler.post { showMoneyBurstOnConfirmedDemoOpen512(positionId) }
+      mainHandler.post { showMoneyBurstOnVerifiedDemoVisualEvent512(positionId) }
       return
     }
     if (positionId.isBlank() || shuttingDown || mediaProjection == null ||
         TouchTestService.realFxAccountVisible()) return
     val panel = overlayView ?: return
     if (!panel.isAttachedToWindow || panel.width <= 0 || panel.height <= 0) return
-    // One effect per independently verified OPEN receipt, including across
-    // Android restarts. An accepted Android gesture is not a broker receipt.
+    // One effect per new DEMO trade indicator or verified OPEN receipt,
+    // including across restarts. Never trigger on BIP or on gesture alone.
     val prefs = getSharedPreferences("scalp_atlas_money_burst512", Context.MODE_PRIVATE)
     if (prefs.getString("lastOpenId", null) == positionId) return
     val loc = IntArray(2)
@@ -2596,6 +2601,51 @@ class ScalpOverlayService : Service() {
       })
       start()
     }
+  }
+
+  // 512: QT Demo's bottom-navigation number is VISUAL evidence only,
+  // not a position UUID and NEVER enough for rearming, booking P/L or MG.
+  // The missing badge is treated as a visual baseline of zero ONLY for
+  // comparing a possible new counter after a fresh Android gesture.
+  private fun readDemoBadgeForEffect512(): Int? {
+    val read = TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
+    val found = Regex("""^QT DEMO • INDICATOR ([1-9]) LÂNGĂ TRANZACȚII""").find(read)
+    if (found != null) return found.groupValues[1].toIntOrNull()
+    return if (read == "QT DEMO • NR. TRANZACȚII NEVERIFICAT • NU DUBLEZ") 0 else null
+  }
+
+  private fun verifyNewVisualDemoBadge512(
+    expectedPair: String, attemptedWall: Long, beforeCount: Int?
+  ) {
+    if (beforeCount == null || attemptedWall <= 0L) return
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val expectedPackage = prefs.getString("expectedPackage429", null) ?: return
+    val eventKey = "attempt:" + attemptedWall
+    mainHandler.postDelayed(object : Runnable {
+      var checks = 0
+      var consecutive = 0
+      override fun run() {
+        if (checks++ >= 18 || shuttingDown || mediaProjection == null ||
+            TouchTestService.realFxAccountVisible() ||
+            !prefs.getBoolean("attempted", false) ||
+            prefs.getLong("attemptedWallAt454", -1L) != attemptedWall ||
+            prefs.getString("expectedPair429", null) != expectedPair ||
+            TouchTestService.activeDemoExecutorPackageForReview() != expectedPackage)
+          return
+        val newPair = TouchTestService.readVisibleFxPair(false)
+        val currentBadge = readDemoBadgeForEffect512()
+        consecutive = if (newPair == expectedPair &&
+            currentBadge != null && currentBadge > beforeCount)
+          consecutive + 1 else 0
+        if (consecutive >= 2) {
+          // Two new positive UI reads after the attempt: cosmetic burst only.
+          // They are NOT a broker OPEN-ID, result or profit confirmation.
+          showMoneyBurstOnVerifiedDemoVisualEvent512(eventKey)
+        } else {
+          mainHandler.postDelayed(this, 700L)
+        }
+      }
+    }, 750L)
   }
 
   private class ShockCandleView(context: Context) : View(context) {
@@ -6706,6 +6756,10 @@ class ScalpOverlayService : Service() {
               // was possible. Only THIS case may safely undo a persisted
               // attempted marker, and never replay the old SHOCK lock.
               try {
+                // A visual counter INCREASE is required before the cosmetic
+                // effect; an Android gesture alone cannot trigger it.
+                val badgeBefore512 = if (CHART_ONLY_DEMO_462)
+                  readDemoBadgeForEffect512() else null
                 val result = if (CHART_ONLY_DEMO_462 && stake429 != 100L)
                   TouchTestService.pressVerifiedDemoStakeOnce429(
                     activeSignal, tradePair429, stake429!!, payout429!!
@@ -6717,6 +6771,14 @@ class ScalpOverlayService : Service() {
                 else TouchTestService.pressVerifiedDemoStakeOnce429(
                   activeSignal, tradePair429, stake429!!
                 )
+                if (CHART_ONLY_DEMO_462 &&
+                    (result.contains("ACCEPTAT DE ANDROID") ||
+                     result.contains("TRANSMIS • AȘTEPT ID OPEN"))) {
+                  val attemptedWall512 = getSharedPreferences(
+                    autoShockAttemptPrefs, Context.MODE_PRIVATE
+                  ).getLong("attemptedWallAt454", -1L)
+                  verifyNewVisualDemoBadge512(tradePair429, attemptedWall512, badgeBefore512)
+                }
                 if (result.startsWith("PRECHECK_NO_GESTURE:")) {
                   val cleared = getSharedPreferences(
                     autoShockAttemptPrefs, Context.MODE_PRIVATE
