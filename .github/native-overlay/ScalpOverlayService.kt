@@ -156,6 +156,9 @@ class ScalpOverlayService : Service() {
   // 516: LIVE scanning may be armed while FX rotation pauses for an active
   // QT DEMO order. Never confuse a rotation pause with order settlement.
   private var fxRotationTradePaused516 = false
+  // 517: after QT REAL is ever observed, halt automatic navigation and
+  // order dispatch for this LIVE session. Only the user may return to DEMO.
+  private var realAccountSafetyStop517 = false
   // 513: the user's LIVE authorization keeps the ROBOT ARMED in scan mode
   // through FX rotation, pending receipts and temporary accessibility gaps.
   // Distinct from autoDemoArmed, which is the STRICT permission to dispatch
@@ -3632,6 +3635,17 @@ class ScalpOverlayService : Service() {
         return false
       }
 
+      fun stopOnReal517(): Boolean {
+        if (!realAccountSafetyStop517 && !TouchTestService.realFxAccountVisible())
+          return false
+        realAccountSafetyStop517 = true
+        autoDemoArmed = false
+        autoDemoSessionRequested = false
+        autoDemoSessionConsumed = true
+        stop("QT REAL DETECTAT • ROBOT OPRIT • REVENIRE MANUALĂ LA DEMO")
+        return true
+      }
+
       fun restoreOverlay() {
         // 498: selection never owns the position of the floating panel.
         // Reassert the user's corner, without modifying order safety.
@@ -3692,7 +3706,7 @@ class ScalpOverlayService : Service() {
       // Wait read-only and retry; only independently verified QT Demo controls
       // may be navigated. An old/active order still blocks ALL new trades.
       fun seekChart() {
-        if (!running) return
+        if (!running || stopOnReal517()) return
         if (!TouchTestService.ready()) {
           fxButton.text = "ROTAȚIE • AȘTEPT ACCESIBILITATE"
           after(3_000L) { seekChart() }
@@ -3700,8 +3714,7 @@ class ScalpOverlayService : Service() {
         }
         realAccount = TouchTestService.realFxAccountVisible()
         if (realAccount) {
-          fxButton.text = "ROTAȚIE • QT REAL BLOCAT • NUMAI DEMO"
-          after(3_000L) { seekChart() }
+          stopOnReal517()
           return
         }
         val pair = TouchTestService.readVisibleFxPair(false)
@@ -3731,6 +3744,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun start() {
+        if (stopOnReal517()) return
         if (mediaProjection == null) {
           stop("ROTAȚIE • AȘTEPT LIVE")
           return
@@ -3781,6 +3795,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun verifyChart(pair: String, checks: Int) {
+        if (stopOnReal517()) return
         // 505: never spend another 30-second dwell on a pair already visited
         // in the current round, including after an ambiguous selector tap.
         // This is rotation-only; it cannot authorize a broker order.
@@ -3792,7 +3807,8 @@ class ScalpOverlayService : Service() {
         }
         val now = System.currentTimeMillis()
         val payout = TouchTestService.readFxChartPayout(pair, realAccount)
-        if (payout != null && payout < 92) {
+        if (!TouchTestService.isPreferredFxPair517(pair) ||
+            (payout != null && payout < 92)) {
           visited.add(pair)
           beginNavigation()
           fxButton.text = "$pair • $payout% • SAR PERECHEA"
@@ -3837,7 +3853,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
-        if (pauseForTrade516()) return
+        if (stopOnReal517() || pauseForTrade516()) return
         // 514: the little "Tranzacții" badge can remain nonzero for a
         // past order and is NOT proof of an active position. Do not keep
         // rescheduling this same chart forever. Trading remains blocked by
@@ -3913,7 +3929,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun openList(pair: String, physicalOnly: Boolean) {
-        if (pauseForTrade516()) return
+        if (stopOnReal517() || pauseForTrade516()) return
         // QT Demo FX selector operations must still be verified by Android
         // accessibility and reject QT Real before any UI navigation.
         // Prior trades block ORDERS, not independent chart scanning.
@@ -3933,6 +3949,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun awaitList(pair: String, checks: Int, physicalOnly: Boolean) {
+        if (stopOnReal517()) return
         if (TouchTestService.fxListVisible(realAccount)) {
           select(pair)
           return
@@ -3941,21 +3958,11 @@ class ScalpOverlayService : Service() {
           after(500L) { awaitList(pair, checks - 1, physicalOnly) }
           return
         }
-        // 515: ACTION_CLICK can report success with NO WebView page change.
-        // Retry ONE genuine 70ms gesture ONLY on the uniquely identified
-        // pair button after confirming QT DEMO, its isolated screen bounds,
-        // the separate account header, and the current chart instrument.
-        // No blind header or account tap. This never authorizes an order.
-        if (!physicalOnly && !realAccount &&
-            !TouchTestService.realFxAccountVisible() &&
-            TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())) {
-          fxButton.text = "ROTAȚIE • SELECTOR QT DEMO ATINS • VERIFIC LISTA"
-          after(600L) { awaitList(pair, 6, true) }
-        } else {
-          recoverNavigation(pair, if (physicalOnly)
-            "LISTA NU S-A DESCHIS DUPĂ GESTUL VERIFICAT"
-          else "SELECTOR QT DEMO NEVERIFICAT • FĂRĂ TAP")
-        }
+        // 517: The physical fallback runs near the broker ACCOUNT chooser.
+        // Disable it completely: no unintended transition to QT Real.
+        // Accessibility ACTION_CLICK on a verified instrument remains
+        // available in reopenFxList. Unclear selector => fail closed.
+        recoverNavigation(pair, "SELECTOR NECONFIRMAT • FĂRĂ TAP LÂNGĂ CONT")
       }
 
       fun dockForSelector(): Boolean {
@@ -3972,7 +3979,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun confirmSelection(pair: String, previous: String?, retryTap: Boolean) {
-        if (pauseForTrade516()) return
+        if (stopOnReal517() || pauseForTrade516()) return
         if (!TouchTestService.fxListVisible(realAccount)) {
           restoreOverlay()
           verifyChart(pair, 24)
@@ -3990,6 +3997,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun searchUnvisited506(previous: String?) {
+        if (stopOnReal517()) return
         // 506: a full two-way list pass discovered unvisited pairs but cannot
         // scroll to them. Use the unique QT selector search field for ONE
         // specific >=92% pair, never a generic tap or broker order.
@@ -4040,7 +4048,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun select(previous: String?, rowChecks: Int = 5) {
-        if (pauseForTrade516()) return
+        if (stopOnReal517() || pauseForTrade516()) return
         val seeking506 = pendingSearch506
         if (seeking506 != null) {
           // An ACTION_SET_TEXT may need 1-2 WebView updates before the
@@ -6660,7 +6668,9 @@ class ScalpOverlayService : Service() {
           autoDemoLastPreflightAt = nowClock
           val pair = currentPair(now)
           val diagnostic = when {
+            realAccountSafetyStop517 -> "QT REAL DETECTAT • RESTART LIVE DOAR PE DEMO"
             !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
+            !TouchTestService.isPreferredFxPair517(pair) -> "PERECHE EXOTICĂ • FĂRĂ ORDINE"
             !pairReady(now) || pair == "NEIDENTIFICAT" ->
               if (pendingMarket != null)
                 "PERECHE OCR: " + pendingMarket + " • " +
@@ -6740,6 +6750,8 @@ class ScalpOverlayService : Service() {
           TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
             .startsWith("QT DEMO • INDICATOR ")
         val readyForDemo = !fxRotationNavigating &&
+          !realAccountSafetyStop517 &&
+          expectedPair != null && TouchTestService.isPreferredFxPair517(expectedPair) &&
           !fxRotationTradePaused516 && !brokerOpenTradeHint516 && brokerConnected &&
           !autoDemoSessionConsumed && !previousDemoUnresolved453 &&
           tradePositionGate.state() == TradePositionGate.State.READY &&
