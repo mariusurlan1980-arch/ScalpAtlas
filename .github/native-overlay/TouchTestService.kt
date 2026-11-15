@@ -397,11 +397,12 @@ class TouchTestService : AccessibilityService() {
         setOf("XAU", "XAG", "XPD", "XPT", "XTS", "XXX")
     }
 
-    // 517: The user requested liquid FX pairs rather than exotic currencies
-    // near the end of the broker's OTC catalog. Never infer quality from a
-    // remembered payout: the live broker quote must still read >= 92%.
+    // 518: wider liquid FX universe. Avoid obscure pairs such as JOD/CNY,
+    // but do not accidentally restrict the broker to four accessible pairs.
+    // Visibility and >=92% payout are separately rechecked for EACH row/chart.
     private val preferredCodes517 =
-      setOf("USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD")
+      setOf("USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD",
+        "PLN", "SEK", "NOK", "DKK", "SGD", "HKD", "MXN", "ZAR", "CNY")
 
     fun isPreferredFxPair517(pair: String): Boolean {
       val matched = fxPairLabel.matchEntire(pair.trim()) ?: return false
