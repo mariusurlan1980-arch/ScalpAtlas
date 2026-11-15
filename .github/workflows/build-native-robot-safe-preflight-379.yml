@@ -601,7 +601,10 @@ jobs:
           # verified currency selector, never a coordinate tap at the account.
           grep -Fq 'alternateClickable519: Boolean = false' .github/native-overlay/TouchTestService.kt
           grep -Fq 'safeTargets.getOrNull(if (alternateClickable519) 1 else 0)' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'candidateBounds.top >= accountBottom' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'demoHeaders.all { (_, accountBounds) ->' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'candidateBounds.top >= accountBounds.bottom + accountGap' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'candidateBounds.right + horizontalGap <= accountBounds.left' .github/native-overlay/TouchTestService.kt
+          grep -Fq '!Rect.intersects(candidateBounds, overlayBounds)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'awaitList(pair, 0, physicalOnly)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'alternateClickable519 = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SELECTOR NEDISPONIBIL • SCANEZ' .github/native-overlay/ScalpOverlayService.kt
