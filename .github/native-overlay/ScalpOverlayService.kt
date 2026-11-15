@@ -2507,27 +2507,33 @@ class ScalpOverlayService : Service() {
         .toInt().coerceIn(0, 225)
       val originX = source.exactCenterX()
       val originY = source.top.toFloat() + 4f * d
-      for (i in 0 until 18) {
+      for (i in 0 until 28) {
         // Outward upper semicircle: neither the card's contents nor the
         // broker's bottom BUY/SELL buttons are used as drawing surfaces.
-        val angle = Math.PI * (1.04 + i * .92 / 17.0)
-        val distance = (56f + (i * 37 % 108).toFloat()) * d * spread
+        val angle = Math.PI * (1.04 + i * .92 / 27.0)
+        val distance = (68f + (i * 43 % 125).toFloat()) * d * spread
         val x = originX + kotlin.math.cos(angle).toFloat() * distance
         val y = originY + kotlin.math.sin(angle).toFloat() * distance - p * 13f * d
-        val w = (13f + (i % 3) * 4f) * d
-        val h = (7f + (i % 2) * 3f) * d
+        // 516: variant 1 uses clearly VISIBLE flying banknotes rather than
+        // the tiny rectangles of 512 which were imperceptible on Moto G24.
+        val w = (22f + (i % 4) * 6f) * d
+        val h = (11f + (i % 3) * 2f) * d
         canvas.save()
         canvas.translate(x, y)
         canvas.rotate((i * 29 % 70 - 35).toFloat() + p * (150f + (i % 4) * 55f))
         paint.style = Paint.Style.FILL
-        paint.color = if (i % 4 == 0) Color.argb(opacity, 255, 201, 78)
-          else Color.argb(opacity, 129, 198, 126)
+        paint.color = if (i % 4 == 0) Color.argb(opacity, 255, 204, 74)
+          else Color.argb(opacity, 172, 231, 157)
         canvas.drawRoundRect(-w / 2f, -h / 2f, w / 2f, h / 2f, 2f * d, 2f * d, paint)
         paint.color = Color.argb(opacity, 23, 91, 62)
         canvas.drawRoundRect(-w * .37f, -h * .34f, w * .37f, h * .34f, d, d, paint)
         paint.color = Color.argb(opacity, 242, 231, 162)
         canvas.drawCircle(0f, 0f, h * .25f, paint)
-        paint.strokeWidth = .7f * d
+        paint.textAlign = Paint.Align.CENTER
+        paint.textSize = h * .52f
+        paint.color = Color.argb(opacity, 28, 86, 58)
+        canvas.drawText("$", 0f, h * .18f, paint)
+        paint.strokeWidth = .85f * d
         paint.style = Paint.Style.STROKE
         canvas.drawRect(-w * .46f, -h * .43f, w * .46f, h * .43f, paint)
         paint.style = Paint.Style.FILL
@@ -2600,7 +2606,7 @@ class ScalpOverlayService : Service() {
     moneyBurstView512 = overlay
     prefs.edit().putString("lastOpenId", positionId).apply()
     moneyBurstAnimator512 = ValueAnimator.ofFloat(0f, 1f).apply {
-      duration = 1850L
+      duration = 2250L
       interpolator = LinearInterpolator()
       addUpdateListener { animator ->
         if (moneyBurstView512 === overlay) overlay.progress = animator.animatedValue as Float
@@ -6884,6 +6890,16 @@ class ScalpOverlayService : Service() {
                   val attemptedWall512 = getSharedPreferences(
                     autoShockAttemptPrefs, Context.MODE_PRIVATE
                   ).getLong("attemptedWallAt454", -1L)
+                  // 516: launch the user-selected VARIANT 1 burst when
+                  // Android has actually dispatched the DEMO trade gesture.
+                  // The animation is a celebration of SUBMISSION only:
+                  // Android dispatch is NOT broker acceptance, WIN or LOSS.
+                  // The unique attempt key prevents a second effect if the
+                  // broker later exposes a matching OPEN receipt or badge.
+                  if (attemptedWall512 > 0L)
+                    showMoneyBurstOnVerifiedDemoVisualEvent512(
+                      "attempt:" + attemptedWall512
+                    )
                   verifyNewVisualDemoBadge512(tradePair429, attemptedWall512, badgeBefore512)
                 }
                 if (result.startsWith("PRECHECK_NO_GESTURE:")) {
@@ -7246,6 +7262,7 @@ class ScalpOverlayService : Service() {
     autoDemoSessionRequested = false
     autoDemoSessionConsumed = true
     shuttingDown = true
+    fxRotationTradePaused516 = false
     if (activeOverlayService === this) activeOverlayService = null
     mainHandler.post {
       stopLiveCameraDot()
