@@ -397,6 +397,19 @@ class TouchTestService : AccessibilityService() {
         setOf("XAU", "XAG", "XPD", "XPT", "XTS", "XXX")
     }
 
+    // 517: The user requested liquid FX pairs rather than exotic currencies
+    // near the end of the broker's OTC catalog. Never infer quality from a
+    // remembered payout: the live broker quote must still read >= 92%.
+    private val preferredCodes517 =
+      setOf("USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD")
+
+    fun isPreferredFxPair517(pair: String): Boolean {
+      val matched = fxPairLabel.matchEntire(pair.trim()) ?: return false
+      val base = matched.groupValues[1].uppercase(java.util.Locale.ROOT)
+      val quote = matched.groupValues[2].uppercase(java.util.Locale.ROOT)
+      return base != quote && base in preferredCodes517 && quote in preferredCodes517
+    }
+
     fun realFxAccountVisible(): Boolean = activeDemoHistoryNodes(false, true) != null
 
     fun readFxChartPayout(pair: String, realAccount: Boolean): Int? {
@@ -481,7 +494,8 @@ class TouchTestService : AccessibilityService() {
 
     /** Reopen the selector from the verified chart's instrument control. */
     fun reopenFxList(pair: String, overlayBounds: Rect, physicalOnly: Boolean, realAccount: Boolean): Boolean {
-      if (readVisibleFxPair(realAccount) != pair) return false
+      if (realAccount || realFxAccountVisible() ||
+          readVisibleFxPair(realAccount) != pair) return false
       val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
       if (svc.rootInActiveWindow != root ||
           labels.any { (node, _) -> hasFxCurrencyHeader(node) }) return false
@@ -524,7 +538,7 @@ class TouchTestService : AccessibilityService() {
       // several different currency selectors. De-duplicate matching bounds,
       // then prefer the smallest eligible clickable control on the pair path.
       // Never fall back to physical tapping in the broker account header.
-      if (realAccount || physicalOnly) return false
+      if (realAccount || physicalOnly || realFxAccountVisible()) return false
       val distinctBounds = matches.map { it.second }.distinct()
       // 510: Android WebView often exposes the SAME pair as nested text and
       // selector nodes with slightly different overlapping bounds. Reject
@@ -583,7 +597,7 @@ class TouchTestService : AccessibilityService() {
      * identity, list header and ONE editable input are independently proven.
      */
     fun searchVisibleFxPair506(pair: String, realAccount: Boolean): Boolean {
-      if (!Regex("""^[A-Z]{3}/[A-Z]{3}(?: OTC)?$""").matches(pair)) return false
+      if (realAccount || !isPreferredFxPair517(pair) || realFxAccountVisible()) return false
       val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
       if (svc.rootInActiveWindow != root) return false
       val header = labels.firstOrNull { (node, _) -> hasFxCurrencyHeader(node) }
@@ -762,11 +776,11 @@ class TouchTestService : AccessibilityService() {
       // from the SAME five currencies reopened over and over. No assumed
       // total list length, and no automatic resetting of an incomplete pass.
       observedViewports?.add(rows.map { it.quote.pair })
-      rows.filter { it.quote.payout >= 92 }.forEach {
+      rows.filter { it.quote.payout >= 92 && isPreferredFxPair517(it.quote.pair) }.forEach {
         observedEligible?.add(it.quote.pair)
       }
       val next = rows.firstOrNull {
-        it.quote.payout >= 92 && it.quote.pair !in excluded &&
+        it.quote.payout >= 92 && isPreferredFxPair517(it.quote.pair) && it.quote.pair !in excluded &&
           (onlyPair == null || onlyPair == it.quote.pair)
       }
       if (next != null) {
