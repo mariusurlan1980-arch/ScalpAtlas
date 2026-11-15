@@ -4591,14 +4591,13 @@ class ScalpOverlayService : Service() {
       if (!realAccountSafetyStop517) return@retry
 
       mainHandler.post(object : Runnable {
-        private var remainingChecks = 20
 
         override fun run() {
           if (overlayView !== root || shuttingDown || mediaProjection !== projection || !realAccountSafetyStop517) return
           // The app or Android's capture dialog can still own foreground focus
           // when LIVE is started. Give the user time to return to the demo chart.
           if (!TouchTestService.demoFxAccountInForeground()) {
-            if (--remainingChecks > 0) mainHandler.postDelayed(this, 1_000L)
+            mainHandler.postDelayed(this, 3_000L)
             return
           }
           realAccountSafetyStop517 = false
