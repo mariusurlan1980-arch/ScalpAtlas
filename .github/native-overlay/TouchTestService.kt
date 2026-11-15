@@ -581,8 +581,6 @@ class TouchTestService : AccessibilityService() {
         candidate.getBoundsInScreen(rect)
         rect.width().toLong() * rect.height().toLong()
       }
-      val target = (if (alternateClickable519) ranked.drop(1).firstOrNull()
-        else ranked.firstOrNull()) ?: return false
       if (overlayBounds.contains(bounds.centerX(), bounds.centerY()) ||
           svc.rootInActiveWindow != root) return false
       // Re-read visible account identity immediately before a broker click.
@@ -595,8 +593,6 @@ class TouchTestService : AccessibilityService() {
           }) return false
       // A clickable pair node must be physically below the QT Demo account
       // label; never climb to a parent covering the account dropdown.
-      val targetBounds = Rect()
-      target.getBoundsInScreen(targetBounds)
       val demoHeaders = fresh.third.filter { (node, rect) ->
         rect.centerY() < height * .17f &&
           listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
@@ -606,10 +602,17 @@ class TouchTestService : AccessibilityService() {
       val accountBottom = demoHeaders.map { it.second.bottom }.filter {
         it < height * .19f
       }.maxOrNull() ?: return false
-      if (targetBounds.top < accountBottom + (height * .008f).toInt() ||
-          targetBounds.right > width * .53f || realFxAccountVisible())
-        return false
-      return svc.rootInActiveWindow == root && target.performAction(action)
+      val safeTargets = ranked.filter { candidate ->
+        val candidateBounds = Rect()
+        candidate.getBoundsInScreen(candidateBounds)
+        candidateBounds.top >= accountBottom + (height * .008f).toInt() &&
+          candidateBounds.right <= width * .53f &&
+          !Rect.intersects(candidateBounds, overlayBounds)
+      }
+      val target = safeTargets.getOrNull(if (alternateClickable519) 1 else 0)
+        ?: return false
+      return !realFxAccountVisible() && svc.rootInActiveWindow == root &&
+        target.performAction(action)
     }
 
     /**

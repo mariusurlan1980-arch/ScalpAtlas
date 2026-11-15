@@ -3600,9 +3600,9 @@ class ScalpOverlayService : Service() {
           tradeBadgeMissingReads516 = 0
           if (tradeBadgePositiveReads516 >= 2 && !tradeBadgeBurstShown516) {
             // Visual-only event. Positive badge is not authenticated OPEN ID.
-            tradeBadgeBurstShown516 = true
             val pairForBurst = TouchTestService.readVisibleFxPair(false)
             if (!pairForBurst.isNullOrBlank()) {
+              tradeBadgeBurstShown516 = true
               showMoneyBurstOnVerifiedDemoVisualEvent512(
                 "badge516:" + pairForBurst + ":" + System.currentTimeMillis()
               )
@@ -3956,7 +3956,9 @@ class ScalpOverlayService : Service() {
           return
         }
         if (!TouchTestService.reopenFxList(pair, overlayBounds(), physicalOnly, realAccount)) {
-          recoverNavigation(pair, "SELECTOR BLOCAT")
+          // A rejected primary click still needs the same verified alternate
+          // and chart recovery as a click that did not open the currency list.
+          awaitList(pair, 0, physicalOnly)
           return
         }
         after(500L) { awaitList(pair, 6, physicalOnly) }
