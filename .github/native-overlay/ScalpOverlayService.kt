@@ -3840,12 +3840,27 @@ class ScalpOverlayService : Service() {
       fun awaitList(pair: String, checks: Int, physicalOnly: Boolean) {
         if (TouchTestService.fxListVisible(realAccount)) {
           select(pair)
+          return
         }
-        else if (checks > 0) after(500L) { awaitList(pair, checks - 1, physicalOnly) }
-        // 510: 509 disabled raw-header physical fallback for QT DEMO safety.
-        // Do not run a guaranteed-failing physicalOnly call after a missed
-        // WebView transition: recover and retry only fresh verified AX clicks.
-        else recoverNavigation(pair, "LISTA NU S-A DESCHIS")
+        if (checks > 0) {
+          after(500L) { awaitList(pair, checks - 1, physicalOnly) }
+          return
+        }
+        // 515: ACTION_CLICK can report success with NO WebView page change.
+        // Retry ONE genuine 70ms gesture ONLY on the uniquely identified
+        // pair button after confirming QT DEMO, its isolated screen bounds,
+        // the separate account header, and the current chart instrument.
+        // No blind header or account tap. This never authorizes an order.
+        if (!physicalOnly && !realAccount &&
+            !TouchTestService.realFxAccountVisible() &&
+            TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())) {
+          fxButton.text = "ROTAȚIE • SELECTOR QT DEMO ATINS • VERIFIC LISTA"
+          after(600L) { awaitList(pair, 6, true) }
+        } else {
+          recoverNavigation(pair, if (physicalOnly)
+            "LISTA NU S-A DESCHIS DUPĂ GESTUL VERIFICAT"
+          else "SELECTOR QT DEMO NEVERIFICAT • FĂRĂ TAP")
+        }
       }
 
       fun dockForSelector(): Boolean {
