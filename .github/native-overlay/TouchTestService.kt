@@ -606,8 +606,8 @@ class TouchTestService : AccessibilityService() {
               Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it.toString())
             }
           }) return false
-      // A clickable pair node must be physically below the QT Demo account
-      // label; never climb to a parent covering the account dropdown.
+      // The pair selector can sit below the account label or to its left.
+      // Keep a gap and reject any ancestor covering the account dropdown.
       val demoHeaders = fresh.third.filter { (node, rect) ->
         rect.centerX() >= width * .42f && rect.centerX() <= width * .90f &&
           rect.centerY() < height * .19f &&
@@ -616,11 +616,16 @@ class TouchTestService : AccessibilityService() {
             Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it)
           }
       }
-      val accountBottom = demoHeaders.maxOfOrNull { it.second.bottom } ?: return false
+      if (demoHeaders.isEmpty()) return false
+      val accountGap = (height * .008f).toInt()
+      val horizontalGap = (width * .025f).toInt()
       val safeTargets = ranked.filter { candidate ->
         val candidateBounds = Rect()
         candidate.getBoundsInScreen(candidateBounds)
-        candidateBounds.top >= accountBottom + (height * .008f).toInt() &&
+        demoHeaders.all { (_, accountBounds) ->
+            candidateBounds.top >= accountBounds.bottom + accountGap ||
+              candidateBounds.right + horizontalGap <= accountBounds.left
+          } &&
           candidateBounds.right <= width * .53f &&
           !Rect.intersects(candidateBounds, overlayBounds)
       }
