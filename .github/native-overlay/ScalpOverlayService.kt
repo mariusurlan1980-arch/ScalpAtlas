@@ -74,6 +74,7 @@ class ScalpOverlayService : Service() {
       val service = activeOverlayService ?: return
       val applyVisibility = {
         if (hidden) {
+          service.clearMoneyBurst512()
           service.autoDemoArmed = false
           service.autoDemoMarket = null
           service.autoDemoExpiry = 0L
@@ -1503,6 +1504,9 @@ class ScalpOverlayService : Service() {
                 receiptIndependentlyVerified = true
               )
               if (stored) {
+                // 512: celebrate a genuinely verified QT DEMO OPEN receipt,
+                // NEVER a BIP, attempted gesture, timer, WIN or LOSS guess.
+                showMoneyBurstOnConfirmedDemoOpen512(openReceipt429.positionId)
                 touchProbeStatus?.text = "✅ ORDIN DESCHIS DEMO • ID VERIFICAT 2/2"
                 returnToChartAfterReview458(
                                   true,
@@ -2460,6 +2464,140 @@ class ScalpOverlayService : Service() {
    * NEVER optical detection quality or estimated WIN probability.
    * There are no legacy TF, journal or test rows in the visible overlay.
    */
+  // 512: Visual-only banknote burst. It is displayed OUTSIDE the small
+  // Scalp Atlas card by a temporary transparent, non-touchable overlay.
+  // No extra click, broker action, position unlock, or WIN claim.
+  private class TradeMoneyBurst512(context: Context, private val source: Rect) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val d = resources.displayMetrics.density
+    var progress: Float = 0f
+      set(value) {
+        field = value
+        invalidate()
+      }
+
+    init {
+      isClickable = false
+      isFocusable = false
+      importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+
+    override fun onDraw(canvas: Canvas) {
+      super.onDraw(canvas)
+      val p = progress.coerceIn(0f, 1f)
+      if (p <= 0f || p >= 1f) return
+      val spread = 1f - (1f - p) * (1f - p)
+      val opacity = (225f * (1f - p) * (if (p < .15f) p / .15f else 1f))
+        .toInt().coerceIn(0, 225)
+      val originX = source.exactCenterX()
+      val originY = source.top.toFloat() + 4f * d
+      for (i in 0 until 18) {
+        // Outward upper semicircle: neither the card's contents nor the
+        // broker's bottom BUY/SELL buttons are used as drawing surfaces.
+        val angle = Math.PI * (1.04 + i * .92 / 17.0)
+        val distance = (56f + (i * 37 % 108).toFloat()) * d * spread
+        val x = originX + kotlin.math.cos(angle).toFloat() * distance
+        val y = originY + kotlin.math.sin(angle).toFloat() * distance - p * 13f * d
+        val w = (13f + (i % 3) * 4f) * d
+        val h = (7f + (i % 2) * 3f) * d
+        canvas.save()
+        canvas.translate(x, y)
+        canvas.rotate((i * 29 % 70 - 35).toFloat() + p * (150f + (i % 4) * 55f))
+        paint.style = Paint.Style.FILL
+        paint.color = if (i % 4 == 0) Color.argb(opacity, 255, 201, 78)
+          else Color.argb(opacity, 129, 198, 126)
+        canvas.drawRoundRect(-w / 2f, -h / 2f, w / 2f, h / 2f, 2f * d, 2f * d, paint)
+        paint.color = Color.argb(opacity, 23, 91, 62)
+        canvas.drawRoundRect(-w * .37f, -h * .34f, w * .37f, h * .34f, d, d, paint)
+        paint.color = Color.argb(opacity, 242, 231, 162)
+        canvas.drawCircle(0f, 0f, h * .25f, paint)
+        paint.strokeWidth = .7f * d
+        paint.style = Paint.Style.STROKE
+        canvas.drawRect(-w * .46f, -h * .43f, w * .46f, h * .43f, paint)
+        paint.style = Paint.Style.FILL
+        canvas.restore()
+        if (i % 2 == 0) {
+          val sparkX = x - 7f * d
+          val sparkY = y - 9f * d
+          paint.color = Color.argb(opacity, 255, 194, 74)
+          paint.strokeWidth = (1.1f + i % 3 * .3f) * d
+          canvas.drawLine(sparkX - 3f * d, sparkY, sparkX + 3f * d, sparkY, paint)
+          canvas.drawLine(sparkX, sparkY - 3f * d, sparkX, sparkY + 3f * d, paint)
+        }
+      }
+    }
+  }
+
+  private var moneyBurstView512: View? = null
+  private var moneyBurstAnimator512: ValueAnimator? = null
+
+  private fun clearMoneyBurst512() {
+    moneyBurstAnimator512?.removeAllListeners()
+    moneyBurstAnimator512?.cancel()
+    moneyBurstAnimator512 = null
+    moneyBurstView512?.let {
+      try { windowManager.removeView(it) } catch (_: Throwable) {}
+    }
+    moneyBurstView512 = null
+  }
+
+  private fun showMoneyBurstOnConfirmedDemoOpen512(positionId: String) {
+    if (Looper.myLooper() != Looper.getMainLooper()) {
+      mainHandler.post { showMoneyBurstOnConfirmedDemoOpen512(positionId) }
+      return
+    }
+    if (positionId.isBlank() || shuttingDown || mediaProjection == null ||
+        TouchTestService.realFxAccountVisible()) return
+    val panel = overlayView ?: return
+    if (!panel.isAttachedToWindow || panel.width <= 0 || panel.height <= 0) return
+    // One effect per independently verified OPEN receipt, including across
+    // Android restarts. An accepted Android gesture is not a broker receipt.
+    val prefs = getSharedPreferences("scalp_atlas_money_burst512", Context.MODE_PRIVATE)
+    if (prefs.getString("lastOpenId", null) == positionId) return
+    val loc = IntArray(2)
+    panel.getLocationOnScreen(loc)
+    val rect = Rect(loc[0], loc[1], loc[0] + panel.width, loc[1] + panel.height)
+    clearMoneyBurst512()
+    val overlay = TradeMoneyBurst512(this, rect)
+    val params = WindowManager.LayoutParams(
+      WindowManager.LayoutParams.MATCH_PARENT,
+      WindowManager.LayoutParams.MATCH_PARENT,
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+      else WindowManager.LayoutParams.TYPE_PHONE,
+      WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+      PixelFormat.TRANSLUCENT
+    ).apply {
+      gravity = Gravity.TOP or Gravity.START
+      // Android 12+ obscured-touch protection limits non-touchable overlays
+      // from a different app; keep total alpha below 0.8, including the
+      // solid center of any drawn note. Never intercept broker gestures.
+      alpha = .65f
+    }
+    try {
+      windowManager.addView(overlay, params)
+    } catch (_: Throwable) {
+      return
+    }
+    moneyBurstView512 = overlay
+    prefs.edit().putString("lastOpenId", positionId).apply()
+    moneyBurstAnimator512 = ValueAnimator.ofFloat(0f, 1f).apply {
+      duration = 1850L
+      interpolator = LinearInterpolator()
+      addUpdateListener { animator ->
+        if (moneyBurstView512 === overlay) overlay.progress = animator.animatedValue as Float
+      }
+      addListener(object : android.animation.AnimatorListenerAdapter() {
+        override fun onAnimationEnd(animation: android.animation.Animator) {
+          if (moneyBurstView512 === overlay) clearMoneyBurst512()
+        }
+      })
+      start()
+    }
+  }
+
   private class ShockCandleView(context: Context) : View(context) {
     var direction: String = "NONE"
       set(value) {
@@ -5405,6 +5543,7 @@ class ScalpOverlayService : Service() {
         // so the user knows WHY LIVE vanished, but never auto-resume capture
         // or attempt trades without a new explicit user consent.
         if (shuttingDown) return
+        mainHandler.post { clearMoneyBurst512() }
         demoClickTestPending = false
         autoDemoSessionRequested = false
         autoDemoSessionConsumed = true
@@ -6964,6 +7103,7 @@ class ScalpOverlayService : Service() {
     captureHandler = null
 
     mainHandler.post {
+      clearMoneyBurst512()
       rotatingBrainAnimator467?.cancel()
       rotatingBrainAnimator467 = null
       try { analyzerWebView?.destroy() } catch (_: Throwable) {}
