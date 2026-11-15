@@ -2315,7 +2315,7 @@ jobs:
           grep -q 'wickText?.text' "$SERVICE"
           grep -q 'shockReasonText?.text' "$SERVICE"
           grep -q 'shockDurationText?.text' "$SERVICE"
-          grep -q 'observedTrendDirection == rawSignal' "$SERVICE"
+          grep -Fq 'val sameShockDirection = sameOpticalDirection' "$SERVICE"
           grep -q 'candleGraphic?.updateObserved' "$SERVICE"
           grep -q 'trendMiniView?.showData' "$SERVICE"
           grep -q 'trendContradicted = trendFresh && candleFresh' "$SERVICE"
