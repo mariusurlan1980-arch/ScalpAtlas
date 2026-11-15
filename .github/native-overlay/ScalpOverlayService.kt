@@ -6733,7 +6733,14 @@ class ScalpOverlayService : Service() {
             .getBoolean("attempted", false) ||
           getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
             .getBoolean("attempted", false)
-        val readyForDemo = !fxRotationNavigating && brokerConnected &&
+        // 516: an independently visible active QT DEMO trade must stop
+        // NEW automatic orders as well as pausing FX rotation. A badge
+        // is only a conservative blocking hint, never settlement evidence.
+        val brokerOpenTradeHint516 =
+          TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
+            .startsWith("QT DEMO • INDICATOR ")
+        val readyForDemo = !fxRotationNavigating &&
+          !fxRotationTradePaused516 && !brokerOpenTradeHint516 && brokerConnected &&
           !autoDemoSessionConsumed && !previousDemoUnresolved453 &&
           tradePositionGate.state() == TradePositionGate.State.READY &&
           TouchTestService.ready() && pairReady(now) &&
