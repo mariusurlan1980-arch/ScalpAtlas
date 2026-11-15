@@ -6304,11 +6304,14 @@ class ScalpOverlayService : Service() {
       "BUY • AȘTEPT REVENIRE TIMPURIE" else "SELL • AȘTEPT REVENIRE TIMPURIE"
     val sameCandleColors = rawDirectionValid && sameOpticalDirection &&
       result.optString("previousCandleDirection") == rawSignal
-    val confirmedShock = sameCandleColors && rawStrategy == "SHOCK" && !wickRejected && quality >= 55 &&
+    val oppositeWickRatio = result.optDouble("oppositeWickToPreviousBodyRatio", 0.0)
+    val confirmedShock = sameCandleColors && rawStrategy == "SHOCK" && timeframe == "M5" &&
+      oppositeWickRatio >= 0.50 &&
+      !wickRejected && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
       shockFrameFresh && shockBodyPercent > SHOCK_MIN_DEPTH &&
-      shockReboundPercent >= SHOCK_MIN_RECOVERY &&
-      (wickMeasured >= 1 || result.optBoolean("sameColorContinuation", false)) &&
+      shockReboundPercent >= 40 &&
+      wickMeasured >= 1 &&
       shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
       sameShockDirection && result.optString("shockDirection") == rawSignal
     val confirmedSignal = if (confirmedShock) rawSignal else "NONE"
@@ -6986,16 +6989,6 @@ class ScalpOverlayService : Service() {
                   val attemptedWall512 = getSharedPreferences(
                     autoShockAttemptPrefs, Context.MODE_PRIVATE
                   ).getLong("attemptedWallAt454", -1L)
-                  // 516: launch the user-selected VARIANT 1 burst when
-                  // Android has actually dispatched the DEMO trade gesture.
-                  // The animation is a celebration of SUBMISSION only:
-                  // Android dispatch is NOT broker acceptance, WIN or LOSS.
-                  // The unique attempt key prevents a second effect if the
-                  // broker later exposes a matching OPEN receipt or badge.
-                  if (attemptedWall512 > 0L)
-                    showMoneyBurstOnVerifiedDemoVisualEvent512(
-                      "attempt:" + attemptedWall512
-                    )
                   verifyNewVisualDemoBadge512(tradePair429, attemptedWall512, badgeBefore512)
                 }
                 if (result.startsWith("PRECHECK_NO_GESTURE:")) {

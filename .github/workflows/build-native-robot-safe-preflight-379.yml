@@ -627,7 +627,7 @@ jobs:
           grep -Fq 'DEMO_TEST_EXPIRY_MS_465 + 45_000L' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '🤖 ARMAT • TRADE ÎN CURS • ROTAȚIE PAUZĂ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'showMoneyBurstOnVerifiedDemoVisualEvent512(' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '"attempt:" + attemptedWall512' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'verifyNewVisualDemoBadge512(tradePair429, attemptedWall512, badgeBefore512)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'for (i in 0 until 28)' .github/native-overlay/ScalpOverlayService.kt
           # 514: an old trade or bottom-nav badge may block trading,
           # but never schedule the same chart forever instead of FX rotation.

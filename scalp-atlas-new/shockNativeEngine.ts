@@ -97,7 +97,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     if(longestBodyRun<5)return null;
     // Read the adjacent group so an unreadable candle cannot be skipped.
     var candleIndex=groups.indexOf(candle);
-    var adjacent=groups[candleIndex-1],previousCandleDirection='NONE';
+    var adjacent=groups[candleIndex-1],previousCandleDirection='NONE',previousBodyHeight=0;
     if(candleIndex===groups.length-1 && viable.indexOf(adjacent)!==-1 &&
        candle.start-adjacent.end<=width*2){
       var previousWidth=adjacent.end-adjacent.start+1;
@@ -108,10 +108,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           if(isColor(p,(py*w+px)*4)===adjacent.dir)previousFill++;
         }
         previousBodyRun=previousFill>=Math.ceil(previousWidth*.8)?previousBodyRun+1:0;
-        if(previousBodyRun>=5){
-          previousCandleDirection=adjacent.dir;
-          break;
-        }
+        previousBodyHeight=Math.max(previousBodyHeight,previousBodyRun-1);
+      }
+      if(previousBodyHeight>=4){
+        previousCandleDirection=adjacent.dir;
       }
     }
     var top=bodyRows[0],bottom=bodyRows[bodyRows.length-1];
@@ -176,7 +176,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         });
       }
     }
-    return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,previousCandleDirection:previousCandleDirection,
+    return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,previousCandleDirection:previousCandleDirection,previousBodyHeight:previousBodyHeight,
       width:width,bodyHeight:bottom-top,wickPixels:wickPixels,wickPercent:wickPercent,
       topWickPixels:upperWickPixels,bottomWickPixels:lowerWickPixels,
       connectedLowerWickPixels:connectedLowerWickPixels,
@@ -459,6 +459,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             wickEntry:wickEntry,
             sameColorContinuation:bodyContinuation,
             previousCandleDirection:candle.previousCandleDirection,
+            oppositeWickToPreviousBodyRatio:candle.previousBodyHeight>0?
+              (candle.dir==='BUY'?candle.connectedLowerWickPixels:candle.connectedUpperWickPixels)/
+                candle.previousBodyHeight:0,
             shockRetraced:confirmed,shockRecovered:confirmed,
             // All percentages below refer to the observed forming candle.
             shockRetracementPercent:confirmed?confirmedDepth:displayedDepth,
