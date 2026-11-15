@@ -151,6 +151,7 @@ class ScalpOverlayService : Service() {
   // The next independent SHOCK can be considered only AFTER the preceding
   // order has an exact authenticated CLOSED receipt and two ZERO-OPEN reads.
   // The session stays user-approved; QT Real and duplicate orders stay blocked.
+  private var fxRotationStatusButton513: TextView? = null
   private var fxRotationNavigating = false
   // 513: the user's LIVE authorization keeps the ROBOT ARMED in scan mode
   // through FX rotation, pending receipts and temporary accessibility gaps.
@@ -3515,6 +3516,7 @@ class ScalpOverlayService : Service() {
     // Verify account and exactly 1 USD without starting a transaction.
     // The current fail-closed error is shown verbatim to diagnose WebView nodes.
     val fxButton = localButton("ROTAȚIE • 30 S", Color.rgb(71, 88, 118))
+    fxRotationStatusButton513 = fxButton
     // 502: the robot is continuous; the large draggable status bar must NOT
     // silently turn FX rotation off on an accidental tap or tiny drag.
     fxButton.contentDescription = "Status rotație continuă; trage panoul sau atinge pentru a relua rotația QT Demo"
@@ -6981,7 +6983,7 @@ class ScalpOverlayService : Service() {
           "🤖 ARMAT • ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE"
         fxRotationNavigating ->
           "🤖 ARMAT • ROTAȚIE • " +
-            (fxButton.text?.toString() ?: "AȘTEPT GRAFICUL").take(43)
+            (fxRotationStatusButton513?.text?.toString() ?: "AȘTEPT GRAFICUL").take(43)
         !TouchTestService.ready() ->
           "🤖 ARMAT • AȘTEPT ACCESIBILITATEA"
         autoDemoArmed && autoDemoSessionRequested ->
@@ -7191,6 +7193,7 @@ class ScalpOverlayService : Service() {
     autoDemoExpiry = 0L
     autoDemoButton = null
     autoDemoRow = null
+    fxRotationStatusButton513 = null
     martingaleStatusText = null
     onePairEvalAutoPending = false
     overlayWindowParams = null
