@@ -19,8 +19,21 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: "platforms;android-35 build-tools;35.0.0"
-      - run: gradle --no-daemon :app:assembleDebug
+      - run: gradle --no-daemon -Pandroid.injected.testOnly=false :app:assembleDebug
       - run: cp app/build/outputs/apk/debug/app-debug.apk ScalpAtlas-Demo-LIVE-Test.apk
+      - name: Verify the installable APK
+        run: |
+          sdk_tools="$ANDROID_HOME/build-tools/35.0.0"
+          apk=ScalpAtlas-Demo-LIVE-Test.apk
+          unzip -tq "$apk"
+          "$sdk_tools/apksigner" verify --verbose "$apk"
+          "$sdk_tools/aapt" dump badging "$apk" | tee apk-badging.txt
+          grep -Fq "package: name='com.scalpatlas.fresh'" apk-badging.txt
+          grep -Fq "launchable-activity: name='com.scalpatlas.fresh.MainActivity'" apk-badging.txt
+          "$sdk_tools/aapt" dump xmltree "$apk" AndroidManifest.xml > apk-manifest.txt
+          if grep -E 'android:testOnly.*(0xffffffff|true)' apk-manifest.txt; then
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: ScalpAtlas-Demo-LIVE-Test
