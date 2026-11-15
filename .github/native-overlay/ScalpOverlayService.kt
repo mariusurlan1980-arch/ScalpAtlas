@@ -3650,7 +3650,8 @@ class ScalpOverlayService : Service() {
       }
 
       fun stopOnReal517(realVisible: Boolean = false): Boolean {
-        if (!realAccountSafetyStop517 && !realVisible && !TouchTestService.realFxAccountVisible())
+        if (!realAccountSafetyStop517 && !realVisible &&
+            !TouchTestService.realFxAccountInForeground())
           return false
         realAccountSafetyStop517 = true
         autoDemoArmed = false
@@ -3726,7 +3727,7 @@ class ScalpOverlayService : Service() {
           after(3_000L) { seekChart() }
           return
         }
-        realAccount = TouchTestService.realFxAccountVisible()
+        realAccount = TouchTestService.realFxAccountInForeground()
         if (realAccount && stopOnReal517(realVisible = true)) return
         val pair = TouchTestService.readVisibleFxPair(false)
         val listOpen = TouchTestService.fxListVisible(false)

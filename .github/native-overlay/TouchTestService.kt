@@ -334,7 +334,8 @@ class TouchTestService : AccessibilityService() {
       else demoHistoryNavigationStatus
 
     private fun activeDemoHistoryNodes(
-      cachedDemoVerifiedOnChart: Boolean, realAccount: Boolean = false
+      cachedDemoVerifiedOnChart: Boolean, realAccount: Boolean = false,
+      foregroundOnly: Boolean = false
     ): Triple<TouchTestService, AccessibilityNodeInfo, List<Pair<AccessibilityNodeInfo, Rect>>>? {
       val svc = connected ?: return null
       // 443: Collect READ-ONLY broker labels from the same visible,
@@ -342,7 +343,8 @@ class TouchTestService : AccessibilityService() {
       // Every navigation/gesture helper independently requires the active
       // foreground broker root before any ACTION_CLICK/dispatchGesture.
       // Never treat this fallback as authorization for BUY/SELL.
-      val root = readOnlyBrokerRoot(svc) ?: return null
+      val root = (if (foregroundOnly) svc.rootInActiveWindow else readOnlyBrokerRoot(svc))
+        ?: return null
       val pkg = root.packageName?.toString().orEmpty()
       if (!BrokerAdapterRegistry.hasDemoExecutor(pkg)) return null
       val display = android.util.DisplayMetrics()
@@ -412,6 +414,9 @@ class TouchTestService : AccessibilityService() {
     }
 
     fun realFxAccountVisible(): Boolean = activeDemoHistoryNodes(false, true) != null
+
+    fun realFxAccountInForeground(): Boolean =
+      activeDemoHistoryNodes(false, realAccount = true, foregroundOnly = true) != null
 
     fun readFxChartPayout(pair: String, realAccount: Boolean): Int? {
       val svc = connected ?: return null
