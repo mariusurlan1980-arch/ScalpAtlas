@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 523 QT Demo Account Recheck G24
+name: Build Scalp Atlas 524 QT Demo Verified Selector G24
 
 on:
   push:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.71'
+          expo['version']='3.2.72'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=523
+          expo['android']['versionCode']=524
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -238,8 +238,10 @@ jobs:
           assert 'overlayBounds.contains(x.toInt(), y.toInt())' in fallback
           assert 'readVisibleFxPair(false) != pair || realFxAccountVisible()' in fallback
           assert 'svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))' in fallback
-          # 517: physical selector touch near the account is intentionally NOT called.
-          assert 'TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())' not in service
+          # 524: call only the verified Demo-only selector fallback once per attempt.
+          assert 'TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())' in service
+          assert 'if (!verifiedTapTried && !realAccount &&' in service
+          assert 'awaitList(pair, 6, true, verifiedTapTried = true)' in service
           assert 'SELECTOR NECONFIRMAT • FĂRĂ TAP LÂNGĂ CONT' in service
           assert 'if (realAccount)' in t
           assert 'val freshRow = visibleDemoFxRows(currentList.third)' in t
@@ -608,7 +610,7 @@ jobs:
           grep -Fq 'awaitList(pair, 0, physicalOnly)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'alternateClickable519 = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SELECTOR NEDISPONIBIL • SCANEZ' .github/native-overlay/ScalpOverlayService.kt
-          ! grep -Fq 'TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val discoverablePairs518 = listOf(' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val moreUnsearched518 = discoverablePairs518.any {' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'discoverablePairs518.asSequence()' .github/native-overlay/ScalpOverlayService.kt
@@ -2358,12 +2360,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-523-QT-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-524-QT-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-523-QT-DEMO-G24
-          path: ScalpAtlas-523-QT-DEMO-G24.apk
+          name: ScalpAtlas-524-QT-DEMO-G24
+          path: ScalpAtlas-524-QT-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2373,12 +2375,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-523-QT-DEMO-G24.apk"
+          FILE="ScalpAtlas-524-QT-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-account-recheck523-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-verified-selector524-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 523 - REVERIFICARE CONT QT DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "523: Pune rotatia si comenzile in pauza la prima citire QT Real; reia numai dupa reconfirmarea QT Demo sau opreste sesiunea daca QT Real se confirma. 522: Citeste perechea si payout-ul din lista Valute si cand Android nu expune titlul Venit. 521: Pastreaza cererea de armare la repornirea LIVE in timp ce verifica antetul QT Demo. 520: Reincearca selectorul si daca prima apasare este respinsa. Reincearca efectul de bancnote daca perechea nu este citita imediat. 519: Selector blocat: o a doua incercare ACTION_CLICK pe alt nod ingust verificat al aceleiasi perechi, fara gest fizic langa cont. Daca nici asa nu se deschide lista, analiza poate continua pe perechea QT Demo confirmata daca este pereche eligibila cu payout >=92%; pe pereche exotica ordinul ramane blocat. Cont REAL opreste tot, asa cum s-a stabilit in 517. Test Motorola G24 obligatoriu, functionarea nu este garantata. 518: Rotatie extinsa: cauta si alte perechi accesibile pe pagina Valute, inclusiv OTC, dar selecteaza si analizeaza numai cand sunt verificate in lista si au payout minimum 92%. Combinatii propuse nu inseamna garantat disponibile. Fara comenzi noi pe QT Real, nu atinge selectorul contului si pastreaza pauza de rotatie pe trade activ. Fara repetarea mecanica a 4 perechi daca existenta altora poate fi verificata. 517: PERECHI LICHIDE DOAR DIN USD EUR GBP JPY CHF CAD AUD NZD, in lista doar la payout proaspat >=92%. Fara exotic JOD/CNY. Fallback-ul fizic din zona selectorului de instrument este DEZACTIVAT pentru a preveni atingerea contului QT Real. La detectie QT REAL scanarea navigarii si lansarea de ordine se opresc pentru intreaga sesiune; NU se apasa selectorul de cont si NU se revine automat la QT Demo. Revino manual in Demo si reporneste LIVE. Test fizic obligatoriu pe Motorola G24, nu este o garantie ca browserul nu va modifica contul. 516: La un trade QT DEMO in desfasurare (indicator de tranzactie vizibil sau gest automat recent), robotul ramane ARMAT pentru scanare, dar opreste schimbarea perechii pana cand fereastra de trade se incheie. Nu presupune WIN/LOSS dupa cronometru: blocajul de ordin ramane pana la broker receipt. Bancnote varianta 1 mai mari si aurii ies in exteriorul chenarului la gestul DEMO transmis de Android sau la indicator vizual nou citit 2/2; animatia este doar decorativa, nu dovada ordinului sau a castigului. 515: Reparatie deschidere lista perechi QT Demo: eticheta cu steaguri este permisa doar daca este exact perechea curenta; dupa ACTION_CLICK nereusit se aplica o singura atingere pe dreptunghiul verificat al selectorului, sub antetul contului, apoi se verifica lista Valute. Niciun tap orb sau pe zona de cont Real. Nu schimba regulile de tranzactionare, armarea, SOC ori progresia. 514: Rotatia de perechi se separa de blocarea comenzilor noi si de indicatorul istoric Tranzactii; la 30 secunde revine la selector, fara sa presupuna ca un numar in badge inseamna pozitie activa. Selectarea respecta exclusiv QT DEMO si ramane blocata la lipsa dovezilor de identitate. Nicio relaxare a guardurilor BUY/SELL, id ordin, miza, payout sau sesiune LIVE. Robotul ramane ARMAT pentru scanare. 513: Robot ARMAT permanent pe durata sesiunii LIVE, inclusiv la rotatia perechilor, verificarea graficului si a ordinelor precedente. Armarea vizuala NU ocoleste blocarile de executie pe QT Real, ordine neverificate sau cadru expirat.  Explozie decorativa de bancnote in exterior la un nou indicator QT Demo verificat de doua ori dupa gest, ori ID OPEN confirmat in istoric. Indicatorul vizual NU este dovada de ordin acceptat / WIN si nu participa la apasari, analiza sau recuperare.  Afisaj permanent procent SOC din fiecare cadru LIVE verificat, 0-100%, fara mentinerea valorii vechi dupa bip si fara simularea datelor cand selectorul este deschis. Pastreaza protectiile QT Demo. Remediere blocaj selector FX exclusiv QT Demo: permite etichete ale aceleiasi perechi cu dreptunghiuri suprapuse si butoane latime pana la 48% din ecran, mentinand limita dreapta 53% pentru a exclude contul. Fara tap orb in antet; atingerea de rezerva este doar in dreptunghiul instrumentului QT Demo verificat. In lista Valute, randul este reverificat imediat inainte de un gest, cu margine sub antetul listei. Pastreaza 30 sec/pereche, payout 92%, SOC M5/5 min si blocarea tranzactiilor pe Real. Necesita test fizic Motorola G24; nu se garanteaza functionarea pana la verificare. Commit $GITHUB_SHA."
+            --title "SCALP ATLAS 524 - SELECTOR VERIFICAT QT DEMO G24 • ${GITHUB_SHA:0:12}" \
+            --notes "524: Reintroduce o singura atingere a etichetei perechii confirmate, dupa incercarile de accesibilitate, sub antetul QT Demo. 523: Pune rotatia si comenzile in pauza la prima citire QT Real; reia numai dupa reconfirmarea QT Demo sau opreste sesiunea daca QT Real se confirma. 522: Citeste perechea si payout-ul din lista Valute si cand Android nu expune titlul Venit. 521: Pastreaza cererea de armare la repornirea LIVE in timp ce verifica antetul QT Demo. 520: Reincearca selectorul si daca prima apasare este respinsa. Reincearca efectul de bancnote daca perechea nu este citita imediat. 519: Selector blocat: o a doua incercare ACTION_CLICK pe alt nod ingust verificat al aceleiasi perechi, fara gest fizic langa cont. Daca nici asa nu se deschide lista, analiza poate continua pe perechea QT Demo confirmata daca este pereche eligibila cu payout >=92%; pe pereche exotica ordinul ramane blocat. Cont REAL opreste tot, asa cum s-a stabilit in 517. Test Motorola G24 obligatoriu, functionarea nu este garantata. 518: Rotatie extinsa: cauta si alte perechi accesibile pe pagina Valute, inclusiv OTC, dar selecteaza si analizeaza numai cand sunt verificate in lista si au payout minimum 92%. Combinatii propuse nu inseamna garantat disponibile. Fara comenzi noi pe QT Real, nu atinge selectorul contului si pastreaza pauza de rotatie pe trade activ. Fara repetarea mecanica a 4 perechi daca existenta altora poate fi verificata. 517: PERECHI LICHIDE DOAR DIN USD EUR GBP JPY CHF CAD AUD NZD, in lista doar la payout proaspat >=92%. Fara exotic JOD/CNY. Fallback-ul fizic din zona selectorului de instrument este DEZACTIVAT pentru a preveni atingerea contului QT Real. La detectie QT REAL scanarea navigarii si lansarea de ordine se opresc pentru intreaga sesiune; NU se apasa selectorul de cont si NU se revine automat la QT Demo. Revino manual in Demo si reporneste LIVE. Test fizic obligatoriu pe Motorola G24, nu este o garantie ca browserul nu va modifica contul. 516: La un trade QT DEMO in desfasurare (indicator de tranzactie vizibil sau gest automat recent), robotul ramane ARMAT pentru scanare, dar opreste schimbarea perechii pana cand fereastra de trade se incheie. Nu presupune WIN/LOSS dupa cronometru: blocajul de ordin ramane pana la broker receipt. Bancnote varianta 1 mai mari si aurii ies in exteriorul chenarului la gestul DEMO transmis de Android sau la indicator vizual nou citit 2/2; animatia este doar decorativa, nu dovada ordinului sau a castigului. 515: Reparatie deschidere lista perechi QT Demo: eticheta cu steaguri este permisa doar daca este exact perechea curenta; dupa ACTION_CLICK nereusit se aplica o singura atingere pe dreptunghiul verificat al selectorului, sub antetul contului, apoi se verifica lista Valute. Niciun tap orb sau pe zona de cont Real. Nu schimba regulile de tranzactionare, armarea, SOC ori progresia. 514: Rotatia de perechi se separa de blocarea comenzilor noi si de indicatorul istoric Tranzactii; la 30 secunde revine la selector, fara sa presupuna ca un numar in badge inseamna pozitie activa. Selectarea respecta exclusiv QT DEMO si ramane blocata la lipsa dovezilor de identitate. Nicio relaxare a guardurilor BUY/SELL, id ordin, miza, payout sau sesiune LIVE. Robotul ramane ARMAT pentru scanare. 513: Robot ARMAT permanent pe durata sesiunii LIVE, inclusiv la rotatia perechilor, verificarea graficului si a ordinelor precedente. Armarea vizuala NU ocoleste blocarile de executie pe QT Real, ordine neverificate sau cadru expirat.  Explozie decorativa de bancnote in exterior la un nou indicator QT Demo verificat de doua ori dupa gest, ori ID OPEN confirmat in istoric. Indicatorul vizual NU este dovada de ordin acceptat / WIN si nu participa la apasari, analiza sau recuperare.  Afisaj permanent procent SOC din fiecare cadru LIVE verificat, 0-100%, fara mentinerea valorii vechi dupa bip si fara simularea datelor cand selectorul este deschis. Pastreaza protectiile QT Demo. Remediere blocaj selector FX exclusiv QT Demo: permite etichete ale aceleiasi perechi cu dreptunghiuri suprapuse si butoane latime pana la 48% din ecran, mentinand limita dreapta 53% pentru a exclude contul. Fara tap orb in antet; atingerea de rezerva este doar in dreptunghiul instrumentului QT Demo verificat. In lista Valute, randul este reverificat imediat inainte de un gest, cu margine sub antetul listei. Pastreaza 30 sec/pereche, payout 92%, SOC M5/5 min si blocarea tranzactiilor pe Real. Necesita test fizic Motorola G24; nu se garanteaza functionarea pana la verificare. Commit $GITHUB_SHA."
