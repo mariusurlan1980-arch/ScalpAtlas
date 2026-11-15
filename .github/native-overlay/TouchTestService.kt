@@ -456,7 +456,13 @@ class TouchTestService : AccessibilityService() {
           rowTexts(node).any {
             Regex("""(?i)^(?:Venit|Payout)\s*[⌄▾▼▲△▽]?$""").matches(it)
           }
-      }?.second ?: return emptyList()
+      }?.second
+      // Some WebViews omit the accessible column title but expose the quotes.
+      // Use the chart width only to locate the column, never to infer a payout.
+      val screenWidth = connected?.resources?.displayMetrics?.widthPixels ?: return emptyList()
+      val payoutColumnX = payoutHeader?.centerX() ?: (screenWidth * .68f).toInt()
+      val payoutColumnLeft = payoutHeader?.let { it.left - it.width() / 2 }
+        ?: payoutColumnX
       val listBottom = labels.filter { (node, rect) ->
         rect.top > currencyHeader.bottom && rowTexts(node).any {
           it.equals("Timp", true) || it.equals("Time", true) ||
@@ -467,7 +473,7 @@ class TouchTestService : AccessibilityService() {
         rect.centerY() in currencyHeader.bottom until listBottom
       }
       val quotes = listLabels.mapNotNull { (node, bounds) ->
-        if (bounds.centerX() >= payoutHeader.centerX()) return@mapNotNull null
+        if (bounds.centerX() >= payoutColumnX) return@mapNotNull null
         val values = listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
           .map(String::trim).filter { it.length in 1..75 }.distinct()
         val pairs = values.flatMap { value ->
@@ -485,7 +491,7 @@ class TouchTestService : AccessibilityService() {
           kotlin.math.abs(rect.centerY() - bounds.centerY()) <=
             maxOf(bounds.height(), rect.height()) / 2 &&
             rect.centerX() > bounds.centerX() &&
-            rect.centerX() >= payoutHeader.left - payoutHeader.width() / 2
+            rect.centerX() >= payoutColumnLeft
         }.flatMap { (payoutNode, _) ->
           rowTexts(payoutNode).filter { fxPayoutLabel.matches(it) }
         }
