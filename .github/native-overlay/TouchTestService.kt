@@ -600,7 +600,7 @@ class TouchTestService : AccessibilityService() {
       val demoHeaders = fresh.third.filter { (node, rect) ->
         rect.centerY() < height * .17f &&
           listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
-            Regex("""(?i)\\bQT\\s*Demo\\b""").containsMatchIn(it)
+            Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it)
           }
       }
       val accountBottom = demoHeaders.map { it.second.bottom }.filter {
