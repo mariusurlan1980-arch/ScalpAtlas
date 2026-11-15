@@ -583,6 +583,7 @@ class ScalpOverlayService : Service() {
           // This is session-local; no user bell preference is overwritten.
           bellEnabled = true
           startProjection(resultCode, data)
+          retryDemoRotationAfterLiveRestart()
           startBrokerAccountMonitor()
         } else {
           updateOverlay("AȘTEAPTĂ", "LIVE • Captură indisponibilă", "Deschide din nou modul SUPRAPUNERE")
@@ -1335,6 +1336,28 @@ class ScalpOverlayService : Service() {
     autoDemoEntryCycleStartedAt = System.currentTimeMillis()
     autoDemoLastPreflightReason = "QT DEMO • MIZĂ DIN BROKER • REZULTAT PRECEDENT NECUNOSCUT"
     return "476 • DEMO REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
+  }
+
+  private fun retryDemoRotationAfterLiveRestart() {
+    val projection = mediaProjection ?: return
+    if (!realAccountSafetyStop517) return
+
+    mainHandler.post(object : Runnable {
+      private var remainingChecks = 20
+
+      override fun run() {
+        if (shuttingDown || mediaProjection !== projection || !realAccountSafetyStop517) return
+        // The app or Android's capture dialog can still own foreground focus
+        // when LIVE is started. Give the user time to return to the demo chart.
+        if (!TouchTestService.demoFxAccountInForeground()) {
+          if (--remainingChecks > 0) mainHandler.postDelayed(this, 1_000L)
+          return
+        }
+        realAccountSafetyStop517 = false
+        try { fxRotation.start() }
+        catch (_: Exception) { fxRotation.stop("ROTAȚIE • VERIFICĂ ACCESIBILITATE") }
+      }
+    })
   }
 
   private fun startBrokerAccountMonitor() {
@@ -5754,11 +5777,6 @@ class ScalpOverlayService : Service() {
 
     val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
-    // A fresh LIVE session may clear a prior account stop only on a verified demo chart.
-    if (mediaProjection != null && realAccountSafetyStop517 &&
-        TouchTestService.demoFxAccountInForeground()) {
-      realAccountSafetyStop517 = false
-    }
     mediaProjection?.registerCallback(object : MediaProjection.Callback() {
       override fun onStop() {
         // Android can revoke an ongoing screen capture when it is locked,
