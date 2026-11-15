@@ -406,18 +406,12 @@ class TouchTestService : AccessibilityService() {
         setOf("XAU", "XAG", "XPD", "XPT", "XTS", "XXX")
     }
 
-    // 518: wider liquid FX universe. Avoid obscure pairs such as JOD/CNY,
-    // but do not accidentally restrict the broker to four accessible pairs.
-    // Visibility and >=92% payout are separately rechecked for EACH row/chart.
-    private val preferredCodes517 =
-      setOf("USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD",
-        "PLN", "SEK", "NOK", "DKK", "SGD", "HKD", "MXN", "ZAR", "CNY")
-
+    // Accept recognized fiat pairs. Verify availability and payout on each broker row.
     fun isPreferredFxPair517(pair: String): Boolean {
       val matched = fxPairLabel.matchEntire(pair.trim()) ?: return false
       val base = matched.groupValues[1].uppercase(java.util.Locale.ROOT)
       val quote = matched.groupValues[2].uppercase(java.util.Locale.ROOT)
-      return base != quote && base in preferredCodes517 && quote in preferredCodes517
+      return base != quote && base in fiatCodes && quote in fiatCodes
     }
 
     fun realFxAccountVisible(): Boolean = activeDemoHistoryNodes(false, true) != null
