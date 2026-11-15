@@ -152,7 +152,7 @@ jobs:
           # 495: automatic demo-only rotation must never stop on a transient missing chart.
           grep -Fq 'fun seekChart()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROTAȚIE • AȘTEPT GRAFICUL QT DEMO' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'ROTAȚIE • QT REAL BLOCAT • NUMAI DEMO' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'QT REAL DETECTAT • ROBOT OPRIT • REVENIRE MANUALĂ LA DEMO' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (tradeBusy())' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotation.start()' .github/native-overlay/ScalpOverlayService.kt
           # 496: precise preflight diagnostics and UI-only account header fix.
