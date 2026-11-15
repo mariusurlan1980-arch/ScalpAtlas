@@ -561,7 +561,12 @@ jobs:
           grep -Fq 'if (detected && opticalQuality > 0' .github/native-overlay/ScalpOverlayService.kt
           # 512: money effect must never trigger on a BIP or speculative tap.
           grep -Fq 'private class TradeMoneyBurst512' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'showMoneyBurstOnConfirmedDemoOpen512(openReceipt429.positionId)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'showMoneyBurstOnVerifiedDemoVisualEvent512(' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fun verifyNewVisualDemoBadge512(' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'consecutive >= 2' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'currentBadge > beforeCount' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'newPair == expectedPair' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'verifyNewVisualDemoBadge512(tradePair429, attemptedWall512, badgeBefore512)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'receiptIndependentlyVerified = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'alpha = .65f' .github/native-overlay/ScalpOverlayService.kt
@@ -2303,4 +2308,4 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "SCALP ATLAS 512 - BANCNOTE EXTERIOR QT DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "512: Explozie decorativa de bancnote care ies din chenar, numai dupa ID OPEN confirmat din QT Demo. Nu indica WIN si nu participa la apasari, analiza sau recuperare.  Afisaj permanent procent SOC din fiecare cadru LIVE verificat, 0-100%, fara mentinerea valorii vechi dupa bip si fara simularea datelor cand selectorul este deschis. Pastreaza protectiile QT Demo. Remediere blocaj selector FX exclusiv QT Demo: permite etichete ale aceleiasi perechi cu dreptunghiuri suprapuse si butoane latime pana la 48% din ecran, mentinand limita dreapta 53% pentru a exclude contul. Fara tap fizic in antet. In lista Valute, randul este reverificat imediat inainte de un gest, cu margine sub antetul listei. Pastreaza 30 sec/pereche, payout 92%, SOC M5/5 min si blocarea tranzactiilor pe Real. Necesita test fizic Motorola G24; nu se garanteaza functionarea pana la verificare. Commit $GITHUB_SHA."
+            --notes "512: Explozie decorativa de bancnote in exterior la un nou indicator QT Demo verificat de doua ori dupa gest, ori ID OPEN confirmat in istoric. Indicatorul vizual NU este dovada de ordin acceptat / WIN si nu participa la apasari, analiza sau recuperare.  Afisaj permanent procent SOC din fiecare cadru LIVE verificat, 0-100%, fara mentinerea valorii vechi dupa bip si fara simularea datelor cand selectorul este deschis. Pastreaza protectiile QT Demo. Remediere blocaj selector FX exclusiv QT Demo: permite etichete ale aceleiasi perechi cu dreptunghiuri suprapuse si butoane latime pana la 48% din ecran, mentinand limita dreapta 53% pentru a exclude contul. Fara tap fizic in antet. In lista Valute, randul este reverificat imediat inainte de un gest, cu margine sub antetul listei. Pastreaza 30 sec/pereche, payout 92%, SOC M5/5 min si blocarea tranzactiilor pe Real. Necesita test fizic Motorola G24; nu se garanteaza functionarea pana la verificare. Commit $GITHUB_SHA."
