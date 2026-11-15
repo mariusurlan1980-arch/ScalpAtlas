@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 512 Safe DEMO FX Rotation G24
+name: Build Scalp Atlas 513 Safe DEMO FX Rotation G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, feature/scalpatlas-money-burst512]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.68'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=512
+          expo['android']['versionCode']=513
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -229,7 +229,7 @@ jobs:
           assert 'val freshRow = visibleDemoFxRows(currentList.third)' in t
           assert 'y < (metrics.heightPixels * .28f).toInt()' in t
           assert r'Regex("""(?i)\bQT\s*Real\b""")' in block
-          print('512 PASS: DEMO only, safe FX pair clicks and fresh verified FX list rows')
+          print('513 PASS: DEMO only, safe FX pair clicks and fresh verified FX list rows')
           PY508
           # 502: main drag/status bar may RESTART but may not STOP the scan.
           grep -Fq 'if (!fxRotation.running) {' .github/native-overlay/ScalpOverlayService.kt
@@ -554,25 +554,34 @@ jobs:
           grep -Fq 'ISTORIC ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'LATERAL • FĂRĂ SEMNAL' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val shockObserved = !fxRotationNavigating && brokerConnected && opticalFresh &&' .github/native-overlay/ScalpOverlayService.kt
-          # 512: LIVE values are sourced from fresh observed candles, not
+          # 513: LIVE values are sourced from fresh observed candles, not
           # the old five-minute signal lock or an unverified selector.
           grep -Fq 'observedShockAt > 0L && now - observedShockAt in 0L..3000L' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (shockObserved) observedShockPercent else 0' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (detected && opticalQuality > 0' .github/native-overlay/ScalpOverlayService.kt
-          # 512: money effect must never trigger on a BIP or speculative tap.
-          grep -Fq 'private class TradeMoneyBurst512' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'showMoneyBurstOnVerifiedDemoVisualEvent512(' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'fun verifyNewVisualDemoBadge512(' .github/native-overlay/ScalpOverlayService.kt
+          # 513: money effect must never trigger on a BIP or speculative tap.
+          grep -Fq 'private class TradeMoneyBurst513' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'showMoneyBurstOnVerifiedDemoVisualEvent513(' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fun verifyNewVisualDemoBadge513(' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'consecutive >= 2' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'currentBadge > beforeCount' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'newPair == expectedPair' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'verifyNewVisualDemoBadge512(tradePair429, attemptedWall512, badgeBefore512)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'verifyNewVisualDemoBadge513(tradePair429, attemptedWall513, badgeBefore513)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'receiptIndependentlyVerified = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'alpha = .65f' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'duration = 1850L' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'clearMoneyBurst512()' .github/native-overlay/ScalpOverlayService.kt
-          ! grep -Fq 'showMoneyBurstOnConfirmedDemoOpen512(result)' .github/native-overlay/ScalpOverlayService.kt
+          # 513: persistent ARM is independent of STRICT per-pair order approval.
+          grep -Fq 'private var robotArmedContinuously513 = false' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'robotArmedContinuously513 = true' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fxRotationStatusButton513 = fxButton' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val persistentRobotStatus513 =' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '🤖 ARMAT • ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '🤖 ARMAT • REAL BLOCAT • FĂRĂ ORDINE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'tradePositionGate.state() == TradePositionGate.State.READY' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if (persistentRobotStatus513 != null)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'clearMoneyBurst513()' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -Fq 'showMoneyBurstOnConfirmedDemoOpen513(result)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'qualityText?.text = "—%"' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'lastConfirmedShockPercent > SHOCK_MIN_DEPTH -> lastConfirmedShockPercent' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationNavigating -> "ȘOC " + shockDisplay + " • ROTAȚIE"' .github/native-overlay/ScalpOverlayService.kt
@@ -582,7 +591,7 @@ jobs:
           grep -Fq 'mediaProjection != null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val liveCaptureActive = mediaProjection != null' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (!liveCaptureActive)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'autoDemoSessionRequested -> "🤖 DEMO LIVE • VERIFICARE AUTOMATĂ"' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'robotArmedContinuously513 -> "🤖 ARMAT • SCANEZ / VERIFIC PERECHEA"' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'ROBOT OPRIT • LIVE RĂMÂNE ACTIV' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'close.visibility = View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'demoClickTestPending = false' .github/native-overlay/ScalpOverlayService.kt
@@ -629,7 +638,7 @@ jobs:
           grep -Fq 'touchProbeToggle.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'testBipControl.visibility = View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '🤖 PORNEȘTE • ON' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '🤖 DEMO LIVE • VERIFICARE AUTOMATĂ' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '🤖 ARMAT • SCANEZ / VERIFIC PERECHEA' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoArmed = false' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoSessionEndAt = Long.MAX_VALUE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'pressAutoOneDollarDemoOrderOnce' .github/native-overlay/ScalpOverlayService.kt
@@ -2285,27 +2294,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-512-MONEY-BURST-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-513-CONTINUOUS-ARM-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-512-MONEY-BURST-DEMO-G24
-          path: ScalpAtlas-512-MONEY-BURST-DEMO-G24.apk
+          name: ScalpAtlas-513-CONTINUOUS-ARM-DEMO-G24
+          path: ScalpAtlas-513-CONTINUOUS-ARM-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/feature/scalpatlas-money-burst512'
+        if: github.ref == 'refs/heads/fix/scalpatlas-continuous-arm513'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-512-MONEY-BURST-DEMO-G24.apk"
+          FILE="ScalpAtlas-513-CONTINUOUS-ARM-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-demo-money-burst512-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-continuous-arm513-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "SCALP ATLAS 512 - BANCNOTE EXTERIOR QT DEMO G24 • ${GITHUB_SHA:0:12}" \
-            --notes "512: Explozie decorativa de bancnote in exterior la un nou indicator QT Demo verificat de doua ori dupa gest, ori ID OPEN confirmat in istoric. Indicatorul vizual NU este dovada de ordin acceptat / WIN si nu participa la apasari, analiza sau recuperare.  Afisaj permanent procent SOC din fiecare cadru LIVE verificat, 0-100%, fara mentinerea valorii vechi dupa bip si fara simularea datelor cand selectorul este deschis. Pastreaza protectiile QT Demo. Remediere blocaj selector FX exclusiv QT Demo: permite etichete ale aceleiasi perechi cu dreptunghiuri suprapuse si butoane latime pana la 48% din ecran, mentinand limita dreapta 53% pentru a exclude contul. Fara tap fizic in antet. In lista Valute, randul este reverificat imediat inainte de un gest, cu margine sub antetul listei. Pastreaza 30 sec/pereche, payout 92%, SOC M5/5 min si blocarea tranzactiilor pe Real. Necesita test fizic Motorola G24; nu se garanteaza functionarea pana la verificare. Commit $GITHUB_SHA."
+            --title "SCALP ATLAS 513 - ROBOT ARMAT CONTINUU G24 • ${GITHUB_SHA:0:12}" \
+            --notes "513: Robot ARMAT permanent pe durata sesiunii LIVE, inclusiv la rotatia perechilor, verificarea graficului si a ordinelor precedente. Armarea vizuala NU ocoleste blocarile de executie pe QT Real, ordine neverificate sau cadru expirat.  Explozie decorativa de bancnote in exterior la un nou indicator QT Demo verificat de doua ori dupa gest, ori ID OPEN confirmat in istoric. Indicatorul vizual NU este dovada de ordin acceptat / WIN si nu participa la apasari, analiza sau recuperare.  Afisaj permanent procent SOC din fiecare cadru LIVE verificat, 0-100%, fara mentinerea valorii vechi dupa bip si fara simularea datelor cand selectorul este deschis. Pastreaza protectiile QT Demo. Remediere blocaj selector FX exclusiv QT Demo: permite etichete ale aceleiasi perechi cu dreptunghiuri suprapuse si butoane latime pana la 48% din ecran, mentinand limita dreapta 53% pentru a exclude contul. Fara tap fizic in antet. In lista Valute, randul este reverificat imediat inainte de un gest, cu margine sub antetul listei. Pastreaza 30 sec/pereche, payout 92%, SOC M5/5 min si blocarea tranzactiilor pe Real. Necesita test fizic Motorola G24; nu se garanteaza functionarea pana la verificare. Commit $GITHUB_SHA."
