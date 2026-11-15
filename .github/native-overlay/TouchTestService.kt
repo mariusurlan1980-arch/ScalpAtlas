@@ -425,6 +425,9 @@ class TouchTestService : AccessibilityService() {
     fun realFxAccountInForeground(): Boolean =
       activeDemoHistoryNodes(false, realAccount = true, foregroundOnly = true) != null
 
+    fun demoFxAccountInForeground(): Boolean =
+      activeDemoHistoryNodes(false, foregroundOnly = true) != null
+
     fun readFxChartPayout(pair: String, realAccount: Boolean): Int? {
       val svc = connected ?: return null
       if (readVisibleFxPair(realAccount) != pair || fxListVisible(realAccount)) return null

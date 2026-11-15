@@ -4195,8 +4195,7 @@ class ScalpOverlayService : Service() {
       // when already running must not turn rotation off during a drag.
       if (!fxRotation.running) {
         if (realAccountSafetyStop517 && mediaProjection != null &&
-            TouchTestService.readVisibleDemoPair() != null &&
-            !TouchTestService.realFxAccountVisible()) {
+            TouchTestService.demoFxAccountInForeground()) {
           realAccountSafetyStop517 = false
         }
         try { fxRotation.start() }
@@ -5757,8 +5756,7 @@ class ScalpOverlayService : Service() {
     mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
     // A fresh LIVE session may clear a prior account stop only on a verified demo chart.
     if (mediaProjection != null && realAccountSafetyStop517 &&
-        TouchTestService.readVisibleDemoPair() != null &&
-        !TouchTestService.realFxAccountVisible()) {
+        TouchTestService.demoFxAccountInForeground()) {
       realAccountSafetyStop517 = false
     }
     mediaProjection?.registerCallback(object : MediaProjection.Callback() {
