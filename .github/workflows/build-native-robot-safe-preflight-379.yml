@@ -594,6 +594,8 @@ jobs:
           grep -Fq 'if (pauseForTrade516()) return' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'tradeBadgePositiveReads516 >= 2' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationTradePaused516 = true' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'val brokerOpenTradeHint516 =' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '!fxRotationTradePaused516 && !brokerOpenTradeHint516 && brokerConnected' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'DEMO_TEST_EXPIRY_MS_465 + 45_000L' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '🤖 ARMAT • TRADE ÎN CURS • ROTAȚIE PAUZĂ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'showMoneyBurstOnVerifiedDemoVisualEvent512(' .github/native-overlay/ScalpOverlayService.kt
