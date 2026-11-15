@@ -3649,14 +3649,14 @@ class ScalpOverlayService : Service() {
         return false
       }
 
-      fun stopOnReal517(): Boolean {
-        if (!realAccountSafetyStop517 && !TouchTestService.realFxAccountVisible())
+      fun stopOnReal517(realVisible: Boolean = false): Boolean {
+        if (!realAccountSafetyStop517 && !realVisible && !TouchTestService.realFxAccountVisible())
           return false
         realAccountSafetyStop517 = true
         autoDemoArmed = false
         autoDemoSessionRequested = false
         autoDemoSessionConsumed = true
-        stop("QT REAL DETECTAT • ROBOT OPRIT • REVENIRE MANUALĂ LA DEMO")
+        stop("ROBOT OPRIT • VERIFICĂ QT DEMO")
         return true
       }
 
@@ -3727,10 +3727,7 @@ class ScalpOverlayService : Service() {
           return
         }
         realAccount = TouchTestService.realFxAccountVisible()
-        if (realAccount) {
-          stopOnReal517()
-          return
-        }
+        if (realAccount && stopOnReal517(realVisible = true)) return
         val pair = TouchTestService.readVisibleFxPair(false)
         val listOpen = TouchTestService.fxListVisible(false)
         if (pair == null && !listOpen) {
@@ -4411,7 +4408,8 @@ class ScalpOverlayService : Service() {
         dp(if (minimized) 5 else 9),
         dp(if (minimized) 4 else 8)
       )
-      martingaleStatusText?.visibility = if (minimized) View.GONE else View.VISIBLE
+      martingaleStatusText?.visibility =
+        if (minimized || CHART_ONLY_DEMO_462) View.GONE else View.VISIBLE
       probeStatus.maxLines = if (minimized) 3 else 3
       probeStatus.setPadding(dp(2), dp(1), dp(2), dp(1))
       val rotationParams499 = fxButton.layoutParams
@@ -5751,6 +5749,12 @@ class ScalpOverlayService : Service() {
 
     val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
+    // A fresh LIVE session may clear a prior account stop only on a verified demo chart.
+    if (mediaProjection != null && realAccountSafetyStop517 &&
+        TouchTestService.readVisibleDemoPair() != null &&
+        !TouchTestService.realFxAccountVisible()) {
+      realAccountSafetyStop517 = false
+    }
     mediaProjection?.registerCallback(object : MediaProjection.Callback() {
       override fun onStop() {
         // Android can revoke an ongoing screen capture when it is locked,
@@ -6246,9 +6250,6 @@ class ScalpOverlayService : Service() {
       observedTrendDirection != rawSignal
     val sameShockDirection = sameOpticalDirection &&
       !independentlyOppositeTrend
-    val sameScalpDirection = sameOpticalDirection && observedTrendMeasured &&
-      observedTrendDirection == rawSignal &&
-      observedTrendStrengthPercent > SCALP_MIN_TREND
     val wickRejected = rawStrategy == "SHOCK" && rawDirectionValid &&
       !result.optBoolean("wickEntry", false)
     if (wickRejected) shockBlocker = if (rawSignal == "BUY")
@@ -6262,37 +6263,17 @@ class ScalpOverlayService : Service() {
       (wickMeasured >= 1 || result.optBoolean("sameColorContinuation", false)) &&
       shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
       sameShockDirection && result.optString("shockDirection") == rawSignal
-    val scalpGate = result.optBoolean("scalpOpticalVerified", false) &&
-      result.optBoolean("scalpSameCandle", false)
-    val scalpDepth = result.optInt("scalpRetracementPercent", 0).coerceIn(0, 100)
-    val scalpRecovery = result.optInt("scalpRecoveryPercent", 0).coerceIn(0, 100)
-    val scalpPullbackMs = result.optLong("scalpPullbackDurationMs", -1L)
-    val confirmedScalp = rawStrategy == "SCALP_TREND" && timeframe == "M5" &&
-      quality >= 55 && shockFrameFresh && scalpGate &&
-      scalpDepth in 21..50 && scalpRecovery >= 35 &&
-      scalpPullbackMs in 700L..15000L && sameScalpDirection &&
-      result.optString("scalpDirection") == rawSignal
-    // 428: A secondary SCALP M5 alert cannot consume the five-minute
-    // demo SHOCK signal lock. The autonomous DEMO executor supports SHOCK
-    // only; otherwise a non-executable SCALP BIP can block real SHOCK
-    // candidates during the following five minutes.
-    // 450: one strategy only in the compact robot overlay.
-    // The legacy M5 SCALP classifier stays testable but cannot emit a
-    // competing BUY/SELL signal or consume a fresh SHOCK alert.
-    val scalpAlertAllowed = false
-    val confirmedSignal = if (confirmedShock || scalpAlertAllowed) rawSignal else "NONE"
-    val confirmedStrategy = if (confirmedShock) "SHOCK"
-      else if (scalpAlertAllowed) "SCALP_TREND" else "NONE"
+    val confirmedSignal = if (confirmedShock) rawSignal else "NONE"
+    val confirmedStrategy = if (confirmedShock) "SHOCK" else "NONE"
     val rejectionText = if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)
       "ȘOC • AȘTEPT DOUĂ LUMÂNĂRI DE ACEEAȘI CULOARE"
       else if (wickRejected) shockBlocker
-      else if (rawStrategy == "SCALP_TREND")
-      "SCALP TREND neconfirmat" else "ȘOC / SCALP în așteptare"
+      else "AȘTEPT ȘOC"
     val expiry = 5 // five-minute DEMO alert timer, not an automatic broker order
     val directionMax = result.optInt("directionMax", 0)
-    val pattern = if (confirmedScalp) "SCALP TREND • M5" else "ȘOC • o lumânare"
+    val pattern = "ȘOC • A DOUA LUMÂNARE"
     val reason = result.optString("reason", "")
-    val opticalCount = if (opticalGate || scalpGate) 1 else 0
+    val opticalCount = if (opticalGate) 1 else 0
 
     try {
       liveTest.onClassifier(
@@ -6425,8 +6406,8 @@ class ScalpOverlayService : Service() {
     activeStrategy = confirmedStrategy
     lastShockQuality = quality // Internal optical quality, NOT displayed as win %
     lastConfirmedShockPercent = if (confirmedShock) shockBodyPercent else 0
-    lastConfirmedScalpPercent = if (confirmedScalp) scalpDepth else 0
-    lastConfirmedShockDurationMs = if (confirmedScalp) scalpPullbackMs else shockDropDurationMs
+    lastConfirmedScalpPercent = 0
+    lastConfirmedShockDurationMs = shockDropDurationMs
     candidateDir = null
     candidateStrategy = null
     candidateCount = 0
@@ -7147,23 +7128,25 @@ class ScalpOverlayService : Service() {
           else Color.rgb(97, 108, 119)
         )
       }
-      // 513: persistent user-selected ARM is a LIVE scanning mode, not a
-      // broker-order permission. It must be visible while the per-pair
-      // preflight is paused by rotation, Real account or unresolved trades.
+      val demoAccountIdentified =
+        lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")
+      val realAccountIdentified =
+        lastBrokerAccountStatus.contains("QT REAL IDENTIFICAT")
+      // Account safety has priority over rotation and order status.
       val persistentRobotStatus513 = if (!robotArmedContinuously513 ||
           mediaProjection == null || shuttingDown) null else when {
-        lastBrokerAccountStatus.contains("QT REAL IDENTIFICAT") ->
-          "🤖 ARMAT • REAL BLOCAT • FĂRĂ ORDINE"
+        realAccountIdentified -> "🤖 OPRIT • QT REAL • ORDINE BLOCATE"
+        realAccountSafetyStop517 -> "🤖 OPRIT • PORNEȘTE LIVE PE QT DEMO"
+        !TouchTestService.ready() -> "🤖 AȘTEPT ACCESIBILITATEA"
+        !demoAccountIdentified -> "🤖 CONT NECONFIRMAT • ORDINE ÎN PAUZĂ"
         fxRotationTradePaused516 ->
           "🤖 ARMAT • TRADE ÎN CURS • ROTAȚIE PAUZĂ"
-        autoDemoSessionConsumed ||
-          tradePositionGate.state() != TradePositionGate.State.READY ->
-          "🤖 ARMAT • ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE"
+        tradePositionGate.state() != TradePositionGate.State.READY ->
+          "🤖 ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE"
+        autoDemoSessionConsumed -> "🤖 SESIUNE OPRITĂ • ORDINE BLOCATE"
         fxRotationNavigating ->
           "🤖 ARMAT • ROTAȚIE • " +
             (fxRotationStatusButton513?.text?.toString() ?: "AȘTEPT GRAFICUL").take(43)
-        !TouchTestService.ready() ->
-          "🤖 ARMAT • AȘTEPT ACCESIBILITATEA"
         autoDemoArmed && autoDemoSessionRequested ->
           "🤖 ARMAT • QT DEMO • AȘTEPT ȘOC NOU"
         else -> "🤖 ARMAT • PREFLIGHT: " + autoDemoLastPreflightReason.take(51)
@@ -7171,7 +7154,8 @@ class ScalpOverlayService : Service() {
       // Reuse the existing narrow footer; no extra controls in compact mode.
       // Display a reason, not a false probability of winning.
       signalGateNote?.text = when {
-        lastBrokerAccountStatus.contains("QT REAL IDENTIFICAT") ->
+        persistentRobotStatus513 != null -> persistentRobotStatus513
+        realAccountIdentified ->
           "QT REAL • SCANARE LIVE • ORDINE BLOCATE"
         lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
           autoDemoArmed && !autoDemoSessionConsumed ->

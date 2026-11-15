@@ -152,7 +152,7 @@ jobs:
           # 495: automatic demo-only rotation must never stop on a transient missing chart.
           grep -Fq 'fun seekChart()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROTAȚIE • AȘTEPT GRAFICUL QT DEMO' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'QT REAL DETECTAT • ROBOT OPRIT • REVENIRE MANUALĂ LA DEMO' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'ROBOT OPRIT • VERIFICĂ QT DEMO' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (tradeBusy())' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotation.start()' .github/native-overlay/ScalpOverlayService.kt
           # 496: precise preflight diagnostics and UI-only account header fix.
@@ -172,7 +172,7 @@ jobs:
           grep -Fq 'fxButton.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'brainEclipse.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeStatus.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'martingaleStatusText?.visibility = if (minimized) View.GONE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if (minimized || CHART_ONLY_DEMO_462) View.GONE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val next499 = when' .github/native-overlay/ScalpOverlayService.kt
           # 500: use true screen edges and remember the exact manual position.
           grep -Fq 'putBoolean("freePosition500", true)' .github/native-overlay/ScalpOverlayService.kt
@@ -591,7 +591,7 @@ jobs:
           # order (verified positive UI counter or fresh persisted attempt);
           # resume without pretending that a timer settles the order.
           # 517: required safety gates; no physical fallback beside account.
-          grep -Fq 'fun stopOnReal517(): Boolean' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fun stopOnReal517(realVisible: Boolean = false): Boolean' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'realAccountSafetyStop517 = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'PERECHE EXOTICĂ • FĂRĂ ORDINE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SELECTOR NECONFIRMAT • FĂRĂ TAP LÂNGĂ CONT' .github/native-overlay/ScalpOverlayService.kt
@@ -638,8 +638,8 @@ jobs:
           grep -Fq 'robotArmedContinuously513 = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationStatusButton513 = fxButton' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val persistentRobotStatus513 =' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '🤖 ARMAT • ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq '🤖 ARMAT • REAL BLOCAT • FĂRĂ ORDINE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '🤖 ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq '🤖 OPRIT • QT REAL • ORDINE BLOCATE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'tradePositionGate.state() == TradePositionGate.State.READY' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (persistentRobotStatus513 != null)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'clearMoneyBurst512()' .github/native-overlay/ScalpOverlayService.kt
@@ -940,7 +940,6 @@ jobs:
           grep -Fq 'private const val SHOCK_MIN_RECOVERY = 20' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'private const val SHOCK_MIN_TREND = 25' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SHOCK_MAX_DROP_MS = 18_000L' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'val sameScalpDirection = sameOpticalDirection' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'REQUIRED_CONFIRMATIONS = 2' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'priorSell404Attempt' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TEST SELL ANTERIOR NECONFIRMAT' .github/native-overlay/ScalpOverlayService.kt
@@ -1114,7 +1113,7 @@ jobs:
           grep -Fq 'private const val SHOCK_MIN_DEPTH = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_RECOVERY = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_TREND = 25' "$O"
-          grep -Fq 'val scalpAlertAllowed = false' "$O"
+          grep -Fq 'val confirmedSignal = if (confirmedShock)' "$O"
           grep -Fq '!independentlyOppositeTrend' "$O"
           grep -Fq 'val sameOpticalDirection = rawDirectionValid && detected' "$O"
           grep -Fq '!autoDemoSessionRequested && !autoDemoSessionConsumed' "$O"
@@ -1632,7 +1631,7 @@ jobs:
           grep -Fq "candle.trendMeasured && candle.trendDirection!=='NONE'" "$E"
           grep -Fq 'val independentlyOppositeTrend' "$O"
           grep -Fq 'val sameShockDirection = sameOpticalDirection &&' "$O"
-          grep -Fq 'val scalpAlertAllowed = false' "$O"
+          grep -Fq 'val confirmedSignal = if (confirmedShock)' "$O"
           grep -Fq 'TouchTestService.pressAutoOneDollarDemoOrderOnce(' "$O"
           grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
@@ -2303,7 +2302,7 @@ jobs:
           grep -q 'shockBodyPercent > SHOCK_MIN_DEPTH' "$SERVICE"
           grep -q 'observedTrendStrengthPercent > SHOCK_MIN_TREND' "$SERVICE"
           grep -q 'PANTĂ ≤25%' "$SERVICE"
-          grep -q 'val confirmedScalp = rawStrategy == "SCALP_TREND"' "$SERVICE"
+          grep -Fq 'val confirmedStrategy = if (confirmedShock)' "$SERVICE"
           grep -q 'val confirmedShock = sameCandleColors && rawStrategy == "SHOCK"' "$SERVICE"
           grep -q 'candidateStrategy != confirmedStrategy' "$SERVICE"
           grep -q 'activeStrategy == "SCALP_TREND"' "$SERVICE"
