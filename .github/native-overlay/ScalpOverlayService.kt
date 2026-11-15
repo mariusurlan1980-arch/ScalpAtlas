@@ -3474,6 +3474,12 @@ class ScalpOverlayService : Service() {
         reversed = false
         newPass = false
         fxRotationNavigating = true
+        // 511: selector is not a chart. Remove the previous pair's displayed
+        // percentage immediately; only a NEW verified candle may refill it.
+        observedShockPercent = 0
+        observedShockAt = 0L
+        qualityText?.text = "—%"
+        compactStatusText?.text = "ȘOC —% • ROTAȚIE"
         autoDemoArmed = false
         autoDemoMarket = null
         autoDemoExpiry = 0L
@@ -5857,7 +5863,10 @@ class ScalpOverlayService : Service() {
       observedWickPercent = 0
       observedWickAt = 0L
     }
-    if (detected && (observed == "BUY" || observed == "SELL") && shockBodyPercent > 0) {
+    // 511: each fresh optical frame updates the measured percentage, even
+    // when the current candle has 0% retracement or no confirmed BUY/SELL.
+    // Missing or unreadable pixels are UNKNOWN (—%), not a fabricated 0%.
+    if (detected && opticalQuality > 0 && (observed == "BUY" || observed == "SELL")) {
       observedShockPercent = shockBodyPercent
       observedShockAt = now
       observedShockDurationMs = shockObservedDurationMs.coerceIn(0L, SHOCK_MAX_DROP_MS)
@@ -6615,30 +6624,19 @@ class ScalpOverlayService : Service() {
       }
       setPulseRing(activeSignal)
       setSignalBlink(activeSignal)
-      // 507: never display a fabricated "0% shock" while the FX selector
-      // covers the chart or a safe recovery is in progress. SHOCK analysis
-      // will resume only after a fresh verified M5 chart is visible.
-      val percentFromCandle = if (fxRotationNavigating) 0 else when {
-        brokerConnected && (green || red) &&
-          lockedDir == signal && now < lockedUntil &&
-          activeStrategy == "SCALP_TREND" -> lastConfirmedScalpPercent
-        brokerConnected && (green || red) &&
-          lockedDir == signal && now < lockedUntil &&
-          lastConfirmedShockPercent > SHOCK_MIN_DEPTH -> lastConfirmedShockPercent
-        brokerConnected && observedShockAt > 0L &&
-          now - observedShockAt in 0L..3000L -> observedShockPercent
-        else -> 0
-      }
-      // A valid LIVE candle with no qualifying pullback means zero
-      // DETECTED shock, not missing capture. Never portray 0% as entry.
-      val shockObserved = !fxRotationNavigating && brokerConnected && opticalFresh
-      val shockDisplay = if (percentFromCandle > 0 || shockObserved)
-        percentFromCandle.toString() + "%" else "—%"
+      // 511: permanent LIVE SHOCK percentage. The engine measures the
+      // forming candle on each confirmed screen-capture frame (not WIN odds).
+      // NEVER freeze the last alerted/locked percentage for five minutes.
+      // A selector, unreadable candle, or stale frame has NO known percent.
+      val shockObserved = !fxRotationNavigating && brokerConnected && opticalFresh &&
+        observedShockAt > 0L && now - observedShockAt in 0L..3000L
+      val percentFromCandle = if (shockObserved) observedShockPercent else 0
+      val shockDisplay = if (shockObserved) percentFromCandle.toString() + "%" else "—%"
       qualityText?.text = shockDisplay
       compactStatusText?.text = when {
-        fxRotationNavigating -> "ȘOC PAUZĂ • ROTAȚIE"
+        fxRotationNavigating -> "ȘOC " + shockDisplay + " • ROTAȚIE"
         activeSignal == "BUY" || activeSignal == "SELL" ->
-          activeSignal + " " + shockDisplay
+          activeSignal + " • ȘOC " + shockDisplay
         else -> "ȘOC " + shockDisplay
       }
       compactStatusText?.setTextColor(when (activeSignal) {
