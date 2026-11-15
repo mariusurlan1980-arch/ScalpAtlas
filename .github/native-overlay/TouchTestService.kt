@@ -502,7 +502,13 @@ class TouchTestService : AccessibilityService() {
           listOfNotNull(node.text, node.contentDescription).any { text ->
             val label = text.toString().trim()
             val match = fxPairLabel.find(label)
-            match != null && match.range.first == 0 &&
+            match != null &&
+              // 515: QT WebView may prefix this SAME selector label
+              // with flag emoji. Only a short non-alphanumeric prefix
+              // is allowed; never consume a balance or account label.
+              label.substring(0, match.range.first).let { prefix ->
+                prefix.length <= 12 && prefix.none { it.isLetterOrDigit() }
+              } &&
               selectorSuffix.matches(label.substring(match.range.last + 1)) && pair.equals(
               match.groupValues[1] + "/" + match.groupValues[2] +
                 if (match.groupValues[3].isNotEmpty()) " OTC" else "", true
@@ -627,6 +633,105 @@ class TouchTestService : AccessibilityService() {
           pair.removeSuffix(" OTC"))
       }
       return input.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+    }
+
+    /**
+     * 515: One narrow fallback after an accessibility ACTION_CLICK on the
+     * exact currency selector did NOT visibly open "Valute". Unlike the
+     * removed 508 blind header tap, this uses the freshly located instrument
+     * label, requires its non-overlapping QT Demo account header ABOVE it,
+     * and rejects ambiguous bounds or QT Real. Visual navigation only.
+     */
+    fun tapVerifiedDemoFxSelector515(pair: String, overlayBounds: Rect): Boolean {
+      if (pair.isBlank() || readVisibleFxPair(false) != pair ||
+          realFxAccountVisible()) return false
+      val (svc, root, labels) = activeDemoHistoryNodes(false, false) ?: return false
+      if (svc.rootInActiveWindow != root ||
+          labels.any { (node, _) -> hasFxCurrencyHeader(node) }) return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      if (w < 300 || h < 650) return false
+      fun labelsFor(node: AccessibilityNodeInfo): List<String> =
+        listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+          .map { it.trim() }.distinct()
+      val demoHeader = labels.filter { (node, bounds) ->
+        bounds.centerY() < h * .16f &&
+          labelsFor(node).any {
+            Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it)
+          }
+      }
+      if (demoHeader.isEmpty() || labels.any { (node, _) ->
+          labelsFor(node).any {
+            Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it)
+          }
+        }) return false
+      val accountBottom = demoHeader.maxOf { it.second.bottom }
+      val suffix = Regex("""\s*(?:\+?\d{1,3}\s*%\s*)?[⌄▾▼]?\s*""")
+      val pairLabels = labels.filter { (node, bounds) ->
+        bounds.centerY() in (h * .12f).toInt()..(h * .27f).toInt() &&
+          bounds.top >= accountBottom + (h * .014f).toInt() &&
+          bounds.left >= (w * .025f).toInt() &&
+          bounds.right <= (w * .52f).toInt() &&
+          bounds.width() in 20..(w * .49f).toInt() &&
+          bounds.height() in 14..(h * .070f).toInt() &&
+          labelsFor(node).any { label ->
+            val match = fxPairLabel.find(label)
+            match != null &&
+              label.substring(0, match.range.first).let { prefix ->
+                prefix.length <= 12 && prefix.none { it.isLetterOrDigit() }
+              } &&
+              suffix.matches(label.substring(match.range.last + 1)) &&
+              pair.equals(
+                match.groupValues[1].uppercase(java.util.Locale.ROOT) + "/" +
+                match.groupValues[2].uppercase(java.util.Locale.ROOT) +
+                (if (match.groupValues[3].isNotEmpty()) " OTC" else ""),
+                ignoreCase = true
+              )
+          }
+      }
+      val rects = pairLabels.map { it.second }.distinct()
+      val target = rects.minByOrNull { it.width().toLong() * it.height().toLong() }
+        ?: return false
+      // Separate nonoverlapping controls are not a valid unique selector.
+      if (rects.any { other ->
+          !Rect.intersects(target, other) ||
+            kotlin.math.abs(target.centerY() - other.centerY()) > h * .035f
+        }) return false
+      val x = target.exactCenterX()
+      val y = target.exactCenterY()
+      if (x !in (w * .07f)..(w * .50f) ||
+          y !in (h * .12f)..(h * .27f) ||
+          overlayBounds.contains(x.toInt(), y.toInt())) return false
+      // Check the same exact currency control in the foreground QT Demo
+      // tree AGAIN immediately before the gesture. Never click from OCR.
+      val fresh = activeDemoHistoryNodes(false, false) ?: return false
+      if (fresh.first !== svc || fresh.second != root ||
+          svc.rootInActiveWindow != root ||
+          readVisibleFxPair(false) != pair || realFxAccountVisible() ||
+          fresh.third.none { (node, bounds) ->
+            bounds.contains(x.toInt(), y.toInt()) &&
+              labelsFor(node).any { value ->
+                fxPairLabel.find(value)?.let { match ->
+                  val normalized = match.groupValues[1].uppercase(java.util.Locale.ROOT) +
+                    "/" + match.groupValues[2].uppercase(java.util.Locale.ROOT) +
+                    (if (match.groupValues[3].isNotEmpty()) " OTC" else "")
+                  normalized.equals(pair, ignoreCase = true)
+                } == true
+              }
+          }) return false
+      val path = Path().apply { moveTo(x, y) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 70L)).build()
+      return try {
+        svc.rootInActiveWindow == root &&
+          svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+      } catch (_: Throwable) { false }
     }
 
     /** 506: exit a verified broker currency selector without a broker trade. */
