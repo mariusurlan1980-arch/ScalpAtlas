@@ -368,7 +368,14 @@ class TouchTestService : AccessibilityService() {
           if (!rect.isEmpty && rect.left >= 0 && rect.top >= 0 &&
               rect.right <= display.widthPixels && rect.bottom <= display.heightPixels) {
             val texts = listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
-            if (rect.centerY() < display.heightPixels * 0.29f) {
+            val inAccountTile = rect.centerX() >= display.widthPixels * .42f &&
+              rect.centerX() <= display.widthPixels * .90f &&
+              rect.centerY() < display.heightPixels * .19f &&
+              rect.width() <= display.widthPixels * .62f &&
+              rect.height() <= display.heightPixels * .15f
+            val accountHeader = if (foregroundOnly) inAccountTile
+              else rect.centerY() < display.heightPixels * .29f
+            if (accountHeader) {
               if (texts.any { Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it) })
                 seenReal = true
               if (texts.any { Regex("""(?i)\bQT\s*Demo\b""").containsMatchIn(it) })
