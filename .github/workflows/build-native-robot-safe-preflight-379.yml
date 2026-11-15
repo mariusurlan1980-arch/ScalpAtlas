@@ -560,13 +560,13 @@ jobs:
           grep -Fq 'if (shockObserved) observedShockPercent else 0' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (detected && opticalQuality > 0' .github/native-overlay/ScalpOverlayService.kt
           # 513: money effect must never trigger on a BIP or speculative tap.
-          grep -Fq 'private class TradeMoneyBurst513' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'showMoneyBurstOnVerifiedDemoVisualEvent513(' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'fun verifyNewVisualDemoBadge513(' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'private class TradeMoneyBurst512' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'showMoneyBurstOnVerifiedDemoVisualEvent512(' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'fun verifyNewVisualDemoBadge512(' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'consecutive >= 2' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'currentBadge > beforeCount' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'newPair == expectedPair' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'verifyNewVisualDemoBadge513(tradePair429, attemptedWall513, badgeBefore513)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'verifyNewVisualDemoBadge512(tradePair429, attemptedWall512, badgeBefore512)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'receiptIndependentlyVerified = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'alpha = .65f' .github/native-overlay/ScalpOverlayService.kt
@@ -580,7 +580,7 @@ jobs:
           grep -Fq '🤖 ARMAT • REAL BLOCAT • FĂRĂ ORDINE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'tradePositionGate.state() == TradePositionGate.State.READY' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (persistentRobotStatus513 != null)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'clearMoneyBurst513()' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'clearMoneyBurst512()' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'showMoneyBurstOnConfirmedDemoOpen513(result)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'qualityText?.text = "—%"' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'lastConfirmedShockPercent > SHOCK_MIN_DEPTH -> lastConfirmedShockPercent' .github/native-overlay/ScalpOverlayService.kt
