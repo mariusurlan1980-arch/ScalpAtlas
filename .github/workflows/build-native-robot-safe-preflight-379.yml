@@ -215,7 +215,7 @@ jobs:
           from pathlib import Path
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           block=t.split('fun reopenFxList(',1)[1].split('fun searchVisibleFxPair506(',1)[0]
-          assert 'if (realAccount || physicalOnly) return false' in block
+          assert 'if (realAccount || physicalOnly || realFxAccountVisible()) return false' in block
           assert 'Rect.intersects(bounds, other)' in block
           assert 'rect.right <= width * .53f' in block
           assert 'rect.width() <= width * .48f' in block
@@ -238,14 +238,14 @@ jobs:
           assert 'overlayBounds.contains(x.toInt(), y.toInt())' in fallback
           assert 'readVisibleFxPair(false) != pair || realFxAccountVisible()' in fallback
           assert 'svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))' in fallback
-          assert 'after(600L) { awaitList(pair, 6, true) }' in service
-          assert 'TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())' in service
-          assert 'if (!physicalOnly && !realAccount' in service
+          # 517: physical selector touch near the account is intentionally NOT called.
+          assert 'TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())' not in service
+          assert 'SELECTOR NECONFIRMAT • FĂRĂ TAP LÂNGĂ CONT' in service
           assert 'if (realAccount)' in t
           assert 'val freshRow = visibleDemoFxRows(currentList.third)' in t
           assert 'y < (metrics.heightPixels * .28f).toInt()' in t
           assert r'Regex("""(?i)\bQT\s*Real\b""")' in block
-          print('516 PASS: active trade pauses FX rotation, unique Demo selector stays protected')
+          print('517 PASS: no physical selector gesture, strict QT Demo and major-pair gate')
           PY508
           # 502: main drag/status bar may RESTART but may not STOP the scan.
           grep -Fq 'if (!fxRotation.running) {' .github/native-overlay/ScalpOverlayService.kt
@@ -598,7 +598,7 @@ jobs:
           grep -Fq 'fun isPreferredFxPair517(pair: String): Boolean' .github/native-overlay/TouchTestService.kt
           grep -Fq 'isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun pauseForTrade516(): Boolean' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'if (pauseForTrade516()) return' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if (stopOnReal517() || pauseForTrade516()) return' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'tradeBadgePositiveReads516 >= 2' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationTradePaused516 = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val brokerOpenTradeHint516 =' .github/native-overlay/ScalpOverlayService.kt
