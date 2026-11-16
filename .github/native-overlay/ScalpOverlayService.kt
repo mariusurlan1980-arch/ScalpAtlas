@@ -1378,6 +1378,26 @@ class ScalpOverlayService : Service() {
     return "476 • DEMO REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
   }
 
+  // Replaces the generic footer "ARMAT · VERIFIC ORDINUL".
+  private fun demoOrderPauseStatus(): String {
+    val now = android.os.SystemClock.elapsedRealtime()
+    if (lastAutoDemoHistoryNavStatus.isNotBlank() &&
+        now - lastAutoDemoHistoryNavStatusAt in 0L..14_000L)
+      return lastAutoDemoHistoryNavStatus
+
+    val pendingAttempt = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+      .getBoolean("attempted", false)
+    return when {
+      !pendingAttempt -> "ORDINE ÎN PAUZĂ · STARE " + tradePositionGate.state().name
+      verifiedDemoAccountAt <= 0L || now - verifiedDemoAccountAt !in 0L..90_000L ->
+        "ORDINE ÎN PAUZĂ · CONFIRMĂ QT DEMO PE GRAFIC"
+      !historyPageVisible433 ||
+        System.currentTimeMillis() - historyPageLastSeen433 !in 0L..6_000L ->
+        "OCR 0/2 · FILA DESCHIS NU A FOST DETECTATĂ RECENT"
+      else -> "ORDINE ÎN PAUZĂ · FILA " + historyPageTab433
+    }
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -1451,7 +1471,7 @@ class ScalpOverlayService : Service() {
             lastAutoDemoHistoryNavStatusAt = proofNow463
           }
           if (autoDemoSessionConsumed) {
-            touchProbeStatus?.text = effectiveStatus464 ?: "ARMAT · VERIFIC ORDINUL"
+            touchProbeStatus?.text = demoOrderPauseStatus()
           } else if (pilotStatus464 != null) {
             touchProbeStatus?.text = "ARMAT"
           }
@@ -7233,9 +7253,7 @@ class ScalpOverlayService : Service() {
         fxRotationTradePaused516 ->
           "ARMAT · TRADE ACTIV"
         tradePositionGate.state() != TradePositionGate.State.READY || autoDemoSessionConsumed ->
-          lastAutoDemoHistoryNavStatus.takeIf { it.isNotBlank() &&
-            android.os.SystemClock.elapsedRealtime() - lastAutoDemoHistoryNavStatusAt in 0L..14_000L }
-            ?: "ORDINE ÎN PAUZĂ · VERIFIC ORDINUL"
+          demoOrderPauseStatus()
         fxRotationNavigating ->
           "ARMAT"
         autoDemoArmed && autoDemoSessionRequested ->
