@@ -439,16 +439,14 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           }
         }
         var directShock=tf==='M5'?twoCandleShock(candle,history,now,tolerance,maxDropMs):null;
-        if(tf==='M5'){
-          confirmed=directShock!==null;
-          if(confirmed){
+        if(directShock!==null){
+          confirmed=true;
             dir=candle.dir;
             confirmedDepth=directShock.depth;
             confirmedRebound=directShock.recovery;
             confirmedDuration=directShock.duration;
             wickEntry=true;
             bodyContinuation=false;
-          }
         }
         var strategy=confirmed?'SHOCK':scalpConfirmed?'SCALP_TREND':'NONE';
         var emittedDirection=confirmed?dir:scalpConfirmed?scalpDir:'NONE';
