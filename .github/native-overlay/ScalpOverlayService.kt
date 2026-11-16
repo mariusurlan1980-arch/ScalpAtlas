@@ -168,6 +168,7 @@ class ScalpOverlayService : Service() {
   private var robotArmedContinuously513 = false
   private var autoDemoSessionRequested = false
   private var autoDemoSessionConsumed = false
+  private var demoOrderVerificationReason: String? = null
   private var autoDemoSessionEndAt = 0L
   // Wall-clock start of the currently authorized, verified DEMO entry cycle.
   // A BIP from before this boundary must never become a broker order.
@@ -1340,6 +1341,15 @@ class ScalpOverlayService : Service() {
     return "476 • DEMO REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
   }
 
+  private fun demoOrderVerificationStatus(): String {
+    val reason = demoOrderVerificationReason
+    return if (reason.isNullOrBlank()) "ARMAT · VERIFIC ORDINUL"
+    else "ORDINE ÎN PAUZĂ · " + reason
+      .replaceFirst(Regex("^\\d+ • "), "")
+      .removeSuffix(" • FĂRĂ ORDIN")
+      .take(84)
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -1408,12 +1418,13 @@ class ScalpOverlayService : Service() {
             maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
           else null
           val effectiveStatus464 = passiveStatus463 ?: pilotStatus464
+          demoOrderVerificationReason = effectiveStatus464.takeIf { autoDemoSessionConsumed }
           if (effectiveStatus464 != null) {
             lastAutoDemoHistoryNavStatus = effectiveStatus464
             lastAutoDemoHistoryNavStatusAt = proofNow463
           }
           if (autoDemoSessionConsumed) {
-            touchProbeStatus?.text = "ARMAT · VERIFIC ORDINUL"
+            touchProbeStatus?.text = demoOrderVerificationStatus()
           } else if (pilotStatus464 != null) {
             touchProbeStatus?.text = "ARMAT"
           }
@@ -7192,9 +7203,8 @@ class ScalpOverlayService : Service() {
         !demoAccountIdentified -> "🤖 CONT NECONFIRMAT • ORDINE ÎN PAUZĂ"
         fxRotationTradePaused516 ->
           "ARMAT · TRADE ACTIV"
-        tradePositionGate.state() != TradePositionGate.State.READY ->
-          "ARMAT · VERIFIC ORDINUL"
-        autoDemoSessionConsumed -> "ARMAT · VERIFIC ORDINUL"
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+          autoDemoSessionConsumed -> demoOrderVerificationStatus()
         fxRotationNavigating ->
           "ARMAT"
         autoDemoArmed && autoDemoSessionRequested ->
