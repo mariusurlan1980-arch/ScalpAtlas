@@ -6320,7 +6320,8 @@ class ScalpOverlayService : Service() {
       shockReboundPercent >= 40 &&
       wickMeasured >= 1 &&
       shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
-      sameShockDirection && result.optString("shockDirection") == rawSignal
+      result.optBoolean("directTwoCandleShock", false) &&
+      result.optString("shockDirection") == rawSignal
     val confirmedSignal = if (confirmedShock) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK" else "NONE"
     val rejectionText = if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)

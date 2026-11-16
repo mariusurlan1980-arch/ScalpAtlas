@@ -9,6 +9,24 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
   var canvas=document.getElementById('c');
   var ctx=canvas.getContext('2d',{willReadFrequently:true});
   var history=[],lastKey='',lastX=-1,lastSize='',lastFrame=-1,lastObservedAt=0,lastValidCandleAt=0,shockHold=null;
+  function twoCandleShock(candle,history,now,tolerance,maxAge){
+    if(candle.previousCandleDirection!==candle.dir||candle.previousBodyHeight<=0)return null;
+    var sign=candle.dir==='BUY'?1:-1;
+    var wick=sign===1?candle.connectedLowerWickPixels:candle.connectedUpperWickPixels;
+    if(wick/candle.previousBodyHeight<.50)return null;
+    var openY=candle.closeY+sign*candle.bodyHeight;
+    var extreme=null,depth=0;
+    for(var i=0;i<history.length-1;i++){
+      var sample=history[i],age=now-sample.t;
+      if(age<300||age>maxAge||sample.dir===candle.dir||Math.abs(sample.x-candle.x)>tolerance)continue;
+      var adverse=sign*(sample.y-openY);
+      if(adverse>depth){extreme=sample;depth=adverse;}
+    }
+    if(!extreme||depth/candle.previousBodyHeight<.50)return null;
+    var recovery=sign*(extreme.y-candle.closeY)/depth;
+    return recovery>=.40?{depth:Math.min(100,Math.round(wick*100/candle.previousBodyHeight)),
+      recovery:Math.min(100,Math.round(recovery*100)),duration:now-extreme.t}:null;
+  }
   function nearRejectionWick(candle,recovery,preShockBody,sameColorContinuation){
     var wick=candle.dir==='BUY'?candle.connectedLowerWickPixels:candle.connectedUpperWickPixels;
     return (sameColorContinuation || wick>=Math.max(5,preShockBody*.35)) &&
@@ -420,6 +438,18 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             }
           }
         }
+        var directShock=tf==='M5'?twoCandleShock(candle,history,now,tolerance,maxDropMs):null;
+        if(tf==='M5'){
+          confirmed=directShock!==null;
+          if(confirmed){
+            dir=candle.dir;
+            confirmedDepth=directShock.depth;
+            confirmedRebound=directShock.recovery;
+            confirmedDuration=directShock.duration;
+            wickEntry=true;
+            bodyContinuation=false;
+          }
+        }
         var strategy=confirmed?'SHOCK':scalpConfirmed?'SCALP_TREND':'NONE';
         var emittedDirection=confirmed?dir:scalpConfirmed?scalpDir:'NONE';
         // Show a short, grounded explanation for why a LIVE observed
@@ -457,6 +487,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             candidateDirection:emittedDirection,
             shockOpticalVerified:confirmed,shockSameCandle:confirmed,
             wickEntry:wickEntry,
+            directTwoCandleShock:directShock!==null,
             sameColorContinuation:bodyContinuation,
             previousCandleDirection:candle.previousCandleDirection,
             oppositeWickToPreviousBodyRatio:candle.previousBodyHeight>0?
