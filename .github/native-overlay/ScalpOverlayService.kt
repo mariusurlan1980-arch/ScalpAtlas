@@ -3942,6 +3942,13 @@ class ScalpOverlayService : Service() {
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
         if (stopOnReal517() || pauseForTrade516()) return
+        val historyAge = System.currentTimeMillis() - historyPageLastSeen433
+        if (historyPageVisible433 && historyAge in 0L..6_000L &&
+            historyPageTab433 == "DESCHIS" && autoDemoSessionConsumed) {
+          fxButton.text = "ROTAȚIE ÎN PAUZĂ • VERIFIC DESCHIS"
+          after(1_000L) { dwell(pair, deadline, retries) }
+          return
+        }
         // 514: the little "Tranzacții" badge can remain nonzero for a
         // past order and is NOT proof of an active position. Do not keep
         // rescheduling this same chart forever. Trading remains blocked by
