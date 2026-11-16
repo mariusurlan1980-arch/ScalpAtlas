@@ -5646,12 +5646,15 @@ class ScalpOverlayService : Service() {
     val selectedOpen429 = historyIdentity454 && openTab && closedTab &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
     if (selectedOpen429) {
-      if (lastOpenTabVisualPackage429 == pkg &&
-          observedAt - lastOpenTabVisualAt429 in 1000L..12000L)
-        openTabVisualConsecutive429 = (openTabVisualConsecutive429 + 1).coerceAtMost(3)
-      else openTabVisualConsecutive429 = 1
-      lastOpenTabVisualAt429 = observedAt
-      lastOpenTabVisualPackage429 = pkg
+      if (lastOpenTabVisualPackage429 != pkg ||
+          observedAt - lastOpenTabVisualAt429 !in 0L..999L) {
+        if (lastOpenTabVisualPackage429 == pkg &&
+            observedAt - lastOpenTabVisualAt429 in 1000L..12000L)
+          openTabVisualConsecutive429 = (openTabVisualConsecutive429 + 1).coerceAtMost(3)
+        else openTabVisualConsecutive429 = 1
+        lastOpenTabVisualAt429 = observedAt
+        lastOpenTabVisualPackage429 = pkg
+      }
     } else {
       lastOpenTabVisualAt429 = 0L
       lastOpenTabVisualPackage429 = null
@@ -5664,28 +5667,34 @@ class ScalpOverlayService : Service() {
     val closedSelected = historyIdentity454 && openTab && closedTab &&
       selectedClosedTabVerifiedOnScreen(frame) && pkg != null
     if (closedSelected) {
-      if (lastClosedTabVisualPackage == pkg &&
-          observedAt - lastClosedTabVisualAt in 1000L..12000L) {
-        closedTabVisualConsecutive = (closedTabVisualConsecutive + 1).coerceAtMost(3)
-      } else {
-        closedTabVisualConsecutive = 1
+      if (lastClosedTabVisualPackage != pkg ||
+          observedAt - lastClosedTabVisualAt !in 0L..999L) {
+        if (lastClosedTabVisualPackage == pkg &&
+            observedAt - lastClosedTabVisualAt in 1000L..12000L) {
+          closedTabVisualConsecutive = (closedTabVisualConsecutive + 1).coerceAtMost(3)
+        } else {
+          closedTabVisualConsecutive = 1
+        }
+        lastClosedTabVisualAt = observedAt
+        lastClosedTabVisualPackage = pkg
       }
-      lastClosedTabVisualAt = observedAt
-      lastClosedTabVisualPackage = pkg
     } else {
       lastClosedTabVisualAt = 0L
       lastClosedTabVisualPackage = null
       closedTabVisualConsecutive = 0
     }
     if (qualified) {
-      if (lastEmptyOpenOcrPackage == pkg &&
-          observedAt - lastEmptyOpenOcrAt in 1000L..12000L) {
-        emptyOpenOcrConsecutive = (emptyOpenOcrConsecutive + 1).coerceAtMost(3)
-      } else {
-        emptyOpenOcrConsecutive = 1
+      if (lastEmptyOpenOcrPackage != pkg ||
+          observedAt - lastEmptyOpenOcrAt !in 0L..999L) {
+        if (lastEmptyOpenOcrPackage == pkg &&
+            observedAt - lastEmptyOpenOcrAt in 1000L..12000L) {
+          emptyOpenOcrConsecutive = (emptyOpenOcrConsecutive + 1).coerceAtMost(3)
+        } else {
+          emptyOpenOcrConsecutive = 1
+        }
+        lastEmptyOpenOcrAt = observedAt
+        lastEmptyOpenOcrPackage = pkg
       }
-      lastEmptyOpenOcrAt = observedAt
-      lastEmptyOpenOcrPackage = pkg
     } else {
       emptyOpenOcrConsecutive = 0
       lastEmptyOpenOcrAt = 0L
@@ -7217,13 +7226,14 @@ class ScalpOverlayService : Service() {
         !demoAccountIdentified -> "🤖 CONT NECONFIRMAT • ORDINE ÎN PAUZĂ"
         fxRotationTradePaused516 ->
           "ARMAT · TRADE ACTIV"
-        tradePositionGate.state() != TradePositionGate.State.READY ->
-          "ARMAT · VERIFIC ORDINUL"
-        autoDemoSessionConsumed -> "ARMAT · VERIFIC ORDINUL"
+        tradePositionGate.state() != TradePositionGate.State.READY || autoDemoSessionConsumed ->
+          lastAutoDemoHistoryNavStatus.takeIf { it.isNotBlank() &&
+            android.os.SystemClock.elapsedRealtime() - lastAutoDemoHistoryNavStatusAt in 0L..14_000L }
+            ?: "ORDINE ÎN PAUZĂ · VERIFIC ORDINUL"
         fxRotationNavigating ->
           "ARMAT"
         autoDemoArmed && autoDemoSessionRequested ->
-          "🤖 ARMAT • QT DEMO • AȘTEPT ȘOC NOU"
+          "GATA · AȘTEPT ȘOC NOU"
         else -> autoDemoLastPreflightReason
       }
       // Reuse the existing narrow footer; no extra controls in compact mode.

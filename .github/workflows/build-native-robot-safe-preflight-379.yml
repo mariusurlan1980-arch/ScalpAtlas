@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 535 SHOCK two candles G24
+name: Build Scalp Atlas 536 SHOCK two candles G24
 
 on:
   push:
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.78'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=535
+          expo['android']['versionCode']=536
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2359,12 +2359,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-535-SOC-2-LUMANARI-G24.apk
+          cp "$APK" ScalpAtlas-536-SOC-2-LUMANARI-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-535-SOC-2-LUMANARI-G24
-          path: ScalpAtlas-535-SOC-2-LUMANARI-G24.apk
+          name: ScalpAtlas-536-SOC-2-LUMANARI-G24
+          path: ScalpAtlas-536-SOC-2-LUMANARI-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2374,12 +2374,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-535-SOC-2-LUMANARI-G24.apk"
+          FILE="ScalpAtlas-536-SOC-2-LUMANARI-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-shock-two-candles535-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-shock-two-candles536-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 535 - SOC cu doua lumanari" \
+            --title "Scalp Atlas 536 - SOC cu doua lumanari" \
             --notes "Candidat QT Demo pentru Motorola G24. Necesita verificarea pragurilor, rotatiei si apasarii pe telefon."
