@@ -810,7 +810,8 @@ class TouchTestService : AccessibilityService() {
       // These are diagnostics/round-completion evidence, never trade signals.
       observedEligible: MutableSet<String>? = null,
       observedViewports: MutableSet<List<String>>? = null,
-      realAccount: Boolean
+      realAccount: Boolean,
+      allowSearchVariant: Boolean = false
     ): DemoFxNavigation {
       val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount)
         ?: return DemoFxNavigation(message = "CONT QT NECONFIRMAT")
@@ -827,7 +828,8 @@ class TouchTestService : AccessibilityService() {
       }
       val next = rows.firstOrNull {
         it.quote.payout >= 92 && isPreferredFxPair517(it.quote.pair) && it.quote.pair !in excluded &&
-          (onlyPair == null || onlyPair == it.quote.pair)
+          (onlyPair == null || onlyPair == it.quote.pair ||
+            (allowSearchVariant && onlyPair.removeSuffix(" OTC") == it.quote.pair.removeSuffix(" OTC")))
       }
       if (next != null) {
         val action = AccessibilityNodeInfo.ACTION_CLICK

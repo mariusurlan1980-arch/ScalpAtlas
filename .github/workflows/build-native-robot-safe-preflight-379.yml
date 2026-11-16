@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 529 SHOCK two candles G24
+name: Build Scalp Atlas 530 SHOCK two candles G24
 
 on:
   push:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.77'
+          expo['version']='3.2.78'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=529
+          expo['android']['versionCode']=530
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1246,7 +1246,7 @@ jobs:
           mkdir -p scalp-atlas-new/android/app/src/main/res/drawable-nodpi
           # 467: exact user-approved small transparent brain; decoded in build only.
           base64 -d .github/native-overlay/brain-icon.webp.b64 > scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp
-          echo "b67bbd1fa6609294b10f5d32e59a43a9370ce89b474d71b2edf0057752965c9e  scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp" | sha256sum -c -
+          echo "b67bbd1fa6609294b10f5d32e59a43a9370ce89b474d71b2edf0057753065c9e  scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp" | sha256sum -c -
           test -s scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp
           mkdir -p scalp-atlas-new/android/app/src/main/res/raw
           cp scalp-atlas-new/assets/buy-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
@@ -2360,12 +2360,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-529-SOC-2-LUMANARI-G24.apk
+          cp "$APK" ScalpAtlas-530-SOC-2-LUMANARI-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-529-SOC-2-LUMANARI-G24
-          path: ScalpAtlas-529-SOC-2-LUMANARI-G24.apk
+          name: ScalpAtlas-530-SOC-2-LUMANARI-G24
+          path: ScalpAtlas-530-SOC-2-LUMANARI-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2375,12 +2375,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-529-SOC-2-LUMANARI-G24.apk"
+          FILE="ScalpAtlas-530-SOC-2-LUMANARI-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-shock-two-candles529-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-shock-two-candles530-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 529 - SOC cu doua lumanari" \
+            --title "Scalp Atlas 530 - SOC cu doua lumanari" \
             --notes "Candidat QT Demo pentru Motorola G24. Necesita verificarea pragurilor, rotatiei si apasarii pe telefon."

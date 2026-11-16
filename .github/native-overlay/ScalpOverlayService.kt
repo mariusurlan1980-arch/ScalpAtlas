@@ -4129,12 +4129,13 @@ class ScalpOverlayService : Service() {
           // may be selected; never treat a search hit as confirmed chart.
           val found506 = TouchTestService.navigateOpenFxList(
             visited + rejectedPairs, false, forward, overlayBounds(),
-            onlyPair = seeking506, realAccount = realAccount)
-          if (found506.pair == seeking506) {
+            onlyPair = seeking506, realAccount = realAccount, allowSearchVariant = true)
+          val selectedPair = found506.pair
+          if (selectedPair != null) {
             pendingSearch506 = null
             searchChecks506 = 0
-            fxButton.text = "ROTAȚIE • VERIFIC " + seeking506
-            after(1_250L) { confirmSelection(seeking506, previous, true) }
+            fxButton.text = "ROTAȚIE • VERIFIC " + selectedPair
+            after(1_250L) { confirmSelection(selectedPair, previous, true) }
           } else if (searchChecks506++ < 4) {
             after(750L) { select(previous) }
           } else {
