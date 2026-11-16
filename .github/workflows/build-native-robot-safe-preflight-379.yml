@@ -1246,7 +1246,7 @@ jobs:
           mkdir -p scalp-atlas-new/android/app/src/main/res/drawable-nodpi
           # 467: exact user-approved small transparent brain; decoded in build only.
           base64 -d .github/native-overlay/brain-icon.webp.b64 > scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp
-          echo "b67bbd1fa6609294b10f5d32e59a43a9370ce89b474d71b2edf0057753065c9e  scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp" | sha256sum -c -
+          echo "b67bbd1fa6609294b10f5d32e59a43a9370ce89b474d71b2edf0057752965c9e  scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp" | sha256sum -c -
           test -s scalp-atlas-new/android/app/src/main/res/drawable-nodpi/scalp_brain.webp
           mkdir -p scalp-atlas-new/android/app/src/main/res/raw
           cp scalp-atlas-new/assets/buy-alert.wav scalp-atlas-new/android/app/src/main/res/raw/scalp_buy_bip.wav
