@@ -4160,7 +4160,16 @@ class ScalpOverlayService : Service() {
             pendingSearch506 = null
             searchChecks506 = 0
             rejectedPairs.add(seeking506)
-            recoverNavigation(previous, "REZULTAT LA 92% NECONFIRMAT")
+            if (TouchTestService.clearVisibleFxSearch(realAccount)) {
+              scrollHistory.clear()
+              reversed = false
+              forward = true
+              fxButton.text = "ROTAȚIE • REIA LISTA LA 92%"
+              after(750L) { select(previous) }
+            } else {
+              TouchTestService.closeVisibleFxList506(realAccount)
+              recoverNavigation(previous, "CAUTARE LA 92% NECONFIRMATĂ")
+            }
           }
           return
         }

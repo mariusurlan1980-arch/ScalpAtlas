@@ -643,7 +643,16 @@ class TouchTestService : AccessibilityService() {
      * identity, list header and ONE editable input are independently proven.
      */
     fun searchVisibleFxPair506(pair: String, realAccount: Boolean): Boolean {
-      if (realAccount || !isPreferredFxPair517(pair) || realFxAccountVisible()) return false
+      if (!isPreferredFxPair517(pair)) return false
+      return setVisibleFxSearchText(
+        pair.removeSuffix(" OTC").replace("/", "").lowercase(java.util.Locale.ROOT), realAccount)
+    }
+
+    fun clearVisibleFxSearch(realAccount: Boolean): Boolean =
+      setVisibleFxSearchText("", realAccount)
+
+    private fun setVisibleFxSearchText(text: String, realAccount: Boolean): Boolean {
+      if (realAccount || realFxAccountVisible()) return false
       val (svc, root, labels) = activeDemoHistoryNodes(false, realAccount) ?: return false
       if (svc.rootInActiveWindow != root) return false
       val header = labels.firstOrNull { (node, _) -> hasFxCurrencyHeader(node) }
@@ -690,7 +699,7 @@ class TouchTestService : AccessibilityService() {
       if (svc.rootInActiveWindow != root) return false
       val args = android.os.Bundle().apply {
         putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-          pair.removeSuffix(" OTC").replace("/", "").lowercase(java.util.Locale.ROOT))
+          text)
       }
       return input.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }
