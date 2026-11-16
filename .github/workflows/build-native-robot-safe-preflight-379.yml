@@ -197,7 +197,7 @@ jobs:
           grep -Fq 'val eligibleSeen505 = mutableSetOf<String>()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val viewportsSeen505 = mutableSetOf<List<String>>()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationNavigating && pair in visited' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'if (viewportsSeen505.size < 3 || unexplored505 || moreUnsearched518)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if ((scannedEligiblePairs.size < 10 && viewportsSeen505.size < 3) ||' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'observedEligible: MutableSet<String>? = null' .github/native-overlay/TouchTestService.kt
           grep -Fq 'observedViewports: MutableSet<List<String>>? = null' .github/native-overlay/TouchTestService.kt
           grep -Fq 'observedViewports?.add(rows.map { it.quote.pair })' .github/native-overlay/TouchTestService.kt
