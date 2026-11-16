@@ -1413,12 +1413,9 @@ class ScalpOverlayService : Service() {
             lastAutoDemoHistoryNavStatusAt = proofNow463
           }
           if (autoDemoSessionConsumed) {
-            touchProbeStatus?.text = if (effectiveStatus464 != null)
-              "🤖 " + effectiveStatus464.take(110)
-            else "GRAFIC CONTINUU • FĂRĂ NAVIGARE ISTORIC • " +
-              "ORDIN VECHI BLOCAT PÂNĂ LA VERIFICARE"
+            touchProbeStatus?.text = "ARMAT · VERIFIC ORDINUL"
           } else if (pilotStatus464 != null) {
-            touchProbeStatus?.text = "🤖 " + pilotStatus464.take(110)
+            touchProbeStatus?.text = "ARMAT"
           }
           mainHandler.postDelayed(this, 2500L)
           return
@@ -7192,16 +7189,15 @@ class ScalpOverlayService : Service() {
         !TouchTestService.ready() -> "🤖 AȘTEPT ACCESIBILITATEA"
         !demoAccountIdentified -> "🤖 CONT NECONFIRMAT • ORDINE ÎN PAUZĂ"
         fxRotationTradePaused516 ->
-          "🤖 ARMAT • TRADE ÎN CURS • ROTAȚIE PAUZĂ"
+          "ARMAT · TRADE ACTIV"
         tradePositionGate.state() != TradePositionGate.State.READY ->
-          "🤖 ORDIN ÎN VERIFICARE • FĂRĂ DUBLARE"
-        autoDemoSessionConsumed -> "🤖 SESIUNE OPRITĂ • ORDINE BLOCATE"
+          "ARMAT · VERIFIC ORDINUL"
+        autoDemoSessionConsumed -> "ARMAT · VERIFIC ORDINUL"
         fxRotationNavigating ->
-          "🤖 ARMAT • ROTAȚIE • " +
-            (fxRotationStatusButton513?.text?.toString() ?: "AȘTEPT GRAFICUL").take(43)
+          "ARMAT"
         autoDemoArmed && autoDemoSessionRequested ->
           "🤖 ARMAT • QT DEMO • AȘTEPT ȘOC NOU"
-        else -> "🤖 ARMAT • PREFLIGHT: " + autoDemoLastPreflightReason.take(51)
+        else -> "ARMAT · VERIFIC DEMO"
       }
       // Reuse the existing narrow footer; no extra controls in compact mode.
       // Display a reason, not a false probability of winning.
