@@ -1143,9 +1143,41 @@ class ScalpOverlayService : Service() {
     demoEmptyReviewReads = 0
     demoEmptyReviewFirstAt = 0L
 
-    // Two empty-Open reads alone must NEVER clear a previous gesture.
     val closed = verifiedClosedDetail437
-      ?: return "463 • ZERO DESCHISE 2/2 • LIPSEȘTE ID ÎNCHIS"
+    if (closed == null) {
+      val attemptedWall = prefs.getLong("attemptedWallAt454", -1L)
+      val wallAge = System.currentTimeMillis() - attemptedWall
+      val elapsedAge = nowElapsed - attemptedAt
+      if (!CHART_ONLY_DEMO_462 || !prefs.getBoolean("brokerStake476", false) ||
+          attemptedWall <= 0L || wallAge < DEMO_TEST_EXPIRY_MS_465 ||
+          elapsedAge < DEMO_TEST_EXPIRY_MS_465 ||
+          kotlin.math.abs(wallAge - elapsedAge) > 60_000L ||
+          demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+          tradePositionGate.state() != TradePositionGate.State.UNKNOWN)
+        return "463 • ZERO DESCHISE 2/2 • LIPSEȘTE ID ÎNCHIS"
+
+      // Verified empty QT Demo after expiry permits a new signal. The old
+      // attempt has no confirmed outcome and is not booked as a settlement.
+      if (!tradePositionGate.brokerVerifiedEmptyDemoReview(true))
+        return "463 • STARE ORDIN INCERTĂ"
+      val stored = prefs.edit().putBoolean("attempted", false)
+        .remove("expectedPair429").remove("expectedPackage429")
+        .remove("expectedStakeCents429").remove("expectedPayout429")
+        .remove("brokerStake476").remove("expectedSide437").remove("attemptedAt429")
+        .remove("attemptedWallAt454").commit()
+      if (!stored) {
+        tradePositionGate.uncertainResult()
+        return "463 • NU POT SALVA REARMAREA"
+      }
+      autoDemoSessionRequested = true
+      autoDemoSessionConsumed = false
+      autoDemoArmed = false
+      autoDemoMarket = null
+      autoDemoLastPreflightAt = 0L
+      autoDemoLockedAt = lockedAt
+      autoDemoEntryCycleStartedAt = System.currentTimeMillis()
+      return "DEMO REACTIVAT • ZERO ORDINE DESCHISE"
+    }
     if (System.currentTimeMillis() - verifiedClosedDetailAt437 !in 0L..90_000L ||
         closed.brokerPackage != expectedPackage ||
         closed.pair != expectedPair ||
