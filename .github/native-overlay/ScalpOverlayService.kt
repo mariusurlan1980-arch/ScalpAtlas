@@ -3542,20 +3542,6 @@ class ScalpOverlayService : Service() {
       // 506: one targeted selector search per previously unseen pair.
       // No unbounded "LISTĂ INCOMPLETĂ • CAUT RESTUL" spin.
       val searchTried506 = mutableSetOf<String>()
-      // 518: scan more than the four rows exposed by a short WebView viewport.
-      // The search field may locate other listed instruments; it NEVER
-      // overrides the current payout exact 92% requirement or QT Demo check.
-      // These are candidates, NOT claims of current broker availability.
-      val discoverablePairs518 = listOf(
-        "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "USD/CAD",
-        "AUD/USD", "NZD/USD", "EUR/GBP", "EUR/JPY", "GBP/JPY",
-        "EUR/CHF", "EUR/AUD", "EUR/CAD", "EUR/NZD", "GBP/CHF",
-        "GBP/CAD", "GBP/AUD", "GBP/NZD", "AUD/JPY", "CAD/JPY",
-        "CHF/JPY", "NZD/JPY", "AUD/CAD", "AUD/NZD", "NZD/CAD",
-        "AUD/CHF", "CAD/CHF", "NZD/CHF", "EUR/PLN", "USD/PLN",
-        "EUR/SEK", "USD/SEK", "EUR/NOK", "USD/NOK", "USD/SGD",
-        "EUR/SGD", "USD/HKD", "USD/CNY", "USD/MXN", "USD/ZAR"
-      ).flatMap { listOf("$it OTC", it) }
       var pendingSearch506: String? = null
       var searchChecks506 = 0
       // 507: do not turn a temporary inaccessible QT Demo selector into
@@ -4072,8 +4058,7 @@ class ScalpOverlayService : Service() {
         // 506: a full two-way list pass discovered unvisited pairs but cannot
         // scroll to them. Use the unique QT selector search field for ONE
         // specific exact 92% pair, never a generic tap or broker order.
-        val target = (eligibleSeen505.asSequence() +
-          discoverablePairs518.asSequence()).firstOrNull {
+        val target = eligibleSeen505.firstOrNull {
           it !in visited && it !in rejectedPairs && it !in searchTried506 &&
             TouchTestService.isPreferredFxPair517(it)
         }
@@ -4141,8 +4126,8 @@ class ScalpOverlayService : Service() {
           } else {
             pendingSearch506 = null
             searchChecks506 = 0
-            fxButton.text = "ROTAȚIE • VERIFIC PERECHILE VIZIBILE"
-            after(200L) { select(previous) }
+            rejectedPairs.add(seeking506)
+            recoverNavigation(previous, "REZULTAT LA 92% NECONFIRMAT")
           }
           return
         }
@@ -4182,14 +4167,8 @@ class ScalpOverlayService : Service() {
             val unexplored505 = eligibleSeen505.any {
               it !in visited && it !in rejectedPairs
             }
-            // 518: a short WebView viewport may show four items only.
-            // Explore validated search candidates even when all four visible
-            // rows have been visited, before repeating the same four again.
-            val moreUnsearched518 = discoverablePairs518.any {
-              it !in visited && it !in rejectedPairs && it !in searchTried506
-            }
             if ((scannedEligiblePairs.size < 10 && viewportsSeen505.size < 3) ||
-                unexplored505 || moreUnsearched518) {
+                unexplored505) {
               fxButton.text = "ROTAȚIE • LISTĂ INCOMPLETĂ " +
                 visited.size + "/" + eligibleSeen505.size + " • CAUT DIRECT"
               searchUnvisited506(previous)
