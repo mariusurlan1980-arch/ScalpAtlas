@@ -3817,6 +3817,7 @@ class ScalpOverlayService : Service() {
         autoDemoMarket = null
         autoDemoExpiry = 0L
         autoDemoLastPreflightAt = 0L
+        autoDemoLastPreflightReason = "VERIFIC PERECHEA DEMO"
         clearOnInstrumentChange()
       }
 
@@ -6899,8 +6900,12 @@ class ScalpOverlayService : Service() {
             demoRecoveryLedger.quote(payout429).stakeCents == stake429
           val latestPreflight = try {
             when {
-              CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
-                "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
+              CHART_ONLY_DEMO_462 && manualOrder == null ->
+                TouchTestService.inspectBrokerDemoOrder488(tradePair429, currentOverlayBounds488())
+                  .takeUnless { it.startsWith("PREGĂTIT AUTO DEMO") }
+                  ?: "BLOCAT: DATELE ORDINULUI S-AU SCHIMBAT"
+              CHART_ONLY_DEMO_462 && package429 == null ->
+                "BLOCAT: BROKER DEMO NECONFIRMAT"
               CHART_ONLY_DEMO_462 &&
                 !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
                 "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"
@@ -7178,7 +7183,7 @@ class ScalpOverlayService : Service() {
           "ARMAT"
         autoDemoArmed && autoDemoSessionRequested ->
           "🤖 ARMAT • QT DEMO • AȘTEPT ȘOC NOU"
-        else -> "ARMAT · VERIFIC DEMO"
+        else -> autoDemoLastPreflightReason
       }
       // Reuse the existing narrow footer; no extra controls in compact mode.
       // Display a reason, not a false probability of winning.
