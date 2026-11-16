@@ -3539,6 +3539,7 @@ class ScalpOverlayService : Service() {
       val visited = mutableSetOf<String>()
       // 505: cycle-wide proof of distinct accessible FX list pages; never
       // mistake reopening the same short viewport for a complete sweep.
+      val scannedEligiblePairs = mutableSetOf<String>()
       val eligibleSeen505 = mutableSetOf<String>()
       val viewportsSeen505 = mutableSetOf<List<String>>()
       // 506: one targeted selector search per previously unseen pair.
@@ -3791,6 +3792,7 @@ class ScalpOverlayService : Service() {
           return
         }
         visited.clear()
+        scannedEligiblePairs.clear()
         rejectedPairs.clear()
         eligibleSeen505.clear()
         viewportsSeen505.clear()
@@ -3861,6 +3863,11 @@ class ScalpOverlayService : Service() {
           else recoverNavigation(pair, "PERECHE NECONFIRMATĂ")
           return
         }
+        if (payout == null) {
+          if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
+          else recoverNavigation(pair, "PAYOUT NECONFIRMAT")
+          return
+        }
         // Start the scan timer once the chart switch is verified. The order
         // preflight independently checks payout, M5 and fresh candle evidence.
         if (fxRotationNavigating) {
@@ -3885,6 +3892,7 @@ class ScalpOverlayService : Service() {
         fxRotationNavigating = false
         autoDemoEntryCycleStartedAt = now
         visited.add(pair)
+        scannedEligiblePairs.add(pair)
         // 503: restore the requested 30-second interval for EVERY pair.
         // This is a rotation timer, NOT a relaxation of SHOCK rules.
         dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)
@@ -3898,7 +3906,7 @@ class ScalpOverlayService : Service() {
         // persisted attempt markers and TradePositionGate independently.
         val remaining = deadline - android.os.SystemClock.elapsedRealtime()
         if (remaining > 0L) {
-          fxButton.text = "$pair • ${(remaining + 999L) / 1000L} S"
+          fxButton.text = "$pair • ${(remaining + 999L) / 1000L} S • ${scannedEligiblePairs.size}/10"
           after(minOf(remaining, 1_000L)) { dwell(pair, deadline, retries) }
           return
         }
@@ -4182,7 +4190,8 @@ class ScalpOverlayService : Service() {
             val moreUnsearched518 = discoverablePairs518.any {
               it !in visited && it !in rejectedPairs && it !in searchTried506
             }
-            if (viewportsSeen505.size < 3 || unexplored505 || moreUnsearched518) {
+            if ((scannedEligiblePairs.size < 10 && viewportsSeen505.size < 3) ||
+                unexplored505 || moreUnsearched518) {
               fxButton.text = "ROTAȚIE • LISTĂ INCOMPLETĂ " +
                 visited.size + "/" + eligibleSeen505.size + " • CAUT DIRECT"
               searchUnvisited506(previous)
@@ -4191,6 +4200,7 @@ class ScalpOverlayService : Service() {
               reversed = false
               forward = true
               visited.clear()
+              scannedEligiblePairs.clear()
               rejectedPairs.clear()
               eligibleSeen505.clear()
               viewportsSeen505.clear()
