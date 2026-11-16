@@ -2214,7 +2214,8 @@ jobs:
           assert 'releaseUnknownGestureForExpiredDemoPilot464(' in pilot
           assert 'maybeRearmExpiredDemoPilot464(' in monitor
           assert 'if (CHART_ONLY_DEMO_462) {' in monitor
-          assert 'CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null)' in s
+          assert 'CHART_ONLY_DEMO_462 && manualOrder == null' in s
+          assert 'CHART_ONLY_DEMO_462 && package429 == null' in s
           assert 'CHART_ONLY_DEMO_462 &&' in s
           assert 'confirmedFiveMinuteDemoExpiry465()' in s
           assert 'state == State.SUBMITTING || state == State.OPEN' in gate
