@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 530 SHOCK two candles G24
+name: Build Scalp Atlas 531 SHOCK two candles G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari]
+    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/exact-92]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.78'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=530
+          expo['android']['versionCode']=531
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -535,7 +535,7 @@ jobs:
           grep -Fq 'PREGĂTIT AUTO DEMO' .github/native-overlay/TouchTestService.kt
           grep -Fq 'PAYOUT ' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun pressAutoOneDollarDemoOrderOnce' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'payoutValues[0] !in 92..100' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'payoutValues[0] != 92' .github/native-overlay/TouchTestService.kt
           grep -Fq 'getSharedPreferences("scalp_demo_order_safety"' .github/native-overlay/TouchTestService.kt
           grep -Fq '🤖 AUTO ACTIV • QT DEMO' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoExpiry = autoDemoSessionEndAt' .github/native-overlay/ScalpOverlayService.kt
@@ -555,7 +555,7 @@ jobs:
           grep -Fq 'SUMĂ AMBIGUĂ' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val exactOneNodes = amountOnlyNumbers.filter' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val echoFromLowerButtons = editableValues.isEmpty()' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'verifiedPayout in 92..100' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'verifiedPayout == 92' .github/native-overlay/TouchTestService.kt
           grep -Fq 'canonicalAmount(it.value) == payoutValue' .github/native-overlay/TouchTestService.kt
           grep -Fq 'scalp_atlas_demo_click_test_398' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val payoutButtonRects = brokerActionLabels.mapNotNull' .github/native-overlay/TouchTestService.kt
@@ -615,7 +615,7 @@ jobs:
           grep -Fq 'val moreUnsearched518 = discoverablePairs518.any {' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'discoverablePairs518.asSequence()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'return base != quote && base in fiatCodes && quote in fiatCodes' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'it.quote.payout >= 92 && isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'it.quote.payout == 92 && isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun isPreferredFxPair517(pair: String): Boolean' .github/native-overlay/TouchTestService.kt
           grep -Fq 'isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun pauseForTrade516(): Boolean' .github/native-overlay/ScalpOverlayService.kt
@@ -2360,12 +2360,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-530-SOC-2-LUMANARI-G24.apk
+          cp "$APK" ScalpAtlas-531-SOC-2-LUMANARI-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-530-SOC-2-LUMANARI-G24
-          path: ScalpAtlas-530-SOC-2-LUMANARI-G24.apk
+          name: ScalpAtlas-531-SOC-2-LUMANARI-G24
+          path: ScalpAtlas-531-SOC-2-LUMANARI-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2375,12 +2375,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-530-SOC-2-LUMANARI-G24.apk"
+          FILE="ScalpAtlas-531-SOC-2-LUMANARI-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-shock-two-candles530-${GITHUB_SHA:0:12}"
+          TAG="scalp-atlas-shock-two-candles531-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 530 - SOC cu doua lumanari" \
+            --title "Scalp Atlas 531 - SOC cu doua lumanari" \
             --notes "Candidat QT Demo pentru Motorola G24. Necesita verificarea pragurilor, rotatiei si apasarii pe telefon."

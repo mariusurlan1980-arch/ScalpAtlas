@@ -3544,7 +3544,7 @@ class ScalpOverlayService : Service() {
       val searchTried506 = mutableSetOf<String>()
       // 518: scan more than the four rows exposed by a short WebView viewport.
       // The search field may locate other listed instruments; it NEVER
-      // overrides the current payout >=92% requirement or QT Demo check.
+      // overrides the current payout exact 92% requirement or QT Demo check.
       // These are candidates, NOT claims of current broker availability.
       val discoverablePairs518 = listOf(
         "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "USD/CAD",
@@ -3848,7 +3848,7 @@ class ScalpOverlayService : Service() {
         val now = System.currentTimeMillis()
         val payout = TouchTestService.readFxChartPayout(pair, realAccount)
         if (!TouchTestService.isPreferredFxPair517(pair) ||
-            (payout != null && payout < 92)) {
+            (payout != null && payout != 92)) {
           visited.add(pair)
           beginNavigation()
           fxButton.text = "$pair • $payout% • SAR PERECHEA"
@@ -4025,7 +4025,7 @@ class ScalpOverlayService : Service() {
           TouchTestService.readFxChartPayout(it, false)
         }
         if (current == pair && TouchTestService.isPreferredFxPair517(pair) &&
-            currentPayout != null && currentPayout >= 92 &&
+            currentPayout != null && currentPayout == 92 &&
             !TouchTestService.realFxAccountVisible()) {
           fxRotationNavigating = false
           fxButton.text = "SELECTOR NEDISPONIBIL • SCANEZ $pair • REIAU ROTATIA"
@@ -4071,7 +4071,7 @@ class ScalpOverlayService : Service() {
         if (stopOnReal517()) return
         // 506: a full two-way list pass discovered unvisited pairs but cannot
         // scroll to them. Use the unique QT selector search field for ONE
-        // specific >=92% pair, never a generic tap or broker order.
+        // specific exact 92% pair, never a generic tap or broker order.
         val target = (eligibleSeen505.asSequence() +
           discoverablePairs518.asSequence()).firstOrNull {
           it !in visited && it !in rejectedPairs && it !in searchTried506 &&
@@ -4218,7 +4218,7 @@ class ScalpOverlayService : Service() {
                 emptySet(), false, forward, overlayBounds(), it, realAccount = realAccount).pair
             }
             if (current == null || current != previous || current in rejectedPairs)
-              recoverNavigation(previous, "NICIO ALTĂ PERECHE ≥92%")
+              recoverNavigation(previous, "NICIO ALTĂ PERECHE EXACT 92%")
             else after(1_250L) { confirmSelection(current, previous, false) }
           }
           else -> recoverNavigation(previous, result.message)
@@ -4372,7 +4372,7 @@ class ScalpOverlayService : Service() {
               autoDemoExpiry = autoDemoSessionEndAt
               text = "🤖 AUTO ACTIV • QT DEMO"
               probeStatus.text = "ON QT DEMO • " + pair +
-                " • 1 SINGUR ȘOC NOU • MIZĂ DIN BROKER • PAYOUT ≥92%"
+                " • 1 SINGUR ȘOC NOU • MIZĂ DIN BROKER • PAYOUT EXACT 92%"
             }
           }
         } catch (error: Exception) {
@@ -5281,7 +5281,7 @@ class ScalpOverlayService : Service() {
           hit.groupValues[2].uppercase() + " OTC" == pair
       }
       .mapNotNull { it.groupValues[3].toIntOrNull() }.distinct().toList()
-    if (payoutValues.size != 1 || payoutValues.single() !in 92..100 ||
+    if (payoutValues.size != 1 || payoutValues.single() != 92 ||
         stake <= 0L ||
         net !in -stake..((stake * payoutValues.single() + 99L) / 100L) ||
         paid != stake + net) return
@@ -6742,7 +6742,7 @@ class ScalpOverlayService : Service() {
       // optical analyzer and updateOverlay() callbacks. No SHOCK gates here.
       // No ON/OFF button: the user explicitly starts Android screen capture
       // once in the app. Auto-arming uses EXACTLY the same QT Demo, 1 USD,
-      // payout >=92%, visible-pair and unique BUY/SELL checks as the former button.
+      // payout exact 92%, visible-pair and unique BUY/SELL checks as the former button.
       // If Android/WebView cannot prove them, NO ORDER is sent.
       if (!fxRotationNavigating && autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
           tradePositionGate.state() == TradePositionGate.State.READY &&

@@ -823,11 +823,11 @@ class TouchTestService : AccessibilityService() {
       // from the SAME five currencies reopened over and over. No assumed
       // total list length, and no automatic resetting of an incomplete pass.
       observedViewports?.add(rows.map { it.quote.pair })
-      rows.filter { it.quote.payout >= 92 && isPreferredFxPair517(it.quote.pair) }.forEach {
+      rows.filter { it.quote.payout == 92 && isPreferredFxPair517(it.quote.pair) }.forEach {
         observedEligible?.add(it.quote.pair)
       }
       val next = rows.firstOrNull {
-        it.quote.payout >= 92 && isPreferredFxPair517(it.quote.pair) && it.quote.pair !in excluded &&
+        it.quote.payout == 92 && isPreferredFxPair517(it.quote.pair) && it.quote.pair !in excluded &&
           (onlyPair == null || onlyPair == it.quote.pair ||
             (allowSearchVariant && onlyPair.removeSuffix(" OTC") == it.quote.pair.removeSuffix(" OTC")))
       }
@@ -2200,14 +2200,14 @@ class TouchTestService : AccessibilityService() {
       // screens with "SUMĂ AMBIGUĂ: 1.00/92.00 • ECHO PAYOUT 0".
       // Only resolve that one exact ambiguity when:
       //  - the ONE value is anchored directly under the unique "Suma" caption;
-      //  - both visible broker buttons independently show the SAME payout >=92;
+      //  - both visible broker buttons independently show the SAME payout exact 92;
       //  - every other nearby non-editable number equals THAT payout;
       //  - no editable field disagrees with 1 USD.
       // All other ambiguous combinations remain BLOCKED; QT REAL still blocks.
       val echoFromLowerButtons = editableValues.isEmpty() &&
         exactOneNodes.isNotEmpty() && otherNodes.isNotEmpty() &&
         earliestOneY != null && verifiedPayout != null &&
-        verifiedPayout in 92..100 &&
+        verifiedPayout == 92 &&
         exactOneNodes.any {
           it.rect.centerY() >= caption.rect.bottom - (h * 0.015f).toInt() &&
             it.rect.centerY() <= actionTop - (h * 0.012f).toInt() &&
@@ -2358,9 +2358,9 @@ class TouchTestService : AccessibilityService() {
             match.groupValues[1].toIntOrNull()
           }.toList()
         }.distinct()
-        if (payoutValues.size != 1 || payoutValues[0] !in 92..100)
+        if (payoutValues.size != 1 || payoutValues[0] != 92)
           return DemoOrderCheck(
-            reason = "BLOCAT: PAYOUT " + side + " NECONFIRMAT ≥92%"
+            reason = "BLOCAT: PAYOUT " + side + " NECONFIRMAT EXACT 92%"
           )
       }
       if (svc.rootInActiveWindow?.packageName?.toString() != pkg)
@@ -2380,7 +2380,7 @@ class TouchTestService : AccessibilityService() {
       val bp = buy.payoutPercent
       val sp = sell.payoutPercent
       if (buy.target == null || sell.target == null || bp == null ||
-          bp != sp || bp !in 92..100 || readVisibleDemoPair() != expectedPair)
+          bp != sp || bp != 92 || readVisibleDemoPair() != expectedPair)
         return null
       return bp
     }
@@ -2457,7 +2457,7 @@ class TouchTestService : AccessibilityService() {
       if (buy.target == null) return buy.reason
       val sell = checkOneDollarDemoTarget("SELL", true)
       if (sell.target == null) return sell.reason
-      return "GATA TEST BUY QT DEMO • 1 USD • ORICE PERECHE • PAYOUT ≥92%"
+      return "GATA TEST BUY QT DEMO • 1 USD • ORICE PERECHE • PAYOUT EXACT 92%"
     }
 
     /**
@@ -2475,7 +2475,7 @@ class TouchTestService : AccessibilityService() {
 
     /**
      * 397: A standalone, once-only SELL trial after the user starts LIVE.
-     * Requires official QT Demo, 1 USD, readable Demo balance and >=92% payout.
+     * Requires official QT Demo, 1 USD, readable Demo balance and exact 92% payout.
      * Never permits QT Real or trades from an unknown application.
      */
     fun preflightAnyPairDemoSell(): String {
@@ -2489,7 +2489,7 @@ class TouchTestService : AccessibilityService() {
       if (sell.target == null) return sell.reason
       val buy = checkOneDollarDemoTarget("BUY", true)
       if (buy.target == null) return buy.reason
-      return "GATA TEST SELL QT DEMO • 1 USD • ORICE PERECHE • PAYOUT ≥92%"
+      return "GATA TEST SELL QT DEMO • 1 USD • ORICE PERECHE • PAYOUT EXACT 92%"
     }
 
     @Synchronized
@@ -2501,7 +2501,7 @@ class TouchTestService : AccessibilityService() {
       if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
         return "BLOCAT: LIMITĂ 5 MINUTE • FĂRĂ GEST"
       // Freshly verify exact broker package, QT Demo and absence of QT Real,
-      // readable 1 USD, sufficient Demo balance, payout >=92% and unique BUY.
+      // readable 1 USD, sufficient Demo balance, payout exact 92% and unique BUY.
       val check = checkOneDollarDemoTarget("BUY", true)
       val target = check.target ?: return check.reason
       // Also require a separately identifiable SELL button before a live tap.
@@ -2566,7 +2566,7 @@ class TouchTestService : AccessibilityService() {
       if (last > 0L && now - last in 0 until DEMO_TEST_LOCK_MS)
         return "BLOCAT: LIMITĂ 5 MINUTE • FĂRĂ GEST"
       // Freshly verify exact broker package, QT Demo and absence of QT Real,
-      // readable 1 USD, sufficient Demo balance, payout >=92% and unique SELL.
+      // readable 1 USD, sufficient Demo balance, payout exact 92% and unique SELL.
       val check = checkOneDollarDemoTarget("SELL", true)
       val target = check.target ?: return check.reason
       // Also require a separately identifiable SELL button before a live tap.
@@ -2687,7 +2687,7 @@ class TouchTestService : AccessibilityService() {
      * has had at least 35 additional seconds to expire. The starting balance
      * and a distinct immediate 1 USD debit must be captured after BUY.
      * This is balance evidence, not a broker trade receipt. Re-check live
-     * QT Demo, same pair, at least 1 USD available and payout >=92%.
+     * QT Demo, same pair, at least 1 USD available and payout exact 92%.
      * No followup before 5m30s or after 7m30s; no retries or QT Real.
      */
     @Synchronized
@@ -2770,7 +2770,7 @@ class TouchTestService : AccessibilityService() {
 
     /**
      * READ ONLY: checks current QT Demo pair, 1 USD, broker BUY/SELL controls,
-     * balance, and >=92% payout. No ACTION_CLICK, orders, or AUTO SIM here.
+     * balance, and exact 92% payout. No ACTION_CLICK, orders, or AUTO SIM here.
      */
     /**
      * 465: read the visible QT DEMO expiry field without clicking it.
@@ -2882,7 +2882,7 @@ class TouchTestService : AccessibilityService() {
       if (!confirmedFiveMinuteDemoExpiry465())
         return "BLOCAT: TIMP QT DEMO 00:05:00 NECONFIRMAT"
       // The readiness button MUST use the exact same Qt Demo / 1 USD /
-      // payout >= 92% validators as the automatic one-shot click.
+      // payout exact 92% validators as the automatic one-shot click.
       // An optimistic preview must never claim that AUTO DEMO is ready
       // while the broker button would reject the same amount or payout.
       val buy = previewAutoOneDollarDemoOrder("BUY", expectedPair)
@@ -2890,7 +2890,7 @@ class TouchTestService : AccessibilityService() {
       val sell = previewAutoOneDollarDemoOrder("SELL", expectedPair)
       if (!sell.startsWith("GATA AUTO DEMO SELL")) return sell
       return "PREGĂTIT AUTO DEMO • QT DEMO • " + expectedPair +
-        " • 1 USD • BUY/SELL PAYOUT ≥92% • FĂRĂ ORDIN"
+        " • 1 USD • BUY/SELL PAYOUT EXACT 92% • FĂRĂ ORDIN"
     }
 
     fun previewAutoOneDollarDemoOrder(side: String, expectedPair: String): String {
@@ -2920,7 +2920,7 @@ class TouchTestService : AccessibilityService() {
           error.javaClass.simpleName.take(24) + ") • FĂRĂ ORDIN"
       }
       return if (check.target == null) check.reason
-        else "GATA AUTO DEMO " + side + " • 1 USD • PAYOUT ≥92%"
+        else "GATA AUTO DEMO " + side + " • 1 USD • PAYOUT EXACT 92%"
     }
 
     /**
@@ -2940,7 +2940,7 @@ class TouchTestService : AccessibilityService() {
       if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
           readVisibleDemoPair() != expectedPair)
         return "PRECHECK_NO_GESTURE: PERECHEA QT DEMO S-A SCHIMBAT"
-      // Both buttons, exact 1 USD and payout >=92% must pass again.
+      // Both buttons, exact 1 USD and payout exact 92% must pass again.
       val preview = preflightOneDollarDemoOrder(expectedPair)
       if (!preview.startsWith("PREGĂTIT AUTO DEMO"))
         return "PRECHECK_NO_GESTURE: " + preview

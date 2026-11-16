@@ -158,7 +158,7 @@ object DemoStakeEditor {
 
     val (buyPayout, payoutReason) = readChartPayout(chart)
     if (buyPayout == null) return null to payoutReason
-    if (buyPayout < 92) return null to "BLOCAT: PAYOUT BUY/SELL SUB 92%"
+    if (buyPayout != 92) return null to "BLOCAT: PAYOUT BUY/SELL DIFERIT DE 92%"
 
     val balance = labels.filter {
       it.rect.centerX() in (w * .48f).toInt()..(w * .86f).toInt() &&
@@ -194,7 +194,7 @@ object DemoStakeEditor {
     return screen != null &&
       centsOf(screen.input.value) == stakeCents &&
       screen.balanceCents >= stakeCents &&
-      screen.payout in 92..100
+      screen.payout == 92
   }
 
   /**
