@@ -1124,14 +1124,20 @@ class ScalpOverlayService : Service() {
     val selectedOpen = lastOpenTabVisualPackage429 == reviewPackage &&
       openTabVisualConsecutive429 >= 2 &&
       System.currentTimeMillis() - lastOpenTabVisualAt429 in 0L..5_000L
-    if (!freshOcr || !selectedOpen) return "463 • AȘTEPT 0 DESCHISE OCR 2/2"
+    if (!freshOcr || !selectedOpen) {
+      val reads = if (lastEmptyOpenOcrPackage == reviewPackage &&
+          System.currentTimeMillis() - lastEmptyOpenOcrAt in 0L..4_500L)
+        emptyOpenOcrConsecutive.coerceIn(0, 2) else 0
+      return "OCR $reads/2 • " +
+        if (!selectedOpen) "FILA DESCHIS NECONFIRMATĂ" else "AȘTEPT LISTA GOALĂ"
+    }
     val emptyRead = try {
       TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(
         cachedDemoVerifiedOnChart = true,
         ocrVerifiedEmptyOpenTab = true
       )
     } catch (_: Throwable) { false }
-    if (!emptyRead) return "463 • ZERO POZIȚII NECONFIRMAT"
+    if (!emptyRead) return "OCR 2/2 • ZERO POZIȚII NECONFIRMAT"
     if (demoEmptyReviewReads == 0 ||
         nowElapsed - demoEmptyReviewFirstAt !in 0L..20_000L) {
       demoEmptyReviewReads = 1
@@ -1445,7 +1451,7 @@ class ScalpOverlayService : Service() {
             lastAutoDemoHistoryNavStatusAt = proofNow463
           }
           if (autoDemoSessionConsumed) {
-            touchProbeStatus?.text = "ARMAT · VERIFIC ORDINUL"
+            touchProbeStatus?.text = effectiveStatus464 ?: "ARMAT · VERIFIC ORDINUL"
           } else if (pilotStatus464 != null) {
             touchProbeStatus?.text = "ARMAT"
           }
