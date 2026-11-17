@@ -320,6 +320,7 @@ class ScalpOverlayService : Service() {
   }
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
+  private var lastShockOrderStatus: String? = null
   private var autoDemoLastPreflightReason = "AȘTEAPTĂ VERIFICAREA"
   private var autoDemoArmed = false
   private var autoDemoMarket: String? = null
@@ -559,6 +560,7 @@ class ScalpOverlayService : Service() {
           val priorSell404Attempt = getSharedPreferences(
             sell404TestPrefs, Context.MODE_PRIVATE
           ).getBoolean("attempted", false)
+          lastShockOrderStatus = null
           robotArmedContinuously513 = true
           autoDemoSessionRequested = !priorAutoShockAttempt && !priorSell404Attempt
           autoDemoSessionConsumed = priorAutoShockAttempt || priorSell404Attempt
@@ -7077,6 +7079,7 @@ class ScalpOverlayService : Service() {
             }
           }
         }
+        lastShockOrderStatus = touchProbeStatus?.text?.toString()
       } else if (!readyForDemo) {
           // Diagnostic only; keeps the arm alive for the next fresh frame.
           touchProbeStatus?.text =
@@ -7373,7 +7376,16 @@ class ScalpOverlayService : Service() {
       // merely because the scanner is between two FX pairs. No order gate
       // is loosened. The panel only says ARMAT while Android LIVE is active.
       if (persistentRobotStatus513 != null) {
-        touchProbeStatus?.text = persistentRobotStatus513
+        if (lastShockOrderStatus != null && demoRecoveryLedger.verifiedOpenPositionId429() != null) {
+          lastShockOrderStatus = "ORDIN DEMO CONFIRMAT"
+        }
+        val lastResult = lastShockOrderStatus
+        touchProbeStatus?.text = if (lastResult == null || !demoAccountIdentified ||
+            realAccountIdentified || realAccountSafetyStop517 || accountRecheckPending) {
+          persistentRobotStatus513
+        } else {
+          persistentRobotStatus513 + "\nULTIMUL ȘOC: " + lastResult
+        }
       }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")

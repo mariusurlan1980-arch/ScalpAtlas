@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.78'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=538
+          expo['android']['versionCode']=539
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2357,12 +2357,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-538-EXACT-92-G24.apk
+          cp "$APK" ScalpAtlas-539-ULTIMUL-SOC-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-538-EXACT-92-G24
-          path: ScalpAtlas-538-EXACT-92-G24.apk
+          name: ScalpAtlas-539-ULTIMUL-SOC-G24
+          path: ScalpAtlas-539-ULTIMUL-SOC-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2372,12 +2372,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-538-EXACT-92-G24.apk"
+          FILE="ScalpAtlas-539-ULTIMUL-SOC-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-538-exact-92-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-539-ultimul-soc-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 538 - payout exact 92%" \
+            --title "Scalp Atlas 539 - ultimul SOC" \
             --notes "Candidat QT Demo pentru Motorola G24. Necesita verificarea pragurilor, rotatiei si apasarii pe telefon."
