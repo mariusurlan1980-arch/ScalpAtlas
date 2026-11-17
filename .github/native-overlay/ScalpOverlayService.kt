@@ -3577,20 +3577,6 @@ class ScalpOverlayService : Service() {
       // 506: one targeted selector search per previously unseen pair.
       // No unbounded "LISTĂ INCOMPLETĂ • CAUT RESTUL" spin.
       val searchTried506 = mutableSetOf<String>()
-      // 518: scan more than the four rows exposed by a short WebView viewport.
-      // The search field may locate other listed instruments; it NEVER
-      // overrides the current payout >=92% requirement or QT Demo check.
-      // These are candidates, NOT claims of current broker availability.
-      val discoverablePairs518 = listOf(
-        "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "USD/CAD",
-        "AUD/USD", "NZD/USD", "EUR/GBP", "EUR/JPY", "GBP/JPY",
-        "EUR/CHF", "EUR/AUD", "EUR/CAD", "EUR/NZD", "GBP/CHF",
-        "GBP/CAD", "GBP/AUD", "GBP/NZD", "AUD/JPY", "CAD/JPY",
-        "CHF/JPY", "NZD/JPY", "AUD/CAD", "AUD/NZD", "NZD/CAD",
-        "AUD/CHF", "CAD/CHF", "NZD/CHF", "EUR/PLN", "USD/PLN",
-        "EUR/SEK", "USD/SEK", "EUR/NOK", "USD/NOK", "USD/SGD",
-        "EUR/SGD", "USD/HKD", "USD/CNY", "USD/MXN", "USD/ZAR"
-      ).flatMap { listOf("$it OTC", it) }
       var pendingSearch506: String? = null
       var searchChecks506 = 0
       // 507: do not turn a temporary inaccessible QT Demo selector into
@@ -3884,7 +3870,7 @@ class ScalpOverlayService : Service() {
         val now = System.currentTimeMillis()
         val payout = TouchTestService.readFxChartPayout(pair, realAccount)
         if (!TouchTestService.isPreferredFxPair517(pair) ||
-            (payout != null && payout < 92)) {
+            (payout != null && payout != 92)) {
           visited.add(pair)
           beginNavigation()
           fxButton.text = "$pair • $payout% • SAR PERECHEA"
@@ -4074,7 +4060,7 @@ class ScalpOverlayService : Service() {
           TouchTestService.readFxChartPayout(it, false)
         }
         if (current == pair && TouchTestService.isPreferredFxPair517(pair) &&
-            currentPayout != null && currentPayout >= 92 &&
+            currentPayout != null && currentPayout == 92 &&
             !TouchTestService.realFxAccountVisible()) {
           fxRotationNavigating = false
           fxButton.text = "SELECTOR NEDISPONIBIL • SCANEZ $pair • REIAU ROTATIA"
@@ -4120,9 +4106,8 @@ class ScalpOverlayService : Service() {
         if (stopOnReal517()) return
         // 506: a full two-way list pass discovered unvisited pairs but cannot
         // scroll to them. Use the unique QT selector search field for ONE
-        // specific >=92% pair, never a generic tap or broker order.
-        val target = (eligibleSeen505.asSequence() +
-          discoverablePairs518.asSequence()).firstOrNull {
+        // specific exact 92% pair, never a generic tap or broker order.
+        val target = eligibleSeen505.firstOrNull {
           it !in visited && it !in rejectedPairs && it !in searchTried506 &&
             TouchTestService.isPreferredFxPair517(it)
         }
@@ -4190,8 +4175,17 @@ class ScalpOverlayService : Service() {
           } else {
             pendingSearch506 = null
             searchChecks506 = 0
-            fxButton.text = "ROTAȚIE • VERIFIC PERECHILE VIZIBILE"
-            after(200L) { select(previous) }
+            rejectedPairs.add(seeking506)
+            if (TouchTestService.clearVisibleFxSearch(realAccount)) {
+              scrollHistory.clear()
+              reversed = false
+              forward = true
+              fxButton.text = "ROTAȚIE • REIA LISTA LA 92%"
+              after(750L) { select(previous) }
+            } else {
+              TouchTestService.closeVisibleFxList506(realAccount)
+              recoverNavigation(previous, "CAUTARE LA 92% NECONFIRMATĂ")
+            }
           }
           return
         }
@@ -4231,14 +4225,8 @@ class ScalpOverlayService : Service() {
             val unexplored505 = eligibleSeen505.any {
               it !in visited && it !in rejectedPairs
             }
-            // 518: a short WebView viewport may show four items only.
-            // Explore validated search candidates even when all four visible
-            // rows have been visited, before repeating the same four again.
-            val moreUnsearched518 = discoverablePairs518.any {
-              it !in visited && it !in rejectedPairs && it !in searchTried506
-            }
             if ((scannedEligiblePairs.size < 10 && viewportsSeen505.size < 3) ||
-                unexplored505 || moreUnsearched518) {
+                unexplored505) {
               fxButton.text = "ROTAȚIE • LISTĂ INCOMPLETĂ " +
                 visited.size + "/" + eligibleSeen505.size + " • CAUT DIRECT"
               searchUnvisited506(previous)
@@ -4267,7 +4255,7 @@ class ScalpOverlayService : Service() {
                 emptySet(), false, forward, overlayBounds(), it, realAccount = realAccount).pair
             }
             if (current == null || current != previous || current in rejectedPairs)
-              recoverNavigation(previous, "NICIO ALTĂ PERECHE ≥92%")
+              recoverNavigation(previous, "NICIO ALTĂ PERECHE EXACT 92%")
             else after(1_250L) { confirmSelection(current, previous, false) }
           }
           else -> recoverNavigation(previous, result.message)
@@ -4421,7 +4409,7 @@ class ScalpOverlayService : Service() {
               autoDemoExpiry = autoDemoSessionEndAt
               text = "🤖 AUTO ACTIV • QT DEMO"
               probeStatus.text = "ON QT DEMO • " + pair +
-                " • 1 SINGUR ȘOC NOU • MIZĂ DIN BROKER • PAYOUT ≥92%"
+                " • 1 SINGUR ȘOC NOU • MIZĂ DIN BROKER • PAYOUT EXACT 92%"
             }
           }
         } catch (error: Exception) {
@@ -5332,7 +5320,7 @@ class ScalpOverlayService : Service() {
           hit.groupValues[2].uppercase() + " OTC" == pair
       }
       .mapNotNull { it.groupValues[3].toIntOrNull() }.distinct().toList()
-    if (payoutValues.size != 1 || payoutValues.single() !in 92..100 ||
+    if (payoutValues.size != 1 || payoutValues.single() != 92 ||
         stake <= 0L ||
         net !in -stake..((stake * payoutValues.single() + 99L) / 100L) ||
         paid != stake + net) return
@@ -6793,7 +6781,7 @@ class ScalpOverlayService : Service() {
       // optical analyzer and updateOverlay() callbacks. No SHOCK gates here.
       // No ON/OFF button: the user explicitly starts Android screen capture
       // once in the app. Auto-arming uses EXACTLY the same QT Demo, 1 USD,
-      // payout >=92%, visible-pair and unique BUY/SELL checks as the former button.
+      // payout exact 92%, visible-pair and unique BUY/SELL checks as the former button.
       // If Android/WebView cannot prove them, NO ORDER is sent.
       if (!fxRotationNavigating && autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
           tradePositionGate.state() == TradePositionGate.State.READY &&

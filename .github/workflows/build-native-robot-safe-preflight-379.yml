@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.78'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=537
+          expo['android']['versionCode']=538
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -535,7 +535,7 @@ jobs:
           grep -Fq 'PREGĂTIT AUTO DEMO' .github/native-overlay/TouchTestService.kt
           grep -Fq 'PAYOUT ' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun pressAutoOneDollarDemoOrderOnce' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'payoutValues[0] !in 92..100' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'payoutValues[0] != 92' .github/native-overlay/TouchTestService.kt
           grep -Fq 'getSharedPreferences("scalp_demo_order_safety"' .github/native-overlay/TouchTestService.kt
           grep -Fq '🤖 AUTO ACTIV • QT DEMO' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoExpiry = autoDemoSessionEndAt' .github/native-overlay/ScalpOverlayService.kt
@@ -555,7 +555,7 @@ jobs:
           grep -Fq 'SUMĂ AMBIGUĂ' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val exactOneNodes = amountOnlyNumbers.filter' .github/native-overlay/TouchTestService.kt
           grep -Fq 'val echoFromLowerButtons = editableValues.isEmpty()' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'verifiedPayout in 92..100' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'verifiedPayout == 92' .github/native-overlay/TouchTestService.kt
           grep -Fq 'canonicalAmount(it.value) == payoutValue' .github/native-overlay/TouchTestService.kt
           grep -Fq 'scalp_atlas_demo_click_test_398' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val payoutButtonRects = brokerActionLabels.mapNotNull' .github/native-overlay/TouchTestService.kt
@@ -611,11 +611,8 @@ jobs:
           grep -Fq 'alternateClickable519 = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SELECTOR NEDISPONIBIL • SCANEZ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TouchTestService.tapVerifiedDemoFxSelector515(pair, overlayBounds())' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'val discoverablePairs518 = listOf(' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'val moreUnsearched518 = discoverablePairs518.any {' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'discoverablePairs518.asSequence()' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'return base != quote && base in fiatCodes && quote in fiatCodes' .github/native-overlay/TouchTestService.kt
-          grep -Fq 'it.quote.payout >= 92 && isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
+          grep -Fq 'it.quote.payout == 92 && isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun isPreferredFxPair517(pair: String): Boolean' .github/native-overlay/TouchTestService.kt
           grep -Fq 'isPreferredFxPair517(it.quote.pair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'fun pauseForTrade516(): Boolean' .github/native-overlay/ScalpOverlayService.kt
@@ -2360,27 +2357,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-537-DIAGNOSTIC-G24.apk
+          cp "$APK" ScalpAtlas-538-EXACT-92-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-537-DIAGNOSTIC-G24
-          path: ScalpAtlas-537-DIAGNOSTIC-G24.apk
+          name: ScalpAtlas-538-EXACT-92-G24
+          path: ScalpAtlas-538-EXACT-92-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/feature/android-soc-doua-lumanari'
+        if: github.ref == 'refs/heads/fix/order-verification-diagnostic'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-537-DIAGNOSTIC-G24.apk"
+          FILE="ScalpAtlas-538-EXACT-92-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalp-atlas-shock-two-candles530-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-538-exact-92-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 530 - SOC cu doua lumanari" \
+            --title "Scalp Atlas 538 - payout exact 92%" \
             --notes "Candidat QT Demo pentru Motorola G24. Necesita verificarea pragurilor, rotatiei si apasarii pe telefon."
