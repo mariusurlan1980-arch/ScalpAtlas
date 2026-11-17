@@ -13,7 +13,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     if(candle.previousCandleDirection!==candle.dir||candle.previousBodyHeight<=0)return null;
     var sign=candle.dir==='BUY'?1:-1;
     var wick=sign===1?candle.connectedLowerWickPixels:candle.connectedUpperWickPixels;
-    if(wick/candle.previousBodyHeight<.50)return null;
+    if(wick/candle.previousBodyHeight<.40)return null;
     var openY=candle.closeY+sign*candle.bodyHeight;
     var extreme=null,depth=0;
     for(var i=0;i<history.length-1;i++){
@@ -22,9 +22,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       var adverse=sign*(sample.y-openY);
       if(adverse>depth){extreme=sample;depth=adverse;}
     }
-    if(!extreme||depth/candle.previousBodyHeight<.50)return null;
+    if(!extreme||depth/candle.previousBodyHeight<.40)return null;
     var recovery=sign*(extreme.y-candle.closeY)/depth;
-    return recovery>=.40?{depth:Math.min(100,Math.round(wick*100/candle.previousBodyHeight)),
+    return recovery>=.30?{depth:Math.min(100,Math.round(wick*100/candle.previousBodyHeight)),
       recovery:Math.min(100,Math.round(recovery*100)),duration:now-extreme.t}:null;
   }
   function nearRejectionWick(candle,recovery,preShockBody,sameColorContinuation){

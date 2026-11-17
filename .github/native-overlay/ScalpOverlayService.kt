@@ -6355,11 +6355,11 @@ class ScalpOverlayService : Service() {
       result.optString("previousCandleDirection") == rawSignal
     val oppositeWickRatio = result.optDouble("oppositeWickToPreviousBodyRatio", 0.0)
     val confirmedShock = sameCandleColors && rawStrategy == "SHOCK" && timeframe == "M5" &&
-      oppositeWickRatio >= 0.50 &&
+      oppositeWickRatio >= 0.40 &&
       !wickRejected && quality >= 55 &&
       opticalGate && shockSameCandle && shockRetraced && shockRecovered &&
       shockFrameFresh && shockBodyPercent > SHOCK_MIN_DEPTH &&
-      shockReboundPercent >= 40 &&
+      shockReboundPercent >= 30 &&
       wickMeasured >= 1 &&
       shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
       result.optBoolean("directTwoCandleShock", false) &&
@@ -6368,13 +6368,13 @@ class ScalpOverlayService : Service() {
       shockBlocker = when {
         !sameCandleColors -> "DIRECȚIA LUMÂNĂRILOR NECONFIRMATĂ"
         timeframe != "M5" -> "TF M5 NECONFIRMAT"
-        oppositeWickRatio < 0.50 -> "FITIL SUB 50% DIN CORPUL ANTERIOR"
+        oppositeWickRatio < 0.40 -> "FITIL SUB 40% DIN CORPUL ANTERIOR"
         wickRejected -> "REVENIRE TIMPURIE NECONFIRMATĂ"
         quality < 55 || !opticalGate -> "CITIRE OPTICĂ NECONFIRMATĂ"
         !shockSameCandle -> "ȘOCUL ȘI REVENIREA PE LUMÂNĂRI DIFERITE"
         !shockFrameFresh -> "CADRU ȘOC EXPIRAT"
         !shockRetraced || shockBodyPercent <= SHOCK_MIN_DEPTH -> "RETRAGERE NECONFIRMATĂ"
-        !shockRecovered || shockReboundPercent < 40 -> "REVENIRE SUB PRAGUL DE 40%"
+        !shockRecovered || shockReboundPercent < 30 -> "REVENIRE SUB PRAGUL DE 30%"
         wickMeasured < 1 -> "FITIL NEMĂSURAT"
         shockDropDurationMs !in 300L..SHOCK_MAX_DROP_MS -> "DURATA RETRAGERII ÎN AFARA INTERVALULUI"
         else -> "MODELUL ȘOC CU DOUĂ LUMÂNĂRI NECONFIRMAT"
