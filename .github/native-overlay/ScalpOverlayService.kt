@@ -6785,6 +6785,12 @@ class ScalpOverlayService : Service() {
       // once in the app. Auto-arming uses EXACTLY the same QT Demo, 1 USD,
       // payout exact 92%, visible-pair and unique BUY/SELL checks as the former button.
       // If Android/WebView cannot prove them, NO ORDER is sent.
+      val freshShockForPreflight = entryFrameId > 0L && entryFrameId == frameCount &&
+        now - lastFrameAt in 0L..MAX_ALERT_ANALYSIS_AGE_MS &&
+        activeSignal != "NONE" && activeStrategy == "SHOCK" &&
+        lastConfirmedShockPercent > SHOCK_MIN_DEPTH &&
+        lockedAt > autoDemoEntryCycleStartedAt && lockedAt != autoDemoLockedAt &&
+        now - lockedAt in 0L..4_000L
       if (!fxRotationNavigating && autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
           tradePositionGate.state() == TradePositionGate.State.READY &&
           !closedHistoryInspectionInProgress) {
@@ -6793,7 +6799,7 @@ class ScalpOverlayService : Service() {
           autoDemoSessionRequested = false
           autoDemoSessionConsumed = true
           touchProbeStatus?.text = "SESIUNE ÎNCHEIATĂ • PORNEȘTE LIVE DIN NOU"
-        } else if (nowClock - autoDemoLastPreflightAt >= 2500L ||
+        } else if (freshShockForPreflight || nowClock - autoDemoLastPreflightAt >= 2500L ||
             autoDemoLastPreflightAt == 0L) {
           autoDemoLastPreflightAt = nowClock
           val pair = currentPair(now)
@@ -6851,6 +6857,9 @@ class ScalpOverlayService : Service() {
             autoDemoExpiry = autoDemoSessionEndAt
             touchProbeStatus?.text = "🤖 DEMO AUTO • MIZĂ VERIFICATĂ • AȘTEAPTĂ ȘOC"
           } else {
+            if (freshShockForPreflight) {
+              lastShockOrderStatus = "FĂRĂ ORDIN • " + diagnostic.take(90)
+            }
             touchProbeStatus?.text = "🤖 DEMO AȘTEAPTĂ: " + diagnostic
           }
         }
