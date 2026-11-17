@@ -101,6 +101,14 @@ export default function App() {
     }
   }
 
+  async function openTouchTest() {
+    try {
+      await NativeModules.ScalpOverlay.openTouchTest();
+    } catch {
+      setStatus('Testul de atingere nu a putut fi deschis.');
+    }
+  }
+
   const active = session === 'ON';
   return (
     <SafeAreaView style={styles.root}>
@@ -139,6 +147,17 @@ export default function App() {
               : <View style={[styles.buttonLed, active && styles.buttonLedOn]} />}
             <Text style={[styles.buttonText, active && styles.buttonTextOn]}>{active ? 'OPREȘTE LIVE' : 'PORNEȘTE LIVE'}</Text>
           </Pressable>
+
+          {Platform.OS === 'android' && (
+            <Pressable
+              accessibilityRole="button"
+              disabled={session !== 'OFF'}
+              onPress={() => { void openTouchTest(); }}
+              style={[styles.button, session !== 'OFF' && styles.disabled]}
+            >
+              <Text style={styles.buttonText}>TEST ATINGERE</Text>
+            </Pressable>
+          )}
 
           <Text style={styles.status}>{status}</Text>
           <Text style={styles.touchAccess}>ACCESIBILITATE: {touchAccessStatus}</Text>
