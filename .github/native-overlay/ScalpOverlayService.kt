@@ -7270,10 +7270,11 @@ class ScalpOverlayService : Service() {
         tradePositionGate.state() != TradePositionGate.State.READY ||
           autoDemoSessionConsumed -> demoOrderVerificationStatus()
         fxRotationNavigating ->
-          "ARMAT"
+          "SCHIMB PERECHEA"
         autoDemoArmed && autoDemoSessionRequested ->
           "🤖 ARMAT • QT DEMO • " + shockBlocker.take(48)
-        else -> "ARMAT · VERIFIC DEMO"
+        !autoDemoSessionRequested -> "DEMO · SESIUNE INACTIVĂ"
+        else -> "DEMO · " + autoDemoLastPreflightReason
       }
       // Reuse the existing narrow footer; no extra controls in compact mode.
       // Display a reason, not a false probability of winning.
