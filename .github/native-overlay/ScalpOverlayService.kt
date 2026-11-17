@@ -3933,7 +3933,6 @@ class ScalpOverlayService : Service() {
         // The selector independently verifies the foreground account and pair.
         // A missing chart payout must not prevent leaving this chart.
         beginNavigation()
-        fxButton.text = "ROTAȚIE • DESCHID VALUTE"
         openList(pair, false)
       }
 
@@ -3989,6 +3988,20 @@ class ScalpOverlayService : Service() {
           select(pair)
           return
         }
+        val visiblePair = TouchTestService.readVisibleFxPair(realAccount)
+        val chartVisible = visiblePair != null &&
+          TouchTestService.readFxChartPayout(visiblePair, realAccount) != null
+        if (!chartVisible) {
+          val freshHistory = historyPageVisible433 &&
+            System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+          if (!realAccount && freshHistory && !closedHistoryInspectionInProgress &&
+              TouchTestService.demoFxAccountInForeground()) {
+            returnToChartAfterReview458(true, true)
+          }
+          recoverNavigation(pair, "AȘTEPT GRAFICUL QT")
+          return
+        }
+        fxButton.text = "ROTAȚIE • DESCHID VALUTE"
         if (!TouchTestService.reopenFxList(pair, overlayBounds(), physicalOnly, realAccount)) {
           // A rejected primary click still needs the same verified alternate
           // and chart recovery as a click that did not open the currency list.
