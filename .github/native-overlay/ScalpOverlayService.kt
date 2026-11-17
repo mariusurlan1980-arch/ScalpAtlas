@@ -3710,6 +3710,7 @@ class ScalpOverlayService : Service() {
               autoDemoSessionConsumed = true
               accountRecheckPending = false
               stop("ROBOT OPRIT • VERIFICĂ QT DEMO")
+              retryDemoRotationAfterLiveRestart?.invoke()
             } else if (TouchTestService.demoFxAccountInForeground() &&
                 !TouchTestService.realFxAccountVisible()) {
               accountRecheckPending = false
@@ -4679,7 +4680,9 @@ class ScalpOverlayService : Service() {
               !realAccountSafetyStop517 || fxRotation.running) return
           // The app or Android's capture dialog can still own foreground focus
           // when LIVE is started. Give the user time to return to the demo chart.
-          if (!TouchTestService.demoFxAccountInForeground()) {
+          if (!TouchTestService.demoFxAccountInForeground() ||
+              TouchTestService.realFxAccountVisible() ||
+              TouchTestService.readVisibleFxPair(false) == null) {
             mainHandler.postDelayed(this, 3_000L)
             return
           }
