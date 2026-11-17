@@ -2266,7 +2266,7 @@ jobs:
             if ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a \
               -Dorg.gradle.internal.http.connectionTimeout=180000 \
               -Dorg.gradle.internal.http.socketTimeout=180000 \
-              --no-daemon; then
+              --no-daemon --stacktrace --console=plain; then
               echo "BUILD SUCCESSFUL (attempt $attempt)"
               exit 0
             fi
