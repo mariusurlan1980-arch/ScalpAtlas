@@ -1235,8 +1235,6 @@ class ScalpOverlayService : Service() {
     if (getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
         .getBoolean("attempted", false))
       return "464 • TEST SELL VECHI NECONFIRMAT"
-    if (!prefs.getBoolean("attempted", false))
-      return "464 • SESIUNE CONSUMATĂ FĂRĂ ORDIN ÎNREGISTRAT"
     if (!TouchTestService.ready())
       return "464 • ACCESIBILITATE DECONECTATĂ"
     if (historyPageVisible433 &&
@@ -1248,6 +1246,27 @@ class ScalpOverlayService : Service() {
         nowElapsed - verifiedDemoAccountAt !in 0L..90_000L ||
         !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT"))
       return "464 • QT DEMO NECONFIRMAT PE GRAFIC"
+
+    if (!prefs.getBoolean("attempted", false)) {
+      if (!robotArmedContinuously513 || mediaProjection == null || shuttingDown ||
+          realAccountSafetyStop517 || accountRecheckPending ||
+          fxRotationNavigating || closedHistoryInspectionInProgress ||
+          fxRotationTradePaused516 ||
+          nowElapsed >= autoDemoSessionEndAt ||
+          tradePositionGate.state() != TradePositionGate.State.READY ||
+          demoRecoveryLedger.verifiedOpenPositionId429() != null)
+        return "464 • SESIUNE ÎN PAUZĂ • AȘTEPT QT DEMO PREGĂTIT"
+
+      autoDemoSessionRequested = true
+      autoDemoSessionConsumed = false
+      autoDemoArmed = false
+      autoDemoMarket = null
+      autoDemoExpiry = 0L
+      autoDemoLastPreflightAt = 0L
+      autoDemoLockedAt = lockedAt
+      autoDemoEntryCycleStartedAt = System.currentTimeMillis()
+      return "464 • LIVE REARMAT • AȘTEPT ȘOC NOU"
+    }
 
     val expectedPackage = prefs.getString("expectedPackage429", null)
     val expectedPair = prefs.getString("expectedPair429", null)
