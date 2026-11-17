@@ -6364,6 +6364,22 @@ class ScalpOverlayService : Service() {
       shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS &&
       result.optBoolean("directTwoCandleShock", false) &&
       result.optString("shockDirection") == rawSignal
+    if (!confirmedShock && rawStrategy == "SHOCK" && rawDirectionValid) {
+      shockBlocker = when {
+        !sameCandleColors -> "DIRECȚIA LUMÂNĂRILOR NECONFIRMATĂ"
+        timeframe != "M5" -> "TF M5 NECONFIRMAT"
+        oppositeWickRatio < 0.50 -> "FITIL SUB 50% DIN CORPUL ANTERIOR"
+        wickRejected -> "REVENIRE TIMPURIE NECONFIRMATĂ"
+        quality < 55 || !opticalGate -> "CITIRE OPTICĂ NECONFIRMATĂ"
+        !shockSameCandle -> "ȘOCUL ȘI REVENIREA PE LUMÂNĂRI DIFERITE"
+        !shockFrameFresh -> "CADRU ȘOC EXPIRAT"
+        !shockRetraced || shockBodyPercent <= SHOCK_MIN_DEPTH -> "RETRAGERE NECONFIRMATĂ"
+        !shockRecovered || shockReboundPercent < 40 -> "REVENIRE SUB PRAGUL DE 40%"
+        wickMeasured < 1 -> "FITIL NEMĂSURAT"
+        shockDropDurationMs !in 300L..SHOCK_MAX_DROP_MS -> "DURATA RETRAGERII ÎN AFARA INTERVALULUI"
+        else -> "MODELUL ȘOC CU DOUĂ LUMÂNĂRI NECONFIRMAT"
+      }
+    }
     val confirmedSignal = if (confirmedShock) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK" else "NONE"
     val rejectionText = if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)
@@ -7248,7 +7264,7 @@ class ScalpOverlayService : Service() {
         fxRotationNavigating ->
           "ARMAT"
         autoDemoArmed && autoDemoSessionRequested ->
-          "🤖 ARMAT • QT DEMO • AȘTEPT ȘOC NOU"
+          "🤖 ARMAT • QT DEMO • " + shockBlocker.take(48)
         else -> "ARMAT · VERIFIC DEMO"
       }
       // Reuse the existing narrow footer; no extra controls in compact mode.

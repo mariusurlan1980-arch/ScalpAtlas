@@ -96,7 +96,7 @@ jobs:
           expo['version']='3.2.78'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=541
+          expo['android']['versionCode']=542
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2357,12 +2357,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-541-TEST-ATINGERE-G24.apk
+          cp "$APK" ScalpAtlas-542-DIAGNOSTIC-SOC-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-541-TEST-ATINGERE-G24
-          path: ScalpAtlas-541-TEST-ATINGERE-G24.apk
+          name: ScalpAtlas-542-DIAGNOSTIC-SOC-G24
+          path: ScalpAtlas-542-DIAGNOSTIC-SOC-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2372,12 +2372,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-541-TEST-ATINGERE-G24.apk"
+          FILE="ScalpAtlas-542-DIAGNOSTIC-SOC-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-541-test-atingere-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-542-diagnostic-soc-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 541 - test atingere" \
+            --title "Scalp Atlas 542 - diagnostic SOC" \
             --notes "Candidat QT Demo pentru Motorola G24. Necesita verificarea pragurilor, rotatiei si apasarii pe telefon."
