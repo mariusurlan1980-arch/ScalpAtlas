@@ -6499,6 +6499,13 @@ class ScalpOverlayService : Service() {
     }
     candidateLastSeenAt = now
 
+    if (robotArmedContinuously513 &&
+        lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT")) {
+      val progress = candidateCount.coerceAtMost(REQUIRED_CONFIRMATIONS)
+      lastShockOrderStatus = if (progress < REQUIRED_CONFIRMATIONS)
+        "$confirmedSignal $progress/$REQUIRED_CONFIRMATIONS • AȘTEPT CONFIRMAREA"
+      else "$confirmedSignal $progress/$REQUIRED_CONFIRMATIONS • SEMNAL CONFIRMAT"
+    }
     if (candidateCount < REQUIRED_CONFIRMATIONS) {
       updateOverlay(
         "AȘTEAPTĂ",
