@@ -1231,19 +1231,23 @@ class ScalpOverlayService : Service() {
     chartDemoVerified: Boolean
   ): String? {
     val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-    if (!prefs.getBoolean("attempted", false) ||
-        !autoDemoSessionConsumed ||
-        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
-          .getBoolean("attempted", false)) return null
+    if (!autoDemoSessionConsumed) return null
+    if (getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+        .getBoolean("attempted", false))
+      return "464 • TEST SELL VECHI NECONFIRMAT"
+    if (!prefs.getBoolean("attempted", false))
+      return "464 • SESIUNE CONSUMATĂ FĂRĂ ORDIN ÎNREGISTRAT"
+    if (!TouchTestService.ready())
+      return "464 • ACCESIBILITATE DECONECTATĂ"
+    if (historyPageVisible433 &&
+        System.currentTimeMillis() - historyPageLastSeen433 in 0L..6_000L)
+      return "464 • VERIFICĂ FILA DESCHIS • REVINO LA GRAFIC"
     if (!chartDemoVerified || visiblePackage == null ||
         visiblePackage != verifiedDemoAccountPackage ||
         verifiedDemoAccountAt <= 0L ||
         nowElapsed - verifiedDemoAccountAt !in 0L..90_000L ||
-        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
-        !TouchTestService.ready() ||
-        (historyPageVisible433 &&
-          System.currentTimeMillis() - historyPageLastSeen433 in 0L..6_000L))
-      return null
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT"))
+      return "464 • QT DEMO NECONFIRMAT PE GRAFIC"
 
     val expectedPackage = prefs.getString("expectedPackage429", null)
     val expectedPair = prefs.getString("expectedPair429", null)
@@ -1283,7 +1287,8 @@ class ScalpOverlayService : Service() {
       return "464 • POZIȚIE POSIBIL DESCHISĂ • FĂRĂ ORDIN"
 
     val nowWall = System.currentTimeMillis()
-    val visiblePair = TouchTestService.readVisibleDemoPair() ?: return null
+    val visiblePair = TouchTestService.readVisibleDemoPair()
+      ?: return "464 • PERECHEA NU POATE FI CITITĂ PE GRAFIC"
     if (!pairReady(nowWall) || currentPair(nowWall) != visiblePair)
       return "464 • PERECHE LIVE NECONFIRMATĂ • FĂRĂ ORDIN"
     // 496: The former generic "AȘTEPT CONFIRMAREA MIZEI" hid the real
