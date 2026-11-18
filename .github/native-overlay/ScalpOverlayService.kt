@@ -188,6 +188,8 @@ class ScalpOverlayService : Service() {
   // 552: diagnostic-only, explicitly initiated once by a TWO-TAP user action.
   // Never trigger a broker order from this field, without user confirmation.
   private var manualDemoTapStatus552: String? = null
+  // True only in the user-triggered diagnostic. Blocks automatic entries.
+  private var manualDemoDiagnosticActive552 = false
   // Wall-clock start of the currently authorized, verified DEMO entry cycle.
   // A BIP from before this boundary must never become a broker order.
   private var autoDemoEntryCycleStartedAt = 0L
@@ -593,6 +595,7 @@ class ScalpOverlayService : Service() {
           demoDiagGestureChecks546 = 0
           demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
           manualDemoTapStatus552 = null
+          manualDemoDiagnosticActive552 = false
           robotArmedContinuously513 = true
           autoDemoSessionRequested = !priorAutoShockAttempt && !priorSell404Attempt
           autoDemoSessionConsumed = priorAutoShockAttempt || priorSell404Attempt
@@ -4324,6 +4327,9 @@ class ScalpOverlayService : Service() {
       // continuous scanning starts automatically with LIVE; tapping the bar
       // when already running must not turn rotation off during a drag.
       if (!fxRotation.running) {
+        // A deliberate scan restart exits the isolated manual diagnostic.
+        manualDemoDiagnosticActive552 = false
+        manualDemoTapStatus552 = null
         if (realAccountSafetyStop517 && mediaProjection != null &&
             TouchTestService.demoFxAccountInForeground()) {
           realAccountSafetyStop517 = false
@@ -4474,6 +4480,10 @@ class ScalpOverlayService : Service() {
         // Pause rotation only for this user-authorized diagnostic. The
         // rotation code is otherwise unchanged and can be restarted on bar.
         fxRotation.stop("ROTAȚIE PAUZĂ • TEST DEMO")
+        manualDemoDiagnosticActive552 = true
+        autoDemoArmed = false
+        autoDemoMarket = null
+        autoDemoExpiry = 0L
         val quote552 = try {
           TouchTestService.readBrokerDemoOrder476(pair552)
         } catch (_: Exception) { null }
@@ -7065,7 +7075,8 @@ class ScalpOverlayService : Service() {
         activeSignal != "NONE" && eligibleSignal547 &&
         lockedAt > autoDemoEntryCycleStartedAt && lockedAt != autoDemoLockedAt &&
         now - lockedAt in 0L..4_000L
-      if (!fxRotationNavigating && autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
+      if (!manualDemoDiagnosticActive552 &&
+          !fxRotationNavigating && autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
           tradePositionGate.state() == TradePositionGate.State.READY &&
           !closedHistoryInspectionInProgress) {
         val nowClock = android.os.SystemClock.elapsedRealtime()
@@ -7144,7 +7155,7 @@ class ScalpOverlayService : Service() {
       }
       // One-shot DEMO order ONLY on a NEW analyzer-confirmed SHOCK lock (sound optional).
       // A five-minute signal display is never a fresh entry instruction.
-      if (autoDemoArmed) {
+      if (autoDemoArmed && !manualDemoDiagnosticActive552) {
         val expectedPair = autoDemoMarket
         val seenPair = currentPair(now)
         val nowClock = android.os.SystemClock.elapsedRealtime()
