@@ -170,6 +170,11 @@ class ScalpOverlayService : Service() {
   private var autoDemoSessionConsumed = false
   private var demoOrderVerificationReason: String? = null
   private var autoDemoSessionEndAt = 0L
+  // 546: read-only, session-scoped diagnostics. These never authorize orders.
+  private var demoDiagConfirmedShocks546 = 0
+  private var demoDiagPreflightEverReady546 = false
+  private var demoDiagGestureChecks546 = 0
+  private var demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
   // Wall-clock start of the currently authorized, verified DEMO entry cycle.
   // A BIP from before this boundary must never become a broker order.
   private var autoDemoEntryCycleStartedAt = 0L
@@ -561,6 +566,10 @@ class ScalpOverlayService : Service() {
             sell404TestPrefs, Context.MODE_PRIVATE
           ).getBoolean("attempted", false)
           lastShockOrderStatus = null
+          demoDiagConfirmedShocks546 = 0
+          demoDiagPreflightEverReady546 = false
+          demoDiagGestureChecks546 = 0
+          demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
           robotArmedContinuously513 = true
           autoDemoSessionRequested = !priorAutoShockAttempt && !priorSell404Attempt
           autoDemoSessionConsumed = priorAutoShockAttempt || priorSell404Attempt
@@ -6529,6 +6538,8 @@ class ScalpOverlayService : Service() {
     lockedAt = now
     lockedDir = confirmedSignal
     activeStrategy = confirmedStrategy
+    // Count only published, two-stage-confirmed SHOCK signals, not raw candle colors.
+    if (confirmedStrategy == "SHOCK") demoDiagConfirmedShocks546 += 1
     lastShockQuality = quality // Internal optical quality, NOT displayed as win %
     lastConfirmedShockPercent = if (confirmedShock) shockBodyPercent else 0
     lastConfirmedScalpPercent = 0
@@ -6860,6 +6871,7 @@ class ScalpOverlayService : Service() {
           }
           autoDemoLastPreflightReason = diagnostic.take(95)
           if (diagnostic.startsWith("PREGĂTIT AUTO DEMO")) {
+            demoDiagPreflightEverReady546 = true
             autoDemoLastPreflightReason = "PREGĂTIT"
             autoDemoArmed = true
             autoDemoMarket = pair
@@ -7055,6 +7067,9 @@ class ScalpOverlayService : Service() {
                 // effect; an Android gesture alone cannot trigger it.
                 val badgeBefore512 = if (CHART_ONLY_DEMO_462)
                   readDemoBadgeForEffect512() else null
+                // This is a helper invocation count, not a broker-order count.
+                demoDiagGestureChecks546 += 1
+                demoDiagLastGesture546 = "VERIFICARE ANDROID ÎN CURS"
                 val result = if (CHART_ONLY_DEMO_462 && stake429 != 100L)
                   TouchTestService.pressVerifiedDemoStakeOnce429(
                     activeSignal, tradePair429, stake429!!, payout429!!
@@ -7066,6 +7081,7 @@ class ScalpOverlayService : Service() {
                 else TouchTestService.pressVerifiedDemoStakeOnce429(
                   activeSignal, tradePair429, stake429!!
                 )
+                demoDiagLastGesture546 = result.take(95)
                 if (CHART_ONLY_DEMO_462 &&
                     (result.contains("ACCEPTAT DE ANDROID") ||
                      result.contains("TRANSMIS • AȘTEPT ID OPEN"))) {
@@ -7104,6 +7120,7 @@ class ScalpOverlayService : Service() {
                 }
               } catch (error: Exception) {
                 android.util.Log.e("ScalpAtlasRobot", "419 uncertain gesture", error)
+                demoDiagLastGesture546 = "EROARE GEST: " + error.javaClass.simpleName.take(25)
                 tradePositionGate.uncertainResult()
                 touchProbeStatus?.text =
                   "GEST NECONFIRMAT • ANDROID " + error.javaClass.simpleName.take(22) +
@@ -7199,6 +7216,11 @@ class ScalpOverlayService : Service() {
             .putString("timeframe", if (tfAutomatic && !tfVerified) "AUTO ?" else selectedTimeframe)
             .putString("tfOcrSource", if (tfReady) lastTfOcrSource else "NECONFIRMAT")
             .putString("shockBlocker", if (brokerConnected) shockBlocker else "NECONFIRMAT")
+            .putInt("demoConfirmedShocks546", demoDiagConfirmedShocks546)
+            .putBoolean("demoPreflightEverReady546", demoDiagPreflightEverReady546)
+            .putInt("demoGestureHelperChecks546", demoDiagGestureChecks546)
+            .putString("demoLastPreflight546", autoDemoLastPreflightReason)
+            .putString("demoLastGesture546", demoDiagLastGesture546)
             .putString("scalpBlocker", if (brokerConnected) scalpBlocker else "NECONFIRMAT")
             .putString("demoRecoveryPlan92ReadOnly", demoRecoveryLedger.diagnostic(92))
             .putLong("frames", frameCount)
@@ -7270,10 +7292,12 @@ class ScalpOverlayService : Service() {
         tradePositionGate.state() != TradePositionGate.State.READY ||
           autoDemoSessionConsumed -> demoOrderVerificationStatus()
         fxRotationNavigating ->
-          "ARMAT"
+          "🤖 ARMAT • ROTAȚIE • FĂRĂ ORDIN"
         autoDemoArmed && autoDemoSessionRequested ->
-          "🤖 ARMAT • QT DEMO • " + shockBlocker.take(48)
-        else -> "ARMAT · VERIFIC DEMO"
+          "🤖 ARMAT • PREFLIGHT QT DEMO OK • AȘTEPT ȘOC"
+        autoDemoSessionRequested ->
+          "🤖 ARMAT • PREFLIGHT: " + autoDemoLastPreflightReason.take(56)
+        else -> "🤖 ARMAT • FĂRĂ SESIUNE EXECUTABILĂ"
       }
       // Reuse the existing narrow footer; no extra controls in compact mode.
       // Display a reason, not a false probability of winning.
@@ -7405,20 +7429,40 @@ class ScalpOverlayService : Service() {
       if (!autoDemoSessionRequested && !autoDemoSessionConsumed) {
         sell404Diagnostic?.let { touchProbeStatus?.text = it.take(120) }
       }
-      // 513: final compact-panel status is stable and never says NEARMAT
-      // merely because the scanner is between two FX pairs. No order gate
-      // is loosened. The panel only says ARMAT while Android LIVE is active.
+      // 546: compact, read-only stage counters survive FX rotation in this LIVE
+      // session. "GEST" counts helper checks, never confirmed broker orders.
+      // No permissions, trading guards, 20s rotation, or SHOCK thresholds change.
       if (persistentRobotStatus513 != null) {
         if (lastShockOrderStatus != null && demoRecoveryLedger.verifiedOpenPositionId429() != null) {
           lastShockOrderStatus = "ORDIN DEMO CONFIRMAT"
         }
-        val lastResult = lastShockOrderStatus
-        touchProbeStatus?.text = if (lastResult == null || !demoAccountIdentified ||
-            realAccountIdentified || realAccountSafetyStop517 || accountRecheckPending) {
-          persistentRobotStatus513
-        } else {
-          persistentRobotStatus513 + "\nULTIMUL ȘOC: " + lastResult
+        val counts546 = "ȘOC " + demoDiagConfirmedShocks546 +
+          " • PREFL " + (if (demoDiagPreflightEverReady546) "DA" else "NU") +
+          " • GEST " + demoDiagGestureChecks546
+        val reason546 = when {
+          realAccountIdentified || realAccountSafetyStop517 -> "QT REAL: ORDINE BLOCATE"
+          !demoAccountIdentified -> "CONT DEMO NECONFIRMAT"
+          autoDemoSessionConsumed ->
+            "ORDIN: " + demoOrderVerificationStatus().take(72)
+          demoDiagGestureChecks546 > 0 ->
+            "ULTIMUL GEST: " + demoDiagLastGesture546.take(61)
+          lastShockOrderStatus != null ->
+            "ULTIMUL ȘOC: " + lastShockOrderStatus!!.take(61)
+          !autoDemoArmed ->
+            "PREFLIGHT: " + autoDemoLastPreflightReason.take(61)
+          activeSignal == "NONE" ->
+            "SEMNAL: " + shockBlocker.take(61)
+          else -> "SEMNAL: " + activeSignal
         }
+        val state546 = when {
+          realAccountIdentified || realAccountSafetyStop517 ||
+            accountRecheckPending || !demoAccountIdentified ||
+            autoDemoSessionConsumed -> persistentRobotStatus513
+          fxRotationNavigating -> "🤖 ARMAT • ROTAȚIE"
+          autoDemoArmed -> "🤖 ARMAT • DEMO VERIFICAT"
+          else -> "🤖 ARMAT • DEMO NEPREGĂTIT"
+        }
+        touchProbeStatus?.text = state546 + "\n" + counts546 + "\n" + reason546
       }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
