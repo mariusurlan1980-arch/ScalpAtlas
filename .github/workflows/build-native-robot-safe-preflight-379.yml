@@ -324,7 +324,6 @@ jobs:
           b = src.index('// 510: LIVE capture requests an ongoing QT Demo auto-arm session;', a)
           t = src[a:b]
           assert 'TEST BUY DEMO' in t and 'CONFIRMĂ BUY' in t
-          assert 'demoTapArmedAt552 in' not in t
           assert 'tick552 - demoTapArmedAt552 in 0L..8_000L' in t
           assert 'TouchTestService.demoFxAccountInForeground()' in t
           assert 'TouchTestService.realFxAccountVisible()' in t
