@@ -65,13 +65,21 @@ function screen(close,dir='BUY',verticalShift=0,stickyWick=false,trendDir=dir){
     candle(p,314,120,145,'SELL');
     candle(p,342,127,152,'SELL');
     candle(p,369,134,159,'SELL');
+  }else if(trendDir==='BUY_EARLY_554'){
+    candle(p,314,170,190,'SELL');
+    candle(p,342,205,229,'SELL');
+    candle(p,369,236,215,'BUY');
+  }else if(trendDir==='SELL_EARLY_554'){
+    candle(p,314,235,214,'BUY');
+    candle(p,342,208,184,'BUY');
+    candle(p,369,176,195,'SELL');
   }else if(trendDir==='SELL_WEAK'){
     // Genuine SELL direction, but slope below new 30% threshold.
     candle(p,314,115,145,'SELL');
     candle(p,342,119,149,'SELL');
     candle(p,369,123,153,'SELL');
   }
-  const open=(dir==='BUY'?230:165)+verticalShift;
+  const open=(trendDir==='SELL_EARLY_554'?181:(dir==='BUY'?230:165))+verticalShift;
   candle(p,391,open,close+verticalShift,dir);
   if(stickyWick){
     // Simulated wick that visibly remains after the candle recovers.
@@ -123,7 +131,15 @@ function assertQuiet(result){
   assert.equal(result.scalpOpticalVerified,false);
   // 553: trend-only M5 continuation is now a permitted DEMO strategy,
   // but never an invented SHOCK or SCALP pullback.
-  if(result.strategy==='SIMPLE_TREND'){
+  if(result.strategy==='SIMPLE_TREND' || result.strategy==='EARLY_SECOND'){
+    if(result.strategy==='EARLY_SECOND'){
+      assert.equal(result.timeframe,'M5');
+      assert.equal(result.earlyOpticalVerified554,true);
+      assert.equal(result.earlyBeforeFlipVerified554,true);
+      assert.equal(result.earlyPriorRunCount554,1);
+      assert.equal(result.earlyMomentumVerified554,true);
+      return;
+    }
     assert.equal(result.timeframe,'M5');
     assert.equal(result.simpleOpticalVerified553,true);
     assert.equal(result.trendMeasured,true);
@@ -343,8 +359,29 @@ for(let i=0;i<9;i++){
   simpleOnly553=analyze(140,'BUY','TREND-ONLY OTC',74,'M5');
   assertQuiet(simpleOnly553);
 }
-assert.equal(simpleOnly553.strategy,'SIMPLE_TREND');
-assert.equal(simpleOnly553.signal,'BUY');
+assert.equal(simpleOnly553.strategy,'NONE',
+ 'Do not enter a fourth consecutive same-color candle via SIMPLE_TREND');
+let earlyBuy554;
+for(const close of [221,218,214,210]){
+  earlyBuy554=analyze(close,'BUY','EARLY-554-BUY OTC',144,'M5',0,false,'BUY_EARLY_554');
+}
+assert.equal(earlyBuy554.strategy,'EARLY_SECOND');
+assert.equal(earlyBuy554.signal,'BUY');
+assert.equal(earlyBuy554.earlyOpticalVerified554,true);
+assert.equal(earlyBuy554.earlyBeforeFlipVerified554,true);
+assert.equal(earlyBuy554.earlyPriorRunCount554,1);
+let earlySell554;
+for(const close of [185,189,193,199]){
+  earlySell554=analyze(close,'SELL','EARLY-554-SELL OTC',145,'M5',0,false,'SELL_EARLY_554');
+}
+assert.equal(earlySell554.strategy,'EARLY_SECOND');
+assert.equal(earlySell554.signal,'SELL');
+assert.equal(earlySell554.earlyOpticalVerified554,true);
+assert.equal(earlySell554.earlyPriorRunCount554,1);
+for(const close of [221,218,214,210]){
+  const v=analyze(close,'BUY','EARLY-554-M10 OTC',146,'M10',0,false,'BUY_EARLY_554');
+  assert.notEqual(v.strategy,'EARLY_SECOND');
+}
 // 450: optical shock must still be detectable when three old candle
 // bodies are hidden by the broker's screen layout; never invent a slope.
 let noTrendShock;
