@@ -336,15 +336,25 @@ for(let i=0;i<8;i++) assertQuiet(analyze(155,'BUY','SCALP-M10 OTC',73,'M10'));
 for(const close of [148,162,170,166,157,150])
   assertQuiet(analyze(close,'BUY','SCALP-M10 OTC',73,'M10',0,
     close===166||close===157||close===150));
-// 553: measured M5 trend continuation may now produce SIMPLE_TREND even
-// without a SHOCK wick. This still isn't a proven profitable strategy.
+// 554: static trend-only candles are no longer enough for SIMPLE_TREND;
+// observe a recent pullback + recovery and reject chasing a mature candle.
 let simpleOnly553;
 for(let i=0;i<9;i++){
   simpleOnly553=analyze(140,'BUY','TREND-ONLY OTC',74,'M5');
   assertQuiet(simpleOnly553);
 }
-assert.equal(simpleOnly553.strategy,'SIMPLE_TREND');
-assert.equal(simpleOnly553.signal,'BUY');
+assert.equal(simpleOnly553.strategy,'NONE');
+assert.equal(simpleOnly553.signal,'NONE');
+assert.equal(simpleOnly553.simpleEarlyEntryGuard554,false);
+// Small 4px down and 2px recovery on the SAME forming BUY candle:
+// below the 5px SHOCK minimum and 9px SCALP_TREND minimum.
+let earlySimple554;
+for(const close of [204,208,206,206]){
+  earlySimple554=analyze(close,'BUY','TREND-EARLY OTC',75,'M5');
+}
+assert.equal(earlySimple554.simpleEarlyEntryGuard554,true);
+assert.equal(earlySimple554.strategy,'SIMPLE_TREND');
+assert.equal(earlySimple554.signal,'BUY');
 // 450: optical shock must still be detectable when three old candle
 // bodies are hidden by the broker's screen layout; never invent a slope.
 let noTrendShock;
