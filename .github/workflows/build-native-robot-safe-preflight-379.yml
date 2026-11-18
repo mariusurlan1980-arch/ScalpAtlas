@@ -345,7 +345,8 @@ jobs:
           from pathlib import Path
           e=Path('scalp-atlas-new/shockNativeEngine.ts').read_text()
           k=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
-          assert "var simpleTrend553=!confirmed&&!scalpConfirmed&&tf==='M5'" in e
+          assert "var simpleTrend553=!confirmed&&!scalpConfirmed&&!earlySecond554&&" in e
+          assert "candle.previousRunCount554<3&&tf==='M5'" in e
           assert 'candle.opticalQuality>=75' in e
           assert 'candle.trendMeasured && candle.trendHistoryCount===3' in e
           assert "simpleOpticalVerified553:simpleTrend553" in e
