@@ -172,6 +172,7 @@ class ScalpOverlayService : Service() {
   private var autoDemoSessionEndAt = 0L
   // 546: read-only, session-scoped diagnostics. These never authorize orders.
   private var demoDiagConfirmedShocks546 = 0
+  private var demoDiagConfirmedTrends547 = 0
   private var demoDiagPreflightEverReady546 = false
   private var demoDiagGestureChecks546 = 0
   private var demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
@@ -567,6 +568,7 @@ class ScalpOverlayService : Service() {
           ).getBoolean("attempted", false)
           lastShockOrderStatus = null
           demoDiagConfirmedShocks546 = 0
+          demoDiagConfirmedTrends547 = 0
           demoDiagPreflightEverReady546 = false
           demoDiagGestureChecks546 = 0
           demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
@@ -6390,15 +6392,30 @@ class ScalpOverlayService : Service() {
         else -> "MODELUL ȘOC CU DOUĂ LUMÂNĂRI NECONFIRMAT"
       }
     }
-    val confirmedSignal = if (confirmedShock) rawSignal else "NONE"
-    val confirmedStrategy = if (confirmedShock) "SHOCK" else "NONE"
+    // 547: independent, DEMO-only M5 trend+pullback signal. No SHOCK
+    // requirement, but never infer BUY/SELL from color alone.
+    val scalpDepth547 = result.optInt("scalpRetracementPercent", 0).coerceIn(0, 100)
+    val scalpRebound547 = result.optInt("scalpRecoveryPercent", 0).coerceIn(0, 100)
+    val scalpDuration547 = result.optLong("scalpPullbackDurationMs", -1L)
+    val confirmedScalp547 = rawStrategy == "SCALP_TREND" &&
+      rawDirectionValid && sameOpticalDirection && timeframe == "M5" &&
+      quality >= 55 && shockFrameFresh &&
+      result.optBoolean("scalpOpticalVerified", false) &&
+      result.optBoolean("scalpSameCandle", false) &&
+      scalpDepth547 in 21..50 && scalpRebound547 >= 35 &&
+      scalpDuration547 in 700L..15_000L &&
+      observedTrendMeasured && observedTrendDirection == rawSignal &&
+      observedTrendStrengthPercent > 50
+    val confirmedSignal = if (confirmedShock || confirmedScalp547) rawSignal else "NONE"
+    val confirmedStrategy = if (confirmedShock) "SHOCK" else if (confirmedScalp547) "SCALP_TREND" else "NONE"
     val rejectionText = if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)
       "ȘOC • AȘTEPT DOUĂ LUMÂNĂRI DE ACEEAȘI CULOARE"
       else if (wickRejected) shockBlocker
-      else "AȘTEPT ȘOC"
+      else if (rawStrategy == "SCALP_TREND") "TREND: " + scalpBlocker
+      else "AȘTEPT ȘOC / TREND"
     val expiry = 5 // five-minute DEMO alert timer, not an automatic broker order
     val directionMax = result.optInt("directionMax", 0)
-    val pattern = "ȘOC • A DOUA LUMÂNARE"
+    val pattern = if (confirmedScalp547) "SCALP TREND • M5" else "ȘOC • A DOUA LUMÂNARE"
     val reason = result.optString("reason", "")
     val opticalCount = if (opticalGate) 1 else 0
 
@@ -6540,10 +6557,11 @@ class ScalpOverlayService : Service() {
     activeStrategy = confirmedStrategy
     // Count only published, two-stage-confirmed SHOCK signals, not raw candle colors.
     if (confirmedStrategy == "SHOCK") demoDiagConfirmedShocks546 += 1
+    if (confirmedStrategy == "SCALP_TREND") demoDiagConfirmedTrends547 += 1
     lastShockQuality = quality // Internal optical quality, NOT displayed as win %
     lastConfirmedShockPercent = if (confirmedShock) shockBodyPercent else 0
-    lastConfirmedScalpPercent = 0
-    lastConfirmedShockDurationMs = shockDropDurationMs
+    lastConfirmedScalpPercent = if (confirmedScalp547) scalpDepth547 else 0
+    lastConfirmedShockDurationMs = if (confirmedScalp547) scalpDuration547 else shockDropDurationMs
     candidateDir = null
     candidateStrategy = null
     candidateCount = 0
@@ -6820,10 +6838,14 @@ class ScalpOverlayService : Service() {
       // once in the app. Auto-arming uses EXACTLY the same QT Demo, 1 USD,
       // payout exact 92%, visible-pair and unique BUY/SELL checks as the former button.
       // If Android/WebView cannot prove them, NO ORDER is sent.
+      val eligibleSignal547 =
+        (activeStrategy == "SHOCK" &&
+          lastConfirmedShockPercent > SHOCK_MIN_DEPTH) ||
+        (activeStrategy == "SCALP_TREND" &&
+          lastConfirmedScalpPercent in 21..50)
       val freshShockForPreflight = entryFrameId > 0L && entryFrameId == frameCount &&
         now - lastFrameAt in 0L..MAX_ALERT_ANALYSIS_AGE_MS &&
-        activeSignal != "NONE" && activeStrategy == "SHOCK" &&
-        lastConfirmedShockPercent > SHOCK_MIN_DEPTH &&
+        activeSignal != "NONE" && eligibleSignal547 &&
         lockedAt > autoDemoEntryCycleStartedAt && lockedAt != autoDemoLockedAt &&
         now - lockedAt in 0L..4_000L
       if (!fxRotationNavigating && autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
@@ -6884,14 +6906,13 @@ class ScalpOverlayService : Service() {
             // unresolved trade. The gesture still needs ALL independent
             // broker/amount/payout/fresh-frame checks below.
             val freshJustConfirmedShock453 = activeSignal != "NONE" &&
-              activeStrategy == "SHOCK" &&
+              eligibleSignal547 &&
               lockedAt > autoDemoEntryCycleStartedAt &&
-              now - lockedAt in 0L..4_000L &&
-              lastConfirmedShockPercent > SHOCK_MIN_DEPTH
+              now - lockedAt in 0L..4_000L
             autoDemoLockedAt = if (freshJustConfirmedShock453)
               lockedAt - 1L else lockedAt
             autoDemoExpiry = autoDemoSessionEndAt
-            touchProbeStatus?.text = "🤖 DEMO AUTO • MIZĂ VERIFICATĂ • AȘTEAPTĂ ȘOC"
+            touchProbeStatus?.text = "🤖 DEMO AUTO • MIZĂ VERIFICATĂ • ȘOC/TREND"
           } else {
             if (freshShockForPreflight) {
               lastShockOrderStatus = "FĂRĂ ORDIN • " + diagnostic.take(90)
@@ -6942,8 +6963,7 @@ class ScalpOverlayService : Service() {
         val entryFrameCurrent = entryFrameId > 0L && entryFrameId == frameCount &&
           now - lastFrameAt in 0L..MAX_ALERT_ANALYSIS_AGE_MS
         val newShock = activeSignal != "NONE" && entryFrameCurrent &&
-          activeStrategy == "SHOCK" &&
-          lastConfirmedShockPercent > SHOCK_MIN_DEPTH &&
+          eligibleSignal547 &&
           lockedAt > 0L && now - lockedAt in 0L..5000L &&
           lockedAt != autoDemoLockedAt
         // A transient OCR/capture gap must not cancel the whole arm.
@@ -6978,7 +6998,7 @@ class ScalpOverlayService : Service() {
             "RECUPERARE DEMO • QUOTE / PAYOUT / SOLD NECONFIRMATE"
         } else if (!readyForDemo) {
           touchProbeStatus?.text =
-            "FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC"
+            "FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT SEMNAL NOU"
         } else {
           // 419: CRITICAL ORDERING FIX. In 418 the prior-attempt marker was
           // committed BEFORE the broker preflight. If WebView rejected an
@@ -7217,6 +7237,7 @@ class ScalpOverlayService : Service() {
             .putString("tfOcrSource", if (tfReady) lastTfOcrSource else "NECONFIRMAT")
             .putString("shockBlocker", if (brokerConnected) shockBlocker else "NECONFIRMAT")
             .putInt("demoConfirmedShocks546", demoDiagConfirmedShocks546)
+            .putInt("demoConfirmedTrends547", demoDiagConfirmedTrends547)
             .putBoolean("demoPreflightEverReady546", demoDiagPreflightEverReady546)
             .putInt("demoGestureHelperChecks546", demoDiagGestureChecks546)
             .putString("demoLastPreflight546", autoDemoLastPreflightReason)
@@ -7294,7 +7315,7 @@ class ScalpOverlayService : Service() {
         fxRotationNavigating ->
           "🤖 ARMAT • ROTAȚIE • FĂRĂ ORDIN"
         autoDemoArmed && autoDemoSessionRequested ->
-          "🤖 ARMAT • PREFLIGHT QT DEMO OK • AȘTEPT ȘOC"
+          "🤖 ARMAT • PREFLIGHT QT DEMO OK • ȘOC/TREND"
         autoDemoSessionRequested ->
           "🤖 ARMAT • PREFLIGHT: " + autoDemoLastPreflightReason.take(56)
         else -> "🤖 ARMAT • FĂRĂ SESIUNE EXECUTABILĂ"
@@ -7352,7 +7373,7 @@ class ScalpOverlayService : Service() {
           // A real SCALP TREND alert may legitimately BIP on M5; only SHOCK
           // is permitted to submit a DEMO broker order in this build.
           activeSignal != "NONE" && activeStrategy == "SCALP_TREND" ->
-            "🔔 " + activeSignal + " • SCALP M5 • FĂRĂ ORDIN: NU ESTE ȘOC"
+            "🔔 " + activeSignal + " • SCALP M5 • VERIFIC EXECUȚIE QT DEMO"
           activeSignal != "NONE" && !autoDemoArmed ->
             "🔔 " + activeSignal + " • FĂRĂ ORDIN: " +
               autoDemoLastPreflightReason.take(47)
@@ -7436,8 +7457,9 @@ class ScalpOverlayService : Service() {
         if (lastShockOrderStatus != null && demoRecoveryLedger.verifiedOpenPositionId429() != null) {
           lastShockOrderStatus = "ORDIN DEMO CONFIRMAT"
         }
+        // Historic PREFL DA was misleading across successive FX pairs.
         val counts546 = "ȘOC " + demoDiagConfirmedShocks546 +
-          " • PREFL " + (if (demoDiagPreflightEverReady546) "DA" else "NU") +
+          " • TREND " + demoDiagConfirmedTrends547 +
           " • GEST " + demoDiagGestureChecks546
         val reason546 = when {
           realAccountIdentified || realAccountSafetyStop517 -> "QT REAL: ORDINE BLOCATE"
@@ -7447,7 +7469,7 @@ class ScalpOverlayService : Service() {
           demoDiagGestureChecks546 > 0 ->
             "ULTIMUL GEST: " + demoDiagLastGesture546.take(61)
           lastShockOrderStatus != null ->
-            "ULTIMUL ȘOC: " + lastShockOrderStatus!!.take(61)
+            "ULTIMUL SEMNAL: " + lastShockOrderStatus!!.take(61)
           !autoDemoArmed ->
             "PREFLIGHT: " + autoDemoLastPreflightReason.take(61)
           activeSignal == "NONE" ->
@@ -7460,7 +7482,7 @@ class ScalpOverlayService : Service() {
             autoDemoSessionConsumed -> persistentRobotStatus513
           fxRotationNavigating -> "🤖 ARMAT • ROTAȚIE"
           autoDemoArmed -> "🤖 ARMAT • DEMO VERIFICAT"
-          else -> "🤖 ARMAT • DEMO NEPREGĂTIT"
+          else -> "🤖 ARMAT • PREFLIGHT " + autoDemoLastPreflightReason.take(26)
         }
         touchProbeStatus?.text = state546 + "\n" + counts546 + "\n" + reason546
       }
