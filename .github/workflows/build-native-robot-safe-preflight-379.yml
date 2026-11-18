@@ -453,12 +453,15 @@ jobs:
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
 
-      - name: Verify 420 BIP strategy distinction and no duplicate DEMO order
+      - name: Verify SHOCK and SCALP TREND DEMO entries keep duplicate-order protection
         run: |
           set -e
           O=.github/native-overlay/ScalpOverlayService.kt
           T=.github/native-overlay/TouchTestService.kt
-          grep -Fq 'SCALP M5 • FĂRĂ ORDIN: NU ESTE ȘOC' "$O"
+          grep -Fq 'SCALP M5 • VERIFIC EXECUȚIE QT DEMO' "$O"
+          grep -Fq 'val confirmedScalp547 = rawStrategy == "SCALP_TREND"' "$O"
+          grep -Fq 'val newShock = activeSignal != "NONE" && entryFrameCurrent &&' "$O"
+          grep -Fq 'eligibleSignal547 &&' "$O"
           grep -Fq 'ȘOC VALID • ORDIN BLOCAT: ISTORIC' "$O"
           grep -Fq '0 POZIȚII 1/2 • AȘTEPT A DOUA CITIRE' "$O"
           grep -Fq 'activeStrategy == "SHOCK" &&' "$O"
