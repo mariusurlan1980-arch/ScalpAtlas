@@ -613,7 +613,7 @@ jobs:
           # 517: required safety gates; no physical fallback beside account.
           grep -Fq 'fun stopOnReal517(realVisible: Boolean = false): Boolean' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'realAccountSafetyStop517 = true' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'PERECHE EXOTICĂ • FĂRĂ ORDINE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'PERECHE FX NEACCEPTATĂ • FĂRĂ ORDINE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'SELECTOR NECONFIRMAT • FĂRĂ TAP LÂNGĂ CONT' .github/native-overlay/ScalpOverlayService.kt
           # 518: permit more than four inspected pairs, without
           # disabling QT Demo-only or >=92% payout checks.
