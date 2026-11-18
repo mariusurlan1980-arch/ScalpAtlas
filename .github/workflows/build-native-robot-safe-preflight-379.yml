@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 551 OTC duplicate header diagnostic G24
+name: Build Scalp Atlas 552 ONE physical DEMO gesture diagnostic G24
 
 on:
   push:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.84'
+          expo['version']='3.2.85'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=551
+          expo['android']['versionCode']=552
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -314,6 +314,33 @@ jobs:
           ! grep -Fq "TouchPracticePanel" scalp-atlas-new/App.tsx
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
+
+      - name: Verify 552 opt-in one-shot physical DEMO test preserves all order locks
+        run: |
+          python3 - <<'PY552'
+          from pathlib import Path
+          src = Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          a = src.index('// 552: An isolated physical BUY gesture test.')
+          b = src.index('// 510: LIVE capture requests an ongoing QT Demo auto-arm session;', a)
+          t = src[a:b]
+          assert 'TEST BUY DEMO' in t and 'CONFIRMĂ BUY' in t
+          assert 'demoTapArmedAt552 in' not in t
+          assert 'tick552 - demoTapArmedAt552 in 0L..8_000L' in t
+          assert 'TouchTestService.demoFxAccountInForeground()' in t
+          assert 'TouchTestService.realFxAccountVisible()' in t
+          assert 'tradePositionGate.state() != TradePositionGate.State.READY' in t
+          assert 'TouchTestService.readBrokerDemoOrder476(pair552)' in t
+          assert 'quote552.second != 92' in t
+          assert 'fxRotation.stop("ROTAȚIE PAUZĂ • TEST DEMO")' in t
+          assert t.index('tradePositionGate.beginAttempt()') < t.index('.putBoolean("attempted", true)')
+          assert t.index('.putBoolean("attempted", true)') < t.index('pressVerifiedDemoStakeOnce429(')
+          assert 'result552.startsWith("PRECHECK_NO_GESTURE:")' in t
+          assert 'if (undone552 && tradePositionGate.cancelBeforeDispatch())' in t
+          assert 'autoDemoSessionConsumed = true' in t
+          assert 'activeSignal' not in t and 'confirmedShock' not in t
+          assert 'tapTestRow552.visibility = View.VISIBLE' in src
+          print('552 one-shot manual DEMO gesture and durable lock checks passed')
+          PY552
 
       - name: Verify 551 explicit OTC duplicate and fail-closed pair matching
         run: |
@@ -2398,12 +2425,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-551-DUPLICAT-OTC-G24.apk
+          cp "$APK" ScalpAtlas-552-TEST-BUY-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-551-DUPLICAT-OTC-G24
-          path: ScalpAtlas-551-DUPLICAT-OTC-G24.apk
+          name: ScalpAtlas-552-TEST-BUY-DEMO-G24
+          path: ScalpAtlas-552-TEST-BUY-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2413,12 +2440,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-551-DUPLICAT-OTC-G24.apk"
+          FILE="ScalpAtlas-552-TEST-BUY-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-551-duplicat-otc-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-552-test-buy-demo-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 551 - antet OTC duplicat" \
-            --notes "Recunoaste dublura EUR/RUB si EUR/RUB OTC doar cu dovada OTC explicita. Diferentiaza antet necitit de pereche gresita. Rotația 20s, cont QT Demo, M5, payout 92% si blocajele de ordin raman neschimbate."
+            --title "Scalp Atlas 552 - test fizic BUY QT Demo" \
+            --notes "Adauga o singura proba BUY fizica opt-in cu doua atingeri deliberate, exclusiv QT Demo, fara ȘOC/TREND, cu preflight complet si blocare durabila. Rotatia este oprita numai in timpul probei; payout exact 92% si suma citita din broker."

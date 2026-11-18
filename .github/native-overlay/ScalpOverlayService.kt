@@ -185,6 +185,9 @@ class ScalpOverlayService : Service() {
   private var demoDiagPreflightEverReady546 = false
   private var demoDiagGestureChecks546 = 0
   private var demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
+  // 552: diagnostic-only, explicitly initiated once by a TWO-TAP user action.
+  // Never trigger a broker order from this field, without user confirmation.
+  private var manualDemoTapStatus552: String? = null
   // Wall-clock start of the currently authorized, verified DEMO entry cycle.
   // A BIP from before this boundary must never become a broker order.
   private var autoDemoEntryCycleStartedAt = 0L
@@ -589,6 +592,7 @@ class ScalpOverlayService : Service() {
           demoDiagPreflightEverReady546 = false
           demoDiagGestureChecks546 = 0
           demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
+          manualDemoTapStatus552 = null
           robotArmedContinuously513 = true
           autoDemoSessionRequested = !priorAutoShockAttempt && !priorSell404Attempt
           autoDemoSessionConsumed = priorAutoShockAttempt || priorSell404Attempt
@@ -4413,6 +4417,150 @@ class ScalpOverlayService : Service() {
     root.addView(demoOrderRow)
     demoBrokerOrderRow = demoOrderRow
 
+    // 552: An isolated physical BUY gesture test. It DOES NOT depend on
+    // SHOCK, trend, wick, M5 signal confirmations or the 20s scanner.
+    // It is NEVER automatic: the user must tap twice within eight seconds.
+    // Keep all broker/exact stake/payout/expiry, QT Real, and persisted
+    // one-position guards. No fallback coordinates or repeated gestures.
+    var demoTapArmedPair552: String? = null
+    var demoTapArmedStake552: Long? = null
+    var demoTapArmedAt552 = 0L
+    fun clearDemoTapArm552() {
+      demoTapArmedPair552 = null
+      demoTapArmedStake552 = null
+      demoTapArmedAt552 = 0L
+    }
+    val tapTestRow552 = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.VISIBLE
+      setPadding(0, dp(2), 0, dp(1))
+    }
+    val tapTestButton552 = localButton("TEST BUY DEMO", Color.rgb(91, 62, 116)).apply {
+      textSize = 9f
+      contentDescription = "Test fizic BUY numai QT Demo, două confirmări, o singură tentativă; fără semnal de tranzacționare"
+      setOnClickListener {
+        val now552 = System.currentTimeMillis()
+        val tick552 = android.os.SystemClock.elapsedRealtime()
+        val pair552 = currentPair(now552)
+        val previousAttempt552 =
+          getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+            .getBoolean("attempted", false) ||
+          getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+            .getBoolean("attempted", false)
+        val rejection552 = when {
+          mediaProjection == null || shuttingDown || !autoDemoSessionRequested ||
+            autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO FĂRĂ AUTORIZARE"
+          realAccountSafetyStop517 || accountRecheckPending ||
+            TouchTestService.realFxAccountVisible() -> "BLOCAT: QT REAL / CONT NESIGUR"
+          !TouchTestService.ready() -> "BLOCAT: ACCESIBILITATE ANDROID"
+          !TouchTestService.demoFxAccountInForeground() ->
+            "BLOCAT: QT DEMO NU ESTE ÎN PRIM-PLAN"
+          previousAttempt552 || tradePositionGate.state() != TradePositionGate.State.READY ||
+            closedHistoryInspectionInProgress -> "BLOCAT: ORDIN VECHI NEVERIFICAT"
+          fxRotationNavigating || !pairReady(now552) || pair552 == "NEIDENTIFICAT" ->
+            "BLOCAT: PERECHE / OCR NECONFIRMAT"
+          !TouchTestService.isPreferredFxPair517(pair552) ->
+            "BLOCAT: NU ESTE PERECHE VALUTARĂ CONFIRMATĂ"
+          else -> null
+        }
+        if (rejection552 != null) {
+          clearDemoTapArm552()
+          text = "TEST BUY DEMO"
+          manualDemoTapStatus552 = rejection552
+          probeStatus.text = rejection552
+          return@setOnClickListener
+        }
+        // Pause rotation only for this user-authorized diagnostic. The
+        // rotation code is otherwise unchanged and can be restarted on bar.
+        fxRotation.stop("ROTAȚIE PAUZĂ • TEST DEMO")
+        val quote552 = try {
+          TouchTestService.readBrokerDemoOrder476(pair552)
+        } catch (_: Exception) { null }
+        if (quote552 == null || quote552.second != 92) {
+          clearDemoTapArm552()
+          text = "TEST BUY DEMO"
+          manualDemoTapStatus552 =
+            TouchTestService.inspectBrokerDemoOrder488(pair552, currentOverlayBounds488())
+          probeStatus.text = manualDemoTapStatus552
+          return@setOnClickListener
+        }
+        val confirmed552 = demoTapArmedPair552 == pair552 &&
+          demoTapArmedStake552 == quote552.first &&
+          demoTapArmedAt552 > 0L && tick552 - demoTapArmedAt552 in 0L..8_000L
+        if (!confirmed552) {
+          demoTapArmedPair552 = pair552
+          demoTapArmedStake552 = quote552.first
+          demoTapArmedAt552 = tick552
+          text = "CONFIRMĂ BUY"
+          val amount552 = quote552.first.toDouble() / 100.0
+          manualDemoTapStatus552 =
+            "CONFIRMĂ 1 BUY QT DEMO • " + amount552 + " USD • 92%"
+          probeStatus.text = manualDemoTapStatus552
+          return@setOnClickListener
+        }
+        clearDemoTapArm552()
+        text = "TEST BUY EFECTUAT"
+        // Exactly the same durable one-order lock as automatic execution.
+        // Preflight succeeds BEFORE persisting, but the gesture helper
+        // independently rechecks the broker again immediately before tap.
+        val pkg552 = TouchTestService.activeDemoExecutorPackageForReview()
+        if (pkg552 == null || !tradePositionGate.beginAttempt()) {
+          text = "TEST BUY DEMO"
+          manualDemoTapStatus552 = "BLOCAT: BROKER / POZIȚIE NECONFIRMATĂ"
+          probeStatus.text = manualDemoTapStatus552
+          return@setOnClickListener
+        }
+        val saved552 = getSharedPreferences(
+          autoShockAttemptPrefs, Context.MODE_PRIVATE
+        ).edit()
+          .putBoolean("attempted", true)
+          .putString("expectedPair429", pair552)
+          .putString("expectedPackage429", pkg552)
+          .putLong("expectedStakeCents429", quote552.first)
+          .putBoolean("brokerStake476", true)
+          .putInt("expectedPayout429", quote552.second)
+          .putString("expectedSide437", "BUY")
+          .putLong("attemptedAt429", android.os.SystemClock.elapsedRealtime())
+          .putLong("attemptedWallAt454", System.currentTimeMillis())
+          .commit()
+        if (!saved552) {
+          tradePositionGate.cancelBeforeDispatch()
+          text = "TEST BUY DEMO"
+          manualDemoTapStatus552 = "BLOCAT: BLOCARE ORDIN NESALVATĂ"
+          probeStatus.text = manualDemoTapStatus552
+          return@setOnClickListener
+        }
+        autoDemoSessionConsumed = true
+        autoDemoArmed = false
+        autoDemoMarket = null
+        autoDemoExpiry = 0L
+        demoDiagGestureChecks546 += 1
+        val result552 = try {
+          TouchTestService.pressVerifiedDemoStakeOnce429(
+            "BUY", pair552, quote552.first, quote552.second
+          )
+        } catch (e: Exception) {
+          "GEST QT DEMO NECONFIRMAT: " + e.javaClass.simpleName.take(24)
+        }
+        demoDiagLastGesture546 = result552.take(95)
+        // PRECHECK_NO_GESTURE is the only proven no-dispatch outcome.
+        // Never undo the marker or repeat when dispatch outcome is uncertain.
+        if (result552.startsWith("PRECHECK_NO_GESTURE:")) {
+          val undone552 = getSharedPreferences(
+            autoShockAttemptPrefs, Context.MODE_PRIVATE
+          ).edit().putBoolean("attempted", false).commit()
+          if (undone552 && tradePositionGate.cancelBeforeDispatch())
+            autoDemoSessionConsumed = false
+          text = "TEST BUY BLOCAT"
+        }
+        manualDemoTapStatus552 = result552.take(95)
+        probeStatus.text = manualDemoTapStatus552
+      }
+    }
+    tapTestRow552.addView(tapTestButton552,
+      LinearLayout.LayoutParams(-1, dp(27)))
+    root.addView(tapTestRow552)
     // 510: LIVE capture requests an ongoing QT Demo auto-arm session; this
     // optional control may recheck readiness but must never toggle it OFF.
     // QT Real and unresolved/duplicate orders remain blocked.
@@ -4548,7 +4696,9 @@ class ScalpOverlayService : Service() {
       fxButton.layoutParams = rotationParams499
       fxButton.textSize = if (minimized) 9.5f else 10f
       compactStatus.textSize = if (minimized) 12f else 13f
-      // No manual SELL test button and no additional gesture controls.
+      // 552: one explicit, temporary diagnostic BUY control is visible.
+      // Legacy SELL buttons remain hidden. It needs two deliberate taps.
+      tapTestRow552.visibility = View.VISIBLE
       touchProbeToggle.visibility = View.GONE
       testBipControl.visibility = View.GONE
       brokerAutoRow.visibility = View.GONE // Session auto-arms after Android LIVE consent.
@@ -7563,6 +7713,8 @@ class ScalpOverlayService : Service() {
         val reason546 = when {
           realAccountIdentified || realAccountSafetyStop517 -> "QT REAL: ORDINE BLOCATE"
           !demoAccountIdentified -> "CONT DEMO NECONFIRMAT"
+          manualDemoTapStatus552 != null ->
+            manualDemoTapStatus552!!.take(75)
           fxRotationNavigating ->
             if (lastCompletedPair549 != "FĂRĂ PERECHE ANALIZATĂ")
               "ULTIMA: " + lastCompletedPair549.take(61)
