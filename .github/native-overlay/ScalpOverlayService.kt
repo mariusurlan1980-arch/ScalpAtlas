@@ -6632,9 +6632,20 @@ class ScalpOverlayService : Service() {
       observedTrendMeasured && observedTrendDirection == rawSignal &&
       observedTrendStrengthPercent > 50
     // 553: additional strategy never bypasses the two-callback confirmation.
+    // 555: retain the 554 EARLY_SECOND strategy, but never let the
+    // SIMPLE_TREND fallback chase a candle without fresh reversal evidence.
+    val simplePreviousMean555 = result.optDouble("simplePreviousBodyAveragePx555", 0.0)
+    val simpleWick555 = result.optInt("simpleEntryWickPixels555", 0)
+    val simpleBody555 = result.optInt("observedBodyHeightPx", 0)
+    val simpleEntryVerified555 = result.optBoolean("simpleEarlyEntryGuard555", false) &&
+      result.optString("previousCandleDirection", "NONE") == rawSignal &&
+      simplePreviousMean555.isFinite() && simplePreviousMean555 >= 5.0 &&
+      simpleBody555 >= 5 && simpleBody555.toDouble() <= maxOf(12.0, simplePreviousMean555 * 1.25) &&
+      simpleWick555.toDouble() >= maxOf(2.0, simplePreviousMean555 * 0.12)
     val confirmedSimple553 = rawStrategy == "SIMPLE_TREND" &&
       rawDirectionValid && sameOpticalDirection && timeframe == "M5" &&
       detected && opticalQuality >= 75 && shockFrameFresh &&
+      simpleEntryVerified555 &&
       result.optBoolean("simpleOpticalVerified553", false) &&
       observedTrendMeasured && observedTrendHistoryCount == 3 &&
       observedTrendDirection == rawSignal &&
