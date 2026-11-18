@@ -32,6 +32,33 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     return (sameColorContinuation || wick>=Math.max(5,preShockBody*.35)) &&
       recovery>=.20 && recovery<=.55;
   }
+  // 554: SIMPLE_TREND may signal only after a RECENT, visually sampled
+  // pullback and recovery on this same candle; no color-only / late chase.
+  // This is an entry-timing guard, NOT a win probability or broker command.
+  function earlyContinuationGuard(candle,history,now,tolerance){
+    if(!candle || !candle.trendMeasured || candle.trendHistoryCount!==3 ||
+       candle.previousCandleDirection!==candle.dir) return false;
+    var mean=candle.trendAverageBodyPx;
+    if(!Number.isFinite(mean)||mean<5||!Number.isFinite(candle.bodyHeight)||
+       candle.bodyHeight<5||candle.bodyHeight>Math.max(12,mean*1.25))return false;
+    var wick=candle.dir==='BUY'?candle.connectedLowerWickPixels:candle.connectedUpperWickPixels;
+    if(!Number.isFinite(wick)||wick<Math.max(2,mean*.12))return false;
+    if(!Array.isArray(history)||history.length<3)return false;
+    var latest=history[history.length-1];
+    if(latest.dir!==candle.dir||Math.abs(latest.x-candle.x)>tolerance)return false;
+    for(var i=1;i<history.length-1;i++){
+      var prev=history[i-1],turn=history[i];
+      if(now-turn.t>8000 || now-turn.t<300 ||
+         turn.t-prev.t>5000 || turn.t<=prev.t ||
+         latest.t-turn.t<300 || latest.t-turn.t>5000)continue;
+      if(Math.abs(turn.x-candle.x)>tolerance ||
+         Math.abs(prev.x-candle.x)>tolerance)continue;
+      var adverse=candle.dir==='BUY'?turn.y-prev.y:prev.y-turn.y;
+      var rebound=candle.dir==='BUY'?turn.y-latest.y:latest.y-turn.y;
+      if(adverse>=2 && rebound>=2 && rebound/adverse>=.30)return true;
+    }
+    return false;
+  }
   function send(obj){try{AndroidBridge.postMessage(JSON.stringify(obj));}catch(e){}}
   function reset(){history=[];lastX=-1;lastValidCandleAt=0;shockHold=null;}
   function report(frameId,tf,pair,epoch,reason,quality,extra){
@@ -194,6 +221,8 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         });
       }
     }
+    var trendAverageBodyPx=pastCloses.length===3?
+      pastCloses.reduce(function(sum,z){return sum+z.bodyHeight;},0)/3:0;
     return {x:(candle.start+candle.end)/2,closeY:close,dir:candle.dir,previousCandleDirection:previousCandleDirection,previousBodyHeight:previousBodyHeight,
       width:width,bodyHeight:bottom-top,wickPixels:wickPixels,wickPercent:wickPercent,
       topWickPixels:upperWickPixels,bottomWickPixels:lowerWickPixels,
@@ -201,7 +230,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       connectedUpperWickPixels:connectedUpperWickPixels,
       trendDirection:trend,trendMeasured:trendMeasured,
       trendStrengthPercent:trendStrengthPercent,trendVisualPoints:trendVisualPoints,
-      trendHistoryCount:trendHistoryCount,
+      trendHistoryCount:trendHistoryCount,trendAverageBodyPx:trendAverageBodyPx,
       opticalQuality:opticalQuality};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
@@ -450,7 +479,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         }
         // 553: DEMO-only continuation with verified previous trend and
         // current candle. No rare SHOCK wick required; no win prediction.
+        var earlyEntry554=earlyContinuationGuard(candle,history,now,tolerance);
         var simpleTrend553=!confirmed&&!scalpConfirmed&&tf==='M5' &&
+          earlyEntry554 &&
           candle.opticalQuality>=75 && candle.bodyHeight>=minBody &&
           candle.trendMeasured && candle.trendHistoryCount===3 &&
           candle.trendDirection===candle.dir &&
@@ -482,10 +513,15 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         report(frameId,tf,pair,epoch,
           confirmed?'ȘOC rapid și revenire în aceeași lumânare':
           scalpConfirmed?'SCALP TREND: retragere moderată și reluare pe M5':
-          'Aștept ȘOC SIMPLU: retragere 30%, revenire 20%, fitil',
+          simpleTrend553?'TREND: retragere și revenire observate timpuriu pe M5':
+          'Aștept ȘOC sau TREND cu retragere și revenire LIVE',
           quality,{
             strategy:strategy,signal:emittedDirection,
              simpleOpticalVerified553:simpleTrend553,
+             simpleEarlyEntryGuard554:earlyEntry554,
+             simplePreviousBodyAveragePx554:candle.trendAverageBodyPx,
+             simpleEntryWickPixels554:candle.dir==='BUY'?
+               candle.connectedLowerWickPixels:candle.connectedUpperWickPixels,
             shockDirection:confirmed?dir:'NONE',
             scalpDirection:scalpConfirmed?scalpDir:'NONE',
             scalpOpticalVerified:scalpConfirmed,scalpSameCandle:scalpConfirmed,
