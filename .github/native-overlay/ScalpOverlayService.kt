@@ -175,6 +175,13 @@ class ScalpOverlayService : Service() {
   private var demoDiagConfirmedTrends547 = 0
   private var demoDiagMaxObservedDepth548 = 0
   private var lastFxRotationMismatch548 = "AȘTEPT CONFIRMAREA PERECHII"
+  // 549: Read-only per-pair evidence. Never used by a trade/order gate.
+  private var chartDwellStartedAt549 = 0L
+  private var currentDwellPair549 = ""
+  private var pairAnalysisFrames549 = 0
+  private var lastShockReject549 = "AȘTEAPTĂ DATE"
+  private var lastTrendReject549 = "AȘTEAPTĂ DATE"
+  private var lastCompletedPair549 = "FĂRĂ PERECHE ANALIZATĂ"
   private var demoDiagPreflightEverReady546 = false
   private var demoDiagGestureChecks546 = 0
   private var demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
@@ -573,6 +580,12 @@ class ScalpOverlayService : Service() {
           demoDiagConfirmedTrends547 = 0
           demoDiagMaxObservedDepth548 = 0
           lastFxRotationMismatch548 = "AȘTEPT CONFIRMAREA PERECHII"
+          chartDwellStartedAt549 = 0L
+          currentDwellPair549 = ""
+          pairAnalysisFrames549 = 0
+          lastShockReject549 = "AȘTEAPTĂ DATE"
+          lastTrendReject549 = "AȘTEAPTĂ DATE"
+          lastCompletedPair549 = "FĂRĂ PERECHE ANALIZATĂ"
           demoDiagPreflightEverReady546 = false
           demoDiagGestureChecks546 = 0
           demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
@@ -3933,6 +3946,13 @@ class ScalpOverlayService : Service() {
         selectorRecovery507 = 0
         fxRotationNavigating = false
         autoDemoEntryCycleStartedAt = now
+        // 549: count only analyzer results for this verified, newly selected
+        // chart. Do not count selector/OCR frames or fabricate trend signals.
+        chartDwellStartedAt549 = android.os.SystemClock.elapsedRealtime()
+        currentDwellPair549 = pair
+        pairAnalysisFrames549 = 0
+        lastShockReject549 = "AȘTEAPTĂ DATE"
+        lastTrendReject549 = "AȘTEAPTĂ DATE"
         visited.add(pair)
         scannedEligiblePairs.add(pair)
         // 503: restore the requested 30-second interval for EVERY pair.
@@ -3965,6 +3985,15 @@ class ScalpOverlayService : Service() {
           after(minOf(750L, 5_000L + remaining)) { dwell(pair, deadline, retries) }
           return
         }
+        // Snapshot the reason before navigation clears the old chart.
+        // Captured stats are for the previous pair, never trade permission.
+        val studiedSeconds549 = if (chartDwellStartedAt549 > 0L)
+          ((android.os.SystemClock.elapsedRealtime() - chartDwellStartedAt549)
+            .coerceAtLeast(0L) / 1000L) else 0L
+        lastCompletedPair549 = pair.take(17) + " • " +
+          pairAnalysisFrames549 + " cadre / " + studiedSeconds549 + "s" +
+          " • Ș:" + lastShockReject549.take(28) +
+          " • T:" + lastTrendReject549.take(28)
         // The selector independently verifies the foreground account and pair.
         // A missing chart payout must not prevent leaving this chart.
         beginNavigation()
@@ -6436,6 +6465,16 @@ class ScalpOverlayService : Service() {
       observedTrendStrengthPercent > 50
     val confirmedSignal = if (confirmedShock || confirmedScalp547) rawSignal else "NONE"
     val confirmedStrategy = if (confirmedShock) "SHOCK" else if (confirmedScalp547) "SCALP_TREND" else "NONE"
+    // 549: A raw 81% body retreat is not a validated SHOCK. Persist why the
+    // independently returned two strategy candidates did not qualify.
+    // These counters have NO control-flow effect on BUY/SELL execution.
+    if (currentPair(now) == currentDwellPair549 && !fxRotationNavigating) {
+      pairAnalysisFrames549 += 1
+      lastShockReject549 = if (confirmedShock) "CONFIRMAT"
+        else shockBlocker.take(75)
+      lastTrendReject549 = if (confirmedScalp547) "CONFIRMAT"
+        else scalpBlocker.take(75)
+    }
     val rejectionText = if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)
       "ȘOC • AȘTEPT DOUĂ LUMÂNĂRI DE ACEEAȘI CULOARE"
       else if (wickRejected) shockBlocker
@@ -7268,6 +7307,14 @@ class ScalpOverlayService : Service() {
             .putInt("demoConfirmedTrends547", demoDiagConfirmedTrends547)
             .putInt("demoObservedMaxDepth548", demoDiagMaxObservedDepth548)
             .putString("fxPairMismatch548", lastFxRotationMismatch548)
+            .putString("currentDwellPair549", currentDwellPair549)
+            .putInt("pairAnalysisFrames549", pairAnalysisFrames549)
+            .putLong("pairStudiedSeconds549", if (chartDwellStartedAt549 > 0L)
+              (android.os.SystemClock.elapsedRealtime() - chartDwellStartedAt549)
+                .coerceAtLeast(0L) / 1000L else 0L)
+            .putString("shockRejection549", lastShockReject549)
+            .putString("trendRejection549", lastTrendReject549)
+            .putString("lastCompletedPair549", lastCompletedPair549)
             .putBoolean("demoPreflightEverReady546", demoDiagPreflightEverReady546)
             .putInt("demoGestureHelperChecks546", demoDiagGestureChecks546)
             .putString("demoLastPreflight546", autoDemoLastPreflightReason)
@@ -7491,19 +7538,42 @@ class ScalpOverlayService : Service() {
         val counts546 = "OBS " + demoDiagMaxObservedDepth548 + "% • ȘOC " +
           demoDiagConfirmedShocks546 + " • T" + demoDiagConfirmedTrends547 +
           " • G" + demoDiagGestureChecks546
+        // One compact line shows scan evidence while detailed reasons remain
+        // in the read-only diagnostic preferences above.
+        val shockShort549 = when {
+          lastShockReject549.contains("REVENIRE/TIMP") -> "REV/TIMP"
+          lastShockReject549.contains("FITIL") -> "FITIL"
+          lastShockReject549.contains("CONTRA") -> "CONTRA"
+          lastShockReject549.contains("AȘTEAPTĂ ȘOC") -> "AȘTEAPTĂ"
+          lastShockReject549.contains("CONFIRMAT") -> "OK"
+          else -> lastShockReject549.take(13)
+        }
+        val trendShort549 = when {
+          lastTrendReject549.contains("TREND NECLAR") -> "NECLAR"
+          lastTrendReject549.contains("CONTRA") -> "CONTRA"
+          lastTrendReject549.contains("PANTĂ") -> "PANTĂ"
+          lastTrendReject549.contains("RETRAGERE") -> "RETRAGERE"
+          lastTrendReject549.contains("CONFIRMAT") -> "OK"
+          else -> lastTrendReject549.take(13)
+        }
         val reason546 = when {
           realAccountIdentified || realAccountSafetyStop517 -> "QT REAL: ORDINE BLOCATE"
           !demoAccountIdentified -> "CONT DEMO NECONFIRMAT"
           fxRotationNavigating ->
-            "ROTAȚIE: " + lastFxRotationMismatch548.take(72)
+            if (lastCompletedPair549 != "FĂRĂ PERECHE ANALIZATĂ")
+              "ULTIMA: " + lastCompletedPair549.take(61)
+            else "ROTAȚIE: " + lastFxRotationMismatch548.take(72)
           autoDemoSessionConsumed ->
             "ORDIN: " + demoOrderVerificationStatus().take(72)
           demoDiagGestureChecks546 > 0 ->
             "ULTIMUL GEST: " + demoDiagLastGesture546.take(61)
-          lastShockOrderStatus != null ->
+          lastShockOrderStatus != null && activeSignal != "NONE" ->
             "ULTIMUL SEMNAL: " + lastShockOrderStatus!!.take(61)
           !autoDemoArmed ->
             "PREFLIGHT: " + autoDemoLastPreflightReason.take(61)
+          activeSignal == "NONE" && currentDwellPair549.isNotEmpty() ->
+            "F" + pairAnalysisFrames549 +
+              " Ș:" + shockShort549 + " T:" + trendShort549
           activeSignal == "NONE" ->
             "SEMNAL: " + shockBlocker.take(61)
           else -> "SEMNAL: " + activeSignal
