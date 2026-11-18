@@ -479,7 +479,7 @@ for (const side of ['BUY', 'SELL']) {
       result = analyze(price(close), side, `TWO-CANDLES-${side}-${previous} OTC`,
         140, 'M5', 0, true, previous);
     }
-    if (previous !== opposite) assert.equal(result.shockDirection, side);
+    if (previous !== opposite) assert.equal(result.shockDirection, side, `494 ${side} prev=${previous} got=${result.shockDirection} strategy=${result.strategy} blocker=${result.shockBlocker}`);
     assert.equal(result.previousCandleDirection, previous);
   }
 }
