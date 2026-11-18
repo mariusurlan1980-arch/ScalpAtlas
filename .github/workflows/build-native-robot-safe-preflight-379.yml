@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 552 ONE physical DEMO gesture diagnostic G24
+name: Build Scalp Atlas 553 SIMPLE TREND AUTO QT Demo G24
 
 on:
   push:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.85'
+          expo['version']='3.2.86'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=552
+          expo['android']['versionCode']=553
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -314,6 +314,28 @@ jobs:
           ! grep -Fq "TouchPracticePanel" scalp-atlas-new/App.tsx
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
+
+      - name: Verify 553 optically confirmed M5 trend auto uses proven DEMO gesture
+        run: |
+          python3 - <<'PY553'
+          from pathlib import Path
+          e=Path('scalp-atlas-new/shockNativeEngine.ts').read_text()
+          k=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          assert "var simpleTrend553=!confirmed&&!scalpConfirmed&&tf==='M5'" in e
+          assert 'candle.opticalQuality>=75' in e
+          assert 'candle.trendMeasured && candle.trendHistoryCount===3' in e
+          assert "simpleOpticalVerified553:simpleTrend553" in e
+          assert 'val confirmedSimple553 = rawStrategy == "SIMPLE_TREND"' in k
+          assert 'observedTrendDirection == rawSignal' in k
+          assert 'confirmedSimple553 -> "SIMPLE_TREND"' in k
+          assert 'activeStrategy == "SIMPLE_TREND" && lastConfirmedSimple553' in k
+          assert 'candidateCount < REQUIRED_CONFIRMATIONS' in k
+          assert 'private const val REQUIRED_CONFIRMATIONS = 2' in k
+          assert 'tradePositionGate.beginAttempt()' in k
+          assert 'TouchTestService.pressVerifiedDemoStakeOnce429(' in k
+          assert 'realAccountSafetyStop517' in k
+          print('553: simple M5 trend enters existing safeguarded DEMO gesture')
+          PY553
 
       - name: Verify 552 opt-in one-shot physical DEMO test preserves all order locks
         run: |
@@ -1182,7 +1204,7 @@ jobs:
           grep -Fq 'private const val SHOCK_MIN_DEPTH = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_RECOVERY = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_TREND = 25' "$O"
-          grep -Fq 'val confirmedSignal = if (confirmedShock || confirmedScalp547)' "$O"
+          grep -Fq 'if (confirmedShock || confirmedScalp547 || confirmedSimple553) rawSignal' "$O"
           grep -Fq '!independentlyOppositeTrend' "$O"
           grep -Fq 'val sameOpticalDirection = rawDirectionValid && detected' "$O"
           grep -Fq '!autoDemoSessionRequested && !autoDemoSessionConsumed' "$O"
@@ -1700,7 +1722,7 @@ jobs:
           grep -Fq "candle.trendMeasured && candle.trendDirection!=='NONE'" "$E"
           grep -Fq 'val independentlyOppositeTrend' "$O"
           grep -Fq 'val sameShockDirection = sameOpticalDirection &&' "$O"
-          grep -Fq 'val confirmedSignal = if (confirmedShock || confirmedScalp547)' "$O"
+          grep -Fq 'if (confirmedShock || confirmedScalp547 || confirmedSimple553) rawSignal' "$O"
           grep -Fq 'TouchTestService.pressAutoOneDollarDemoOrderOnce(' "$O"
           grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
@@ -2424,12 +2446,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-552-TEST-BUY-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-553-TREND-AUTO-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-552-TEST-BUY-DEMO-G24
-          path: ScalpAtlas-552-TEST-BUY-DEMO-G24.apk
+          name: ScalpAtlas-553-TREND-AUTO-DEMO-G24
+          path: ScalpAtlas-553-TREND-AUTO-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2439,12 +2461,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-552-TEST-BUY-DEMO-G24.apk"
+          FILE="ScalpAtlas-553-TREND-AUTO-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-552-test-buy-demo-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-553-trend-auto-demo-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 552 - test fizic BUY QT Demo" \
-            --notes "Adauga o singura proba BUY fizica opt-in cu doua atingeri deliberate, exclusiv QT Demo, fara ȘOC/TREND, cu preflight complet si blocare durabila. Rotatia este oprita numai in timpul probei; payout exact 92% si suma citita din broker."
+            --title "Scalp Atlas 553 - semnal simplu M5 auto QT Demo" \
+            --notes "Adauga semnal experimental TREND SIMPLU pe M5, confirmat in doua cadre separate, folosind calea de gest Android validata in 552. Exclusiv QT Demo, payout 92%, miza broker, un singur ordin pana la decontarea verificata; rotatia 20s si protectiile raman. Fara promisiuni de castig."

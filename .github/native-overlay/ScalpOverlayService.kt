@@ -402,6 +402,8 @@ class ScalpOverlayService : Service() {
   @Volatile private var observedTrendAt = 0L
   @Volatile private var lastConfirmedShockPercent = 0
   @Volatile private var lastConfirmedScalpPercent = 0
+  @Volatile private var lastConfirmedSimple553 = false
+  private var demoDiagConfirmedSimple553 = 0
   @Volatile private var activeStrategy = "NONE"
   @Volatile private var observedWickPercent = 0
   @Volatile private var observedWickAt = 0L
@@ -583,6 +585,7 @@ class ScalpOverlayService : Service() {
           lastShockOrderStatus = null
           demoDiagConfirmedShocks546 = 0
           demoDiagConfirmedTrends547 = 0
+          demoDiagConfirmedSimple553 = 0
           demoDiagMaxObservedDepth548 = 0
           lastFxRotationMismatch548 = "AȘTEPT CONFIRMAREA PERECHII"
           chartDwellStartedAt549 = 0L
@@ -3945,6 +3948,7 @@ class ScalpOverlayService : Service() {
             activeStrategy = "NONE"
             lastConfirmedShockPercent = 0
             lastConfirmedScalpPercent = 0
+            lastConfirmedSimple553 = false
             lastConfirmedShockDurationMs = 0L
           }
         }
@@ -6623,8 +6627,22 @@ class ScalpOverlayService : Service() {
       scalpDuration547 in 700L..15_000L &&
       observedTrendMeasured && observedTrendDirection == rawSignal &&
       observedTrendStrengthPercent > 50
-    val confirmedSignal = if (confirmedShock || confirmedScalp547) rawSignal else "NONE"
-    val confirmedStrategy = if (confirmedShock) "SHOCK" else if (confirmedScalp547) "SCALP_TREND" else "NONE"
+    // 553: additional strategy never bypasses the two-callback confirmation.
+    val confirmedSimple553 = rawStrategy == "SIMPLE_TREND" &&
+      rawDirectionValid && sameOpticalDirection && timeframe == "M5" &&
+      detected && opticalQuality >= 75 && shockFrameFresh &&
+      result.optBoolean("simpleOpticalVerified553", false) &&
+      observedTrendMeasured && observedTrendHistoryCount == 3 &&
+      observedTrendDirection == rawSignal &&
+      observedTrendStrengthPercent >= 35
+    val confirmedSignal =
+      if (confirmedShock || confirmedScalp547 || confirmedSimple553) rawSignal else "NONE"
+    val confirmedStrategy = when {
+      confirmedShock -> "SHOCK"
+      confirmedScalp547 -> "SCALP_TREND"
+      confirmedSimple553 -> "SIMPLE_TREND"
+      else -> "NONE"
+    }
     // 549: A raw 81% body retreat is not a validated SHOCK. Persist why the
     // independently returned two strategy candidates did not qualify.
     // These counters have NO control-flow effect on BUY/SELL execution.
@@ -6642,7 +6660,12 @@ class ScalpOverlayService : Service() {
       else "AȘTEPT ȘOC / TREND"
     val expiry = 5 // five-minute DEMO alert timer, not an automatic broker order
     val directionMax = result.optInt("directionMax", 0)
-    val pattern = if (confirmedScalp547) "SCALP TREND • M5" else "ȘOC • A DOUA LUMÂNARE"
+    val pattern = when {
+      confirmedShock -> "ȘOC • A DOUA LUMÂNARE"
+      confirmedScalp547 -> "SCALP TREND • M5"
+      confirmedSimple553 -> "TREND SIMPLU • M5 • DEMO"
+      else -> "AȘTEAPTĂ SEMNAL"
+    }
     val reason = result.optString("reason", "")
     val opticalCount = if (opticalGate) 1 else 0
 
@@ -6692,6 +6715,7 @@ class ScalpOverlayService : Service() {
       activeStrategy = "NONE"
       lastConfirmedShockPercent = 0
       lastConfirmedScalpPercent = 0
+      lastConfirmedSimple553 = false
       lastConfirmedShockDurationMs = 0L
       candidateDir = null
       candidateStrategy = null
@@ -6785,6 +6809,8 @@ class ScalpOverlayService : Service() {
     // Count only published, two-stage-confirmed SHOCK signals, not raw candle colors.
     if (confirmedStrategy == "SHOCK") demoDiagConfirmedShocks546 += 1
     if (confirmedStrategy == "SCALP_TREND") demoDiagConfirmedTrends547 += 1
+    if (confirmedStrategy == "SIMPLE_TREND") demoDiagConfirmedSimple553 += 1
+    lastConfirmedSimple553 = confirmedStrategy == "SIMPLE_TREND"
     lastShockQuality = quality // Internal optical quality, NOT displayed as win %
     lastConfirmedShockPercent = if (confirmedShock) shockBodyPercent else 0
     lastConfirmedScalpPercent = if (confirmedScalp547) scalpDepth547 else 0
@@ -7069,7 +7095,8 @@ class ScalpOverlayService : Service() {
         (activeStrategy == "SHOCK" &&
           lastConfirmedShockPercent > SHOCK_MIN_DEPTH) ||
         (activeStrategy == "SCALP_TREND" &&
-          lastConfirmedScalpPercent in 21..50)
+          lastConfirmedScalpPercent in 21..50) ||
+        (activeStrategy == "SIMPLE_TREND" && lastConfirmedSimple553)
       val freshShockForPreflight = entryFrameId > 0L && entryFrameId == frameCount &&
         now - lastFrameAt in 0L..MAX_ALERT_ANALYSIS_AGE_MS &&
         activeSignal != "NONE" && eligibleSignal547 &&
@@ -7470,6 +7497,7 @@ class ScalpOverlayService : Service() {
             .putString("shockBlocker", if (brokerConnected) shockBlocker else "NECONFIRMAT")
             .putInt("demoConfirmedShocks546", demoDiagConfirmedShocks546)
             .putInt("demoConfirmedTrends547", demoDiagConfirmedTrends547)
+            .putInt("demoConfirmedSimple553", demoDiagConfirmedSimple553)
             .putInt("demoObservedMaxDepth548", demoDiagMaxObservedDepth548)
             .putString("fxPairMismatch548", lastFxRotationMismatch548)
             .putString("currentDwellPair549", currentDwellPair549)
@@ -7702,6 +7730,7 @@ class ScalpOverlayService : Service() {
         // Historic PREFL DA was misleading across successive FX pairs.
         val counts546 = "OBS " + demoDiagMaxObservedDepth548 + "% • ȘOC " +
           demoDiagConfirmedShocks546 + " • T" + demoDiagConfirmedTrends547 +
+          " • S" + demoDiagConfirmedSimple553 +
           " • G" + demoDiagGestureChecks546
         // One compact line shows scan evidence while detailed reasons remain
         // in the read-only diagnostic preferences above.

@@ -448,8 +448,17 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
             wickEntry=true;
             bodyContinuation=false;
         }
-        var strategy=confirmed?'SHOCK':scalpConfirmed?'SCALP_TREND':'NONE';
-        var emittedDirection=confirmed?dir:scalpConfirmed?scalpDir:'NONE';
+        // 553: DEMO-only continuation with verified previous trend and
+        // current candle. No rare SHOCK wick required; no win prediction.
+        var simpleTrend553=!confirmed&&!scalpConfirmed&&tf==='M5' &&
+          candle.opticalQuality>=75 && candle.bodyHeight>=minBody &&
+          candle.trendMeasured && candle.trendHistoryCount===3 &&
+          candle.trendDirection===candle.dir &&
+          Number.isFinite(candle.trendStrengthPercent) &&
+          candle.trendStrengthPercent>=35 &&
+          (candle.dir==='BUY'||candle.dir==='SELL');
+        var strategy=confirmed?'SHOCK':scalpConfirmed?'SCALP_TREND':simpleTrend553?'SIMPLE_TREND':'NONE';
+        var emittedDirection=confirmed?dir:scalpConfirmed?scalpDir:simpleTrend553?candle.dir:'NONE';
         // Show a short, grounded explanation for why a LIVE observed
         // percentage is NOT an entry. No direction is inferred from color.
         var shockBlocker=confirmed?'ȘOC CONFIRMAT':
@@ -476,6 +485,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           'Aștept ȘOC SIMPLU: retragere 30%, revenire 20%, fitil',
           quality,{
             strategy:strategy,signal:emittedDirection,
+             simpleOpticalVerified553:simpleTrend553,
             shockDirection:confirmed?dir:'NONE',
             scalpDirection:scalpConfirmed?scalpDir:'NONE',
             scalpOpticalVerified:scalpConfirmed,scalpSameCandle:scalpConfirmed,
