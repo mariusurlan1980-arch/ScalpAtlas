@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 550 OCR preflight order G24
+name: Build Scalp Atlas 551 OTC duplicate header diagnostic G24
 
 on:
   push:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.83'
+          expo['version']='3.2.84'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=550
+          expo['android']['versionCode']=551
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -314,6 +314,29 @@ jobs:
           ! grep -Fq "TouchPracticePanel" scalp-atlas-new/App.tsx
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
+
+      - name: Verify 551 explicit OTC duplicate and fail-closed pair matching
+        run: |
+          python3 - <<'PY551'
+          from pathlib import Path
+          s=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          assert 'val soleOtc551 = instruments.filter { it.endsWith(" OTC") }.singleOrNull()' in s
+          assert 'instruments.all { it == soleOtc551 || it == soleOtc551.removeSuffix(" OTC") }' in s
+          assert 'if (if (realAccount) !real || demo else !demo || real) return null' in s
+          assert 'val visiblePair551 = readVisibleDemoPair()' in s
+          assert 'BLOCAT: ANTET QT DEMO/FX NECITIT' in s
+          def normalize(xs):
+              xs=list(dict.fromkeys(xs))
+              otc=[x for x in xs if x.endswith(" OTC")]
+              if len(xs)==1:return xs[0]
+              if len(otc)==1 and all(x in (otc[0],otc[0][:-4]) for x in xs):
+                  return otc[0]
+              return None
+          assert normalize(['EUR/RUB','EUR/RUB OTC'])=='EUR/RUB OTC'
+          assert normalize(['EUR/RUB','USD/JPY OTC']) is None
+          assert normalize([]) is None
+          print('551: explicit OTC duplicates accepted, unverified conflict rejected')
+          PY551
 
       - name: Verify 550 unidentified FX is not misclassified as exotic
         run: |
@@ -2375,12 +2398,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-550-OCR-PREFLIGHT-G24.apk
+          cp "$APK" ScalpAtlas-551-DUPLICAT-OTC-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-550-OCR-PREFLIGHT-G24
-          path: ScalpAtlas-550-OCR-PREFLIGHT-G24.apk
+          name: ScalpAtlas-551-DUPLICAT-OTC-G24
+          path: ScalpAtlas-551-DUPLICAT-OTC-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2390,12 +2413,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-550-OCR-PREFLIGHT-G24.apk"
+          FILE="ScalpAtlas-551-DUPLICAT-OTC-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-550-ocr-preflight-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-551-duplicat-otc-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 550 - corectie ordine verificare pereche" \
-            --notes "Corecteaza ordinea preflight: perechea NEIDENTIFICAT se raporteaza ca OCR neconfirmat, nu exotica. Fara schimbari de rotație 20s, semnale sau verificari ordine. Test QT Demo G24."
+            --title "Scalp Atlas 551 - antet OTC duplicat" \
+            --notes "Recunoaste dublura EUR/RUB si EUR/RUB OTC doar cu dovada OTC explicita. Diferentiaza antet necitit de pereche gresita. Rotația 20s, cont QT Demo, M5, payout 92% si blocajele de ordin raman neschimbate."

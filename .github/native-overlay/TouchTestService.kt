@@ -301,7 +301,18 @@ class TouchTestService : AccessibilityService() {
           " OTC" else ""
         match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase() + suffix
       }.distinct()
-      return instruments.singleOrNull()
+      // 551: The same broker header may expose parent/child labels as
+      // "EUR/RUB" and "EUR/RUB OTC". Honor an explicitly visible OTC
+      // suffix only when EVERY other label shares exactly that base pair.
+      // No pair, mismatching pairs, or absent QT Demo proof still block orders.
+      val soleOtc551 = instruments.filter { it.endsWith(" OTC") }.singleOrNull()
+      return when {
+        instruments.size == 1 -> instruments.single()
+        soleOtc551 != null &&
+          instruments.all { it == soleOtc551 || it == soleOtc551.removeSuffix(" OTC") } ->
+            soleOtc551
+        else -> null
+      }
     }
 
     /**
@@ -2871,7 +2882,10 @@ class TouchTestService : AccessibilityService() {
       expectedPair: String, overlayBounds: Rect?
     ): Pair<Pair<Long, Int>?, String> {
       if (!priorDemoGestureCooldownComplete()) return null to "BLOCAT: COOLDOWN DEMO 5 MIN"
-      if (readVisibleDemoPair() != expectedPair) return null to "BLOCAT: PERECHE DEMO NECONFIRMATĂ"
+      val visiblePair551 = readVisibleDemoPair()
+      if (visiblePair551 != expectedPair) return null to
+        (if (visiblePair551 == null) "BLOCAT: ANTET QT DEMO/FX NECITIT"
+         else "BLOCAT: CER " + expectedPair.take(15) + " • VĂD " + visiblePair551.take(15))
       if (!confirmedFiveMinuteDemoExpiry465())
         return null to "BLOCAT: EXPIRARE DEMO 00:05:00 NECONFIRMATĂ"
       val buy = checkOneDollarDemoTarget("BUY", true, null)
