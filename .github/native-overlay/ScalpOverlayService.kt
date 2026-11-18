@@ -6930,7 +6930,9 @@ class ScalpOverlayService : Service() {
           val diagnostic = when {
             realAccountSafetyStop517 -> "QT REAL DETECTAT • RESTART LIVE DOAR PE DEMO"
             !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
-            !TouchTestService.isPreferredFxPair517(pair) -> "PERECHE EXOTICĂ • FĂRĂ ORDINE"
+            // 550: "NEIDENTIFICAT" is a temporarily unreadable broker
+            // selector, NOT an exotic currency. Check OCR readiness FIRST.
+            // Keep strict broker, FX fiat and payout guards unchanged.
             !pairReady(now) || pair == "NEIDENTIFICAT" ->
               if (pendingMarket != null)
                 "PERECHE OCR: " + pendingMarket + " • " +
@@ -6938,6 +6940,8 @@ class ScalpOverlayService : Service() {
                   "/" + MARKET_OCR_CONFIRMATIONS +
                   (if (marketVerified) " • STABILIZARE" else " • VERIFICARE")
               else "PERECHE OCR NECITITĂ • MĂRESC SELECTORUL"
+            !TouchTestService.isPreferredFxPair517(pair) ->
+              "PERECHE FX NEACCEPTATĂ • FĂRĂ ORDINE"
             // Audible BIP is a preference, NOT an execution prerequisite.
             // A verified SHOCK may trigger the one-shot DEMO order with audio
             // muted; all visual, broker and position safety gates stay on.

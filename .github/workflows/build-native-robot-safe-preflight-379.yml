@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 549 SCAN GATES TELEMETRY G24
+name: Build Scalp Atlas 550 OCR preflight order G24
 
 on:
   push:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.82'
+          expo['version']='3.2.83'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=549
+          expo['android']['versionCode']=550
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -314,6 +314,21 @@ jobs:
           ! grep -Fq "TouchPracticePanel" scalp-atlas-new/App.tsx
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
+
+      - name: Verify 550 unidentified FX is not misclassified as exotic
+        run: |
+          python3 - <<'PY550'
+          from pathlib import Path
+          src=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          block=src.split('val diagnostic = when {',1)[1].split('autoDemoLastPreflightReason = diagnostic.take(95)',1)[0]
+          assert block.index('!pairReady(now) || pair == "NEIDENTIFICAT"') < block.index('!TouchTestService.isPreferredFxPair517(pair)')
+          assert '"PERECHE OCR NECITITĂ' in block
+          assert '"PERECHE FX NEACCEPTATĂ' in block
+          assert 'realAccountSafetyStop517' in block
+          assert 'TouchTestService.inspectBrokerDemoOrder488(pair, currentOverlayBounds488())' in block
+          assert 'tradePositionGate.beginAttempt()' in src
+          print('550: missing pair OCR is not an exotic FX rejection')
+          PY550
 
       - name: Verify 420 no permanent DEMO order lock from a read-only preflight failure
         run: |
@@ -2360,12 +2375,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-549-DIAGNOSTIC-CADRE-G24.apk
+          cp "$APK" ScalpAtlas-550-OCR-PREFLIGHT-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-549-DIAGNOSTIC-CADRE-G24
-          path: ScalpAtlas-549-DIAGNOSTIC-CADRE-G24.apk
+          name: ScalpAtlas-550-OCR-PREFLIGHT-G24
+          path: ScalpAtlas-550-OCR-PREFLIGHT-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2375,12 +2390,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-549-DIAGNOSTIC-CADRE-G24.apk"
+          FILE="ScalpAtlas-550-OCR-PREFLIGHT-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-549-cadre-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-550-ocr-preflight-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 549 - diagnostic SHOCK TREND cadre" \
-            --notes "Adauga motivele respingerii SHOCK si SCALP TREND, cadre analizate per pereche si ultima evaluare. Roteaza in continuare la 20s; niciun filtru de ordin nu este relaxat. Test QT Demo G24."
+            --title "Scalp Atlas 550 - corectie ordine verificare pereche" \
+            --notes "Corecteaza ordinea preflight: perechea NEIDENTIFICAT se raporteaza ca OCR neconfirmat, nu exotica. Fara schimbari de rotație 20s, semnale sau verificari ordine. Test QT Demo G24."
