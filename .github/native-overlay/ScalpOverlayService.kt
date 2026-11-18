@@ -173,6 +173,8 @@ class ScalpOverlayService : Service() {
   // 546: read-only, session-scoped diagnostics. These never authorize orders.
   private var demoDiagConfirmedShocks546 = 0
   private var demoDiagConfirmedTrends547 = 0
+  private var demoDiagMaxObservedDepth548 = 0
+  private var lastFxRotationMismatch548 = "AȘTEPT CONFIRMAREA PERECHII"
   private var demoDiagPreflightEverReady546 = false
   private var demoDiagGestureChecks546 = 0
   private var demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
@@ -569,6 +571,8 @@ class ScalpOverlayService : Service() {
           lastShockOrderStatus = null
           demoDiagConfirmedShocks546 = 0
           demoDiagConfirmedTrends547 = 0
+          demoDiagMaxObservedDepth548 = 0
+          lastFxRotationMismatch548 = "AȘTEPT CONFIRMAREA PERECHII"
           demoDiagPreflightEverReady546 = false
           demoDiagGestureChecks546 = 0
           demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
@@ -3890,16 +3894,22 @@ class ScalpOverlayService : Service() {
           openList(pair, false)
           return
         }
-        if (TouchTestService.readVisibleFxPair(false) != pair) {
+        val chartPair548 = TouchTestService.readVisibleFxPair(false)
+        if (chartPair548 != pair) {
+          lastFxRotationMismatch548 = if (chartPair548 == null)
+            "AȘTEPT CITIREA PERECHII ÎN BROKER"
+          else "CERUT: " + pair.take(18) + " • VĂZUT: " + chartPair548.take(18)
           if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
           else recoverNavigation(pair, "PERECHE NECONFIRMATĂ")
           return
         }
         if (payout == null) {
+          lastFxRotationMismatch548 = "PAYOUT 92% NECITIT PE " + pair.take(24)
           if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
           else recoverNavigation(pair, "PAYOUT NECONFIRMAT")
           return
         }
+        lastFxRotationMismatch548 = "PERECHE + PAYOUT 92% CONFIRMATE"
         // Start the scan timer once the chart switch is verified. The order
         // preflight independently checks payout, M5 and fresh candle evidence.
         if (fxRotationNavigating) {
@@ -5121,9 +5131,18 @@ class ScalpOverlayService : Service() {
           if (otcPattern.containsMatchIn(after)) "$base OTC" else base
         }.distinct().toList()
         val accessibilityPair = TouchTestService.readVisibleDemoPair()
-        if (instruments.size == 1 &&
-            (accessibilityPair == null || accessibilityPair == instruments[0])) {
-          recordVisiblePair(instruments[0], System.currentTimeMillis())
+        if (instruments.size == 1) {
+          val cropPair548 = instruments[0]
+          val verifiedPair548 = when {
+            accessibilityPair == cropPair548 -> cropPair548
+            accessibilityPair?.endsWith(" OTC") == true &&
+              cropPair548 == accessibilityPair.removeSuffix(" OTC") ->
+              accessibilityPair // explicit, same-base OTC evidence
+            accessibilityPair == null -> cropPair548
+            else -> null // conflict: still no signal or broker order
+          }
+          if (verifiedPair548 != null)
+            recordVisiblePair(verifiedPair548, System.currentTimeMillis())
         }
       }
       .addOnCompleteListener {
@@ -5799,6 +5818,13 @@ class ScalpOverlayService : Service() {
         // when the floating panel has masked it in MediaProjection.
         val accessibilityPair = TouchTestService.readVisibleDemoPair()
         val visiblePairs = when {
+          // 548: Full-frame OCR may miss the tiny "OTC" suffix while the
+          // independently verified QT Demo accessibility selector explicitly
+          // identifies the SAME base pair with OTC. Use that exact selector
+          // name, never assume OTC and never merge different currency bases.
+          pairs.size == 1 && accessibilityPair?.endsWith(" OTC") == true &&
+            pairs[0] == accessibilityPair.removeSuffix(" OTC") ->
+            listOf(accessibilityPair)
           pairs.size == 1 && accessibilityPair != null &&
             accessibilityPair != pairs[0] -> emptyList()
           pairs.size == 1 -> pairs
@@ -6337,6 +6363,8 @@ class ScalpOverlayService : Service() {
     // Missing or unreadable pixels are UNKNOWN (—%), not a fabricated 0%.
     if (detected && opticalQuality > 0 && (observed == "BUY" || observed == "SELL")) {
       observedShockPercent = shockBodyPercent
+      // Maximum observed body retracement is NOT a confirmed trade signal.
+      demoDiagMaxObservedDepth548 = maxOf(demoDiagMaxObservedDepth548, shockBodyPercent)
       observedShockAt = now
       observedShockDurationMs = shockObservedDurationMs.coerceIn(0L, SHOCK_MAX_DROP_MS)
     } else {
@@ -7238,6 +7266,8 @@ class ScalpOverlayService : Service() {
             .putString("shockBlocker", if (brokerConnected) shockBlocker else "NECONFIRMAT")
             .putInt("demoConfirmedShocks546", demoDiagConfirmedShocks546)
             .putInt("demoConfirmedTrends547", demoDiagConfirmedTrends547)
+            .putInt("demoObservedMaxDepth548", demoDiagMaxObservedDepth548)
+            .putString("fxPairMismatch548", lastFxRotationMismatch548)
             .putBoolean("demoPreflightEverReady546", demoDiagPreflightEverReady546)
             .putInt("demoGestureHelperChecks546", demoDiagGestureChecks546)
             .putString("demoLastPreflight546", autoDemoLastPreflightReason)
@@ -7458,12 +7488,14 @@ class ScalpOverlayService : Service() {
           lastShockOrderStatus = "ORDIN DEMO CONFIRMAT"
         }
         // Historic PREFL DA was misleading across successive FX pairs.
-        val counts546 = "ȘOC " + demoDiagConfirmedShocks546 +
-          " • TREND " + demoDiagConfirmedTrends547 +
-          " • GEST " + demoDiagGestureChecks546
+        val counts546 = "OBS " + demoDiagMaxObservedDepth548 + "% • ȘOC " +
+          demoDiagConfirmedShocks546 + " • T" + demoDiagConfirmedTrends547 +
+          " • G" + demoDiagGestureChecks546
         val reason546 = when {
           realAccountIdentified || realAccountSafetyStop517 -> "QT REAL: ORDINE BLOCATE"
           !demoAccountIdentified -> "CONT DEMO NECONFIRMAT"
+          fxRotationNavigating ->
+            "ROTAȚIE: " + lastFxRotationMismatch548.take(72)
           autoDemoSessionConsumed ->
             "ORDIN: " + demoOrderVerificationStatus().take(72)
           demoDiagGestureChecks546 > 0 ->

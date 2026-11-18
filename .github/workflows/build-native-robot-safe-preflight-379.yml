@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 547 SHOCK plus SCALP TREND DEMO G24
+name: Build Scalp Atlas 548 PAIR OTC recognition diagnostic G24
 
 on:
   push:
@@ -93,10 +93,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.80'
+          expo['version']='3.2.81'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=547
+          expo['android']['versionCode']=548
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2360,12 +2360,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-547-SOC-TREND-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-548-OTC-PERECHE-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-547-SOC-TREND-DEMO-G24
-          path: ScalpAtlas-547-SOC-TREND-DEMO-G24.apk
+          name: ScalpAtlas-548-OTC-PERECHE-G24
+          path: ScalpAtlas-548-OTC-PERECHE-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2375,12 +2375,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-547-SOC-TREND-DEMO-G24.apk"
+          FILE="ScalpAtlas-548-OTC-PERECHE-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-547-soc-trend-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-548-otc-pereche-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 547 - SHOCK plus SCALP TREND demo" \
-            --notes "Candidat QT Demo cu semnal SCALP TREND M5 verificat fara obligatia SHOCK. Roteaza la 20s, payout exact 92%, verifica cont si ordin anterior. Necesita verificare gest pe Motorola."
+            --title "Scalp Atlas 548 - confirmare pereche OTC" \
+            --notes "Repara citirea OTC din antetul brokerului si arata distinct SOC observat, SOC validat si blocaj de pereche. Pastreaza rotatia 20s, semnalele, 92% si toate protectiile QT Demo. Necesita verificare pe Motorola."

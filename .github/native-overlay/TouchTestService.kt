@@ -274,13 +274,31 @@ class TouchTestService : AccessibilityService() {
       val real = all.any { Regex("""(?i)\bQT\s*Real\b""").containsMatchIn(it) }
       if (if (realAccount) !real || demo else !demo || real) return null
       val pattern = Regex("""(?i)(?<![A-Z])([A-Z]{3})\s*/\s*([A-Z]{3})\b(?:\s*\(?\s*(OTC)\s*\)?)?""")
+      // 548 G24: Some broker WebViews expose "EUR/RUB" and "OTC" as
+      // separate accessibility labels on the SAME instrument button.
+      // Join an explicit adjacent OTC token only in the upper-left selector;
+      // never infer OTC from a chart candle or transactions history.
+      val otcOnly548 = Regex("""(?i)^\s*\(?\s*O\s*T\s*C\s*\)?\s*$""")
+      val otcTokens548 = labels.filter { (text, r) ->
+        otcOnly548.matches(text) &&
+          r.centerY() in (metrics.heightPixels * .105f).toInt()..
+            (metrics.heightPixels * .33f).toInt() &&
+          r.centerX() < metrics.widthPixels * .70f
+      }.map { it.second }
       val instruments = labels.mapNotNull { (value, bounds) ->
         if (bounds.centerY() !in
           (metrics.heightPixels * 0.105f).toInt()..(metrics.heightPixels * 0.33f).toInt() ||
           bounds.centerX() > metrics.widthPixels * 0.70f ||
           value.length > 46) return@mapNotNull null
         val match = pattern.find(value) ?: return@mapNotNull null
-        val suffix = if (match.groupValues[3].isNotBlank()) " OTC" else ""
+        val adjacentOtc548 = otcTokens548.any { token ->
+          kotlin.math.abs(token.centerY() - bounds.centerY()) <=
+            maxOf(bounds.height(), token.height(), (metrics.heightPixels * .024f).toInt()) &&
+            token.left >= bounds.left - (metrics.widthPixels * .015f).toInt() &&
+            token.left <= bounds.right + (metrics.widthPixels * .075f).toInt()
+        }
+        val suffix = if (match.groupValues[3].isNotBlank() || adjacentOtc548)
+          " OTC" else ""
         match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase() + suffix
       }.distinct()
       return instruments.singleOrNull()
