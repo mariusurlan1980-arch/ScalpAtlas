@@ -132,6 +132,25 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         previousCandleDirection=adjacent.dir;
       }
     }
+    // 554: verify first same-color closed candle after a color flip;
+    // do not assume a long streak is an early M5 entry.
+    var previousRunCount554=0;
+    for(var back554=candleIndex-1;back554>=0&&previousRunCount554<4;back554--){
+      var oldGroup554=groups[back554],newGroup554=groups[back554+1];
+      var gap554=newGroup554.start-oldGroup554.end;
+      if(viable.indexOf(oldGroup554)===-1||oldGroup554.dir!==candle.dir||
+         gap554<1||gap554>Math.max(16,width*3))break;
+      previousRunCount554++;
+    }
+    var beforeFlip554=candleIndex>=2?groups[candleIndex-2]:null;
+    var firstClosed554=candleIndex>=1?groups[candleIndex-1]:null;
+    var twoCandleFlip554=previousRunCount554===1 &&
+      previousCandleDirection===candle.dir &&
+      previousBodyHeight>=Math.max(6,h*.012) &&
+      beforeFlip554!==null && viable.indexOf(beforeFlip554)!==-1 &&
+      beforeFlip554.dir!==candle.dir &&
+      firstClosed554.start-beforeFlip554.end>=1 &&
+      firstClosed554.start-beforeFlip554.end<=Math.max(16,width*3);
     var top=bodyRows[0],bottom=bodyRows[bodyRows.length-1];
     if(bottom-top>h*.35)return null; // large colored panels are not candles
     var close=candle.dir==='BUY'?top:bottom;
@@ -202,6 +221,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       trendDirection:trend,trendMeasured:trendMeasured,
       trendStrengthPercent:trendStrengthPercent,trendVisualPoints:trendVisualPoints,
       trendHistoryCount:trendHistoryCount,
+      previousRunCount554:previousRunCount554,
+      twoCandleFlip554:twoCandleFlip554,
+      previousBodyHeight:previousBodyHeight,
       opticalQuality:opticalQuality};
   }
   window.ScalpAtlasAnalyze=function(url,tf,frameId,pair,epoch){
@@ -450,15 +472,34 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         }
         // 553: DEMO-only continuation with verified previous trend and
         // current candle. No rare SHOCK wick required; no win prediction.
-        var simpleTrend553=!confirmed&&!scalpConfirmed&&tf==='M5' &&
+        // 554: only trigger when LIVE price actually advances directionally.
+        var earlyMomentum554=false;
+        for(var m554=history.length-2;m554>=0;m554--){
+          var old554=history[m554],age554=latest.t-old554.t;
+          if(age554>5500)break;
+          if(age554<1200||old554.dir!==candle.dir||
+             Math.abs(old554.x-candle.x)>tolerance)continue;
+          var advance554=candle.dir==='BUY'?old554.y-latest.y:latest.y-old554.y;
+          if(advance554>=Math.max(2,Math.round(minBody*.25))){
+            earlyMomentum554=true;break;
+          }
+        }
+        var earlySecond554=!confirmed&&!scalpConfirmed&&tf==='M5' &&
+          candle.twoCandleFlip554 && candle.previousRunCount554===1 &&
+          candle.opticalQuality>=80 && candle.bodyHeight>=minBody &&
+          candle.bodyHeight<=Math.max(minBody*2,candle.previousBodyHeight*1.5) &&
+          earlyMomentum554 && (candle.dir==='BUY'||candle.dir==='SELL');
+        // SIMPLE trend must not enter a fourth/fifth same-color candle.
+        var simpleTrend553=!confirmed&&!scalpConfirmed&&!earlySecond554&&
+          candle.previousRunCount554<3&&tf==='M5' &&
           candle.opticalQuality>=75 && candle.bodyHeight>=minBody &&
           candle.trendMeasured && candle.trendHistoryCount===3 &&
           candle.trendDirection===candle.dir &&
           Number.isFinite(candle.trendStrengthPercent) &&
           candle.trendStrengthPercent>=35 &&
           (candle.dir==='BUY'||candle.dir==='SELL');
-        var strategy=confirmed?'SHOCK':scalpConfirmed?'SCALP_TREND':simpleTrend553?'SIMPLE_TREND':'NONE';
-        var emittedDirection=confirmed?dir:scalpConfirmed?scalpDir:simpleTrend553?candle.dir:'NONE';
+        var strategy=confirmed?'SHOCK':scalpConfirmed?'SCALP_TREND':earlySecond554?'EARLY_SECOND':simpleTrend553?'SIMPLE_TREND':'NONE';
+        var emittedDirection=confirmed?dir:scalpConfirmed?scalpDir:(earlySecond554||simpleTrend553)?candle.dir:'NONE';
         // Show a short, grounded explanation for why a LIVE observed
         // percentage is NOT an entry. No direction is inferred from color.
         var shockBlocker=confirmed?'ȘOC CONFIRMAT':
@@ -485,6 +526,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           'Aștept ȘOC SIMPLU: retragere 30%, revenire 20%, fitil',
           quality,{
             strategy:strategy,signal:emittedDirection,
+            earlyOpticalVerified554:earlySecond554,
+            earlyPriorRunCount554:candle.previousRunCount554,
+            earlyBeforeFlipVerified554:candle.twoCandleFlip554,
+            earlyMomentumVerified554:earlyMomentum554,
              simpleOpticalVerified553:simpleTrend553,
             shockDirection:confirmed?dir:'NONE',
             scalpDirection:scalpConfirmed?scalpDir:'NONE',
