@@ -120,8 +120,21 @@ function analyze(close,dir='BUY',pair='EUR/USD OTC',epoch=2,tf='M5',verticalShif
 function assertQuiet(result){
   assert.equal(result.shockDirection,'NONE');
   assert.equal(result.shockOpticalVerified,false);
-  assert.equal(result.signal,'NONE','No SHOCK or SCALP TREND should be emitted');
-  assert.equal(result.strategy,'NONE','No strategy should be emitted');
+  assert.equal(result.scalpOpticalVerified,false);
+  // 553: trend-only M5 continuation is now a permitted DEMO strategy,
+  // but never an invented SHOCK or SCALP pullback.
+  if(result.strategy==='SIMPLE_TREND'){
+    assert.equal(result.timeframe,'M5');
+    assert.equal(result.simpleOpticalVerified553,true);
+    assert.equal(result.trendMeasured,true);
+    assert.equal(result.trendHistoryCount,3);
+    assert.equal(result.trendDirection,result.signal);
+    assert.ok(result.trendStrengthPercent>=35);
+    assert.ok(result.opticalQuality>=75);
+  }else{
+    assert.equal(result.signal,'NONE');
+    assert.equal(result.strategy,'NONE');
+  }
 }
 for(let i=0;i<8;i++)assertQuiet(analyze(140,'BUY'));
 let buy;
@@ -323,8 +336,15 @@ for(let i=0;i<8;i++) assertQuiet(analyze(155,'BUY','SCALP-M10 OTC',73,'M10'));
 for(const close of [148,162,170,166,157,150])
   assertQuiet(analyze(close,'BUY','SCALP-M10 OTC',73,'M10',0,
     close===166||close===157||close===150));
-// Trend-line without an observed pullback and recovery is NOT a scalp signal.
-for(let i=0;i<9;i++) assertQuiet(analyze(140,'BUY','TREND-ONLY OTC',74,'M5'));
+// 553: measured M5 trend continuation may now produce SIMPLE_TREND even
+// without a SHOCK wick. This still isn't a proven profitable strategy.
+let simpleOnly553;
+for(let i=0;i<9;i++){
+  simpleOnly553=analyze(140,'BUY','TREND-ONLY OTC',74,'M5');
+  assertQuiet(simpleOnly553);
+}
+assert.equal(simpleOnly553.strategy,'SIMPLE_TREND');
+assert.equal(simpleOnly553.signal,'BUY');
 // 450: optical shock must still be detectable when three old candle
 // bodies are hidden by the broker's screen layout; never invent a slope.
 let noTrendShock;
