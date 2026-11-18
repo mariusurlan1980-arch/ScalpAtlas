@@ -545,7 +545,7 @@ jobs:
           grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val pairLostLong = seenPair ==' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'AȘTEAPTĂ CADRU/TF ACTUAL' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT SEMNAL NOU' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'previewAutoOneDollarDemoOrder("BUY", expectedPair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'previewAutoOneDollarDemoOrder("SELL", expectedPair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'activeSignal, tradePair429' .github/native-overlay/ScalpOverlayService.kt
@@ -972,7 +972,7 @@ jobs:
           G=.github/native-overlay/TradePositionGate.kt
           grep -Fq 'A rejected optical/freshness check is NOT a broker order attempt' "$O"
           grep -Fq 'autoDemoLockedAt = lockedAt' "$O"
-          grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT ALT ȘOC' "$O"
+          grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT SEMNAL NOU' "$O"
           grep -Fq 'tradePositionGate.cancelBeforeDispatch()' "$O"
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
           grep -Fq 'fun cancelBeforeDispatch(): Boolean' "$G"
@@ -1118,7 +1118,7 @@ jobs:
           grep -Fq 'private const val SHOCK_MIN_DEPTH = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_RECOVERY = 20' "$O"
           grep -Fq 'private const val SHOCK_MIN_TREND = 25' "$O"
-          grep -Fq 'val confirmedSignal = if (confirmedShock)' "$O"
+          grep -Fq 'val confirmedSignal = if (confirmedShock || confirmedScalp547)' "$O"
           grep -Fq '!independentlyOppositeTrend' "$O"
           grep -Fq 'val sameOpticalDirection = rawDirectionValid && detected' "$O"
           grep -Fq '!autoDemoSessionRequested && !autoDemoSessionConsumed' "$O"
@@ -1636,7 +1636,7 @@ jobs:
           grep -Fq "candle.trendMeasured && candle.trendDirection!=='NONE'" "$E"
           grep -Fq 'val independentlyOppositeTrend' "$O"
           grep -Fq 'val sameShockDirection = sameOpticalDirection &&' "$O"
-          grep -Fq 'val confirmedSignal = if (confirmedShock)' "$O"
+          grep -Fq 'val confirmedSignal = if (confirmedShock || confirmedScalp547)' "$O"
           grep -Fq 'TouchTestService.pressAutoOneDollarDemoOrderOnce(' "$O"
           grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
