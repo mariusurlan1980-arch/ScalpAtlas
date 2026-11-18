@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 553 SIMPLE TREND AUTO QT Demo G24
+name: Build Scalp Atlas 554 EARLY ENTRY AUTO QT Demo G24
 
 on:
   push:
-    branches: [feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic]
+    branches: [fix/scalpatlas-554-early-entry-demo, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -35,6 +35,7 @@ on:
       - '.github/scripts/test_live_journal_freshness_v324.mjs'
       - '.github/scripts/test_live_trend_pullback_m10.mjs'
       - '.github/scripts/test_shock_broker_capture.mjs'
+      - '.github/scripts/test_simple_entry_timing_554.mjs'
   workflow_dispatch:
 
 concurrency:
@@ -93,10 +94,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.86'
+          expo['version']='3.2.87'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=553
+          expo['android']['versionCode']=554
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -314,6 +315,9 @@ jobs:
           ! grep -Fq "TouchPracticePanel" scalp-atlas-new/App.tsx
           grep -Fq "onClose" scalp-atlas-new/TouchPracticePanel.tsx
           grep -Fq "Doar demonstrație locală" scalp-atlas-new/TouchPracticePanel.tsx
+
+      - name: Verify 554 early-entry BUY/SELL guard independently of Android gesture
+        run: node .github/scripts/test_simple_entry_timing_554.mjs
 
       - name: Verify 553 optically confirmed M5 trend auto uses proven DEMO gesture
         run: |
@@ -2447,12 +2451,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-553-TREND-AUTO-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-554-EARLY-ENTRY-AUTO-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-553-TREND-AUTO-DEMO-G24
-          path: ScalpAtlas-553-TREND-AUTO-DEMO-G24.apk
+          name: ScalpAtlas-554-EARLY-ENTRY-AUTO-DEMO-G24
+          path: ScalpAtlas-554-EARLY-ENTRY-AUTO-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2462,12 +2466,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-553-TREND-AUTO-DEMO-G24.apk"
+          FILE="ScalpAtlas-554-EARLY-ENTRY-AUTO-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-553-trend-auto-demo-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-554-early-entry-auto-demo-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 553 - semnal simplu M5 auto QT Demo" \
-            --notes "Adauga semnal experimental TREND SIMPLU pe M5, confirmat in doua cadre separate, folosind calea de gest Android validata in 552. Exclusiv QT Demo, payout 92%, miza broker, un singur ordin pana la decontarea verificata; rotatia 20s si protectiile raman. Fara promisiuni de castig."
+            --title "Scalp Atlas 554 - intrare timpurie M5 auto QT Demo" \
+            --notes "554 cere retragere si revenire optica recente, fitil si corp neextins pentru strategia SIMPLE_TREND. Detectorii SHOCK/SCALP si calea de gest Android 553 raman neschimbate. Exclusiv QT Demo, payout 92%, miza broker si protectia ordinelor. Varianta experimentala, fara garantie de profit."
