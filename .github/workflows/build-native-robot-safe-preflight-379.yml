@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 555 EARLY TIMING + SECOND CANDLE QT Demo G24
+name: Build Scalp Atlas 556 ROTATIE FIXA 30 SEC QT Demo G24
 
 on:
   push:
-    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554]
+    branches: [fix/scalpatlas-556-rotation-30s-only, fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -94,10 +94,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.88'
+          expo['version']='3.2.89'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=555
+          expo['android']['versionCode']=556
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -182,7 +182,8 @@ jobs:
           grep -Fq 'putBoolean("freePosition500", false)' .github/native-overlay/ScalpOverlayService.kt
           # 503: use a strict 30s normal rotation, with no 501 adaptive
           # 5-minute observation. Keep independent order/receipt protections.
-          grep -Fq 'dwell(pair, android.os.SystemClock.elapsedRealtime() + 20_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
+          ! grep -Fq 'dwell(pair, android.os.SystemClock.elapsedRealtime() + 20_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'mayObserveLonger501' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'extendedM5Dwell501' .github/native-overlay/ScalpOverlayService.kt
           # 504: stale internal HTML analyzer may reload only while fresh
@@ -2476,27 +2477,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-555-ANTI-LATE-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-556-ROTATIE-30S-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-555-ANTI-LATE-DEMO-G24
-          path: ScalpAtlas-555-ANTI-LATE-DEMO-G24.apk
+          name: ScalpAtlas-556-ROTATIE-30S-DEMO-G24
+          path: ScalpAtlas-556-ROTATIE-30S-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-555-early-timing-preserve-554'
+        if: github.ref == 'refs/heads/fix/scalpatlas-556-rotation-30s-only'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-555-ANTI-LATE-DEMO-G24.apk"
+          FILE="ScalpAtlas-556-ROTATIE-30S-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-555-anti-late-demo-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-556-rotatie-30s-demo-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 555 - filtru intrari tarzii si a doua lumanare" \
-            --notes "555 pastreaza intrarea pe a doua lumanare M5 din 554 si adauga pe SIMPLE_TREND o retragere si revenire observate in maxim 8s, fitil real si corp neextins. SHOCK, SCALP, rotatia 20s si gestul DEMO 553 raman. Payout 92%, un singur ordin si protectiile QT Demo pastrate. Filtru experimental, fara garantie de profit."
+            --title "Scalp Atlas 556 - rotatie fixa 30 secunde QT Demo" \
+            --notes "556 modifica exclusiv perioada normala de analiza a fiecarei perechi verificate de la 20s la 30s si aliniaza cronometrul cu afisajul. Pastreaza SHOCK, SCALP, SIMPLE_TREND, EARLY_SECOND, M5, pragul de payout 92%, gestul DEMO si protectiile pentru un singur ordin. Confirmarea unui semnal in curs poate adauga maximum 5s; timpii independenti de siguranta si recuperare nu se modifica. Exclusiv QT Demo."
