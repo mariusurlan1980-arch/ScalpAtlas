@@ -3972,7 +3972,7 @@ class ScalpOverlayService : Service() {
         scannedEligiblePairs.add(pair)
         // 503: restore the requested 30-second interval for EVERY pair.
         // This is a rotation timer, NOT a relaxation of SHOCK rules.
-        dwell(pair, android.os.SystemClock.elapsedRealtime() + 20_000L, 12)
+        dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
@@ -4432,7 +4432,7 @@ class ScalpOverlayService : Service() {
     demoBrokerOrderRow = demoOrderRow
 
     // 552: An isolated physical BUY gesture test. It DOES NOT depend on
-    // SHOCK, trend, wick, M5 signal confirmations or the 20s scanner.
+    // SHOCK, trend, wick, M5 signal confirmations or the 30s scanner.
     // It is NEVER automatic: the user must tap twice within eight seconds.
     // Keep all broker/exact stake/payout/expiry, QT Real, and persisted
     // one-position guards. No fallback coordinates or repeated gestures.
@@ -7753,7 +7753,7 @@ class ScalpOverlayService : Service() {
       }
       // 546: compact, read-only stage counters survive FX rotation in this LIVE
       // session. "GEST" counts helper checks, never confirmed broker orders.
-      // No permissions, trading guards, 20s rotation, or SHOCK thresholds change.
+      // No permissions, trading guards, 30s rotation, or SHOCK thresholds change.
       if (persistentRobotStatus513 != null) {
         if (lastShockOrderStatus != null && demoRecoveryLedger.verifiedOpenPositionId429() != null) {
           lastShockOrderStatus = "ORDIN DEMO CONFIRMAT"
