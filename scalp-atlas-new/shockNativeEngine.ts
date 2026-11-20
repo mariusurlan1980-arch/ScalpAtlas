@@ -58,6 +58,39 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     }
     return false;
   }
+  // 559: READ-ONLY preview of a small intrabar reversal on the second M5 candle.
+  // No 2m30 requirement. Pixel movement is NOT a verified exchange tick.
+  // Only the native overlay displays this diagnostic; it CANNOT place an order.
+  function sameColorSecondPullbackPreview559(candle,samples,now,tolerance){
+    if(!candle || (candle.dir!=='BUY'&&candle.dir!=='SELL') ||
+       candle.previousCandleDirection!==candle.dir ||
+       candle.previousBodyHeight<4 || candle.opticalQuality<75 ||
+       !Array.isArray(samples)||samples.length<4)return null;
+    var last=samples[samples.length-1];
+    if(!last||last.dir!==candle.dir||Math.abs(last.x-candle.x)>tolerance||
+       now-last.t>2500)return null;
+    for(var i=0;i<samples.length-2;i++){
+      var before=samples[i];
+      if(before.dir!==candle.dir || now-before.t>12000 ||
+         Math.abs(before.x-candle.x)>tolerance)continue;
+      for(var j=i+1;j<samples.length-1;j++){
+        var bottom=samples[j];
+        if(bottom.t<=before.t||last.t<=bottom.t||
+           bottom.t-before.t<300 || last.t-bottom.t<300 ||
+           last.t-before.t>12000 ||
+           Math.abs(bottom.x-candle.x)>tolerance)continue;
+        var retreat=candle.dir==='BUY'?bottom.y-before.y:before.y-bottom.y;
+        var recovery=candle.dir==='BUY'?bottom.y-last.y:last.y-bottom.y;
+        // Small but visible: at least 3 source pixels against direction
+        // and 2 pixels back, still below the earlier favorable extreme.
+        if(retreat>=3 && recovery>=2 && recovery<retreat){
+          return {direction:candle.dir,retreatPixels:Math.round(retreat),
+            recoveryPixels:Math.round(recovery),durationMs:last.t-before.t};
+        }
+      }
+    }
+    return null;
+  }
   function send(obj){try{AndroidBridge.postMessage(JSON.stringify(obj));}catch(e){}}
   function reset(){history=[];lastX=-1;lastValidCandleAt=0;shockHold=null;}
   function report(frameId,tf,pair,epoch,reason,quality,extra){
@@ -312,6 +345,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         history=history.filter(function(o){return now-o.t<=24000&&o.t<=now;});
         history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x,bodyHeight:candle.bodyHeight,wickPixels:candle.wickPixels});
         if(history.length>100)history.shift();
+        var sameColorPreview559=tf==='M5'?sameColorSecondPullbackPreview559(candle,history,now,tolerance):null;
         // A shock is a temporal sequence inside ONE continuously tracked
         // candle, not a single JPEG or a guess from candle color alone.
         // The ONLY percentage exposed to the overlay is physical candle
@@ -556,6 +590,11 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           'Aștept ȘOC sau TREND cu retragere și revenire observate',
           quality,{
             strategy:strategy,signal:emittedDirection,
+            // 559 is read-only screen-capture diagnostic; NOT order execution.
+            secondSameColorPreview559:sameColorPreview559!==null,
+            secondSameColorPreviewDirection559:sameColorPreview559?sameColorPreview559.direction:'NONE',
+            secondSameColorPullbackPx559:sameColorPreview559?sameColorPreview559.retreatPixels:0,
+            secondSameColorReboundPx559:sameColorPreview559?sameColorPreview559.recoveryPixels:0,
             earlyOpticalVerified554:earlySecond554,
             earlyPriorRunCount554:candle.previousRunCount554,
             earlyBeforeFlipVerified554:candle.twoCandleFlip554,
