@@ -58,6 +58,40 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
     }
     return false;
   }
+  // 560: only an optical HINT for a local body minimum/maximum; not a
+  // verified OHLC low/high or permission for an order. Need 3 older closed
+  // bodies, one opposite-color closed first candle and current matching color.
+  function visualLocalExtremeHint560(older,first,liveDirection){
+    if(!Array.isArray(older)||older.length!==3||!first ||
+       (liveDirection!=='BUY' && liveDirection!=='SELL') ||
+       first.dir!==liveDirection || older[2].dir===liveDirection ||
+       older[2].dir==='NONE' || older.filter(function(b){return b.dir!==liveDirection;}).length<2)
+      return 'NONE';
+    var all=older.concat([first]);
+    if(all.some(function(b){return !Number.isFinite(b.top)||!Number.isFinite(b.bottom)||
+       b.bottom-b.top<4;}))return 'NONE';
+    if(liveDirection==='BUY' && first.bottom>=Math.max.apply(null,older.map(function(b){return b.bottom;}))-2)
+      return 'LOCAL_MIN_HINT';
+    if(liveDirection==='SELL' && first.top<=Math.min.apply(null,older.map(function(b){return b.top;}))+2)
+      return 'LOCAL_MAX_HINT';
+    return 'NONE';
+  }
+  function colorBodyBounds560(g,p,w,minY,maxY){
+    if(!g)return null;
+    var width=g.end-g.start+1, supported=Math.max(2,Math.ceil(width*.8));
+    var top=maxY,bottom=-1,run=0,best=0;
+    for(var y=minY;y<maxY;y++){
+      var filled=0;
+      for(var x=g.start;x<=g.end;x++){
+        if(isColor(p,(y*w+x)*4)===g.dir)filled++;
+      }
+      if(filled>=supported){
+        if(top===maxY)top=y;
+        bottom=y;run++;best=Math.max(best,run);
+      }else run=0;
+    }
+    return best>=5?{dir:g.dir,top:top,bottom:bottom}:null;
+  }
   // 559: READ-ONLY preview of a small intrabar reversal on the second M5 candle.
   // No 2m30 requirement. Pixel movement is NOT a verified exchange tick.
   // Only the native overlay displays this diagnostic; it CANNOT place an order.
@@ -210,6 +244,22 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       beforeFlip554.dir!==candle.dir &&
       firstClosed554.start-beforeFlip554.end>=1 &&
       firstClosed554.start-beforeFlip554.end<=Math.max(16,width*3);
+    // 560 optical preview only. Body extrema are NOT the true price highs/lows.
+    var visualExtremeHint560='NONE';
+    if(candleIndex>=4 && previousCandleDirection===candle.dir){
+      var oldFour560=groups.slice(candleIndex-4,candleIndex);
+      var complete560=oldFour560.length===4 &&
+        oldFour560.every(function(g){return viable.indexOf(g)!==-1;});
+      for(var k560=1;k560<oldFour560.length && complete560;k560++){
+        var gap560=oldFour560[k560].start-oldFour560[k560-1].end;
+        if(gap560<1||gap560>Math.max(16,width*3))complete560=false;
+      }
+      if(complete560){
+        var bounds560=oldFour560.map(function(g){return colorBodyBounds560(g,p,w,minY,maxY);});
+        if(bounds560.every(Boolean))
+          visualExtremeHint560=visualLocalExtremeHint560(bounds560.slice(0,3),bounds560[3],candle.dir);
+      }
+    }
     var top=bodyRows[0],bottom=bodyRows[bodyRows.length-1];
     if(bottom-top>h*.35)return null; // large colored panels are not candles
     var close=candle.dir==='BUY'?top:bottom;
@@ -284,6 +334,7 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
       trendHistoryCount:trendHistoryCount,trendAverageBodyPx:trendAverageBodyPx,
       previousRunCount554:previousRunCount554,
       twoCandleFlip554:twoCandleFlip554,
+      visualExtremeHint560:visualExtremeHint560,
       previousBodyHeight:previousBodyHeight,
       opticalQuality:opticalQuality};
   }
@@ -346,6 +397,9 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
         history.push({t:now,y:candle.closeY,dir:candle.dir,x:candle.x,bodyHeight:candle.bodyHeight,wickPixels:candle.wickPixels});
         if(history.length>100)history.shift();
         var sameColorPreview559=tf==='M5'?sameColorSecondPullbackPreview559(candle,history,now,tolerance):null;
+        var localReversalPreview560=sameColorPreview559!==null &&
+          ((candle.dir==='BUY'&&candle.visualExtremeHint560==='LOCAL_MIN_HINT') ||
+           (candle.dir==='SELL'&&candle.visualExtremeHint560==='LOCAL_MAX_HINT'));
         // A shock is a temporal sequence inside ONE continuously tracked
         // candle, not a single JPEG or a guess from candle color alone.
         // The ONLY percentage exposed to the overlay is physical candle
@@ -591,6 +645,10 @@ export const SHOCK_NATIVE_HTML = `<!doctype html><html><head><meta name="viewpor
           quality,{
             strategy:strategy,signal:emittedDirection,
             // 559 is read-only screen-capture diagnostic; NOT order execution.
+            // 560 visual body-extremum hint is NEVER broker-order evidence.
+            localReversalPreview560:localReversalPreview560,
+            localReversalSide560:localReversalPreview560?candle.dir:'NONE',
+            localReversalExtremum560:localReversalPreview560?candle.visualExtremeHint560:'NONE',
             secondSameColorPreview559:sameColorPreview559!==null,
             secondSameColorPreviewDirection559:sameColorPreview559?sameColorPreview559.direction:'NONE',
             secondSameColorPullbackPx559:sameColorPreview559?sameColorPreview559.retreatPixels:0,
