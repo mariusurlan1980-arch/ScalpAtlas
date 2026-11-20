@@ -39,7 +39,7 @@ test('stale frames are rejected',()=>assert.equal(check(green,sample([100,100,10
 test('candidate field never replaces the existing order strategy',()=>{
  assert.ok(source.includes('secondSameColorPreview559:sameColorPreview559!==null'));
  assert.ok(!source.includes("strategy:sameColorPreview559"));
- const kt=readFileSync(new URL('native-overlay/ScalpOverlayService.kt', import.meta.url),'utf8');
+ const kt=readFileSync(new URL('../native-overlay/ScalpOverlayService.kt', import.meta.url),'utf8');
  assert.ok(kt.includes('val previewSecond559 ='));
  assert.ok(kt.includes('TEST FĂRĂ ORDIN'));
  assert.ok(!kt.includes('confirmedSignal = if (previewSecond559'));
