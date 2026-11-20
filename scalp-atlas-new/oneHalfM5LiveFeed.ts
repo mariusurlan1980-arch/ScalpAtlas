@@ -1,5 +1,6 @@
 /**
- * Experimental M5 DEMO signal bridge. Accepts confirmed OHLC metadata and
+ * Experimental two same-color candles M5 DEMO signal bridge. No fixed half-candle time gate.
+ * Accepts confirmed OHLC metadata and
  * verified intrabar tick observations from a future approved data adapter.
  * Does not connect to a broker, place trades, sound a bip, or use Bluetooth.
  */
@@ -100,6 +101,6 @@ export class OneHalfM5LiveFeed {
     }, { priceTickSize: this.tickSize });
     if (result.signal === 'NONE') return response('NONE', result.reason, result.elapsedPercent);
     this.emitted.add(key);
-    return response(result.signal, '1,5 lumânări M5 cu retragere simbolică', result.elapsedPercent);
+    return response(result.signal, 'Două lumânări M5 aceeași culoare + retragere simbolică', result.elapsedPercent);
   }
 }
