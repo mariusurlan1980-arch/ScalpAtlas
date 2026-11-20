@@ -7073,7 +7073,7 @@ class ScalpOverlayService : Service() {
     val view = overlayView ?: return false
     val params = overlayWindowParams ?: return false
     val actual = currentOverlayBounds488()
-    if (actual.isEmpty) return false
+    if (actual.width() <= 0 || actual.height() <= 0) return false
     val metrics = android.util.DisplayMetrics()
     try {
       @Suppress("DEPRECATION")
