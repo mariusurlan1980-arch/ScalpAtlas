@@ -21,8 +21,8 @@ export type FormingM5Candle = {
   sourceConfirmed: boolean;
 };
 export type OneHalfSettings = {
-  /** Absolute price amount in the instrument's quoted price units. MUST be calibrated separately per instrument. */
-  minimumRetracementPrice: number;
+  /** Smallest valid quoted price movement (one tick) for THIS instrument, supplied by a verified feed. */
+  priceTickSize: number;
 };
 export type OneHalfResult =
   | { signal: 'NONE'; reason: string; elapsedPercent: number }
@@ -38,8 +38,8 @@ export function evaluateOneHalfM5(
 ): OneHalfResult {
   if (!previous?.sourceConfirmed || !current?.sourceConfirmed) return WAIT('Sursă de cotații neconfirmată');
   if (!previous.pair.trim() || current.pair !== previous.pair) return WAIT('Pereche valutară diferită');
-  if (!Number.isFinite(settings?.minimumRetracementPrice) || settings.minimumRetracementPrice <= 0)
-    return WAIT('Prag de retragere necalibrat pentru pereche');
+  if (!Number.isFinite(settings?.priceTickSize) || settings.priceTickSize <= 0)
+    return WAIT('Pasul minim al cotatiei (tick) nu este verificat pentru pereche');
   if (![previous.startMs,previous.endMs,previous.open,previous.close,current.startMs,current.open].every(Number.isFinite)
       || Math.min(previous.open,previous.close,current.open) <= 0
       || previous.endMs - previous.startMs !== DURATION_MS
@@ -62,6 +62,7 @@ export function evaluateOneHalfM5(
   if (direction === 'BUY' && latest.price <= current.open) return WAIT('Lumânarea 2 nu este verde', elapsedPercent);
   if (direction === 'SELL' && latest.price >= current.open) return WAIT('Lumânarea 2 nu este roșie', elapsedPercent);
 
+  // Symbolic retracement: at least ONE verified price tick in the opposite direction.
   // Verify actual price order: favorable move -> adverse pullback -> partial recovery.
   // The latest price must remain shy of the earlier favorable extreme to avoid chasing it.
   let maximumRetreat = 0;
@@ -71,11 +72,11 @@ export function evaluateOneHalfM5(
       const dipOrBounce = samples[j].price;
       if (direction === 'BUY') {
         const retreat = peakOrTrough - dipOrBounce;
-        if (retreat >= settings.minimumRetracementPrice && latest.price > dipOrBounce && latest.price < peakOrTrough)
+        if (retreat + settings.priceTickSize * 1e-7 >= settings.priceTickSize && latest.price > dipOrBounce && latest.price < peakOrTrough)
           maximumRetreat = Math.max(maximumRetreat, retreat);
       } else {
         const retreat = dipOrBounce - peakOrTrough;
-        if (retreat >= settings.minimumRetracementPrice && latest.price < dipOrBounce && latest.price > peakOrTrough)
+        if (retreat + settings.priceTickSize * 1e-7 >= settings.priceTickSize && latest.price < dipOrBounce && latest.price > peakOrTrough)
           maximumRetreat = Math.max(maximumRetreat, retreat);
       }
     }
