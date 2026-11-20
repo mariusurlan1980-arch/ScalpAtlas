@@ -6775,7 +6775,19 @@ class ScalpOverlayService : Service() {
       lastTrendReject549 = if (confirmedScalp547) "CONFIRMAT"
         else scalpBlocker.take(75)
     }
-    val rejectionText = if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)
+    // 559: read-only M5 optical preview. Do NOT modify confirmedSignal,
+    // candidate gates, autoDemoArmed, or TouchTestService order dispatch.
+    // The small reversal is measured in resized screen pixels, NOT one tick.
+    val previewSecond559 = timeframe == "M5" && detected &&
+      opticalQuality >= 75 && shockFrameFresh &&
+      result.optBoolean("secondSameColorPreview559", false) &&
+      result.optString("secondSameColorPreviewDirection559", "NONE") == observed &&
+      (observed == "BUY" || observed == "SELL") &&
+      result.optInt("secondSameColorPullbackPx559", 0) >= 3 &&
+      result.optInt("secondSameColorReboundPx559", 0) >= 2
+    val rejectionText = if (previewSecond559)
+      "559 • $observed • 2 LUMÂNĂRI + RETRAGERE MICĂ • TEST FĂRĂ ORDIN"
+      else if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)
       "ȘOC • AȘTEPT DOUĂ LUMÂNĂRI DE ACEEAȘI CULOARE"
       else if (wickRejected) shockBlocker
       else if (rawStrategy == "SCALP_TREND") "TREND: " + scalpBlocker
