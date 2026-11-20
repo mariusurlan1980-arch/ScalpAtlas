@@ -27,4 +27,4 @@
 3. Test pe cotații reale/sesiune demonstrativă, validarea minimului/maximului și a intrării; fără utilizarea unei mișcări de preț neconfirmate.
 4. Abia după verificare, integrarea cu mecanismul existent de **o singură tranzacție activă**, payout 92%, expirare 5 minute, stare verificată de ordin; fără relaxarea protecțiilor împotriva tranzacțiilor duplicate.
 
-**Nu este încă un APK 560 instalabil.** Versiunea 559 existentă rămâne neschimbată; niciun test logic nu dovedește rentabilitatea strategiei.
+**Verificare GitHub:** 21 teste de cotații și 10 teste ale indiciilor optice au trecut (31/31) pe ramura 560; aceste teste sunt sintetice, nu reprezintă tranzacții reale.\n\n**Nu este încă un APK 560 instalabil.** Versiunea 559 existentă rămâne neschimbată; niciun test logic nu dovedește rentabilitatea strategiei.
