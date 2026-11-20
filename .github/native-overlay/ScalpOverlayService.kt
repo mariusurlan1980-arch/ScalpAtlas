@@ -6785,8 +6785,17 @@ class ScalpOverlayService : Service() {
       (observed == "BUY" || observed == "SELL") &&
       result.optInt("secondSameColorPullbackPx559", 0) >= 3 &&
       result.optInt("secondSameColorReboundPx559", 0) >= 2
-    val rejectionText = if (previewSecond559)
-      "559 • $observed • 2 LUMÂNĂRI + RETRAGERE MICĂ • TEST FĂRĂ ORDIN"
+    // 560: visual local MIN/MAX hint from screen body pixels only.
+    // Never set confirmedSignal/confirmedStrategy or authorize any gesture.
+    val localReversalPreview560 = previewSecond559 &&
+      result.optBoolean("localReversalPreview560", false) &&
+      result.optString("localReversalSide560", "NONE") == observed &&
+      ((observed == "BUY" && result.optString("localReversalExtremum560") == "LOCAL_MIN_HINT") ||
+       (observed == "SELL" && result.optString("localReversalExtremum560") == "LOCAL_MAX_HINT"))
+    val rejectionText = if (localReversalPreview560)
+      "560 • $observed • ÎNTOARCERE MIN/MAX LOCAL • TEST FĂRĂ ORDIN"
+      else if (previewSecond559)
+      "560 • DOUĂ LUMÂNĂRI + RETRAGERE • AȘTEAPTĂ MIN/MAX LOCAL"
       else if (rawStrategy == "SHOCK" && rawDirectionValid && !sameCandleColors)
       "ȘOC • AȘTEPT DOUĂ LUMÂNĂRI DE ACEEAȘI CULOARE"
       else if (wickRejected) shockBlocker
