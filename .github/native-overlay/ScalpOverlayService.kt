@@ -4550,6 +4550,10 @@ class ScalpOverlayService : Service() {
           manualDemoTapStatus552 =
             TouchTestService.inspectBrokerDemoOrder488(pair552, currentOverlayBounds488())
           probeStatus.text = manualDemoTapStatus552
+          // 557: a read-only rejection is not an order, so it must not
+          // permanently stop the ordinary auto scanner.
+          manualDemoDiagnosticActive552 = false
+          resumeDemoRotationAfterManual557?.invoke()
           return@setOnClickListener
         }
         val confirmed552 = demoTapArmedPair552 == pair552 &&
@@ -4559,6 +4563,21 @@ class ScalpOverlayService : Service() {
           demoTapArmedPair552 = pair552
           demoTapArmedStake552 = quote552.first
           demoTapArmedAt552 = tick552
+          // 557: expire an unconfirmed first tap and resume scanning.
+          // Never turn a timed-out manual test into a broker order.
+          mainHandler.postDelayed({
+            if (demoTapArmedAt552 == tick552 &&
+                manualDemoDiagnosticActive552 &&
+                !getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+                  .getBoolean("attempted", false) &&
+                tradePositionGate.state() == TradePositionGate.State.READY) {
+              clearDemoTapArm552()
+              manualDemoDiagnosticActive552 = false
+              manualDemoTapStatus552 = null
+              tapTestButton552.text = "TEST BUY DEMO"
+              resumeDemoRotationAfterManual557?.invoke()
+            }
+          }, 8_500L)
           text = "CONFIRMĂ BUY"
           val amount552 = quote552.first.toDouble() / 100.0
           manualDemoTapStatus552 =
@@ -4576,6 +4595,8 @@ class ScalpOverlayService : Service() {
           text = "TEST BUY DEMO"
           manualDemoTapStatus552 = "BLOCAT: BROKER / POZIȚIE NECONFIRMATĂ"
           probeStatus.text = manualDemoTapStatus552
+          manualDemoDiagnosticActive552 = false
+          resumeDemoRotationAfterManual557?.invoke()
           return@setOnClickListener
         }
         val saved552 = getSharedPreferences(
@@ -4597,6 +4618,8 @@ class ScalpOverlayService : Service() {
           text = "TEST BUY DEMO"
           manualDemoTapStatus552 = "BLOCAT: BLOCARE ORDIN NESALVATĂ"
           probeStatus.text = manualDemoTapStatus552
+          manualDemoDiagnosticActive552 = false
+          resumeDemoRotationAfterManual557?.invoke()
           return@setOnClickListener
         }
         autoDemoSessionConsumed = true
@@ -7857,6 +7880,8 @@ class ScalpOverlayService : Service() {
         val reason546 = when {
           realAccountIdentified || realAccountSafetyStop517 -> "QT REAL: ORDINE BLOCATE"
           !demoAccountIdentified -> "CONT DEMO NECONFIRMAT"
+          manualDemoDiagnosticActive552 ->
+            "TEST MANUAL ÎN PAUZĂ • AȘTEPT VERIFICAREA ÎNCHIDERII"
           manualDemoTapStatus552 != null ->
             manualDemoTapStatus552!!.take(75)
           fxRotationNavigating ->
