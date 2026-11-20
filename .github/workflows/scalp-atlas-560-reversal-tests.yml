@@ -6,6 +6,9 @@ on:
     paths:
       - scalp-atlas-new/localReversalM5_560.ts
       - scalp-atlas-new/localReversalM5_560.test.mjs
+      - scalp-atlas-new/shockNativeEngine.ts
+      - .github/native-overlay/ScalpOverlayService.kt
+      - .github/scripts/test_560_visual_extrema.mjs
       - .github/workflows/scalp-atlas-560-reversal-tests.yml
   workflow_dispatch:
 permissions:
@@ -21,3 +24,5 @@ jobs:
       - name: Verify local minima/maxima and reversal M5 candidate (DEMO)
         working-directory: scalp-atlas-new
         run: node --experimental-strip-types --test localReversalM5_560.test.mjs
+      - name: Verify visual minimum/maximum candidate never sends broker order
+        run: node --test .github/scripts/test_560_visual_extrema.mjs
