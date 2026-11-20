@@ -4574,7 +4574,7 @@ class ScalpOverlayService : Service() {
               clearDemoTapArm552()
               manualDemoDiagnosticActive552 = false
               manualDemoTapStatus552 = null
-              tapTestButton552.text = "TEST BUY DEMO"
+              text = "TEST BUY DEMO"
               resumeDemoRotationAfterManual557?.invoke()
             }
           }, 8_500L)
