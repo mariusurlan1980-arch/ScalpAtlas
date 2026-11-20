@@ -1,0 +1,23 @@
+name: Scalp Atlas 560 local-extreme M5 DEMO checks
+on:
+  push:
+    branches:
+      - experiment/scalpatlas-560-reversal-min-max-m5-demo
+    paths:
+      - scalp-atlas-new/localReversalM5_560.ts
+      - scalp-atlas-new/localReversalM5_560.test.mjs
+      - .github/workflows/scalp-atlas-560-reversal-tests.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-reversal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify local minima/maxima and reversal M5 candidate (DEMO)
+        working-directory: scalp-atlas-new
+        run: node --experimental-strip-types --test localReversalM5_560.test.mjs
