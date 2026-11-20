@@ -14,7 +14,7 @@ const current = {
     {timestampMs:base+150_000,price:1.1014},
   ],
 };
-const settings = {minimumRetracementPrice:0.0003};
+const settings = {priceTickSize:0.0001};
 const evaluate = (prev={}, curr={}, s={}) => evaluateOneHalfM5({...previous,...prev},{...current,...curr},{...settings,...s});
 
 test('BUY only after >= 50% of second green M5 with a timed retreat and partial recovery', () => {
@@ -25,8 +25,8 @@ test('not when candle two is red',()=>assert.equal(evaluate({}, {samples:current
 test('not with adjacent candle missing',()=>assert.equal(evaluate({endMs:base-300_000}).signal,'NONE'));
 test('not with different pairs',()=>assert.equal(evaluate({}, {pair:'AUD/CHF OTC'}).signal,'NONE'));
 test('not without confirmed feed',()=>assert.equal(evaluate({sourceConfirmed:false}).signal,'NONE'));
-test('not without calibrated minimum price retreat',()=>assert.equal(evaluate({}, {}, {minimumRetracementPrice:0}).signal,'NONE'));
-test('not if retreat is smaller than configured threshold',()=>assert.equal(evaluate({}, {}, {minimumRetracementPrice:0.001}).signal,'NONE'));
+test('not without a verified tick size',()=>assert.equal(evaluate({}, {}, {priceTickSize:0}).signal,'NONE'));
+test('not if retreat is smaller than one quoted tick',()=>assert.equal(evaluate({}, {}, {priceTickSize:0.001}).signal,'NONE'));
 test('not when price has already returned to the previous peak',()=>assert.equal(evaluate({}, {samples:current.samples.slice(0,-1).concat({timestampMs:base+150_000,price:1.1017})}).signal,'NONE'));
 test('not on unordered data',()=>assert.equal(evaluate({}, {samples:current.samples.slice(0,-1).concat({timestampMs:base+50_000,price:1.1014})}).signal,'NONE'));
 test('SELL on two red candles and spike/pullback/recovery',()=>{
@@ -41,4 +41,25 @@ test('SELL on two red candles and spike/pullback/recovery',()=>{
 test('one signal only for each second candle, even after further observations',()=>{
  const session=new OneHalfM5Session();assert.equal(session.observe(previous,current,settings).signal,'BUY');
  assert.equal(session.observe(previous,current,settings).signal,'NONE');
+});
+
+test('symbolic two-tick retreat and one-tick partial recovery is valid at M5 midpoint', () => {
+  const tinyRetreat = current.samples.slice(0, -3).concat([
+    {timestampMs:base+60_000, price:1.1015},
+    {timestampMs:base+100_000, price:1.1013},
+    {timestampMs:base+150_000, price:1.1014},
+  ]);
+  assert.equal(evaluate({}, {samples:tinyRetreat}).signal, 'BUY');
+});
+test('one tick back to former peak is still rejected as chasing the peak', () => {
+  const chasePeak = [
+    {timestampMs:base+10_000, price:1.1012},
+    {timestampMs:base+60_000, price:1.1015},
+    {timestampMs:base+100_000, price:1.1014},
+    {timestampMs:base+150_000, price:1.1015},
+  ];
+  assert.equal(evaluate({}, {samples:chasePeak}).signal, 'NONE');
+});
+test('rejects an unverified negative tick size', () => {
+  assert.equal(evaluate({}, {}, {priceTickSize:-0.0001}).signal, 'NONE');
 });
