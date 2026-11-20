@@ -1378,8 +1378,20 @@ class ScalpOverlayService : Service() {
     } catch (error: Exception) {
       "BLOCAT: PRECHECK ANDROID " + error.javaClass.simpleName.take(22)
     }
-    if (!preflight.startsWith("PREGĂTIT AUTO DEMO"))
+    if (!preflight.startsWith("PREGĂTIT AUTO DEMO")) {
+      // 558: the 557 overlay relocation was wired only to the normal
+      // AUTO-arm preflight. While an older demo attempt is still pending,
+      // this timed pilot reconciliation runs instead and used to repeat
+      // "PANOU PESTE SELL" without moving the obstructing overlay.
+      // Move ONLY the overlay. Keep the attempt marker and position gate;
+      // return to the next independent read-only broker check.
+      if (preflight.startsWith("BLOCAT: PANOU PESTE") &&
+          liftOverlayOffDemoOrderButtons557()) {
+        autoDemoLastPreflightReason = "PANOU MUTAT • REVERIFIC QT DEMO"
+        return "558 • PANOU MUTAT MAI SUS • VERIFIC DIN NOU • FĂRĂ ORDIN"
+      }
       return "497 • " + preflight.take(84) + " • FĂRĂ ORDIN"
+    }
     if (TouchTestService.activeDemoExecutorPackageForReview() != visiblePackage)
       return "464 • FEREASTRĂ DEMO SCHIMBATĂ • FĂRĂ ORDIN"
 
