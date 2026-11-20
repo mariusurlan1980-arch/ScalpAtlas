@@ -3977,7 +3977,7 @@ class ScalpOverlayService : Service() {
         scannedEligiblePairs.add(pair)
         // 503: restore the requested 30-second interval for EVERY pair.
         // This is a rotation timer, NOT a relaxation of SHOCK rules.
-        dwell(pair, android.os.SystemClock.elapsedRealtime() + 20_000L, 12)
+        dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
