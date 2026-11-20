@@ -185,6 +185,11 @@ class ScalpOverlayService : Service() {
   private var demoDiagPreflightEverReady546 = false
   private var demoDiagGestureChecks546 = 0
   private var demoDiagLastGesture546 = "FĂRĂ VERIFICARE GEST"
+  // 556: read-only last-confirmed-signal → gesture-stage diagnostics.
+  // These values never authorize, retry, or block broker orders.
+  private var lastConfirmedSide556 = "NONE"
+  private var lastConfirmedAt556 = 0L
+  private var gestureChecksAtSignal556 = 0
   // 552: diagnostic-only, explicitly initiated once by a TWO-TAP user action.
   // Never trigger a broker order from this field, without user confirmation.
   private var manualDemoTapStatus552: String? = null
@@ -6864,6 +6869,9 @@ class ScalpOverlayService : Service() {
       // The signal/audio can still work if file storage temporarily fails.
     }
     try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
+    lastConfirmedSide556 = confirmedSignal
+    lastConfirmedAt556 = now
+    gestureChecksAtSignal556 = demoDiagGestureChecks546
     playBip(confirmedSignal)
     updateOverlay(
       confirmedSignal,
@@ -7024,6 +7032,13 @@ class ScalpOverlayService : Service() {
         signalText?.setTextColor(
           if (green || red) visualTone else Color.rgb(105, 120, 126)
         )
+      }
+      // 556: an earlier audible signal stays identifiable during the
+      // existing five-minute display lock. "ANTERIOR" is not a fresh entry.
+      if (!green && !red && now < lockedUntil &&
+          (lockedDir == "BUY" || lockedDir == "SELL")) {
+        signalText?.text = "🔔 " + lockedDir + " • ANTERIOR"
+        signalText?.textSize = 11f
       }
       val streamRecent = lastCapturedImageAt > 0L &&
         now - lastCapturedImageAt in 0L..3500L
@@ -7806,6 +7821,28 @@ class ScalpOverlayService : Service() {
             "SEMNAL: " + shockBlocker.take(61)
           else -> "SEMNAL: " + activeSignal
         }
+        // 556: show what happened AFTER a confirmed signal. A helper
+        // invocation only proves an Android gesture was requested, never a
+        // QT Demo order. Do not alter the independent order safety gates.
+        val recentSignal556 = lastConfirmedAt556 > 0L &&
+          now - lastConfirmedAt556 in 0L..60_000L
+        val postSignal556 = when {
+          demoDiagGestureChecks546 > gestureChecksAtSignal556 ->
+            "GEST: " + demoDiagLastGesture546.take(48)
+          realAccountIdentified || realAccountSafetyStop517 ->
+            "QT REAL • ORDINE BLOCATE"
+          !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
+          !demoAccountIdentified -> "QT DEMO NECONFIRMAT"
+          autoDemoSessionConsumed -> "ORDIN ANTERIOR NECONFIRMAT"
+          fxRotationNavigating -> "ROTAȚIE • EXECUȚIE ÎN PAUZĂ"
+          !autoDemoSessionRequested -> "AUTO DEMO INACTIV"
+          !brokerConnected -> "CADRU / TF / PERECHE NECONFIRMATE"
+          !autoDemoArmed -> "PREFLIGHT: " + autoDemoLastPreflightReason.take(46)
+          else -> "FĂRĂ GEST • SEMNAL / CADRU EXPIRAT"
+        }
+        val diagnostic556 = if (recentSignal556)
+          "🔔 " + lastConfirmedSide556 + " • " + postSignal556
+        else reason546
         val state546 = when {
           realAccountIdentified || realAccountSafetyStop517 ||
             accountRecheckPending || !demoAccountIdentified ||
@@ -7814,7 +7851,7 @@ class ScalpOverlayService : Service() {
           autoDemoArmed -> "🤖 ARMAT • DEMO VERIFICAT"
           else -> "🤖 ARMAT • PREFLIGHT " + autoDemoLastPreflightReason.take(26)
         }
-        touchProbeStatus?.text = state546 + "\n" + counts546 + "\n" + reason546
+        touchProbeStatus?.text = state546 + "\n" + counts546 + "\n" + diagnostic556.take(92)
       }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
