@@ -15,7 +15,7 @@ const sample = [1.1012,1.1017,1.1011,1.1014];
 const newFeed = () => {const feed=new OneHalfM5LiveFeed(); assert.equal(feed.arm(closed, 0.0001),true); return feed;};
 const pushAll = (feed) => sample.map((p,i)=>feed.push(tick(i,p)));
 
-test('BUY on live M5 only at 2:30 with confirmed candle',()=>{
+test('BUY on confirmed second same-color M5 after observed retracement',()=>{
  const results=pushAll(newFeed()); assert.equal(results[2].signal,'NONE');assert.equal(results[3].signal,'BUY');
  assert.equal(results[3].elapsedPercent,50);assert.equal(results[3].simulationOnly,true);
 });
@@ -65,4 +65,29 @@ test('rejects changed opening price mid-candle',()=>{
 });
 test('disarm prevents further signal',()=>{
  const f=newFeed();f.push(tick(0,1.1012)); f.disarm();assert.equal(f.push(tick(1,1.1017)).signal,'NONE');
+});
+
+test('live feed can emit early on the second matching-color M5, without a 2m30 wait',()=>{
+ const f=newFeed();
+ const observed=[1.1012,1.1017,1.1011,1.1014].map((p,i)=>{
+  const ms=start+[1000,4000,7000,9000][i];
+  return f.push(tick(i,p,{timestampMs:ms,receivedAtMs:ms+100}));
+ });
+ assert.equal(observed[2].signal,'NONE');
+ assert.equal(observed[3].signal,'BUY');
+ assert.equal(observed[3].elapsedPercent,3);
+ assert.equal(observed[3].simulationOnly,true);
+});
+test('live feed does not emit if second candle stays green but no pullback occurs',()=>{
+ const f=newFeed();
+ const observed=[1.1011,1.1012,1.1013,1.1014].map((p,i)=>{
+  const ms=start+[1000,4000,7000,9000][i];
+  return f.push(tick(i,p,{timestampMs:ms,receivedAtMs:ms+100}));
+ });
+ assert.ok(observed.every(v=>v.signal==='NONE'));
+});
+test('live feed never emits when the first M5 is red but second M5 remains green',()=>{
+ const f=new OneHalfM5LiveFeed();
+ assert.equal(f.arm({...closed,open:1.102,close:1.101},0.0001),true);
+ assert.equal(pushAll(f)[3].signal,'NONE');
 });
