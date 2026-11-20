@@ -17,10 +17,13 @@ const current = {
 const settings = {priceTickSize:0.0001};
 const evaluate = (prev={}, curr={}, s={}) => evaluateOneHalfM5({...previous,...prev},{...current,...curr},{...settings,...s});
 
-test('BUY only after >= 50% of second green M5 with a timed retreat and partial recovery', () => {
+test('BUY as soon as second green M5 has a timed retreat and partial recovery', () => {
   const r=evaluate();assert.equal(r.signal,'BUY');assert.equal(r.elapsedPercent,50);
 });
-test('not before the 50% mark',()=>assert.equal(evaluate({}, {samples:current.samples.map((s,i)=>i===3?{...s,timestampMs:base+149_999}:s)}).signal,'NONE'));
+test('early entry before 50% is allowed once the same-color pullback and recovery exist',()=>{
+ const samples=current.samples.map((s,i)=>({...s,timestampMs:base+[1000,9000,14000,18000][i]}));
+ const r=evaluate({}, {samples});assert.equal(r.signal,'BUY');assert.equal(r.elapsedPercent,6);
+});
 test('not when candle two is red',()=>assert.equal(evaluate({}, {samples:current.samples.slice(0,-1).concat({timestampMs:base+150_000,price:1.1009})}).signal,'NONE'));
 test('not with adjacent candle missing',()=>assert.equal(evaluate({endMs:base-300_000}).signal,'NONE'));
 test('not with different pairs',()=>assert.equal(evaluate({}, {pair:'AUD/CHF OTC'}).signal,'NONE'));
@@ -43,7 +46,7 @@ test('one signal only for each second candle, even after further observations',(
  assert.equal(session.observe(previous,current,settings).signal,'NONE');
 });
 
-test('symbolic two-tick retreat and one-tick partial recovery is valid at M5 midpoint', () => {
+test('symbolic two-tick retreat and one-tick partial recovery is valid with no M5 midpoint requirement', () => {
   const tinyRetreat = current.samples.slice(0, -3).concat([
     {timestampMs:base+60_000, price:1.1015},
     {timestampMs:base+100_000, price:1.1013},
@@ -62,4 +65,30 @@ test('one tick back to former peak is still rejected as chasing the peak', () =>
 });
 test('rejects an unverified negative tick size', () => {
   assert.equal(evaluate({}, {}, {priceTickSize:-0.0001}).signal, 'NONE');
+});
+
+test('two green candles alone do not trigger without actual observed retracement',()=>{
+ const samples=[
+  {timestampMs:base+1000,price:1.1011},
+  {timestampMs:base+3000,price:1.1012},
+  {timestampMs:base+6000,price:1.1013},
+  {timestampMs:base+9000,price:1.1014},
+ ];
+ assert.equal(evaluate({}, {samples}).signal,'NONE');
+});
+test('different candle colors are blocked even with the retracement shape',()=>{
+ assert.equal(evaluate({open:1.102,close:1.101}).signal,'NONE');
+});
+test('no signal with fewer than four timestamped price samples',()=>{
+ assert.equal(evaluate({}, {samples:current.samples.slice(0,3)}).signal,'NONE');
+});
+test('early SELL when both M5 candles are red',()=>{
+ const samples=[
+  {timestampMs:base+1000,price:1.1008},
+  {timestampMs:base+3000,price:1.1003},
+  {timestampMs:base+6000,price:1.1009},
+  {timestampMs:base+9000,price:1.1006},
+ ];
+ const r=evaluate({open:1.102,close:1.101},{samples});
+ assert.equal(r.signal,'SELL');assert.equal(r.elapsedPercent,3);
 });
