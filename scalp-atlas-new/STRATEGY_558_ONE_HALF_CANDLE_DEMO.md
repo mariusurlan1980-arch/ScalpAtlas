@@ -4,18 +4,18 @@
 1. Prima lumânare M5 trebuie să fie complet închisă.
 2. A doua lumânare M5 trebuie să aibă aceeași culoare ca prima la momentul evaluării.
 3. Nu se analizează intrarea mai devreme de 50% din durata celei de-a doua lumânări (2 min 30 sec).
-4. În lumânarea a doua trebuie să existe dovezi LIVE ale unei retrageri împotriva direcției inițiale, urmată de o revenire parțială.
+4. Retragere **simbolică**: minim un pas valid de cotație (*1 tick*) în direcția opusă, apoi revenire parțială observată LIVE. Pasul trebuie verificat pentru perechea analizată (nu este universal).
 5. Evităm intrarea la extremul anterior; maximum un semnal pentru fiecare lumânare a doua.
 6. BUY pentru două lumânări verzi; SELL simetric pentru două lumânări roșii.
 
-**Atenție:** 50% reprezintă durata scursă, nu procentul retragerii prețului.
+**Atenție:** 50% reprezintă durata scursă, nu procentul retragerii prețului. Pentru că semnalul nu se emite când prețul revine chiar la maximul/minimul anterior, o retragere de exact un tick poate să nu fie suficientă pentru a produce un semnal, chiar dacă este pragul minim.
 
 ## Statut
 - S-a adăugat exclusiv detectorul de semnal `oneHalfCandleM5.ts` și testele independente `oneHalfCandleM5.test.mjs`.
-- La test local cu Node 22.16, au trecut 12 din 12 teste de logică.
+- La versiunea anterioară au fost raportate 12 teste de logică. Testele au fost extinse la 15 pentru condiția «retragere simbolică»; rezultatul rulării noi trebuie confirmat.
 - Nu s-au modificat execuția DEMO, rotația, bipul, modul REAL sau Bluetooth.
 - Detectorul NU este conectat la un flux live de cotații și NU este un APK instalabil.
-- Pragul minim al retragerii este obligatoriu și trebuie calibrat pe pereche; valoarea 0.0003 din teste este doar un exemplu sintetic, nu setare de tranzacționare.
+- Detectorul folosește acum `priceTickSize`: pasul minim al cotei furnizat/verificat separat pentru fiecare pereche. În testele sintetice se utilizează 0.0001 doar pentru exemplificare; nu este valoare stabilită pentru broker sau un parametru global.
 - Faptul că semnalul apare după 2:30 nu garantează o tranzacție favorabilă.
 
 ## Pași ulteriori
