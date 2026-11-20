@@ -1,5 +1,6 @@
 /**
- * Experimental 1.5-candle M5 retracement strategy for Scalp Atlas DEMO.
+ * Experimental consecutive same-color M5 candle retracement strategy for Scalp Atlas DEMO.
+ * First candle is closed; second is live. No fixed second-candle time delay.
  * Pure signal evaluation only: no broker calls, orders, Bluetooth, or device control.
  * Requires verified time-series data; screenshots alone cannot prove the price sequence.
  */
@@ -26,7 +27,7 @@ export type OneHalfSettings = {
 };
 export type OneHalfResult =
   | { signal: 'NONE'; reason: string; elapsedPercent: number }
-  | { signal: Direction; reason: 'ONE_HALF_M5_RETRACE'; elapsedPercent: number; retracementPrice: number };
+  | { signal: Direction; reason: 'TWO_SAME_COLOR_RETRACE'; elapsedPercent: number; retracementPrice: number };
 
 const DURATION_MS = 5 * 60_000;
 const WAIT = (reason: string, elapsedPercent = 0): OneHalfResult => ({ signal: 'NONE', reason, elapsedPercent });
@@ -58,7 +59,6 @@ export function evaluateOneHalfM5(
   }
   const latest = samples[samples.length - 1];
   const elapsedPercent = (latest.timestampMs - current.startMs) / DURATION_MS * 100;
-  if (elapsedPercent < 50) return WAIT('Aștept 50% din lumânarea a doua', elapsedPercent);
   if (direction === 'BUY' && latest.price <= current.open) return WAIT('Lumânarea 2 nu este verde', elapsedPercent);
   if (direction === 'SELL' && latest.price >= current.open) return WAIT('Lumânarea 2 nu este roșie', elapsedPercent);
 
@@ -82,7 +82,7 @@ export function evaluateOneHalfM5(
     }
   }
   if (!maximumRetreat) return WAIT('Retragerea și revenirea nu sunt confirmate', elapsedPercent);
-  return { signal: direction, reason: 'ONE_HALF_M5_RETRACE', elapsedPercent, retracementPrice: maximumRetreat };
+  return { signal: direction, reason: 'TWO_SAME_COLOR_RETRACE', elapsedPercent, retracementPrice: maximumRetreat };
 }
 
 /** One alert maximum per current candle and pair. Never calls a broker. */
