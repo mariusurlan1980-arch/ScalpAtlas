@@ -7060,6 +7060,48 @@ class ScalpOverlayService : Service() {
     return Rect(location[0], location[1], location[0] + view.width, location[1] + view.height)
   }
 
+  /**
+   * 557: a bottom-right overlay may physically cover SELL's centre.
+   * In that case the strict 488 preflight MUST fail. Move the panel
+   * upward on the chart, persist its position, and retry READ-ONLY on
+   * the NEXT frame. Never turn relocation into an order authorization.
+   */
+  private fun liftOverlayOffDemoOrderButtons557(): Boolean {
+    if (shuttingDown || mediaProjection == null ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
+        realAccountSafetyStop517) return false
+    val view = overlayView ?: return false
+    val params = overlayWindowParams ?: return false
+    val actual = currentOverlayBounds488()
+    if (actual.isEmpty) return false
+    val metrics = android.util.DisplayMetrics()
+    try {
+      @Suppress("DEPRECATION")
+      windowManager.defaultDisplay.getRealMetrics(metrics)
+    } catch (_: Throwable) { return false }
+    val chartBottom = (metrics.heightPixels * 0.70f).toInt()
+    val lift = actual.bottom - chartBottom
+    if (lift <= 0) return false
+    val beforeY = params.y
+    val newY = (beforeY - lift - dp(12)).coerceAtLeast(dp(24))
+    if (newY >= beforeY) return false
+    params.y = newY
+    try { windowManager.updateViewLayout(view, params) }
+    catch (_: Throwable) { params.y = beforeY; return false }
+    // Previous manual/free-position settings may otherwise restore a
+    // bottom-right overlay over the same SELL control on the next redraw.
+    val saved = getSharedPreferences("scalp_overlay_position498", Context.MODE_PRIVATE)
+      .edit().putBoolean("freePosition500", true)
+      .putInt("freeX500", params.x)
+      .putInt("freeY500", params.y).commit()
+    if (!saved) {
+      params.y = beforeY
+      try { windowManager.updateViewLayout(view, params) } catch (_: Throwable) {}
+      return false
+    }
+    return true
+  }
+
   private fun updateOverlay(
     signal: String, details: String, model: String, entryFrameId: Long = -1L
   ) {
@@ -7298,10 +7340,20 @@ class ScalpOverlayService : Service() {
             autoDemoExpiry = autoDemoSessionEndAt
             touchProbeStatus?.text = "🤖 DEMO AUTO • MIZĂ VERIFICATĂ • ȘOC/TREND"
           } else {
-            if (freshShockForPreflight) {
-              lastShockOrderStatus = "FĂRĂ ORDIN • " + diagnostic.take(90)
+            if (diagnostic.startsWith("BLOCAT: PANOU PESTE") &&
+                liftOverlayOffDemoOrderButtons557()) {
+              // Don't replay a signal captured before the panel moved.
+              autoDemoLockedAt = lockedAt
+              autoDemoLastPreflightAt = 0L
+              autoDemoLastPreflightReason =
+                "PANOU MUTAT • REVERIFIC BUY/SELL PE GRAFIC"
+              touchProbeStatus?.text = "🤖 PANOU MUTAT MAI SUS • REVERIFIC QT DEMO"
+            } else {
+              if (freshShockForPreflight) {
+                lastShockOrderStatus = "FĂRĂ ORDIN • " + diagnostic.take(90)
+              }
+              touchProbeStatus?.text = "🤖 DEMO AȘTEAPTĂ: " + diagnostic
             }
-            touchProbeStatus?.text = "🤖 DEMO AȘTEAPTĂ: " + diagnostic
           }
         }
       }
@@ -7429,9 +7481,20 @@ class ScalpOverlayService : Service() {
             "BLOCAT: VERIFICARE ANDROID " + error.javaClass.simpleName.take(22)
           }
           if (!latestPreflight.startsWith("PREGĂTIT AUTO DEMO")) {
-            autoDemoLastPreflightReason = latestPreflight.take(95)
-            touchProbeStatus?.text =
-              "FĂRĂ ORDIN • PREFLIGHT: " + latestPreflight.take(90)
+            if (latestPreflight.startsWith("BLOCAT: PANOU PESTE") &&
+                liftOverlayOffDemoOrderButtons557()) {
+              autoDemoArmed = false
+              autoDemoMarket = null
+              autoDemoLockedAt = lockedAt
+              autoDemoLastPreflightAt = 0L
+              autoDemoLastPreflightReason =
+                "PANOU MUTAT • REVERIFIC BUY/SELL PE GRAFIC"
+              touchProbeStatus?.text = "FĂRĂ ORDIN • MUT PANOU • REVERIFIC"
+            } else {
+              autoDemoLastPreflightReason = latestPreflight.take(95)
+              touchProbeStatus?.text =
+                "FĂRĂ ORDIN • PREFLIGHT: " + latestPreflight.take(90)
+            }
           } else if (!tradePositionGate.beginAttempt()) {
             touchProbeStatus?.text =
               "FĂRĂ ORDIN NOU • POZIȚIE ANTERIOARĂ NECONFIRMATĂ"
