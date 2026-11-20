@@ -1,0 +1,25 @@
+name: Scalp Atlas 559 DEMO signal tests
+on:
+  push:
+    branches:
+      - experiment/scalpatlas-559-two-candles-early-retrace-demo
+    paths:
+      - 'scalp-atlas-new/oneHalfCandleM5.ts'
+      - 'scalp-atlas-new/oneHalfCandleM5.test.mjs'
+      - 'scalp-atlas-new/oneHalfM5LiveFeed.ts'
+      - 'scalp-atlas-new/oneHalfM5LiveFeed.test.mjs'
+      - '.github/workflows/scalp-atlas-559-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  strategy-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Validate M5 strategy and live-feed tests (DEMO signal only)
+        working-directory: scalp-atlas-new
+        run: node --experimental-strip-types --test oneHalfCandleM5.test.mjs oneHalfM5LiveFeed.test.mjs
