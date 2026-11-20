@@ -23,3 +23,17 @@
 - Integrarea într-un flux de date LIVE M5 sigur, fără să se modifice versiunea instalată până la validare.
 - Rulare paper trading și măsurarea rezultatului pe un eșantion, înainte de orice auto-execuție.
 - Confirmare separată a funcționalității pe Motorola.
+
+
+## Implementare suplimentară: bridge de cotații M5
+
+- `oneHalfM5LiveFeed.ts`: primește lumânarea precedentă închisă și confirmată și observații cu preț, oră, deschiderea lumânării active, pereche și pasul valid al cotației.
+- Verifică M5, continuitatea celor două lumânări, vârsta cotației (maximum 5 s), ordinea observațiilor și evită duplicarea BUY/SELL la rotația între perechi.
+- Dacă perechea sau timeframe-ul se schimbă, sesiunea de semnale se dezarmează până când primește o nouă lumânare M5 verificată.
+- Rezultatul are întotdeauna `simulationOnly: true`; nu conține niciun apel către broker, Android Accessibility sau Bluetooth.
+- `oneHalfM5LiveFeed.test.mjs`: 13 teste suplimentare. **28/28 teste au trecut local pe Node v22.16.0**, folosind secvențe sintetice, nu cotații reale de la Pocket Option.
+- Pentru a le rula local: `node --experimental-strip-types --test oneHalfCandleM5.test.mjs oneHalfM5LiveFeed.test.mjs` din directorul `scalp-atlas-new`.
+
+### Nu este activ în robotul instalat
+
+Adaptorul de date LIVE pentru Motorola/Pocket Option **nu există în acest experiment**. Bridge-ul trebuie alimentat de o sursă de cotații autorizată și verificată. Nu există APK 558 nou validat; niciun ordin real sau DEMO nu este transmis automat de acest cod. Pasul următor este legarea sursei de date și validarea pe istoricul/fluxul DEMO, fără modificarea ramurii stabile.
