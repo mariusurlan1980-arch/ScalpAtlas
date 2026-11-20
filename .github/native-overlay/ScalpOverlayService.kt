@@ -195,6 +195,9 @@ class ScalpOverlayService : Service() {
   private var manualDemoTapStatus552: String? = null
   // True only in the user-triggered diagnostic. Blocks automatic entries.
   private var manualDemoDiagnosticActive552 = false
+  // 557: restart only the 30s FX scanner after a verified manual test
+  // has been durably settled. Never use this callback to authorize orders.
+  private var resumeDemoRotationAfterManual557: (() -> Unit)? = null
   // Wall-clock start of the currently authorized, verified DEMO entry cycle.
   // A BIP from before this boundary must never become a broker order.
   private var autoDemoEntryCycleStartedAt = 0L
@@ -1231,6 +1234,9 @@ class ScalpOverlayService : Service() {
 
     // Exact proof and ledger are durable before clearing the gesture flag.
     val cleared = prefs.edit().putBoolean("attempted", false)
+      // 557: matched CLOSED receipt + zero-OPEN proof is required to
+      // retire a pending manual BUY test in CHART-ONLY.
+      .putBoolean("manualTest552PendingVerifiedClose557", false)
       .remove("expectedPair429").remove("expectedPackage429")
       .remove("expectedStakeCents429").remove("expectedPayout429")
       .remove("brokerStake476").remove("expectedSide437").remove("attemptedAt429")
@@ -1280,6 +1286,9 @@ class ScalpOverlayService : Service() {
   ): String? {
     val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
     if (!autoDemoSessionConsumed) return null
+    // 557: elapsed 5 minutes is not broker-confirmed manual-test closure.
+    if (prefs.getBoolean("manualTest552PendingVerifiedClose557", false))
+      return "557 • TEST BUY DEMO ÎNCHIDERE NECONFIRMATĂ • FĂRĂ ORDIN"
     if (getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
         .getBoolean("attempted", false))
       return "464 • TEST SELL VECHI NECONFIRMAT"
@@ -1413,6 +1422,38 @@ class ScalpOverlayService : Service() {
     return "476 • DEMO REACTIVAT • FĂRĂ LIMITĂ NUMERICĂ / FĂRĂ MG"
   }
 
+  /**
+   * 557: end the user-triggered TEST BUY UI gate only after the
+   * independent persisted broker settlement and when back on QT Demo.
+   * All existing order locks and per-pair preflight remain active.
+   */
+  private fun maybeFinishManualDemoTest557() {
+    if (!manualDemoDiagnosticActive552 || !autoDemoSessionRequested ||
+        autoDemoSessionConsumed || shuttingDown || mediaProjection == null ||
+        realAccountSafetyStop517 || accountRecheckPending ||
+        !TouchTestService.ready() || !TouchTestService.demoFxAccountInForeground() ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        closedHistoryInspectionInProgress ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null) return
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    if (prefs.getBoolean("attempted", false) ||
+        prefs.getBoolean("manualTest552PendingVerifiedClose557", false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false)) return
+    // Reopen analysis, not a previous trade: do not replay the last beep.
+    manualDemoDiagnosticActive552 = false
+    manualDemoTapStatus552 = null
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoLastPreflightAt = 0L
+    autoDemoLockedAt = lockedAt
+    autoDemoEntryCycleStartedAt = System.currentTimeMillis()
+    autoDemoLastPreflightReason = "TEST MANUAL ÎNCHEIAT • VERIFIC QT DEMO"
+    touchProbeStatus?.text = "🤖 QT DEMO • TEST ÎNCHIS VERIFICAT • AUTO REARMAT"
+    resumeDemoRotationAfterManual557?.invoke()
+  }
+
   private fun demoOrderVerificationStatus(): String {
     val reason = demoOrderVerificationReason
     return if (reason.isNullOrBlank()) "ARMAT · VERIFIC ORDINUL"
@@ -1489,6 +1530,9 @@ class ScalpOverlayService : Service() {
           val pilotStatus464 = if (passiveStatus463 == null && autoDemoSessionConsumed)
             maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
           else null
+          // 557: proof-based release only; never clear a pending order
+          // merely because an Android gesture reported completion.
+          maybeFinishManualDemoTest557()
           val effectiveStatus464 = passiveStatus463 ?: pilotStatus464
           demoOrderVerificationReason = effectiveStatus464.takeIf { autoDemoSessionConsumed }
           if (effectiveStatus464 != null) {
@@ -4538,6 +4582,7 @@ class ScalpOverlayService : Service() {
           autoShockAttemptPrefs, Context.MODE_PRIVATE
         ).edit()
           .putBoolean("attempted", true)
+          .putBoolean("manualTest552PendingVerifiedClose557", true)
           .putString("expectedPair429", pair552)
           .putString("expectedPackage429", pkg552)
           .putLong("expectedStakeCents429", quote552.first)
@@ -4572,9 +4617,13 @@ class ScalpOverlayService : Service() {
         if (result552.startsWith("PRECHECK_NO_GESTURE:")) {
           val undone552 = getSharedPreferences(
             autoShockAttemptPrefs, Context.MODE_PRIVATE
-          ).edit().putBoolean("attempted", false).commit()
-          if (undone552 && tradePositionGate.cancelBeforeDispatch())
+          ).edit().putBoolean("attempted", false)
+            .putBoolean("manualTest552PendingVerifiedClose557", false).commit()
+          if (undone552 && tradePositionGate.cancelBeforeDispatch()) {
             autoDemoSessionConsumed = false
+            manualDemoDiagnosticActive552 = false
+            resumeDemoRotationAfterManual557?.invoke()
+          }
           text = "TEST BUY BLOCAT"
         }
         manualDemoTapStatus552 = result552.take(95)
@@ -4883,6 +4932,14 @@ class ScalpOverlayService : Service() {
     // 498: restore the personally selected corner after the window is laid out.
     root.post { positionSavedCorner498() }
     startNeonEdge434()
+    resumeDemoRotationAfterManual557 = {
+      if (overlayView === root && !shuttingDown && mediaProjection != null &&
+          !realAccountSafetyStop517 && !fxRotation.running &&
+          TouchTestService.demoFxAccountInForeground()) {
+        try { fxRotation.start() }
+        catch (_: Exception) { fxRotation.stop("ROTAȚIE • VERIFICĂ ACCESIBILITATE") }
+      }
+    }
     retryDemoRotationAfterLiveRestart = retry@{
       val projection = mediaProjection ?: return@retry
       if (!realAccountSafetyStop517) return@retry
@@ -7942,6 +7999,7 @@ class ScalpOverlayService : Service() {
       analyzerWebView = null
       try { overlayView?.let { windowManager.removeView(it) } } catch (_: Throwable) {}
       retryDemoRotationAfterLiveRestart = null
+      resumeDemoRotationAfterManual557 = null
       overlayView = null
     }
 
