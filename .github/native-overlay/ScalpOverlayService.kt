@@ -4820,6 +4820,67 @@ class ScalpOverlayService : Service() {
     root.addView(brokerAutoRow)
     autoDemoRow = brokerAutoRow
     autoDemoButton = brokerAutoButton
+    // 565: user opt-in for editing ONLY the next QT DEMO amount after a
+    // uniquely verified CLOSED LOSS. It does not start another trade.
+    val stakeAutoRow565 = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER
+      visibility = View.GONE
+      setPadding(0, dp(3), 0, 0)
+    }
+    val stakeButton565 = localButton(
+      if (demoAutoStakePlan565.isEnabled())
+        "MIZĂ AUTO DEMO • ON" else "MIZĂ AUTO DEMO • OFF",
+      Color.rgb(39, 92, 114)
+    ).apply {
+      textSize = 10f
+      contentDescription = "Activează doar pregătirea mizei QT Demo după LOSS verificat; nu execută tranzacții"
+      setOnClickListener {
+        if (demoAutoStakePlan565.isEnabled()) {
+          demoAutoStakePlan565.disable()
+          text = "MIZĂ AUTO DEMO • OFF"
+          probeStatus.text = "565 • MIZĂ AUTO OPRITĂ • FĂRĂ ORDIN"
+        } else {
+          val now565 = System.currentTimeMillis()
+          val pair565 = currentPair(now565)
+          val package565 = TouchTestService.activeDemoExecutorPackageForReview()
+          val before565 = getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
+            .getBoolean("attempted",false)
+          val old565 = getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
+            .getBoolean("attempted",false)
+          val ready565 = !demoAutoStakePlan565.isRiskStopped() &&
+            !realAccountSafetyStop517 && !accountRecheckPending &&
+            lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
+            package565 != null && !fxRotationTradePaused516 &&
+            !closedHistoryInspectionInProgress && !historyPageVisible433 &&
+            !before565 && !old565 && !fxRotationNavigating &&
+            tradePositionGate.state()==TradePositionGate.State.READY &&
+            TouchTestService.ready() && mediaProjection!=null &&
+            pair565!="NEIDENTIFICAT" && pairReady(now565) &&
+            TouchTestService.readVerifiedDemoPayoutForPair(pair565)==92
+          if (!ready565 || package565 == null ||
+              !demoAutoStakePlan565.enableFromVerifiedDemo(
+                "QT_DEMO:" + package565,pair565)) {
+            probeStatus.text = if(demoAutoStakePlan565.isRiskStopped())
+              "565 • STOP RISC PERSISTENT • FĂRĂ MODIFICARE"
+            else "565 • QT DEMO/PAYOUT/ORDIN NECONFIRMAT • FĂRĂ EDITARE"
+          } else {
+            // Stop the existing auto-session before touching the stake.
+            autoDemoSessionRequested=false
+            autoDemoSessionConsumed=true
+            autoDemoArmed=false
+            autoDemoMarket=null
+            autoDemoExpiry=0L
+            text = "MIZĂ AUTO DEMO • ON"
+            probeStatus.text = "565 • AȘTEPT EDITARE MIZĂ 1,09 USD • FĂRĂ ORDIN"
+            maybeApplyVerifiedDemoStake565(android.os.SystemClock.elapsedRealtime())
+          }
+        }
+      }
+    }
+    stakeAutoRow565.addView(stakeButton565, LinearLayout.LayoutParams(-1, dp(30)))
+    root.addView(stakeAutoRow565)
+    autoStakeToggle565 = stakeButton565
     // One explicit, broker-independent cross-app test. Never triggered by
     // SHOCK/SCALP signals and never uses underlying Pocket Option coordinates.
     val calcRow = LinearLayout(this).apply {
@@ -4877,8 +4938,12 @@ class ScalpOverlayService : Service() {
         dp(if (minimized) 5 else 9),
         dp(if (minimized) 4 else 8)
       )
+      stakeAutoRow565.visibility = if(minimized) View.GONE else View.VISIBLE
       martingaleStatusText?.visibility =
-        if (minimized || CHART_ONLY_DEMO_462) View.GONE else View.VISIBLE
+        if (minimized || (CHART_ONLY_DEMO_462 && !demoAutoStakePlan565.isEnabled()))
+          View.GONE else View.VISIBLE
+      if (demoAutoStakePlan565.isEnabled())
+        martingaleStatusText?.text = demoAutoStakePlan565.status().take(85)
       probeStatus.maxLines = if (minimized) 3 else 3
       probeStatus.setPadding(dp(2), dp(1), dp(2), dp(1))
       val rotationParams499 = fxButton.layoutParams
