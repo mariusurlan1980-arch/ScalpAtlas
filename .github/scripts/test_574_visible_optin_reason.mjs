@@ -42,8 +42,8 @@ test('574 pending reason takes priority over stale preflight text and remains co
  assert.ok(compact.includes('windowManager.updateViewLayout(root, window)'));
 });
 test('574 signed Android workflow with dedicated regression test',()=>{
- assert.ok(w.includes("expo['android']['versionCode']=582"));
- assert.ok(w.includes('ScalpAtlas-582-HISTORY-CLOCK-DEMO-G24.apk'));
+ assert.ok(w.includes("expo['android']['versionCode']=583"));
+ assert.ok(w.includes('ScalpAtlas-583-BASE-REARM-DEMO-G24.apk'));
  assert.ok(w.includes('node --test .github/scripts/test_574_visible_optin_reason.mjs'));
  assert.ok(w.includes('apksigner'));
 });
