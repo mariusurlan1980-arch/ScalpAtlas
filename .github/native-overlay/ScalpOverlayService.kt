@@ -5092,16 +5092,18 @@ class ScalpOverlayService : Service() {
           View.GONE else View.VISIBLE
       if (demoAutoStakePlan565.isEnabled())
         martingaleStatusText?.text = demoAutoStakePlan565.status().take(85)
-      probeStatus.maxLines = if (minimized) 3 else 3
+      // 573: show the preflight blocker in two tight lines while minimized.
+      probeStatus.maxLines = if (minimized) 2 else 3
       probeStatus.setPadding(dp(2), dp(1), dp(2), dp(1))
       val rotationParams499 = fxButton.layoutParams
       rotationParams499.height = dp(if (minimized) 23 else 26)
       fxButton.layoutParams = rotationParams499
       fxButton.textSize = if (minimized) 9.5f else 10f
       compactStatus.textSize = if (minimized) 12f else 13f
-      // 552: one explicit, temporary diagnostic BUY control is visible.
-      // Legacy SELL buttons remain hidden. It needs two deliberate taps.
-      tapTestRow552.visibility = View.VISIBLE
+      // 573: diagnostic BUY is accessible only after explicit expansion.
+      // The compact panel must never cover the broker BUY/SELL buttons with
+      // a redundant TEST BUY DEMO row. No change to gesture permissions.
+      tapTestRow552.visibility = if (minimized) View.GONE else View.VISIBLE
       touchProbeToggle.visibility = View.GONE
       testBipControl.visibility = View.GONE
       brokerAutoRow.visibility = View.GONE // Session auto-arms after Android LIVE consent.
@@ -5148,6 +5150,11 @@ class ScalpOverlayService : Service() {
       window.width = dp(if (minimized) 156 else 224)
       val metrics = resources.displayMetrics
       window.x = window.x.coerceIn(0, (metrics.widthPixels - window.width).coerceAtLeast(0))
+      // 573: writing LayoutParams.width alone is NOT a window resize;
+      // positionSavedCorner498() may early-return when x/y are unchanged.
+      // Apply width/height to Android immediately so minus actually shrinks.
+      root.requestLayout()
+      try { windowManager.updateViewLayout(root, window) } catch (_: Throwable) {}
       root.post { positionSavedCorner498() }
     }
     minimizeToggle.setOnClickListener {
@@ -7282,11 +7289,28 @@ class ScalpOverlayService : Service() {
     } catch (_: Throwable) {
       // The signal/audio can still work if file storage temporarily fails.
     }
-    try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
+    // 573: a confirmed chart signal is NOT permission for a broker trade.
+    // Avoid a misleading audible BIP when the DEMO stake gate is OFF,
+    // ON is pending, the account is REAL, or preflight has not armed.
+    // A BIP still does NOT prove that Pocket Option accepted an order.
+    val tradeAudioReady573 = autoDemoSessionRequested &&
+      !autoDemoSessionConsumed && autoDemoArmed &&
+      demoAutoStakePlan565.isEnabled() && !demoAutoStakePlan565.isRiskStopped() &&
+      !pendingStakeOptIn571 && !realAccountSafetyStop517 &&
+      !accountRecheckPending && !fxRotationNavigating &&
+      !fxRotationTradePaused516 &&
+      lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
+      tradePositionGate.state() == TradePositionGate.State.READY
+    if (tradeAudioReady573) {
+      try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
+      playBip(confirmedSignal)
+    } else {
+      lastShockOrderStatus = "SEMNAL " + confirmedSignal +
+        " • FĂRĂ BIP/ORDIN • PREFLIGHT NECONFIRMAT"
+    }
     lastConfirmedSide556 = confirmedSignal
     lastConfirmedAt556 = now
     gestureChecksAtSignal556 = demoDiagGestureChecks546
-    playBip(confirmedSignal)
     updateOverlay(
       confirmedSignal,
       "Scor orientativ " + score + " • Durată " + if (expiry > 0) expiry.toString() + " min" else "—",
