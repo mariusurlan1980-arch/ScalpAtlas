@@ -2443,6 +2443,23 @@ class TouchTestService : AccessibilityService() {
     }
 
     /**
+     * 577: independent readback of the exact displayed editable DEMO stake.
+     * Read-only, never writes Sumă, never returns true on QT Real or a
+     * changed FX pair. Required before re-arming or rotating base stake.
+     */
+    fun verifiedExactDemoStakeReadOnly577(expectedPair: String, cents: Long): Boolean {
+      val svc = connected ?: return false
+      if (expectedPair.isBlank() || expectedPair == "NEIDENTIFICAT" ||
+          readVisibleDemoPair() != expectedPair)
+        return false
+      val exact = try {
+        DemoStakeEditor.verifiedExactDemoStakeReadOnly(svc, cents)
+      } catch (_: Throwable) { false }
+      return exact && connected === svc &&
+        readVisibleDemoPair() == expectedPair
+    }
+
+    /**
      * 423: Secure DEMO stake-field editing only, never an order.
      * Call ONLY after the matching broker CLOSED receipt is independently
      * verified by a future history adapter and the ledger authorizes a quote.
