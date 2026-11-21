@@ -8,8 +8,10 @@ test('584: consumed session rearms from already confirmed broker amount only aft
  const f=service.split('private fun maybeApplyVerifiedDemoStake565(')[1].split('private fun brokerHistoryClockSeconds582(')[0];
  assert.match(f,/tradePositionGate\.state\(\)!=TradePositionGate\.State\.READY/);
  assert.match(f,/getBoolean\("attempted",false\)/);
- assert.match(f,/readVisibleDemoPair\(\)!=pair/);
- assert.match(f,/readVerifiedDemoPayoutForPair\(pair\)!=92/);
+  assert.match(f,/val visiblePair587=try/);
+  assert.match(f,/if\(visiblePair587!=pair\)/);
+  assert.match(f,/val payout587=try/);
+  assert.match(f,/if\(payout587!=92\)/);
  assert.match(f,/val confirmedQuote584=try\s*\{\s*TouchTestService\.readBrokerDemoOrder476\(pair\)/);
  assert.match(f,/demoAutoStakePlan565\.permitsFreshDemoOrder\(key,pair,currentAmount584\)/);
  assert.match(f,/if\(!autoDemoSessionRequested \|\| autoDemoSessionConsumed\)/);

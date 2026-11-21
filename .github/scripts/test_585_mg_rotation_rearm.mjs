@@ -29,8 +29,10 @@ test('585: rearm retry requires same settled chart; does not bypass stake or ord
   assert.match(main,/tradePositionGate\.state\(\)!=TradePositionGate\.State\.READY/);
   assert.match(main,/getBoolean\("attempted",false\)/);
   assert.match(main,/demoAutoStakePlan565\.permitsFreshDemoOrder\(key,pair,currentAmount584\)/);
-  assert.match(main,/TouchTestService\.readVisibleDemoPair\(\)!=pair/);
-  assert.match(main,/TouchTestService\.readVerifiedDemoPayoutForPair\(pair\)!=92/);
+  assert.match(main,/val visiblePair587=try/);
+  assert.match(main,/if\(visiblePair587!=pair\)/);
+  assert.match(main,/val payout587=try/);
+  assert.match(main,/if\(payout587!=92\)/);
   assert.match(plan,/prefs\.getLong\("pendingStake",-1L\)!=0L/);
   assert.match(plan,/prefs\.getLong\("confirmedStake",-1L\)!=expected/);
 });

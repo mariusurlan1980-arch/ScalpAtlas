@@ -6,8 +6,10 @@ const plan=readFileSync('.github/native-overlay/DemoAutoStakePlan565.kt','utf8')
 const workflow=readFileSync('.github/workflows/build-native-robot-safe-preflight-379.yml','utf8');
 
 test('583 can attempt base-pair rebind only after independent current-pair 1.09 / 92 broker quote',()=>{
-  assert.match(service,/readVisibleDemoPair\(\)!=pair/);
-  assert.match(service,/readVerifiedDemoPayoutForPair\(pair\)!=92/);
+  assert.match(service,/val visiblePair587=try/);
+  assert.match(service,/if\(visiblePair587!=pair\)/);
+  assert.match(service,/val payout587=try/);
+  assert.match(service,/if\(payout587!=92\)/);
   assert.match(service,/val baseQuote583=try \{\s*TouchTestService\.readBrokerDemoOrder476\(pair\)==\(109L to 92\)/);
   assert.match(service,/if\(baseQuote583 &&\s*demoAutoStakePlan565\.rebindVerifiedBasePair\(key,pair\)\)/);
   assert.match(plan,/prefs\.getInt\("losses",-1\) != 0/);
