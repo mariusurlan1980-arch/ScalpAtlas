@@ -1017,6 +1017,25 @@ class ScalpOverlayService : Service() {
     else "MIZĂ NECONFIRMATĂ • FĂRĂ ORDIN"
   }
 
+  // 582: The broker CHART clock may be UTC+3 while the CLOSED history
+  // list/detail uses the phone's local clock (e.g. UTC+2 in November).
+  // Keep BOTH clocks as candidate hints, never as settlement proof.
+  // Strict UUID, pair, side, stake, payout and 0 OPEN 2/2 remain mandatory.
+  private fun brokerHistoryClockSeconds582(wallMillis: Long): Set<Int> {
+    if (wallMillis <= 0L) return emptySet()
+    return listOf(
+      java.util.TimeZone.getDefault(),
+      java.util.TimeZone.getTimeZone("GMT+03:00")
+    ).map { zone ->
+      val calendar = java.util.Calendar.getInstance(zone).apply {
+        timeInMillis = wallMillis
+      }
+      calendar.get(java.util.Calendar.HOUR_OF_DAY) * 3600 +
+        calendar.get(java.util.Calendar.MINUTE) * 60 +
+        calendar.get(java.util.Calendar.SECOND)
+    }.toSet()
+  }
+
   private fun brokerOpenTimeMatchesAttempt437(
     openedSecondsOfDay: Int,
     attemptedElapsed: Long
@@ -1026,19 +1045,10 @@ class ScalpOverlayService : Service() {
     if (attemptedElapsed <= 0L || sinceGesture !in 300_000L..86_400_000L)
       return false
     val gestureWallTime = System.currentTimeMillis() - sinceGesture
-    // Pocket Option's displayed trade-history clock in the G24 QT DEMO
-    // screen is UTC+3, while the device can be UTC+2 in winter.
-    // Comparing against the phone-local zone caused false ID mismatches.
-    val calendar = java.util.Calendar.getInstance(
-      java.util.TimeZone.getTimeZone("GMT+03:00")
-    ).apply {
-      timeInMillis = gestureWallTime
+    return brokerHistoryClockSeconds582(gestureWallTime).any { expectedSeconds ->
+      val distance = kotlin.math.abs(expectedSeconds - openedSecondsOfDay)
+      minOf(distance, 86400 - distance) <= 150
     }
-    val expectedSeconds = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 3600 +
-      calendar.get(java.util.Calendar.MINUTE) * 60 +
-      calendar.get(java.util.Calendar.SECOND)
-    val distance = kotlin.math.abs(expectedSeconds - openedSecondsOfDay)
-    return minOf(distance, 86400 - distance) <= 150
   }
 
   // History navigation is a read-only recovery step for a POSSIBLE prior
@@ -6296,19 +6306,23 @@ class ScalpOverlayService : Service() {
     // mandatory and cannot be inferred from this list.
     val attemptedElapsed = prior.getLong("attemptedAt429", -1L)
     val age = android.os.SystemClock.elapsedRealtime() - attemptedElapsed
-    val expectedCloseMinute = if (attemptedElapsed > 0L &&
-        age in 300_000L..86_400_000L) {
-      val cal = java.util.Calendar.getInstance(
-        java.util.TimeZone.getTimeZone("GMT+03:00")
-      ).apply { timeInMillis = System.currentTimeMillis() - age + 300_000L }
-      cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 +
-        cal.get(java.util.Calendar.MINUTE)
-    } else null
-    val timeMatched = if (expectedCloseMinute != null) options.filter { candidate ->
-      val minute = candidate.closedMinute ?: return@filter false
-      val gap = kotlin.math.abs(minute - expectedCloseMinute)
-      minOf(gap, 1440 - gap) <= 3
-    } else emptyList()
+    // 582: History can show either the phone-local (UTC+2) or chart
+    // (UTC+3) time. For navigation, accept ONLY one unambiguous CLOSED row
+    // across both clocks; two matching rows are never auto-selected.
+    val expectedCloseMinutes582 = if (attemptedElapsed > 0L &&
+        age in 300_000L..86_400_000L)
+      brokerHistoryClockSeconds582(System.currentTimeMillis() - age + 300_000L)
+        .map { it / 60 }.toSet()
+    else emptySet<Int>()
+    val timeMatched = if (expectedCloseMinutes582.isNotEmpty())
+      options.filter { candidate ->
+        val minute = candidate.closedMinute ?: return@filter false
+        expectedCloseMinutes582.any { expectedCloseMinute ->
+          val gap = kotlin.math.abs(minute - expectedCloseMinute)
+          minOf(gap, 1440 - gap) <= 3
+        }
+      }
+    else emptyList()
     val unique = if (timeMatched.size == 1) timeMatched
       else if (options.size == 1 && options.single().closedMinute == null)
         options
