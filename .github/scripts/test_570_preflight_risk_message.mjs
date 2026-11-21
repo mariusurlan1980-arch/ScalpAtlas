@@ -7,7 +7,7 @@ const overlay=readFileSync(new URL('../native-overlay/ScalpOverlayService.kt',im
 test('570 compact preflight explains how to reach the explicit QT Demo stake opt-in',()=>{
   assert.ok(overlay.includes('BLOCAT: MIZĂ AUTO OFF • APASĂ +'));
   assert.ok(overlay.includes('header.addView(minimizeToggle, 1, LinearLayout.LayoutParams(dp(28), dp(28)))'));
-  assert.ok(overlay.includes('stakeAutoRow565.visibility = if(minimized) View.GONE else View.VISIBLE'));
+  assert.ok(overlay.includes('stakeAutoRow565.visibility = View.VISIBLE'));
   assert.ok(overlay.includes('MIZĂ AUTO DEMO • OFF'));
 });
 
