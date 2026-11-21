@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 579 QT DEMO balance parsing and FX verification G24
+name: Build Scalp Atlas 580 QT DEMO confirmed 1.09 initial stake G24
 
 on:
   push:
-    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo, fix/scalpatlas-568-visible-expand-stake-demo, fix/scalpatlas-569-visible-left-expand-miza, fix/scalpatlas-570-preflight-risk-message, fix/scalpatlas-571-queued-demo-stake-optin, fix/scalpatlas-572-stake-optin-diagnostic, fix/scalpatlas-573-compact-audio-preflight, fix/scalpatlas-574-visible-optin-reason, fix/scalpatlas-575-mini-overlay-visible-miza, fix/scalpatlas-576-payout-readonly-mini-safe, fix/scalpatlas-577-base-stake-rearm-pair-rotation, fix/scalpatlas-578-clear-order-gate-reason, fix/scalpatlas-579-demo-balance-parse]
+    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo, fix/scalpatlas-568-visible-expand-stake-demo, fix/scalpatlas-569-visible-left-expand-miza, fix/scalpatlas-570-preflight-risk-message, fix/scalpatlas-571-queued-demo-stake-optin, fix/scalpatlas-572-stake-optin-diagnostic, fix/scalpatlas-573-compact-audio-preflight, fix/scalpatlas-574-visible-optin-reason, fix/scalpatlas-575-mini-overlay-visible-miza, fix/scalpatlas-576-payout-readonly-mini-safe, fix/scalpatlas-577-base-stake-rearm-pair-rotation, fix/scalpatlas-578-clear-order-gate-reason, fix/scalpatlas-579-demo-balance-parse, fix/scalpatlas-580-base109-readback]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -40,6 +40,7 @@ on:
       - '.github/scripts/test_577_base_rearm.mjs'
       - '.github/scripts/test_578_order_gate_diagnostics.mjs'
       - '.github/scripts/test_579_balance_order.mjs'
+      - '.github/scripts/test_580_base109_readback.mjs'
       - '.github/native-overlay/DemoAutoStakePlan565.kt'
       - '.github/native-overlay/TouchTestService.kt'
       - '.github/native-overlay/DemoStakeEditor.kt'
@@ -81,7 +82,7 @@ jobs:
           grep -Fq 'val previewSecond559 =' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TEST FĂRĂ ORDIN' .github/native-overlay/ScalpOverlayService.kt
 
-      - name: Verify 579 QT Demo balance and strict BUY/SELL order checks
+      - name: Verify 580 exact 1.09 base readback with strict BUY/SELL QT Demo preflight
         run: |
           set -e
           node --experimental-strip-types --test .github/scripts/test_566_balance_risk.mjs
@@ -98,6 +99,7 @@ jobs:
           node --test .github/scripts/test_577_base_rearm.mjs
           node --test .github/scripts/test_578_order_gate_diagnostics.mjs
           node --test .github/scripts/test_579_balance_order.mjs
+          node --test .github/scripts/test_580_base109_readback.mjs
           node --experimental-strip-types --test scalp-atlas-new/allocatedBudgetAfterLoss564.test.mjs
           grep -Fq 'DemoAutoStakePlan565' .github/native-overlay/ScalpOverlayService.kt
 
@@ -156,7 +158,7 @@ jobs:
           expo['version']='3.2.99'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=579
+          expo['android']['versionCode']=580
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2568,27 +2570,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-579-BALANCE-FIX-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-580-BASE109-READBACK-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-579-BALANCE-FIX-DEMO-G24
-          path: ScalpAtlas-579-BALANCE-FIX-DEMO-G24.apk
+          name: ScalpAtlas-580-BASE109-READBACK-DEMO-G24
+          path: ScalpAtlas-580-BASE109-READBACK-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-579-demo-balance-parse'
+        if: github.ref == 'refs/heads/fix/scalpatlas-580-base109-readback'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-579-BALANCE-FIX-DEMO-G24.apk"
+          FILE="ScalpAtlas-580-BASE109-READBACK-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-579-balance-fix-demo-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-580-base109-readback-demo-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 579 - reparare sold QT Demo 1572.68 si verificare perechi" \
-            --notes "579: reparata citirea soldului QT Demo 1,572.68 / 1.572,68 in verificarea finala BUY/SELL, folosind parserul strict deja existent. Anterior aceasta etapa putea bloca orice ordin cu SOLD NECITIT desi miza 1.09 si QT Demo erau afisate. Verificarea rotatiei nu mai depinde de egalitatea obiectelor AccessibilityNodeInfo re-create de Android, ci de identitatea pachetului si de citirea perechii inainte/dupa. QT DEMO numai, miza si payout 92% din ambele butoane, M5/5minute, un singur ordin, stop risc si confirmari CLOSED raman obligatorii. Testele automate nu reprezinta confirmare a trade-urilor pe Motorola."
+            --title "Scalp Atlas 580 - confirmare vizibila 1.09 fara camp Android editabil" \
+            --notes "580: QT Demo MIZA AUTO ON nu mai cere acces ACTION_SET_TEXT pentru miza INITIALA 1.09 daca brokerul confirma independent exact 1.09 in campul Suma, ambele butoane BUY/SELL la 92%, data perechii curente, expirare 5 minute si sold suficient. Reconfirmare independenta inainte de rearmare si la rotatia de perechi, fara gest BUY/SELL la activare. Pentru orice miza Martingale >1.09, dovada inputului EDITABIL si verificarea ulterioara raman obligatorii. Nu relaxeaza QT Demo numai, verificarea CLOSED/OPEN, o singura pozitie activa, plafonul de 10 LOSS sau conditia semnalului SOC nou. Testele automate NU confirma tranzactia pe Motorola."
