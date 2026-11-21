@@ -16,7 +16,7 @@ test('586: compact overlay relocates out of SELL before confirming broker amount
  assert.match(s,/tradePositionGate\.state\(\)!=TradePositionGate\.State\.READY/);
 });
 test('586: separate unreadable broker quote from genuine stake-plan mismatch',()=>{
- const s=service.split('val order565=TouchTestService.readBrokerDemoOrder476(pair)')[1].split('CHART_ONLY_DEMO_462 ->')[0];
+ const s=service.split('val nextStake429 = if (CHART_ONLY_DEMO_462) null else desiredVerifiedDemoStake429(pair)')[1].split('CHART_ONLY_DEMO_462 ->')[0];
  const p=s.indexOf('if (order565 == null)');
  const q=s.indexOf('preflightReason583(');
  assert.ok(p>=0 && q>p);
