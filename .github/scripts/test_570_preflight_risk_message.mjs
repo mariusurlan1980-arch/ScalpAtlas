@@ -30,6 +30,6 @@ test('570 must keep hard order gates, planned DEMO budget and first stake unchan
   assert.ok(plan.includes('STOP_AFTER_LOSSES = 10'));
   assert.ok(plan.includes('private val LADDER = longArrayOf(109L,228L'));
   assert.ok(overlay.includes('demoAutoStakePlan565.permitsFreshDemoOrder('));
-  assert.ok(overlay.includes('TouchTestService.readVerifiedDemoPayoutForPair(pair565)==92'));
+  assert.ok(overlay.includes('TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92'));
   assert.ok(overlay.includes('!realAccountSafetyStop517 && !accountRecheckPending'));
 });
