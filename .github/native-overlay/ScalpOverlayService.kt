@@ -346,6 +346,14 @@ class ScalpOverlayService : Service() {
   private val demoRecoveryLedger by lazy {
     DemoRecoveryLedger(getSharedPreferences("scalp_atlas_demo_recovery_421", Context.MODE_PRIVATE))
   }
+  // 565: separate opt-in next-stake plan; never alters legacy ledger math.
+  private val demoAutoStakePlan565 by lazy {
+    DemoAutoStakePlan565(
+      getSharedPreferences("scalp_atlas_demo_auto_stake_565", Context.MODE_PRIVATE)
+    )
+  }
+  private var lastAutoStakeEdit565At = 0L
+  private var autoStakeToggle565: TextView? = null
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
   private var lastShockOrderStatus: String? = null
@@ -785,6 +793,61 @@ class ScalpOverlayService : Service() {
    * another day's same-pair/order row a valid match. A device reboot
    * invalidates the elapsed-time proof, so the app fails closed.
    */
+  /**
+   * 565: after FULLY VERIFIED QT DEMO CLOSED settlement, prepare only the
+   * broker's editable Sumă field. Called on the live chart, NEVER on
+   * history page, never while an older order has an unresolved marker.
+   * A successful ACTION_SET_TEXT does not BUY/SELL or arm a new session.
+   */
+  private fun maybeApplyVerifiedDemoStake565(nowElapsed:Long) {
+    if(!demoAutoStakePlan565.isEnabled() || demoAutoStakePlan565.isRiskStopped())return
+    if(lastAutoStakeEdit565At>0L &&
+        nowElapsed-lastAutoStakeEdit565At in 0L..7000L)return
+    val now=System.currentTimeMillis()
+    if(!CHART_ONLY_DEMO_462 || realAccountSafetyStop517 ||
+        closedHistoryInspectionInProgress || historyPageVisible433 ||
+        fxRotationNavigating || fxRotationTradePaused516 || accountRecheckPending ||
+        autoDemoArmed || !TouchTestService.ready() ||
+        tradePositionGate.state()!=TradePositionGate.State.READY ||
+        mediaProjection==null || lastCapturedImageAt<=0L ||
+        now-lastCapturedImageAt !in 0L..3500L ||
+        !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
+        getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
+          .getBoolean("attempted",false) ||
+        getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
+          .getBoolean("attempted",false))return
+    val pair=currentPair(now)
+    val brokerPkg=TouchTestService.activeDemoExecutorPackageForReview() ?: return
+    if(pair=="NEIDENTIFICAT" || !pairReady(now))return
+    val key="QT_DEMO:" + brokerPkg
+    val proposal=demoAutoStakePlan565.pending(key,pair)
+    val amount=proposal.stakeCents ?: return
+    if(TouchTestService.readVerifiedDemoPayoutForPair(pair)!=92)return
+    // Explicitly retire the order session BEFORE changing a broker field.
+    autoDemoArmed=false
+    autoDemoSessionRequested=false
+    autoDemoSessionConsumed=true
+    autoDemoMarket=null
+    autoDemoExpiry=0L
+    lastAutoStakeEdit565At=nowElapsed
+    val result=try {
+      TouchTestService.setVerifiedDemoRecoveryStakeOnBroker(pair,amount)
+    } catch (e:Exception) {
+      android.util.Log.e("ScalpAtlas565","QT DEMO amount edit blocked",e)
+      "BLOCAT: ANDROID " + e.javaClass.simpleName.take(24)
+    }
+    val formatted=java.lang.String.format(java.util.Locale.US,
+      "%d.%02d USD",amount/100L,amount%100L)
+    val confirmed=result.startsWith("SUMĂ QT DEMO CONFIRMATĂ " + formatted) &&
+      demoAutoStakePlan565.confirmEdited(key,pair,amount,true)
+    touchProbeStatus?.text=if(confirmed)
+      "565 • SUMĂ " + formatted + " CONFIRMATĂ • FĂRĂ ORDIN"
+    else "565 • MIZĂ DEMO NECONFIRMATĂ • " + result.take(66)
+    autoDemoLastPreflightReason=if(confirmed)
+      "MIZĂ EDITATĂ • PORNEȘTE DEMO PENTRU UN NOU SEMNAL"
+    else "MIZĂ NECONFIRMATĂ • FĂRĂ ORDIN"
+  }
+
   private fun brokerOpenTimeMatchesAttempt437(
     openedSecondsOfDay: Int,
     attemptedElapsed: Long
