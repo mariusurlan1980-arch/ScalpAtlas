@@ -4607,6 +4607,8 @@ class ScalpOverlayService : Service() {
           getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
             .getBoolean("attempted", false)
         val rejection552 = when {
+          demoAutoStakePlan565.isRiskStopped() ->
+            "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
           mediaProjection == null || shuttingDown || !autoDemoSessionRequested ||
             autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO FĂRĂ AUTORIZARE"
           realAccountSafetyStop517 || accountRecheckPending ||
@@ -4639,7 +4641,12 @@ class ScalpOverlayService : Service() {
         val quote552 = try {
           TouchTestService.readBrokerDemoOrder476(pair552)
         } catch (_: Exception) { null }
-        if (quote552 == null || quote552.second != 92) {
+        val packageStake565=TouchTestService.activeDemoExecutorPackageForReview()
+        val allowedStake565=!demoAutoStakePlan565.isEnabled() ||
+          (quote552!=null && packageStake565!=null &&
+           demoAutoStakePlan565.permitsFreshDemoOrder(
+             "QT_DEMO:" + packageStake565,pair552,quote552.first))
+        if (quote552 == null || quote552.second != 92 || !allowedStake565) {
           clearDemoTapArm552()
           text = "TEST BUY DEMO"
           manualDemoTapStatus552 =
