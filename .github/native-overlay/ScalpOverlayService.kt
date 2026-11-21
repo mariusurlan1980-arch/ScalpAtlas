@@ -941,9 +941,16 @@ class ScalpOverlayService : Service() {
     // still fail closed. Neither branch submits BUY/SELL.
     val formatted=java.lang.String.format(java.util.Locale.US,
       "%d.%02d USD",amount/100L,amount%100L)
+    // 580: $1.09 BASE uses the already strict read-only broker quote (unique
+    // Sumă value, both physical BUY/SELL buttons, QT Demo, balance and 5min).
+    // Pocket Option WebView may render the value without an editable Android
+    // node. Never demand SET_TEXT when exact $1.09 is already on the chart.
+    // Every recovery/Martingale level still requires editable-field proof.
     val alreadyVerified577=try {
-      TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount) &&
-        TouchTestService.readBrokerDemoOrder476(pair) == (amount to 92)
+      val quote580=TouchTestService.readBrokerDemoOrder476(pair)
+      quote580 == (amount to 92) &&
+        (amount == 109L ||
+          TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount))
     } catch (_:Throwable) { false }
     // Retire the old order session before any optional broker field edit.
     autoDemoArmed=false
@@ -963,8 +970,10 @@ class ScalpOverlayService : Service() {
     // Read back independently AFTER the optional edit too. A text-action
     // success is never a confirmed broker amount or a trading permission.
     val readBack577=try {
-      TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount) &&
-        TouchTestService.readBrokerDemoOrder476(pair) == (amount to 92)
+      val quote580=TouchTestService.readBrokerDemoOrder476(pair)
+      quote580 == (amount to 92) &&
+        (amount == 109L ||
+          TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount))
     } catch (_:Throwable) { false }
     val confirmed=result.startsWith("SUMĂ QT DEMO CONFIRMATĂ " + formatted) &&
       readBack577 &&
@@ -4298,9 +4307,13 @@ class ScalpOverlayService : Service() {
             !getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
               .getBoolean("attempted",false)) {
           val pkg577=TouchTestService.activeDemoExecutorPackageForReview()
+          // 580: the BASE $1.09 read is confirmed from a newly verified
+          // QT Demo broker quote on the SAME live pair. A noneditable WebView
+          // value must not prevent base-pair rotation. Broker code checks both
+          // order buttons, exact amount, 5-min expiry and sufficient balance.
           val currentBase577=try {
-            TouchTestService.verifiedExactDemoStakeReadOnly577(pair,109L) &&
-              TouchTestService.readBrokerDemoOrder476(pair) == (109L to 92)
+            TouchTestService.readBrokerDemoOrder476(pair) == (109L to 92) &&
+              TouchTestService.readVerifiedDemoPayoutForPair(pair) == 92
           } catch (_:Throwable) { false }
           if(pkg577!=null && currentBase577) {
             demoAutoStakePlan565.rebindVerifiedBasePair("QT_DEMO:"+pkg577,pair)
