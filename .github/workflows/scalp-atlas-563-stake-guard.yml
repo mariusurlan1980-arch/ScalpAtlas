@@ -1,0 +1,22 @@
+name: Scalp Atlas 563 QT DEMO stake-editor safety
+on:
+  push:
+    branches: [experiment/scalpatlas-563-demo-loss-stake-editor-guard]
+    paths:
+      - .github/native-overlay/DemoLossStakeEditor563.kt
+      - .github/native-overlay/DemoStakeEditor.kt
+      - .github/scripts/test_563_loss_stake_guard.mjs
+      - .github/workflows/scalp-atlas-563-stake-guard.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify DEMO-only editing and broker-safety invariants
+        run: node --test .github/scripts/test_563_loss_stake_guard.mjs
