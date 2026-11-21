@@ -2336,20 +2336,12 @@ class TouchTestService : AccessibilityService() {
       }
       if (accountAnchors497.isEmpty() || !usdAccount497)
         return DemoOrderCheck(reason = "BLOCAT: ANTET QT DEMO USD NECITIT")
-      val balanceFormat497 =
-        Regex("""(?i)^(?:(?:USD|\$)\s*)?(\d{1,5})(?:[.,](\d{1,2}))?(?:\s*(?:USD|\$))?$""")
+      // 579: use the same strict whole-header parser as DemoStakeEditor.
+      // The former second parser rejected 1,572.68 even when QT DEMO and
+      // both BUY/SELL buttons were verified. Never accept a numeric suffix
+      // like 572.68, an isolated chart price, or an account with mixed sums.
       val balanceValues497 = accountLabels497.mapNotNull { label ->
-        val text = label.value.replace(Regex("""\s+"""), " ").trim()
-          .replace(Regex("""(?i)^QT\s*Demo\b"""), "").trim()
-        val match = balanceFormat497.matchEntire(text) ?: return@mapNotNull null
-        val whole = match.groupValues[1].toLongOrNull() ?: return@mapNotNull null
-        val fraction = match.groupValues[2]
-        val cents = when (fraction.length) {
-          0 -> 0L
-          1 -> fraction.toLongOrNull()?.times(10L) ?: return@mapNotNull null
-          else -> fraction.toLongOrNull() ?: return@mapNotNull null
-        }
-        whole * 100L + cents
+        DemoStakeEditor.demoBalanceFromVerifiedHeader579(label.value)
       }.distinct()
       if (balanceValues497.size != 1)
         return DemoOrderCheck(reason = "BLOCAT: SOLD QT DEMO USD NECITIT/AMBIGUU")
