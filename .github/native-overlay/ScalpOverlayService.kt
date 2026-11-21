@@ -4774,6 +4774,8 @@ class ScalpOverlayService : Service() {
             val wallNow = System.currentTimeMillis()
             val pair = currentPair(wallNow)
             val condition = when {
+              demoAutoStakePlan565.isRiskStopped() ->
+                "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
               mediaProjection == null || !autoDemoSessionRequested ||
                 autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO / ORDIN ANTERIOR NEVERIFICAT"
               onePairEvalEnabled -> "BLOCAT: OPREȘTE AUTO SIM"
@@ -4782,8 +4784,14 @@ class ScalpOverlayService : Service() {
               !pairReady(wallNow) || pair == "NEIDENTIFICAT" ->
                 "BLOCAT: PERECHEA NU ESTE STABILĂ"
               else -> if (CHART_ONLY_DEMO_462) {
-                if (TouchTestService.readBrokerDemoOrder476(pair) != null)
-                  "PREGĂTIT AUTO DEMO"
+                val order565=TouchTestService.readBrokerDemoOrder476(pair)
+                val pkg565=TouchTestService.activeDemoExecutorPackageForReview()
+                if (demoAutoStakePlan565.isEnabled() &&
+                    (order565==null || pkg565==null ||
+                    !demoAutoStakePlan565.permitsFreshDemoOrder(
+                      "QT_DEMO:" + pkg565,pair,order565.first)))
+                  "BLOCAT: MIZĂ 565 NECONFIRMATĂ • FĂRĂ ORDIN"
+                else if (order565 != null) "PREGĂTIT AUTO DEMO"
                 else "BLOCAT: MIZĂ / PAYOUT / TIMP QT DEMO NECONFIRMATE"
               } else TouchTestService.preflightOneDollarDemoOrder(pair)
             }
@@ -7464,6 +7472,8 @@ class ScalpOverlayService : Service() {
           autoDemoLastPreflightAt = nowClock
           val pair = currentPair(now)
           val diagnostic = when {
+            demoAutoStakePlan565.isRiskStopped() ->
+              "STOP RISC 565 • FĂRĂ ORDIN"
             realAccountSafetyStop517 -> "QT REAL DETECTAT • RESTART LIVE DOAR PE DEMO"
             !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
             // 550: "NEIDENTIFICAT" is a temporarily unreadable broker
@@ -7486,6 +7496,16 @@ class ScalpOverlayService : Service() {
             else -> try {
               val nextStake429 = if (CHART_ONLY_DEMO_462) null else desiredVerifiedDemoStake429(pair)
               when {
+                CHART_ONLY_DEMO_462 && demoAutoStakePlan565.isEnabled() -> {
+                  val order565=TouchTestService.readBrokerDemoOrder476(pair)
+                  val package565=TouchTestService.activeDemoExecutorPackageForReview()
+                  if (order565 == null || package565 == null ||
+                      !demoAutoStakePlan565.permitsFreshDemoOrder(
+                        "QT_DEMO:" + package565,pair,order565.first))
+                    "BLOCAT: MIZĂ AUTO 565 NECONFIRMATĂ"
+                  else TouchTestService.inspectBrokerDemoOrder488(
+                    pair,currentOverlayBounds488())
+                }
                 CHART_ONLY_DEMO_462 ->
                   TouchTestService.inspectBrokerDemoOrder488(pair, currentOverlayBounds488())
                 nextStake429 == null -> "BLOCAT: REZULTAT / MIZĂ DEMO NECONFIRMATĂ"
@@ -7643,8 +7663,14 @@ class ScalpOverlayService : Service() {
             demoRecoveryLedger.quote(payout429).stakeCents == stake429
           val latestPreflight = try {
             when {
+              demoAutoStakePlan565.isRiskStopped() ->
+                "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
               CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
+              CHART_ONLY_DEMO_462 && demoAutoStakePlan565.isEnabled() &&
+                !demoAutoStakePlan565.permitsFreshDemoOrder(
+                  "QT_DEMO:" + package429,tradePair429,stake429!!) ->
+                "BLOCAT: MIZĂ AUTO 565 / PERECHE NECONFIRMATĂ"
               CHART_ONLY_DEMO_462 &&
                 !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
                 "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"
