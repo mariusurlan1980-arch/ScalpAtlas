@@ -25,6 +25,7 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
       - '.github/scripts/test_566_balance_risk.mjs'
+      - '.github/scripts/test_567_start109_balance.mjs'
       - 'scalp-atlas-new/martingaleTenDemo562.ts'
       - '.github/scripts/patch_live_v327_closed_candles.py'
       - '.github/scripts/verify_live_v327_gate.py'
@@ -67,6 +68,7 @@ jobs:
         run: |
           set -e
           node --experimental-strip-types --test .github/scripts/test_566_balance_risk.mjs
+          node --test .github/scripts/test_567_start109_balance.mjs
           node --experimental-strip-types --test scalp-atlas-new/allocatedBudgetAfterLoss564.test.mjs
           grep -Fq 'DemoAutoStakePlan565' .github/native-overlay/ScalpOverlayService.kt
 
