@@ -16,7 +16,7 @@ test('visible high-contrast + is pinned beside X, not after shock text',()=>{
  assert.ok(head.includes('setStroke(dp(1), Color.rgb(105, 196, 236))'));
 });
 test('compact window has guaranteed extra width for x, +, brain and status',()=>{
- assert.ok(ui.includes('window.width = dp(if (minimized) 156 else 224)'));
+ assert.ok(ui.includes('window.width = dp(if (minimized) 156 else 174)'));
  assert.ok(ui.includes('val params = WindowManager.LayoutParams(\n      dp(156),'));
  assert.ok(ui.includes('minimizeToggle.visibility = View.VISIBLE'));
  assert.ok(ui.includes('minimizeToggle.text = if (minimized) "+" else "−"'));
@@ -29,7 +29,7 @@ test('expand control reveals opt-in stake; no trading action is tied to the plus
  assert.ok(click.includes('minimized = !minimized'));
  assert.ok(!click.includes('pressVerifiedDemoStakeOnce429'));
  assert.ok(!click.includes('autoDemoSessionRequested=true'));
- assert.ok(ui.includes('stakeAutoRow565.visibility = if(minimized) View.GONE else View.VISIBLE'));
+ assert.ok(ui.includes('stakeAutoRow565.visibility = View.VISIBLE'));
  assert.ok(ui.includes('MIZĂ AUTO DEMO • OFF'));
  assert.ok(ui.includes('MIZĂ AUTO DEMO • ON'));
 });
@@ -42,8 +42,8 @@ test('old risk and 1.09 DEMO stake guards remain in place',()=>{
  assert.ok(ui.includes('BLOCAT: START 1,09 USD NECONFIRMAT'));
 });
 test('APK workflow targets Motorola version 569',()=>{
- assert.ok(workflow.includes("expo['android']['versionCode']=574"));
- assert.ok(workflow.includes('ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24.apk'));
+ assert.ok(workflow.includes("expo['android']['versionCode']=575"));
+ assert.ok(workflow.includes('ScalpAtlas-575-MINI-CHENAR-DEMO-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_569_header_always_visible.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
