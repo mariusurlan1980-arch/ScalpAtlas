@@ -1,0 +1,23 @@
+name: Scalp Atlas 564 budget and post-LOSS DEMO planning
+on:
+  push:
+    branches:
+      - experiment/scalpatlas-564-budget-157044-after-loss-demo
+    paths:
+      - scalp-atlas-new/allocatedBudgetAfterLoss564.ts
+      - scalp-atlas-new/allocatedBudgetAfterLoss564.test.mjs
+      - .github/workflows/scalp-atlas-564-budget-tests.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify budget, following-loss stake and no automatic broker edits
+        working-directory: scalp-atlas-new
+        run: node --experimental-strip-types --test allocatedBudgetAfterLoss564.test.mjs
