@@ -12,12 +12,16 @@ const pairFn=plan.slice(plan.indexOf('fun rebindVerifiedBasePair('),plan.indexOf
 test('577 ON confirmation reads the existing broker 1.09 before any optional SET_TEXT',()=>{
   assert.ok(stake.includes('val alreadyVerified577=try {'));
   assert.ok(stake.includes('TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount)'));
-  assert.ok(stake.includes('TouchTestService.readBrokerDemoOrder476(pair) == (amount to 92)'));
+  assert.ok(stake.includes('quote580 == (amount to 92)'));
   const pre=stake.indexOf('val alreadyVerified577=try {');
   const edit=stake.indexOf('TouchTestService.setVerifiedDemoRecoveryStakeOnBroker(pair,amount)');
   assert.ok(pre>=0 && edit>pre);
   assert.ok(stake.includes('val result=if(alreadyVerified577)'));
   assert.ok(stake.includes('val readBack577=try {'));
+  assert.ok(stake.includes('amount == 109L ||'));
+  assert.ok(stake.includes('TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount)'));
+  assert.ok(stake.includes('quote580 == (amount to 92)'));
+
   assert.ok(stake.indexOf('demoAutoStakePlan565.confirmEdited(key,pair,amount,true)') > stake.indexOf('readBack577'));
   assert.ok(stake.includes('autoDemoSessionRequested=true'));
   assert.ok(stake.includes('autoDemoSessionConsumed=false'));
@@ -63,7 +67,7 @@ test('577 FX rotation cannot rebind a pair while there is an attempt, open order
   'tradePositionGate.state() == TradePositionGate.State.READY',
   'demoRecoveryLedger.verifiedOpenPositionId429() == null',
   'getBoolean("attempted",false)',
-  'TouchTestService.verifiedExactDemoStakeReadOnly577(pair,109L)',
+  'TouchTestService.readVerifiedDemoPayoutForPair(pair) == 92',
   'TouchTestService.readBrokerDemoOrder476(pair) == (109L to 92)',
   'activeDemoExecutorPackageForReview()'
  ])assert.ok(context.includes(token),token);
@@ -81,8 +85,8 @@ test('577 empty Open tab remains insufficient proof to clear previous attempted 
 });
 
 test('577 Android signed release ships rearm and strict pair tests',()=>{
- assert.ok(workflow.includes("expo['android']['versionCode']=579"));
- assert.ok(workflow.includes('ScalpAtlas-579-BALANCE-FIX-DEMO-G24.apk'));
+ assert.ok(workflow.includes("expo['android']['versionCode']=580"));
+ assert.ok(workflow.includes('ScalpAtlas-580-BASE109-READBACK-DEMO-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_577_base_rearm.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
