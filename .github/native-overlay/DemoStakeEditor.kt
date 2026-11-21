@@ -83,6 +83,21 @@ object DemoStakeEditor {
       .replace(Regex("""(?i)^(?:USD\s*|\$\s*)"""), "")
       .replace(Regex("""(?i)\s*(?:USD|\$)$"""), "")
       .trim()
+    // Retain the older broker format for small Demo balances (e.g. "20"
+    // or "20.5") while supporting exact grouped "1,572.68" / "1.572,68".
+    // Never parse a suffix of a malformed thousands grouping.
+    val plain = Regex("""^(\d{1,5})(?:[.,](\d{1,2}))?$""")
+      .matchEntire(numeric)
+    if (plain != null) {
+      val whole = plain.groupValues[1].toLongOrNull() ?: return null
+      val part = plain.groupValues[2]
+      val cents = when (part.length) {
+        0 -> 0L
+        1 -> (part.toLongOrNull() ?: return null) * 10L
+        else -> part.toLongOrNull() ?: return null
+      }
+      return whole * 100L + cents
+    }
     return brokerBalanceCents567(numeric)
   }
 
