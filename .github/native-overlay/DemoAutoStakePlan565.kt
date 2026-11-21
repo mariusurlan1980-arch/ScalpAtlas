@@ -53,6 +53,14 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
   }
 
   @Synchronized
+  private fun stopUnsafe(reason:String): String {
+    prefs.edit().putBoolean("riskStopped",true)
+      .putBoolean("enabled",false).putLong("pendingStake",0L)
+      .putString("status","STOP DEMO • " + reason.take(80)).commit()
+    return "STOP DEMO • " + reason.take(80)
+  }
+
+  @Synchronized
   fun disable(): Boolean = prefs.edit()
     .putBoolean("enabled",false)
     .putLong("pendingStake",0L)
@@ -77,23 +85,23 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
         pair!=prefs.getString("pair",null) || positionId.isBlank() ||
         payoutPercent!=PAYOUT_EXACT ||
         isRiskStopped())
-      return "BLOCAT • ÎNCHIDERE/CONT/PAYOUT NECONFIRMATE"
+      return stopUnsafe("ÎNCHIDERE/CONT/PAYOUT NECONFIRMATE")
     val ids=prefs.getStringSet("seenClosedIds",emptySet()).orEmpty()
     if(positionId in ids)return "DUPLICAT CLOSED • MIZĂ NESCHIMBATĂ"
     val losses=prefs.getInt("losses",0)
     val pending=prefs.getLong("pendingStake",0L)
     if(losses !in 0 until STOP_AFTER_LOSSES || pending != 0L ||
         stakeCents!=LADDER[losses])
-      return "BLOCAT • MIZĂ ANTERIOARĂ/EDITARE NECONFIRMATĂ"
+      return stopUnsafe("MIZĂ ANTERIOARĂ/EDITARE NECONFIRMATĂ")
     val nextIds=(ids+positionId).toList().takeLast(100).toSet()
     // The broker must report the WHOLE stake lost; a partial/unknown
     // settlement is not Martingale LOSS evidence.
     if(netProfitCents<0L && netProfitCents != -stakeCents)
-      return "BLOCAT • LOSS PARȚIAL/NECONFORM"
+      return stopUnsafe("LOSS PARȚIAL/NECONFORM")
     // A nominal WIN at exact 92% must settle at the known cent range.
     if(netProfitCents>0L &&
         netProfitCents !in ((stakeCents*92L)/100L)..((stakeCents*92L+99L)/100L))
-      return "BLOCAT • WIN/PAYOUT NECONFORM"
+      return stopUnsafe("WIN/PAYOUT NECONFORM")
     val edit=prefs.edit().putStringSet("seenClosedIds",nextIds)
     if(netProfitCents<0L){
       val nextLosses=losses+1
