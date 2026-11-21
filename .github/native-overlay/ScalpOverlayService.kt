@@ -4638,10 +4638,10 @@ class ScalpOverlayService : Service() {
           getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
             .getBoolean("attempted", false)
         val rejection552 = when {
-          !demoAutoStakePlan565.isEnabled() ->
-            "BLOCAT: PORNEȘTE MIZĂ AUTO DEMO • START 1,09 USD"
           demoAutoStakePlan565.isRiskStopped() ->
             "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
+          !demoAutoStakePlan565.isEnabled() ->
+            "BLOCAT: PORNEȘTE MIZĂ AUTO DEMO • START 1,09 USD"
           mediaProjection == null || shuttingDown || !autoDemoSessionRequested ||
             autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO FĂRĂ AUTORIZARE"
           realAccountSafetyStop517 || accountRecheckPending ||
@@ -4814,10 +4814,10 @@ class ScalpOverlayService : Service() {
             val wallNow = System.currentTimeMillis()
             val pair = currentPair(wallNow)
             val condition = when {
-              !demoAutoStakePlan565.isEnabled() ->
-                "BLOCAT: ACTIVEAZĂ MIZĂ AUTO DEMO • START 1,09 USD"
               demoAutoStakePlan565.isRiskStopped() ->
                 "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
+              !demoAutoStakePlan565.isEnabled() ->
+                "BLOCAT: ACTIVEAZĂ MIZĂ AUTO DEMO • START 1,09 USD"
               mediaProjection == null || !autoDemoSessionRequested ||
                 autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO / ORDIN ANTERIOR NEVERIFICAT"
               onePairEvalEnabled -> "BLOCAT: OPREȘTE AUTO SIM"
@@ -7518,10 +7518,12 @@ class ScalpOverlayService : Service() {
           autoDemoLastPreflightAt = nowClock
           val pair = currentPair(now)
           val diagnostic = when {
-            !demoAutoStakePlan565.isEnabled() ->
-              "BLOCAT: START MIZĂ AUTO DEMO 1,09 USD"
+            // 570: surface a persistent ten-loss/risk stop BEFORE inviting
+            // the user to opt in; do not disguise it as a disabled switch.
             demoAutoStakePlan565.isRiskStopped() ->
               "STOP RISC 565 • FĂRĂ ORDIN"
+            !demoAutoStakePlan565.isEnabled() ->
+              "BLOCAT: MIZĂ AUTO OFF • APASĂ +"
             realAccountSafetyStop517 -> "QT REAL DETECTAT • RESTART LIVE DOAR PE DEMO"
             !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
             // 550: "NEIDENTIFICAT" is a temporarily unreadable broker
