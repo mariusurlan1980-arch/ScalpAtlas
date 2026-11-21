@@ -34,7 +34,7 @@ test('583 preflight reasons diagnose but never grant permissions',()=>{
 });
 
 test('583 pipeline builds APK with increased Android code',()=>{
-  assert.match(workflow,/expo\['android'\]\['versionCode'\]=583/);
-  assert.match(workflow,/ScalpAtlas-583-BASE-REARM-DEMO-G24\.apk/);
+  assert.match(workflow,/expo\['android'\]\['versionCode'\]=584/);
+  assert.match(workflow,/ScalpAtlas-584-CONFIRMED-STAKE-G24\.apk/);
   assert.match(workflow,/test_583_base_rearm_diag\.mjs/);
 });
