@@ -5035,7 +5035,8 @@ class ScalpOverlayService : Service() {
         }
       }
     }
-    stakeAutoRow565.addView(stakeButton565, LinearLayout.LayoutParams(-1, dp(30)))
+    // 575: opt-in remains directly accessible in MINI mode, with no forced ON.
+    stakeAutoRow565.addView(stakeButton565, LinearLayout.LayoutParams(-1, dp(28)))
     root.addView(stakeAutoRow565)
     autoStakeToggle565 = stakeButton565
     // One explicit, broker-independent cross-app test. Never triggered by
@@ -5084,42 +5085,39 @@ class ScalpOverlayService : Service() {
     // enabled/disabled bell continue to work. Opening the card is manual.
     var minimized = true
     fun applyCompactMode() {
-      body.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
-      trendRow.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
-      note.visibility = if (minimized || probeModeActive) View.GONE else View.VISIBLE
+      // 575: MINI always. Do not cover the broker with a giant candle/
+      // trend display; analyzer and trade safety checks still run normally.
+      body.visibility = View.GONE
+      trendRow.visibility = View.GONE
+      note.visibility = View.GONE
       // 499: compact without losing DEMO/SHOCK diagnostics, X or the brain.
       // Remove a duplicate stake label (the stake remains visible in broker).
-      root.setPadding(
-        dp(if (minimized) 5 else 9),
-        dp(if (minimized) 3 else 6),
-        dp(if (minimized) 5 else 9),
-        dp(if (minimized) 4 else 8)
-      )
-      stakeAutoRow565.visibility = if(minimized) View.GONE else View.VISIBLE
-      martingaleStatusText?.visibility =
-        if (minimized || (CHART_ONLY_DEMO_462 && !demoAutoStakePlan565.isEnabled()))
-          View.GONE else View.VISIBLE
+      root.setPadding(dp(5), dp(3), dp(5), dp(4))
+      stakeAutoRow565.visibility = View.VISIBLE
+      // Broker already shows the stake. Hide this duplicate text row.
+      martingaleStatusText?.visibility = View.GONE
       if (demoAutoStakePlan565.isEnabled())
         martingaleStatusText?.text = demoAutoStakePlan565.status().take(85)
       // 573: show the preflight blocker in two tight lines while minimized.
       probeStatus.maxLines = if (minimized) 2 else 3
       probeStatus.setPadding(dp(2), dp(1), dp(2), dp(1))
       val rotationParams499 = fxButton.layoutParams
-      rotationParams499.height = dp(if (minimized) 23 else 26)
+      rotationParams499.height = dp(23)
       fxButton.layoutParams = rotationParams499
-      fxButton.textSize = if (minimized) 9.5f else 10f
-      compactStatus.textSize = if (minimized) 12f else 13f
+      fxButton.textSize = 9f
+      compactStatus.textSize = 11f
       // 573: diagnostic BUY is accessible only after explicit expansion.
       // The compact panel must never cover the broker BUY/SELL buttons with
       // a redundant TEST BUY DEMO row. No change to gesture permissions.
-      tapTestRow552.visibility = if (minimized) View.GONE else View.VISIBLE
+      // 575: keep BUY test in its separate test screen, off the broker card.
+      tapTestRow552.visibility = View.GONE
       touchProbeToggle.visibility = View.GONE
       testBipControl.visibility = View.GONE
       brokerAutoRow.visibility = View.GONE // Session auto-arms after Android LIVE consent.
       probeStatus.visibility = View.VISIBLE
-      probeStatus.textSize = if (minimized) 8.5f else 10f
-      compactStatus.visibility = if (minimized) View.VISIBLE else View.GONE
-      headerGap.visibility = if (minimized) View.GONE else View.VISIBLE
+      probeStatus.textSize = if (minimized) 8.2f else 8.8f
+      compactStatus.visibility = View.VISIBLE
+      headerGap.visibility = View.GONE
       if (minimized) {
         // Never leave Android gesture-test buttons exposed when compact.
         probeRow.visibility = View.GONE
@@ -5146,17 +5144,15 @@ class ScalpOverlayService : Service() {
         // Expiry, user OFF, pair change, lost service or confirmed SHOCK
         // still disarm as before.
       }
-      // 568: the opt-in MIZĂ AUTO DEMO row is only in expanded mode.
-      // The old hidden "+" made it impossible for users to authorize the
-      // 1.09 USD stake, leaving every new order PREFLIGHT BLOCAT.
-      // Keep a visible, dedicated toggle; X only stops LIVE, brain only moves.
+      // 575: "+" only expands the diagnostic text; MIZA AUTO DEMO stays
+      // visible even in MINI mode. X stops LIVE and brain moves.
       minimizeToggle.text = if (minimized) "+" else "−"
       minimizeToggle.visibility = View.VISIBLE
       minimizeToggle.contentDescription = if (minimized)
         "Extinde panoul Scalp Atlas pentru MIZĂ AUTO DEMO" else
         "Micșorează panoul Scalp Atlas"
       val window = overlayWindowParams ?: return
-      window.width = dp(if (minimized) 156 else 224)
+      window.width = dp(if (minimized) 156 else 174)
       val metrics = resources.displayMetrics
       window.x = window.x.coerceIn(0, (metrics.widthPixels - window.width).coerceAtLeast(0))
       // 573: writing LayoutParams.width alone is NOT a window resize;
