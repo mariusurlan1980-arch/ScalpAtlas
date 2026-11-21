@@ -95,8 +95,12 @@ test('581 dynamic MG stake can follow independently verified 92% pair but never 
   assert.ok(!bind.includes('putLong("confirmedStake"'));
   assert.ok(!bind.includes('putLong("pendingStake"'));
   assert.ok(!bind.includes('pressVerified'));
-  assert.ok(editor.includes('TouchTestService.readVisibleDemoPair()!=pair'));
-  assert.ok(editor.includes('TouchTestService.readVerifiedDemoPayoutForPair(pair)!=92'));
+  // 587 preserves the exact pair and 92% gates in separate diagnostic
+  // branches so an unreadable selector cannot be misreported as ready.
+  assert.ok(editor.includes('val visiblePair587=try') &&
+    editor.includes('if(visiblePair587!=pair)'));
+  assert.ok(editor.includes('val payout587=try') &&
+    editor.includes('if(payout587!=92)'));
   assert.ok(editor.includes('demoAutoStakePlan565.rebindPendingRecoveryPair581(key,pair)'));
   assert.ok(editor.includes('TouchTestService.setVerifiedDemoRecoveryStakeOnBroker(pair,amount)'));
   assert.ok(editor.includes('TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount)'));
