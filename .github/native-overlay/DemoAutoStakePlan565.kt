@@ -200,9 +200,14 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
         !accountKey.startsWith("QT_DEMO:") ||
         accountKey != prefs.getString("accountKey",null) ||
         newPair.isBlank() || newPair == "NEIDENTIFICAT" ||
-        prefs.getInt("losses",-1) != 0 ||
-        prefs.getLong("pendingStake",-1L) != 0L ||
-        prefs.getLong("confirmedStake",-1L) != 109L)
+        prefs.getInt("losses",-1) != 0)
+      return false
+    // Either the first $1.09 is still pending confirmation, or exactly
+    // $1.09 was previously confirmed. Never rebind a recovery stake.
+    val pendingBase = prefs.getLong("pendingStake",-1L) == 109L
+    val confirmedBase = prefs.getLong("pendingStake",-1L) == 0L &&
+      prefs.getLong("confirmedStake",-1L) == 109L
+    if (!pendingBase && !confirmedBase)
       return false
     if (newPair == prefs.getString("pair",null)) return true
     return prefs.edit()
