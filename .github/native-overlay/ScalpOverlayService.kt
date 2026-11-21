@@ -3361,17 +3361,25 @@ class ScalpOverlayService : Service() {
     header.addView(testBipControl, LinearLayout.LayoutParams(dp(55), dp(28)))
     bellControl?.visibility = View.GONE // No ON/OFF controls on the floating status panel.
     header.addView(bellControl, LinearLayout.LayoutParams(dp(30), dp(28)))
+    // 569: keep the toggle immediately after X, BEFORE the weighted ȘOC
+    // title. A trailing toggle could be clipped in 144dp compact overlays.
     val minimizeToggle = TextView(this).apply {
       text = "+"
-      textSize = 22f
+      textSize = 21f
       gravity = Gravity.CENTER
       setTypeface(typeface, android.graphics.Typeface.BOLD)
-      setTextColor(Color.rgb(27, 108, 167))
+      setTextColor(Color.WHITE)
+      background = GradientDrawable().apply {
+        setColor(Color.rgb(30, 99, 136))
+        cornerRadius = dp(6).toFloat()
+        setStroke(dp(1), Color.rgb(105, 196, 236))
+      }
       isClickable = true
       isFocusable = true
       contentDescription = "Extinde Scalp Atlas și afișează butonul MIZĂ AUTO DEMO"
     }
-    header.addView(minimizeToggle, LinearLayout.LayoutParams(dp(28), dp(28)))
+    // Pin + beside X, so it stays visible even when ȘOC text is long.
+    header.addView(minimizeToggle, 1, LinearLayout.LayoutParams(dp(28), dp(28)))
     root.addView(header)
 
     val body = LinearLayout(this).apply {
@@ -5038,7 +5046,7 @@ class ScalpOverlayService : Service() {
         "Extinde panoul Scalp Atlas pentru MIZĂ AUTO DEMO" else
         "Micșorează panoul Scalp Atlas"
       val window = overlayWindowParams ?: return
-      window.width = dp(if (minimized) 144 else 224)
+      window.width = dp(if (minimized) 156 else 224)
       val metrics = resources.displayMetrics
       window.x = window.x.coerceIn(0, (metrics.widthPixels - window.width).coerceAtLeast(0))
       root.post { positionSavedCorner498() }
@@ -5050,7 +5058,7 @@ class ScalpOverlayService : Service() {
     applyCompactMode()
 
     val params = WindowManager.LayoutParams(
-      dp(144),
+      dp(156),
       WindowManager.LayoutParams.WRAP_CONTENT,
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
