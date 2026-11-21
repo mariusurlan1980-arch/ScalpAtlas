@@ -871,9 +871,17 @@ class ScalpOverlayService : Service() {
       touchProbeStatus?.text = stakeOptInReason572
       return
     }
+    // 576: the MINI panel can still be manually parked over the broker
+    // BUY/SELL controls. Move ONLY our overlay off that area, then wait for
+    // a fresh independent accessibility read. Never accept obscured buttons.
+    if (liftOverlayOffDemoOrderButtons557()) {
+      stakeOptInReason572 = "576 • PANOU MUTAT DE PE BUY/SELL • REVERIFIC"
+      touchProbeStatus?.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
+      return
+    }
     if (TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92) {
-      stakeOptInReason572 = "572 • PAYOUT 92% NECONFIRMAT"
-      touchProbeStatus?.text = stakeOptInReason572
+      stakeOptInReason572 = "576 • PAYOUT BUY/SELL 92% NECITIT"
+      touchProbeStatus?.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
       return
     }
     if (!demoAutoStakePlan565.enableFromVerifiedDemo("QT_DEMO:" + pkg, pair)) {
