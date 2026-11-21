@@ -52,7 +52,7 @@ test('budget and account are independently verified before editing',()=>{
   'accountKey!=prefs.getString("accountKey",null)','stakeCents!=LADDER[losses]'])
   assert.ok(kotlin.includes(token),token);
  assert.match(editor,/before.balanceCents < stakeCents/);
- assert.match(editor,/before.payout != 92/);
+ assert.match(editor,/buyPayout != 92/);
 });
 test('Android stake editor can inspect 819.50 DEMO with fail-closed readback',()=>{
  assert.ok(editor.includes('100L..81950L'));
