@@ -1694,23 +1694,42 @@ class ScalpOverlayService : Service() {
   }
 
   private fun demoOrderVerificationStatus(): String {
+    // 578: Explanation ONLY. Never clear an attempted marker, fake a
+    // CLOSED receipt or allow a new order from a UI diagnostic.
     val reason = demoOrderVerificationReason
-    // 577: OFF->ON consumes the old session even before a first gesture.
-    // Explain that this is a stake readback wait, NOT an attempted order.
-    val hadAttempt577=getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
-      .getBoolean("attempted",false) ||
-      getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
-        .getBoolean("attempted",false)
-    return if (reason.isNullOrBlank() && autoDemoSessionConsumed &&
-      demoAutoStakePlan565.isEnabled() &&
-      !demoAutoStakePlan565.isRiskStopped() && !hadAttempt577 &&
-      tradePositionGate.state()==TradePositionGate.State.READY)
-        "MIZĂ ON • AȘTEPT CONFIRMARE SUMĂ DIN QT DEMO"
-    else if (reason.isNullOrBlank()) "ARMAT · VERIFIC ORDINUL"
-    else "ORDINE ÎN PAUZĂ · " + reason
-      .replaceFirst(Regex("^\\d+ • "), "")
-      .removeSuffix(" • FĂRĂ ORDIN")
-      .take(84)
+    val previousShock578=getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
+      .getBoolean("attempted",false)
+    val previousSell578=getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
+      .getBoolean("attempted",false)
+    val gate578=tradePositionGate.state()
+    val stakeStatus578=demoAutoStakePlan565.status()
+    return when {
+      !reason.isNullOrBlank() ->
+        "ORDINE ÎN PAUZĂ · " + reason
+          .replaceFirst(Regex("^\\d+ • "), "")
+          .removeSuffix(" • FĂRĂ ORDIN").take(84)
+      previousShock578 || previousSell578 ->
+        "BLOCAT • ORDIN ANTERIOR FĂRĂ ÎNCHIDERE CONFIRMATĂ"
+      gate578==TradePositionGate.State.OPEN ->
+        "BLOCAT • POZIȚIE DESCHISĂ ÎN REGISTRUL DEMO"
+      gate578==TradePositionGate.State.SUBMITTING ->
+        "BLOCAT • TRIMITERE ORDIN NECONFIRMATĂ"
+      gate578==TradePositionGate.State.UNKNOWN ->
+        "BLOCAT • STARE POZIȚIE NECUNOSCUTĂ"
+      demoAutoStakePlan565.isRiskStopped() ->
+        "BLOCAT • STOP RISC DEMO"
+      !demoAutoStakePlan565.isEnabled() ->
+        "BLOCAT • MIZĂ AUTO DEMO OFF"
+      autoDemoSessionConsumed && stakeStatus578.contains("AȘTEAPTĂ CONFIRMARE") ->
+        "MIZĂ ON • SUMA BROKER NECONFIRMATĂ"
+      autoDemoSessionConsumed ->
+        "MIZĂ ON • SESIUNE NEARMATĂ • " + autoDemoLastPreflightReason.take(43)
+      !autoDemoSessionRequested ->
+        "MIZĂ ON • AUTORIZARE LIVE NECONFIRMATĂ"
+      !autoDemoArmed ->
+        "MIZĂ ON • PREFLIGHT: " + autoDemoLastPreflightReason.take(51)
+      else -> "MIZĂ ON • AȘTEPT ȘOC NOU"
+    }
   }
 
   private fun startBrokerAccountMonitor() {
@@ -4243,6 +4262,10 @@ class ScalpOverlayService : Service() {
           lastFxRotationMismatch548 = if (chartPair548 == null)
             "AȘTEPT CITIREA PERECHII ÎN BROKER"
           else "CERUT: " + pair.take(18) + " • VĂZUT: " + chartPair548.take(18)
+          // 578: expose requested vs visible pair in the narrow floating
+          // rotation row. A selector-in-progress is not broker order proof.
+          fxButton.text = pair.removeSuffix(" OTC").take(8) + " ≠ " +
+            (chartPair548?.removeSuffix(" OTC")?.take(8) ?: "?")
           if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
           else recoverNavigation(pair, "PERECHE NECONFIRMATĂ")
           return
