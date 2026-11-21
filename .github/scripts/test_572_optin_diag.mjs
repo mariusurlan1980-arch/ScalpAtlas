@@ -46,8 +46,8 @@ test('572 new status visible in preflight without overriding risk stop or permis
  assert.ok(plan.includes('private val LADDER = longArrayOf(109L,228L'));
 });
 test('572 builds signed APK and runs 572 test',()=>{
- assert.ok(workflow.includes("expo['android']['versionCode']=574"));
- assert.ok(workflow.includes('ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24.apk'));
+ assert.ok(workflow.includes("expo['android']['versionCode']=575"));
+ assert.ok(workflow.includes('ScalpAtlas-575-MINI-CHENAR-DEMO-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_572_optin_diag.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
