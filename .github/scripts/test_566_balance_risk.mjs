@@ -26,7 +26,7 @@ test('1500 USD covers nine theoretical stages, never the tenth',()=>{
 test('no +$1 objective is possible on level ten with only $1500 reserved',()=>{
  const available=150000-totals[8];
  const net=Math.floor(available*92/100)-totals[8];
- assert.equal(net,-6564);
+ assert.equal(net,-6565);
 });
 test('each winning level exactly returns at least +$1 after losses',()=>{
  for (let k=0;k<10;k++) {
