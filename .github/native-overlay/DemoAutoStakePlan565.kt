@@ -9,11 +9,11 @@ import android.content.SharedPreferences
  *
  * Ten-level ladder: after every verified LOSS propose the next stake;
  * after a verified WIN reset to $1.09. Stop after TEN losses OR before
- * any stake outside the budget. $1,500 is planned, NOT broker-verified.
+ * any stake outside the budget. $1,572.44 is planned, NOT broker-verified. Ten LOSS can consume it all.
  */
 internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
   companion object {
-    const val PLANNED_BUDGET_CENTS = 150000L
+    const val PLANNED_BUDGET_CENTS = 157244L
     const val PAYOUT_EXACT = 92
     const val STOP_AFTER_LOSSES = 10
     const val EDITOR_MAX_STAKE_CENTS = 81950L
