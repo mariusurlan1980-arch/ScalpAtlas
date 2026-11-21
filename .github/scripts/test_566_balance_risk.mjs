@@ -16,12 +16,14 @@ test('same ten-stage USD stakes in TS and native Android',()=>{
  assert.deepEqual(nativeS,S);
  assert.deepEqual(S,[109,228,475,992,2070,4320,9016,18816,39268,81950]);
 });
-test('1500 USD covers nine theoretical stages, never the tenth',()=>{
+test('1500 USD remains insufficient, but 1572.44 USD covers all 10 theoretical stages',()=>{
  assert.equal(totals[8],75294);
  assert.equal(totals[9],157244);
  assert.equal(150000-totals[8],74706);
  assert.equal(S[9]-(150000-totals[8]),7244);
  assert.equal(ladder.filter(x=>x.totalLossesIfThisFailsCents<=150000).length,9);
+ assert.equal(ladder.filter(x=>x.totalLossesIfThisFailsCents<=157244).length,10);
+ assert.equal(157244-totals[9],0);
 });
 test('no +$1 objective is possible on level ten with only $1500 reserved',()=>{
  const available=150000-totals[8];
@@ -35,14 +37,14 @@ test('each winning level exactly returns at least +$1 after losses',()=>{
   assert.equal(r.state,'TARGET_REACHED');assert.ok(r.netCents>=100);
  }
 });
-test('ten full losses stop at 1572.44 USD, cannot be funded on $1500',()=>{
+test('ten full losses consume exactly the newly planned $1572.44 DEMO budget',()=>{
  const r=simulateMartingaleSeries562(Array(10).fill('LOSS'));
  assert.equal(r.state,'FAILED_TEN_LOSSES');
  assert.equal(r.netCents,-157244);
 });
 test('no three-loss lock remains in the 566 active QT DEMO stake plan',()=>{
  assert.match(kotlin,/const val STOP_AFTER_LOSSES = 10/);
- assert.match(kotlin,/const val PLANNED_BUDGET_CENTS = 150000L/);
+ assert.match(kotlin,/const val PLANNED_BUDGET_CENTS = 157244L/);
  assert.doesNotMatch(kotlin,/STOP • 3 LOSS/);
  assert.match(kotlin,/nextLosses>=STOP_AFTER_LOSSES/);
 });
@@ -105,4 +107,12 @@ test('release pipeline packages 566 and retains apk signer',()=>{
  assert.ok(workflow.includes('node --experimental-strip-types --test .github/scripts/test_566_balance_risk.mjs'));
  assert.ok(workflow.includes("expo['android']['versionCode']=566"));
  assert.ok(workflow.includes('apksigner'));
+});
+
+test('full ten-level DEMO plan is limited by independently VERIFIED broker balance, not user speech',()=>{
+ assert.ok(kotlin.includes('const val PLANNED_BUDGET_CENTS = 157244L'));
+ assert.ok(kotlin.includes('cumLoss+next>PLANNED_BUDGET_CENTS'));
+ assert.ok(editor.includes('SOLD DEMO INSUFICIENT'));
+ assert.ok(service.includes('TouchTestService.setVerifiedDemoRecoveryStakeOnBroker'));
+ assert.ok(service.includes('QT DEMO'));
 });
