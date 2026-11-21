@@ -17,7 +17,7 @@ test('the first screen remains compact, but visible + button can expand',()=>{
  assert.ok(overlay.includes('applyCompactMode()'));
 });
 test('button is in header, with accessible description and real click target',()=>{
- assert.ok(overlay.includes('header.addView(minimizeToggle, LinearLayout.LayoutParams(dp(28), dp(28)))'));
+ assert.ok(overlay.includes('header.addView(minimizeToggle, 1, LinearLayout.LayoutParams(dp(28), dp(28)))'));
  assert.ok(overlay.includes('isClickable = true'));
  assert.ok(overlay.includes('isFocusable = true'));
  assert.ok(overlay.includes('Extinde panoul Scalp Atlas pentru MIZĂ AUTO DEMO'));
@@ -52,9 +52,9 @@ test('the fixed broker balance parser accepts US-formatted 1,572.68 as full amou
  assert.ok(broker.includes('brokerBalanceToken567.findAll(item.value)'));
  assert.ok(!broker.includes('Regex("""(?<!\\d)(\\d{1,5}[.,]\\d{2})(?!\\d)""").find(it.value)'));
 });
-test('Android release pipeline includes 568 layout fix and signing',()=>{
- assert.ok(workflow.includes('versionCode\']=568'));
- assert.ok(workflow.includes('ScalpAtlas-568-EXPAND-MIZA-AUTO-QT-DEMO-G24.apk'));
+test('Android release pipeline includes 569 layout fix and signing',()=>{
+ assert.ok(workflow.includes('versionCode\']=569'));
+ assert.ok(workflow.includes('ScalpAtlas-569-LEFT-PLUS-MIZA-DEMO-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_568_expand_miza.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
