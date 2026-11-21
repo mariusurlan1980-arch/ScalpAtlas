@@ -206,8 +206,21 @@ object DemoStakeEditor {
    * Read-only actual QT Demo payout. We do not assume a fixed 92 percent
    * when selecting the next stake: broker payout can change with the pair.
    */
-  fun verifiedDemoPayoutReadOnly(svc: AccessibilityService): Int? =
-    inspect(svc).first?.payout
+  fun verifiedDemoPayoutReadOnly(svc: AccessibilityService): Int? {
+    // 576: payout read is independent from the editable Sumă field and
+    // header-balance parser. Earlier inspect() called all three at once and
+    // rejected a genuine 92% when only the stake node was unavailable.
+    // Still require the actual broker QT Demo screen, BOTH actual visible
+    // BUY/SELL payouts at exactly 92%, and a stable foreground package.
+    // This read ONLY reports a verified quote: it cannot edit or order.
+    val (chart, _) = readChart(svc)
+    if (chart == null) return null
+    val (payout, _) = readChartPayout(chart)
+    if (payout != 92) return null
+    if (svc.rootInActiveWindow?.packageName?.toString() != chart.pkg)
+      return null
+    return payout
+  }
 
   /**
    * 429: Read back the current QT Demo stake, payout and actual balance.
