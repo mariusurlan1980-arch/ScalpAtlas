@@ -8,7 +8,7 @@ test('586: compact overlay relocates out of SELL before confirming broker amount
  const s=service.split('private fun maybeApplyVerifiedDemoStake565(')[1]
    .split('private fun brokerHistoryClockSeconds582(')[0];
  const a=s.indexOf('if(liftOverlayOffDemoOrderButtons557())');
- const b=s.indexOf('TouchTestService.readVisibleDemoPair()!=pair');
+ const b=s.indexOf('val visiblePair587=try');
  const c=s.indexOf('val confirmedQuote584=try');
  assert.ok(a>=0 && a<b && b<c);
  assert.match(s,/PANOU MUTAT • REVERIFIC SUMĂ\/PAYOUT/);
@@ -32,6 +32,6 @@ test('586: relocation does not authorize trades or change Martingale state',()=>
 });
 test('586: signed Android workflow includes exact new build and test',()=>{
  assert.match(workflow,/versionCode'\]=587/);
- assert.match(workflow,/ScalpAtlas-586-QUOTE-DIAG-G24\.apk/);
+ assert.match(workflow,/ScalpAtlas-587-PREFLIGHT-DIAG-G24\.apk/);
  assert.match(workflow,/test_586_quote_read_diagnostic\.mjs/);
 });
