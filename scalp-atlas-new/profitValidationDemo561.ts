@@ -70,6 +70,7 @@ export function analyzeProfitDemo561(
   const ids=new Set<string>();
   let wins=0,losses=0,draws=0,net=0,peak=0,maxDd=0,streak=0,maxStreak=0,prevClose=-Infinity;
   let baselineStake:number|null=null;
+  let riskWasBreached=false;
   for(let i=0;i<receipts.length;i++){
     const r=receipts[i];
     if (!r || !r.brokerClosedReceiptVerified || r.account!=='DEMO' ||
@@ -99,14 +100,15 @@ export function analyzeProfitDemo561(
     net += r.netCents;
     peak=Math.max(peak,net);
     maxDd=Math.max(maxDd,peak-net);
+    if(streak>=settings.maxConsecutiveLosses || net<=-settings.maxSessionNetLossCents) riskWasBreached=true;
     prevClose=r.closedAtMs;
   }
 
   const decisive=wins+losses;
   const winRate=decisive?100*wins/decisive:0;
   const breakEven=100/1.92;
-  const riskHit=streak>=settings.maxConsecutiveLosses ||
-    net<=-settings.maxSessionNetLossCents;
+  // A breached stop rule stays active even if later historical receipts recover.
+  const riskHit=riskWasBreached;
   const sufficient=decisive>=settings.minimumVerifiedTrades;
   return {
     state:riskHit?'PAUZA_RISC':!sufficient?'TEST_IN_CURS':
