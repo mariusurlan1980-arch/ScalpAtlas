@@ -354,6 +354,10 @@ class ScalpOverlayService : Service() {
   }
   private var lastAutoStakeEdit565At = 0L
   private var autoStakeToggle565: TextView? = null
+  // 571: one explicit, short-lived ON request can wait for the selector to
+  // return to a stable QT Demo chart. This grants NO order permission.
+  private var pendingStakeOptIn571 = false
+  private var pendingStakeOptInAt571 = 0L
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
   private var lastShockOrderStatus: String? = null
@@ -793,6 +797,66 @@ class ScalpOverlayService : Service() {
    * another day's same-pair/order row a valid match. A device reboot
    * invalidates the elapsed-time proof, so the app fails closed.
    */
+  /**
+   * 571: Consume the user's explicit ON intent only on a freshly verified,
+   * stable QT DEMO chart. During currency-selector navigation the intent
+   * remains pending, instead of silently returning to OFF.
+   *
+   * No risk, account, payout, old-order or broker-stake guard is relaxed.
+   * The queue is memory-only, cancels on REAL, and expires after 90 seconds.
+   */
+  private fun maybeFinishStakeOptIn571(nowElapsed: Long) {
+    if (!pendingStakeOptIn571) return
+    fun cancel(message: String) {
+      pendingStakeOptIn571 = false
+      pendingStakeOptInAt571 = 0L
+      autoStakeToggle565?.text = "MIZĂ AUTO DEMO • OFF"
+      touchProbeStatus?.text = message
+    }
+    if (shuttingDown || mediaProjection == null || overlayView == null ||
+        pendingStakeOptInAt571 <= 0L ||
+        nowElapsed - pendingStakeOptInAt571 !in 0L..90_000L) {
+      cancel("571 • CERERE EXPIRATĂ • FĂRĂ ORDIN")
+      return
+    }
+    if (realAccountSafetyStop517 || TouchTestService.realFxAccountVisible() ||
+        demoAutoStakePlan565.isRiskStopped()) {
+      cancel("571 • STOP RISC / QT REAL • FĂRĂ ORDIN")
+      return
+    }
+    // Wait for rotation to finish. A selector list is not a stable chart.
+    if (accountRecheckPending || fxRotationNavigating ||
+        fxRotationTradePaused516 || closedHistoryInspectionInProgress ||
+        historyPageVisible433 || !TouchTestService.ready() ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false)) return
+    val pair = currentPair(System.currentTimeMillis())
+    val pkg = TouchTestService.activeDemoExecutorPackageForReview() ?: return
+    if (pair == "NEIDENTIFICAT" || !pairReady(System.currentTimeMillis()) ||
+        TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92) return
+    if (!demoAutoStakePlan565.enableFromVerifiedDemo("QT_DEMO:" + pkg, pair)) {
+      cancel("571 • MIZĂ/CONT ANTERIOR NECONFIRMAT • FĂRĂ ORDIN")
+      return
+    }
+    pendingStakeOptIn571 = false
+    pendingStakeOptInAt571 = 0L
+    // Exactly as 565: retire the previous order session before any edit.
+    // A new DEMO order still needs 1.09 readback and a fresh verified signal.
+    autoDemoSessionRequested = false
+    autoDemoSessionConsumed = true
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoExpiry = 0L
+    autoStakeToggle565?.text = "MIZĂ AUTO DEMO • ON"
+    touchProbeStatus?.text = "571 • MIZĂ AUTO ON • VERIFIC 1,09 USD"
+    maybeApplyVerifiedDemoStake565(nowElapsed)
+  }
+
   /**
    * 565: after FULLY VERIFIED QT DEMO CLOSED settlement, prepare only the
    * broker's editable Sumă field. Called on the live chart, NEVER on
@@ -1634,6 +1698,9 @@ class ScalpOverlayService : Service() {
             verifiedDemoAccountAt > 0L &&
             proofNow463 - verifiedDemoAccountAt in 0L..90_000L &&
             !diagnostic.contains("QT REAL IDENTIFICAT")
+          // 571: complete a user-clicked ON request only once the selector
+          // returns to a verified QT Demo chart; never on the currency list.
+          maybeFinishStakeOptIn571(proofNow463)
           // 565: edit Sumă only on a fresh QT DEMO chart, never in history.
           // Existing CLOSED proof and one-position gate are NOT bypassed.
           maybeApplyVerifiedDemoStake565(proofNow463)
@@ -4885,45 +4952,28 @@ class ScalpOverlayService : Service() {
       textSize = 10f
       contentDescription = "Activează doar pregătirea mizei QT Demo după LOSS verificat; nu execută tranzacții"
       setOnClickListener {
-        if (demoAutoStakePlan565.isEnabled()) {
+        if (pendingStakeOptIn571) {
+          pendingStakeOptIn571 = false
+          pendingStakeOptInAt571 = 0L
+          text = "MIZĂ AUTO DEMO • OFF"
+          probeStatus.text = "571 • CERERE ANULATĂ • FĂRĂ ORDIN"
+        } else if (demoAutoStakePlan565.isEnabled()) {
           demoAutoStakePlan565.disable()
           text = "MIZĂ AUTO DEMO • OFF"
           probeStatus.text = "565 • MIZĂ AUTO OPRITĂ • FĂRĂ ORDIN"
+        } else if (demoAutoStakePlan565.isRiskStopped() ||
+            realAccountSafetyStop517 || TouchTestService.realFxAccountVisible() ||
+            !TouchTestService.demoFxAccountInForeground() ||
+            !TouchTestService.ready() || mediaProjection == null) {
+          probeStatus.text = "571 • QT DEMO / STOP RISC NECONFIRMAT • FĂRĂ ORDIN"
         } else {
-          val now565 = System.currentTimeMillis()
-          val pair565 = currentPair(now565)
-          val package565 = TouchTestService.activeDemoExecutorPackageForReview()
-          val before565 = getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
-            .getBoolean("attempted",false)
-          val old565 = getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
-            .getBoolean("attempted",false)
-          val ready565 = !demoAutoStakePlan565.isRiskStopped() &&
-            !realAccountSafetyStop517 && !accountRecheckPending &&
-            lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
-            package565 != null && !fxRotationTradePaused516 &&
-            !closedHistoryInspectionInProgress && !historyPageVisible433 &&
-            !before565 && !old565 && !fxRotationNavigating &&
-            tradePositionGate.state()==TradePositionGate.State.READY &&
-            TouchTestService.ready() && mediaProjection!=null &&
-            pair565!="NEIDENTIFICAT" && pairReady(now565) &&
-            TouchTestService.readVerifiedDemoPayoutForPair(pair565)==92
-          if (!ready565 || package565 == null ||
-              !demoAutoStakePlan565.enableFromVerifiedDemo(
-                "QT_DEMO:" + package565,pair565)) {
-            probeStatus.text = if(demoAutoStakePlan565.isRiskStopped())
-              "565 • STOP RISC PERSISTENT • FĂRĂ MODIFICARE"
-            else "565 • QT DEMO/PAYOUT/ORDIN NECONFIRMAT • FĂRĂ EDITARE"
-          } else {
-            // Stop the existing auto-session before touching the stake.
-            autoDemoSessionRequested=false
-            autoDemoSessionConsumed=true
-            autoDemoArmed=false
-            autoDemoMarket=null
-            autoDemoExpiry=0L
-            text = "MIZĂ AUTO DEMO • ON"
-            probeStatus.text = "565 • AȘTEPT EDITARE MIZĂ 1,09 USD • FĂRĂ ORDIN"
-            maybeApplyVerifiedDemoStake565(android.os.SystemClock.elapsedRealtime())
-          }
+          // User opt-in is recorded once, without prematurely binding to
+          // a changing pair or touching any broker order control.
+          pendingStakeOptIn571 = true
+          pendingStakeOptInAt571 = android.os.SystemClock.elapsedRealtime()
+          text = "MIZĂ AUTO DEMO • VERIFIC"
+          probeStatus.text = "571 • AȘTEPT GRAFIC QT DEMO STABIL • FĂRĂ ORDIN"
+          maybeFinishStakeOptIn571(pendingStakeOptInAt571)
         }
       }
     }
