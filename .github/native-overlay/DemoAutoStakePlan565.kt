@@ -248,6 +248,39 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
       .commit()
   }
 
+  /**
+   * 583: Read-only explanation of an order rejected by the 565 plan.
+   * Never binds a currency, confirms a stake, changes MG levels, or
+   * grants an order. The existing permitsFreshDemoOrder is authoritative.
+   */
+  @Synchronized
+  fun preflightReason583(accountKey:String?,pair:String,stakeCents:Long?):String {
+    if(isRiskStopped()) return "STOP RISC DEMO"
+    if(!isEnabled()) return "PLAN MIZĂ AUTO OFF"
+    if(accountKey==null || !accountKey.startsWith("QT_DEMO:"))
+      return "CONT QT DEMO NECITIT"
+    if(accountKey!=prefs.getString("accountKey",null))
+      return "CONT DIFERIT DE PLAN"
+    if(pair.isBlank() || pair=="NEIDENTIFICAT")
+      return "PERECHE NECITITĂ"
+    if(pair!=prefs.getString("pair",null))
+      return "PERECHE PLAN DIFERITĂ"
+    val pending=prefs.getLong("pendingStake",-1L)
+    if(pending>0L) return "MIZĂ ÎN AȘTEPTARE • RECITIRE"
+    if(pending!=0L) return "STARE MIZĂ NECUNOSCUTĂ"
+    if(stakeCents==null || stakeCents<=0L)
+      return "SUMĂ BROKER NECITITĂ"
+    if(stakeCents!=prefs.getLong("confirmedStake",-1L))
+      return "SUMĂ BROKER DIFERITĂ"
+    val losses=prefs.getInt("losses",-1)
+    if(losses !in 0 until STOP_AFTER_LOSSES)
+      return "TREAPTĂ MG INVALIDĂ"
+    val spent=(0 until losses).sumOf { LADDER[it] }
+    if(stakeCents!=LADDER[losses] || spent+stakeCents>PLANNED_BUDGET_CENTS)
+      return "MIZĂ / BUGET NECORESPUNZĂTOR"
+    return "PLAN NECONFIRMAT • VERIFIC"
+  }
+
   @Synchronized
   fun permitsFreshDemoOrder(
     accountKey:String,pair:String,stakeCents:Long
