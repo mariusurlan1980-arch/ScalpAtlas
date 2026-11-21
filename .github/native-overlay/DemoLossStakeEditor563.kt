@@ -19,6 +19,8 @@ internal object DemoLossStakeEditor563 {
     109L, 228L, 475L, 992L, 2070L, 4320L, 9016L, 18816L, 39268L, 81950L
   )
   private const val MAX_STAKE_CENTS_SAFE = 3964L
+  // Planning ceiling, NOT a broker balance confirmation.
+  private const val ALLOCATED_DEMO_BUDGET_CENTS_564 = 157044L
   private const val MAX_LOSSES_BEFORE_RISK_STOP = 3
   private const val MAX_PROOF_AGE_MS = 5_000L
 
@@ -81,6 +83,11 @@ internal object DemoLossStakeEditor563 {
         return block("REZULTAT LOSS / MIZĂ / ID NECONFIRMAT")
     }
     val next = theoreticalStakeCents[losses.size]
+    // 564: do not attempt to consume more than the user's planned DEMO budget.
+    // Actual broker balance is independently checked by DemoStakeEditor.inspect.
+    val accumulatedLosses = losses.sumOf { it.stakeCents }
+    if (accumulatedLosses + next > ALLOCATED_DEMO_BUDGET_CENTS_564)
+      return block("BUGET PLANIFICAT 1.570,44 USD INSUFICIENT")
     if (next !in 100L..MAX_STAKE_CENTS_SAFE)
       return block("MIZĂ DEPĂȘEȘTE LIMITA ANDROID 39,64 USD")
     return StakeDecision563(next, "MIZĂ QT DEMO DUPĂ LOSS • NUMAI EDITARE, FĂRĂ ORDIN")
