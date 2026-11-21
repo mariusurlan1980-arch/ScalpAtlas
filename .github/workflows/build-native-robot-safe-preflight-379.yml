@@ -24,6 +24,8 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
+      - '.github/scripts/test_566_balance_risk.mjs'
+      - 'scalp-atlas-new/martingaleTenDemo562.ts'
       - '.github/scripts/patch_live_v327_closed_candles.py'
       - '.github/scripts/verify_live_v327_gate.py'
       - '.github/scripts/patch_live_v327_bell_toggle.py'
