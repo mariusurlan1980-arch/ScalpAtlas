@@ -1489,7 +1489,7 @@ class TouchTestService : AccessibilityService() {
         val ys = listOf(idItems[0].rect.centerY(),
           stakeItems[0].rect.centerY(), pnlItems[0].rect.centerY())
         if (id != null && stake != null && pnl != null &&
-            stake in 100L..3964L && pnl in -stake..stake &&
+            stake in 100L..DEMO_MAX_STAKE_566 && pnl in -stake..stake &&
             (ys.maxOrNull()!! - ys.minOrNull()!!) <= (h * 0.16f).toInt())
           listOf(root.packageName?.toString().orEmpty(), id,
             stake.toString(), pnl.toString()).joinToString("|")
@@ -1657,7 +1657,7 @@ class TouchTestService : AccessibilityService() {
       val pnlValue = if (closed)
         pnlText436?.let { parseExactCents429(it, true) } ?: return null
         else null
-      if (stakeValue !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS ||
+      if (stakeValue !in 100L..DEMO_MAX_STAKE_566 ||
           (pnlValue != null && (pnlValue < -stakeValue || pnlValue > stakeValue))) {
         receiptStatus429 = "SUMĂ/P-L NECONFORMĂ • FĂRĂ RECUPERARE"
         return null
@@ -2008,6 +2008,9 @@ class TouchTestService : AccessibilityService() {
       val payoutPercent: Int? = null,
       val stakeCents: Long? = null
     )
+    // 566: optical/receipt parser and broker preflight maximum for QT DEMO.
+    // This is NOT a bankroll authorization; 566 also needs the opt-in plan.
+    private const val DEMO_MAX_STAKE_566 = 81950L
     private const val DEMO_TEST_LOCK_MS = 300_000L
 
     private fun checkOneDollarDemoTarget(
@@ -2016,7 +2019,7 @@ class TouchTestService : AccessibilityService() {
       expectedStakeCents: Long? = 100L
     ): DemoOrderCheck {
       if (expectedStakeCents != null &&
-          expectedStakeCents !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS)
+          expectedStakeCents !in 100L..DEMO_MAX_STAKE_566)
         return DemoOrderCheck(reason = "BLOCAT: MIZĂ PESTE LIMITA DEMO")
 
       val svc = connected ?: return DemoOrderCheck(reason = "ROBOT NECONECTAT")
@@ -3012,7 +3015,7 @@ class TouchTestService : AccessibilityService() {
       expectedPair: String,
       stakeCents: Long
     ): String {
-      if (stakeCents !in 100L..DemoRecoveryLedger.MAX_SINGLE_STAKE_CENTS)
+      if (stakeCents !in 100L..DEMO_MAX_STAKE_566)
         return "BLOCAT: MIZĂ ÎN AFARA LIMITELOR"
       if (readVisibleDemoPair() != expectedPair)
         return "BLOCAT: PERECHE DEMO DIFERITĂ"
