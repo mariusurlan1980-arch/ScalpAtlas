@@ -20,6 +20,11 @@ function strictBalance(raw) {
   const trimmed=raw.trim().replace(/\s+/g,' ').replace(/^QT\s+Demo\b\s*/i,'')
     .replace(/^(?:USD\s*|\$\s*)/i,'')
     .replace(/\s*(?:USD|\$)$/i,'').trim();
+  const plain=/^(\d{1,5})(?:[.,](\d{1,2}))?$/;
+  const simple=plain.exec(trimmed);
+  if(simple) return Number(simple[1])*100 +
+    (simple[2]===undefined?0:simple[2].length===1?
+      Number(simple[2])*10:Number(simple[2]));
   const US=/^\d{1,3}(?:,\d{3})+\.\d{2}$/;
   const EU=/^\d{1,3}(?:\.\d{3})+,\d{2}$/;
   const DEC=/^\d{1,5}[.,]\d{2}$/;
@@ -32,8 +37,11 @@ function strictBalance(raw) {
 }
 test('579 exact QT Demo balance forms, including observed 1,572.68',()=>{
  for(const v of ['1,572.68','USD 1,572.68','QT Demo USD 1,572.68',
-    '1.572,68','USD 1.572,68','1572.68','1,09','1.09'])
-   assert.equal(strictBalance(v),v.endsWith('09')?109:157268,v);
+    '1.572,68','USD 1.572,68','1572.68'])
+   assert.equal(strictBalance(v),157268,v);
+ for(const v of ['1,09','1.09']) assert.equal(strictBalance(v),109,v);
+ for(const v of ['20','QT Demo USD 20','20.5','USD 20,5'])
+   assert.equal(strictBalance(v),v.includes('20.5')||v.includes('20,5')?2050:2000,v);
  for(const v of ['572.68.00','1,572.6','1,572','1,572,68','a1,572.68',
     'real: 1,572.68','QT Real USD 1,572.68','59.46117','0.16079',''])
    assert.equal(strictBalance(v),null,v);
