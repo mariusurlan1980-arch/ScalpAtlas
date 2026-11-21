@@ -432,7 +432,7 @@ jobs:
           assert 'if (undone552 && tradePositionGate.cancelBeforeDispatch())' in t
           assert 'autoDemoSessionConsumed = true' in t
           assert 'activeSignal' not in t and 'confirmedShock' not in t
-          assert 'tapTestRow552.visibility = View.VISIBLE' in src
+          assert 'tapTestRow552.visibility = if (minimized) View.GONE else View.VISIBLE' in src
           print('552 one-shot manual DEMO gesture and durable lock checks passed')
           PY552
 
