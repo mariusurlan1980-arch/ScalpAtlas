@@ -349,7 +349,7 @@ class ScalpOverlayService : Service() {
   // 565: separate opt-in next-stake plan; never alters legacy ledger math.
   private val demoAutoStakePlan565 by lazy {
     DemoAutoStakePlan565(
-      getSharedPreferences("scalp_atlas_demo_auto_stake_565", Context.MODE_PRIVATE)
+      getSharedPreferences("scalp_atlas_demo_auto_stake_566", Context.MODE_PRIVATE)
     )
   }
   private var lastAutoStakeEdit565At = 0L
@@ -840,11 +840,31 @@ class ScalpOverlayService : Service() {
       "%d.%02d USD",amount/100L,amount%100L)
     val confirmed=result.startsWith("SUMĂ QT DEMO CONFIRMATĂ " + formatted) &&
       demoAutoStakePlan565.confirmEdited(key,pair,amount,true)
-    touchProbeStatus?.text=if(confirmed)
-      "565 • SUMĂ " + formatted + " CONFIRMATĂ • FĂRĂ ORDIN"
-    else "565 • MIZĂ DEMO NECONFIRMATĂ • " + result.take(66)
+    // 566: opt-in QT DEMO may resume after a verified settlement and broker
+    // readback, but ONLY with a future fresh signal and ongoing LIVE consent.
+    // Never replay a previous SHOCK; never rearm on stale/missing receipts.
+    val mayResume=confirmed && robotArmedContinuously513 &&
+      autoDemoSessionEndAt > nowElapsed && !realAccountSafetyStop517 &&
+      tradePositionGate.state()==TradePositionGate.State.READY &&
+      !getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
+        .getBoolean("attempted",false) &&
+      demoAutoStakePlan565.permitsFreshDemoOrder(key,pair,amount)
+    if(mayResume){
+      autoDemoSessionRequested=true
+      autoDemoSessionConsumed=false
+      autoDemoArmed=false
+      autoDemoMarket=null
+      autoDemoLockedAt=lockedAt
+      autoDemoEntryCycleStartedAt=System.currentTimeMillis()
+      autoDemoLastPreflightAt=0L
+    }
+    touchProbeStatus?.text=if(mayResume)
+      "566 • SUMĂ " + formatted + " CONFIRMATĂ • AȘTEPT SEMNAL NOU"
+    else if(confirmed)
+      "566 • SUMĂ " + formatted + " CONFIRMATĂ • PORNEȘTE LIVE"
+    else "566 • MIZĂ DEMO NECONFIRMATĂ • " + result.take(66)
     autoDemoLastPreflightReason=if(confirmed)
-      "MIZĂ EDITATĂ • PORNEȘTE DEMO PENTRU UN NOU SEMNAL"
+      "MIZĂ QT DEMO VERIFICATĂ • SEMNAL NOU NECESAR"
     else "MIZĂ NECONFIRMATĂ • FĂRĂ ORDIN"
   }
 
