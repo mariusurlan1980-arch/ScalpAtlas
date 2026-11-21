@@ -28,6 +28,7 @@ on:
       - '.github/scripts/test_567_start109_balance.mjs'
       - '.github/scripts/test_568_expand_miza.mjs'
       - '.github/scripts/test_569_header_always_visible.mjs'
+      - '.github/scripts/test_566_balance_risk.mjs'
       - '.github/scripts/test_570_preflight_risk_message.mjs'
       - 'scalp-atlas-new/martingaleTenDemo562.ts'
       - '.github/scripts/patch_live_v327_closed_candles.py'
