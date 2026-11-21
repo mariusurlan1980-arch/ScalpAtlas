@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 573 QT DEMO compact overlay and audible-preflight G24
+name: Build Scalp Atlas 574 QT DEMO exact ON blocker visible G24
 
 on:
   push:
-    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo, fix/scalpatlas-568-visible-expand-stake-demo, fix/scalpatlas-569-visible-left-expand-miza, fix/scalpatlas-570-preflight-risk-message, fix/scalpatlas-571-queued-demo-stake-optin, fix/scalpatlas-572-stake-optin-diagnostic, fix/scalpatlas-573-compact-audio-preflight]
+    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo, fix/scalpatlas-568-visible-expand-stake-demo, fix/scalpatlas-569-visible-left-expand-miza, fix/scalpatlas-570-preflight-risk-message, fix/scalpatlas-571-queued-demo-stake-optin, fix/scalpatlas-572-stake-optin-diagnostic, fix/scalpatlas-573-compact-audio-preflight, fix/scalpatlas-574-visible-optin-reason]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -34,6 +34,7 @@ on:
       - '.github/scripts/test_571_queued_stake_optin.mjs'
       - '.github/scripts/test_572_optin_diag.mjs'
       - '.github/scripts/test_573_compact_bip_gate.mjs'
+      - '.github/scripts/test_574_visible_optin_reason.mjs'
       - 'scalp-atlas-new/martingaleTenDemo562.ts'
       - '.github/scripts/patch_live_v327_closed_candles.py'
       - '.github/scripts/verify_live_v327_gate.py'
@@ -72,7 +73,7 @@ jobs:
           grep -Fq 'val previewSecond559 =' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TEST FĂRĂ ORDIN' .github/native-overlay/ScalpOverlayService.kt
 
-      - name: Verify 573 compact overlay and DEMO signal-audio preflight gates
+      - name: Verify 574 visible ON blocker and safe QT DEMO opt-in
         run: |
           set -e
           node --experimental-strip-types --test .github/scripts/test_566_balance_risk.mjs
@@ -83,6 +84,7 @@ jobs:
           node --test .github/scripts/test_571_queued_stake_optin.mjs
           node --test .github/scripts/test_572_optin_diag.mjs
           node --test .github/scripts/test_573_compact_bip_gate.mjs
+          node --test .github/scripts/test_574_visible_optin_reason.mjs
           node --experimental-strip-types --test scalp-atlas-new/allocatedBudgetAfterLoss564.test.mjs
           grep -Fq 'DemoAutoStakePlan565' .github/native-overlay/ScalpOverlayService.kt
 
@@ -141,7 +143,7 @@ jobs:
           expo['version']='3.2.99'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=573
+          expo['android']['versionCode']=574
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2553,27 +2555,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-573-COMPACT-BIP-GATE-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-573-COMPACT-BIP-GATE-DEMO-G24
-          path: ScalpAtlas-573-COMPACT-BIP-GATE-DEMO-G24.apk
+          name: ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24
+          path: ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-573-compact-audio-preflight'
+        if: github.ref == 'refs/heads/fix/scalpatlas-574-visible-optin-reason'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-573-COMPACT-BIP-GATE-DEMO-G24.apk"
+          FILE="ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-573-compact-bip-demo-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-574-miza-on-diag-demo-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 573 - chenar mic si bip doar la preflight Demo armat" \
-            --notes "573: micsoareaza chenarul la apasarea minus prin reconfigurare Android reala, ascunde TEST BUY DEMO in modul compact si reduce diagnosticul la doua linii. Emite bip de semnal doar dupa opt-in miza activ, cont QT Demo verificat si preflight armat; bipul NU confirma ordin acceptat. Payout 92%, M5, expirare 5 minute, 1.09 USD start si toate opririle/limitele de risc raman neschimbate. APK testat automat, necesara validare practica Motorola."
+            --title "Scalp Atlas 574 - motiv clar de ce MIZA AUTO nu trece pe ON" \
+            --notes "574: butonul MIZA AUTO DEMO OFF -> VERIFIC -> ON functioneaza numai dupa dovezi strict QT Demo; in stare VERIFIC motivul exact ramane vizibil in chenar, nu mai este suprascris de PREFLIGHT OFF. Dupa expirare/rejectie, motivul ramane 30 secunde pe ecran si OFF. Nu forteaza ON; niciun ordin permis fara confirmarea contului, payout 92%, miza si vechiul ordin inchis. Panou mic din 573, M5 / 5 minute, start 1.09 USD. Teste automate, validare pe Motorola necesara."
