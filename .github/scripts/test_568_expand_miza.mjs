@@ -12,7 +12,7 @@ test('the first screen remains compact, but visible + button can expand',()=>{
  assert.ok(overlay.includes('minimizeToggle.text = if (minimized) "+" else "−"'));
  assert.ok(overlay.includes('minimizeToggle.visibility = View.VISIBLE'));
  assert.ok(!overlay.includes('minimizeToggle.visibility = View.GONE'));
- assert.ok(overlay.includes('minimizeToggle.setOnClickListener {\n       minimized = !minimized\n       applyCompactMode()'));
+ assert.match(overlay,/minimizeToggle\\.setOnClickListener\\s*\\{\\s*minimized = !minimized\\s*applyCompactMode\\(\\)/);
 });
 test('button is in header, with accessible description and real click target',()=>{
  assert.ok(overlay.includes('header.addView(minimizeToggle, LinearLayout.LayoutParams(dp(28), dp(28)))'));
