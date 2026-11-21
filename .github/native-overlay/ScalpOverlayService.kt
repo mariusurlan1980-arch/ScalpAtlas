@@ -1314,11 +1314,24 @@ class ScalpOverlayService : Service() {
         tradePositionGate.brokerVerifiedEmptyDemoReview(true)
       TradePositionGate.State.SUBMITTING -> false
     }
+    // 565: only THIS fully matched CLOSED 2/2 + EMPTY OPEN 2/2 event can
+    // advance the opt-in loss plan. No timer, BIP, or standalone chart
+    // observation can ever increase the broker stake.
+    val nextStakeStatus565 = if (gateReady && demoAutoStakePlan565.isEnabled())
+      demoAutoStakePlan565.onVerifiedClosed(
+        accountKey=ledgerKey, pair=closed.pair, positionId=closed.positionId,
+        stakeCents=closed.stakeCents, payoutPercent=closed.payoutPercent,
+        netProfitCents=closed.netProfitCents,
+        matchingOpenClosedAndZeroOpen=true
+      )
+    else null
     verifiedClosedDetail437 = null
     verifiedClosedDetailAt437 = 0L
-    // A verified LOSS changes the ledger, but CHART-ONLY must never run a
-    // Martingale progression or submit an untested larger stake automatically.
-    val canRearmBase = gateReady && (manualStake || (!demoRecoveryLedger.isRecovering429() &&
+    // 565 opt-in: NO automatic next order after a settlement. The native
+    // editor prepares Sumă separately, then the user restarts QT DEMO LIVE.
+    val canRearmBase = gateReady && !demoAutoStakePlan565.isEnabled() &&
+      !demoAutoStakePlan565.isRiskStopped() &&
+      (manualStake || (!demoRecoveryLedger.isRecovering429() &&
       demoRecoveryLedger.quote(payout).stakeCents == 100L))
     autoDemoSessionRequested = canRearmBase
     autoDemoSessionConsumed = !canRearmBase
@@ -1328,7 +1341,9 @@ class ScalpOverlayService : Service() {
     autoDemoLockedAt = lockedAt
     autoDemoEntryCycleStartedAt = if (canRearmBase)
       System.currentTimeMillis() else 0L
-    return if (canRearmBase)
+    return if (nextStakeStatus565 != null)
+      "565 • " + nextStakeStatus565.take(82) + " • FĂRĂ ORDIN"
+    else if (canRearmBase)
       "476 • ORDIN ÎNCHIS VERIFICAT • DEMO REACTIVAT"
     else "463 • REZULTAT VERIFICAT • NOI ORDINE BLOCATE (FĂRĂ MG)"
   }
