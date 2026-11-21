@@ -6,6 +6,7 @@ on:
     paths:
       - scalp-atlas-new/allocatedBudgetAfterLoss564.ts
       - scalp-atlas-new/allocatedBudgetAfterLoss564.test.mjs
+      - .github/native-overlay/DemoLossStakeEditor563.kt
       - .github/workflows/scalp-atlas-564-budget-tests.yml
   workflow_dispatch:
 permissions:
