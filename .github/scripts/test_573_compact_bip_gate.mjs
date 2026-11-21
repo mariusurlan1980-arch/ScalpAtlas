@@ -12,10 +12,10 @@ const signalEnd=source.indexOf('updateOverlay(',lock);
 const signal=source.slice(lock,signalEnd);
 test('573 compact hides large BUY test and keeps normal plus to expand',()=>{
  assert.ok(source.includes('var minimized = true'));
- assert.ok(mode.includes('tapTestRow552.visibility = if (minimized) View.GONE else View.VISIBLE'));
- assert.ok(mode.includes('stakeAutoRow565.visibility = if(minimized) View.GONE else View.VISIBLE'));
+ assert.ok(mode.includes('tapTestRow552.visibility = View.GONE'));
+ assert.ok(mode.includes('stakeAutoRow565.visibility = View.VISIBLE'));
  assert.ok(mode.includes('probeStatus.maxLines = if (minimized) 2 else 3'));
- assert.ok(mode.includes('window.width = dp(if (minimized) 156 else 224)'));
+ assert.ok(mode.includes('window.width = dp(if (minimized) 156 else 174)'));
  assert.ok(mode.includes('windowManager.updateViewLayout(root, window)'));
  assert.ok(mode.includes('root.post { positionSavedCorner498() }'));
  assert.ok(source.includes('minimizeToggle.text = if (minimized) "+" else "−"'));
@@ -49,8 +49,8 @@ test('573 chart signal remains available visually, with unchanged trading gate',
  assert.ok(source.includes('BLOCAT: MIZĂ AUTO OFF • APASĂ +'));
 });
 test('573 signed APK pipeline includes new tests',()=>{
- assert.ok(flow.includes("expo['android']['versionCode']=574"));
+ assert.ok(flow.includes("expo['android']['versionCode']=575"));
  assert.ok(flow.includes('node --test .github/scripts/test_573_compact_bip_gate.mjs'));
- assert.ok(flow.includes('ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24.apk'));
+ assert.ok(flow.includes('ScalpAtlas-575-MINI-CHENAR-DEMO-G24.apk'));
  assert.ok(flow.includes('apksigner'));
 });
