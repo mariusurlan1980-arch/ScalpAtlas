@@ -169,10 +169,11 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
   fun confirmEdited(accountKey:String, pair:String,
     stakeCents:Long, readBackConfirmed:Boolean):Boolean {
     val losses=prefs.getInt("losses",0)
-    val cumLoss=if(losses in 0 until STOP_AFTER_LOSSES)
-      (0 until losses).sumOf { LADDER[it] } else Long.MAX_VALUE
+    // Fail closed before indexing the ladder or adding a sentinel value.
+    if(losses !in 0 until STOP_AFTER_LOSSES) return false
+    val cumLoss=(0 until losses).sumOf { LADDER[it] }
     if(!readBackConfirmed || !isEnabled() ||
-        cumLoss+stakeCents>PLANNED_BUDGET_CENTS ||
+        stakeCents<0L || cumLoss+stakeCents>PLANNED_BUDGET_CENTS ||
         accountKey!=prefs.getString("accountKey",null) ||
         pair!=prefs.getString("pair",null) ||
         prefs.getLong("pendingStake",0L)!=stakeCents ||
