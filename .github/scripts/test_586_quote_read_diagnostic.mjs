@@ -11,7 +11,7 @@ test('586: compact overlay relocates out of SELL before confirming broker amount
  const b=s.indexOf('val visiblePair587=try');
  const c=s.indexOf('val confirmedQuote584=try');
  assert.ok(a>=0 && a<b && b<c);
- assert.match(s,/PANOU MUTAT • REVERIFIC SUMĂ\/PAYOUT/);
+ assert.match(s,/PANOU MUTAT • RECITIRE BROKER/);
  assert.match(s,/getBoolean\("attempted",false\)/);
  assert.match(s,/tradePositionGate\.state\(\)!=TradePositionGate\.State\.READY/);
 });
