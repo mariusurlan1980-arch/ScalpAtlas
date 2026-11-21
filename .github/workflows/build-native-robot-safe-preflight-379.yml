@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 566 QT DEMO ten-level balance-guard G24
+name: Build Scalp Atlas 567 QT DEMO full 1572.44 ten-level balance-guard G24
 
 on:
   push:
-    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo]
+    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -63,7 +63,7 @@ jobs:
           grep -Fq 'val previewSecond559 =' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TEST FĂRĂ ORDIN' .github/native-overlay/ScalpOverlayService.kt
 
-      - name: Verify 566 QT DEMO bankroll and ten-level safety guards
+      - name: Verify 567 full ten-level 1572.44 QT DEMO bankroll and safety guards
         run: |
           set -e
           node --experimental-strip-types --test .github/scripts/test_566_balance_risk.mjs
@@ -122,10 +122,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.96'
+          expo['version']='3.2.97'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=566
+          expo['android']['versionCode']=567
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2537,27 +2537,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-566-TEN-LOSS-BALANCE-GUARD-G24.apk
+          cp "$APK" ScalpAtlas-567-FULL-TEN-1572-44-QT-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-566-TEN-LOSS-BALANCE-GUARD-G24
-          path: ScalpAtlas-566-TEN-LOSS-BALANCE-GUARD-G24.apk
+          name: ScalpAtlas-567-FULL-TEN-1572-44-QT-DEMO-G24
+          path: ScalpAtlas-567-FULL-TEN-1572-44-QT-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/feature/scalpatlas-566-ten-loss-balance-guard-qt-demo'
+        if: github.ref == 'refs/heads/feature/scalpatlas-567-157244-ten-level-qt-demo'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-566-TEN-LOSS-BALANCE-GUARD-G24.apk"
+          FILE="ScalpAtlas-567-FULL-TEN-1572-44-QT-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-566-ten-loss-balance-guard-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-567-full-ten-1572-44-demo-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 566 - QT DEMO miza dupa LOSS pana la 10, oprire la sold insuficient" \
-            --notes "566 QT DEMO: dupa un LOSS CLOSED verificat, pregateste urmatoarea miza Martingale; la WIN verificat reseteaza la 1.09 USD. Maximum 10 incercari teoretice, dar buget planificat 1500 USD acopera doar 9 pierderi; oprire automata daca fondurile alocate sau soldul citit de la broker nu acopera miza. Cu 92% payout, 10 niveluri pentru +1 USD net ar necesita 1572.44 USD. Nu opri la 3 LOSS; opreste la 10 sau mai devreme la sold insuficient. Opt-in obligatoriu, cont REAL blocat. Editarea poate fi urmata de un NOU semnal cu LIVE activ si verificari complete, niciodata de repetarea semnalului anterior. Brokerul poate respinge mize mari. Necesita dovada CLOSED/OPEN confirmata si testare Motorola. Nicio garantie de profit. MIN/MAX optic este in continuare PREVIEW."
+            --title "Scalp Atlas 567 - QT DEMO 1572.44 USD / 10 niveluri cu WIN reset" \
+            --notes "567 QT DEMO: buget planificat exact 1572.44 USD, suma NU a fost adaugata contului de catre GitHub. Mize teoretice pentru +1 USD per serie castigata la 92%: 1.09,2.28,4.75,9.92,20.70,43.20,90.16,188.16,392.68,819.50 USD; o serie cu 10 LOSS pierde tot bugetul. WIN CLOSED verificat reseteaza la 1.09. Dupa LOSS verificat, editarea sumelor este opt-in, pe QT DEMO, numai dupa broker CLOSED 2/2, EMPTY OPEN 2/2, sold si payout 92% confirmate. Niciun ordin imediat dupa editare; este necesar un semnal NOU si LIVE inca activ. Cont REAL blocat. Brokerul poate refuza mizele mari; MIN/MAX optic ramane PREVIEW, nu trigger automat. Necesita testare pe Motorola. Nicio garantie de profit."
