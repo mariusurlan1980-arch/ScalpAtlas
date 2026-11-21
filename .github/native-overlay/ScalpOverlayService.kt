@@ -939,6 +939,53 @@ class ScalpOverlayService : Service() {
     // will still perform its mandatory SET_TEXT and exact readback.
     if(TouchTestService.readVisibleDemoPair()!=pair ||
         TouchTestService.readVerifiedDemoPayoutForPair(pair)!=92)return
+    // 584: A stored CONFIRMED base/recovery stake has pendingStake=0.
+    // The old flow below edits only nonzero pending stakes, so it never
+    // rearmed a consumed DEMO session that was already correctly funded.
+    // Independently read the CURRENT exact broker amount/payout; rebind
+    // ONLY the existing confirmed plan level, then require the unchanged
+    // permitsFreshDemoOrder guard. This is read-only (no BUY/SELL).
+    val confirmedQuote584=try {
+      TouchTestService.readBrokerDemoOrder476(pair)
+    } catch (_:Throwable) { null }
+    if(confirmedQuote584!=null && confirmedQuote584.second==92) {
+      val currentAmount584=confirmedQuote584.first
+      if(currentAmount584==109L)
+        demoAutoStakePlan565.rebindVerifiedBasePair(key,pair)
+      else
+        demoAutoStakePlan565.rebindConfirmedRecoveryPair584(
+          key,pair,currentAmount584)
+      val alreadyAuthorized584=
+        demoAutoStakePlan565.permitsFreshDemoOrder(key,pair,currentAmount584)
+      if(alreadyAuthorized584) {
+        // Never advance the entry-cycle timestamp on every monitor tick:
+        // a new SHOCK needs time to develop after this single rearm.
+        if(!autoDemoSessionRequested || autoDemoSessionConsumed) {
+          val mayResume584=robotArmedContinuously513 &&
+            autoDemoSessionEndAt>nowElapsed &&
+            !realAccountSafetyStop517 &&
+            !getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
+              .getBoolean("attempted",false) &&
+            !getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
+              .getBoolean("attempted",false) &&
+            tradePositionGate.state()==TradePositionGate.State.READY
+          if(mayResume584) {
+            autoDemoSessionRequested=true
+            autoDemoSessionConsumed=false
+            autoDemoArmed=false
+            autoDemoMarket=null
+            autoDemoLockedAt=lockedAt
+            autoDemoEntryCycleStartedAt=System.currentTimeMillis()
+            autoDemoLastPreflightAt=0L
+            autoDemoLastPreflightReason=
+              "584 • MIZĂ BROKER CONFIRMATĂ • SEMNAL ȘOC NOU"
+            touchProbeStatus?.text=
+              "584 • QT DEMO • MIZĂ CONFIRMATĂ • REARMAT"
+          }
+        }
+        return
+      }
+    }
     var proposal=demoAutoStakePlan565.pending(key,pair)
     if(proposal.stakeCents==null) {
       // 583: a verified $1.09 broker quote is enough to rebind the base
