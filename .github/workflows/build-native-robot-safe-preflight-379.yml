@@ -1805,7 +1805,7 @@ jobs:
           grep -Fq 'val savedOldSell = !oldSellAttempt' "$O"
           grep -Fq 'oldShockAttempt && !savedReconciled437 -> false' "$O"
           grep -Fq 'oldShockAttempt -> getSharedPreferences(' "$O"
-          grep -Fq 'autoDemoSessionRequested = !pendingReceipt429' "$O"
+          grep -Fq 'val normalRearm581 = !pendingReceipt429 &&' "$O"
           grep -Fq 'autoDemoSessionRequested = true' "$O"
           grep -Fq 'autoDemoSessionConsumed = false' "$O"
           grep -Fq 'val matchingAttempt437 = pendingReceipt429 &&' "$O"
