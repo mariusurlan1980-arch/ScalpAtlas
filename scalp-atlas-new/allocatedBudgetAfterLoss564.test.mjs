@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import {
  USER_PLANNED_DEMO_BUDGET_CENTS_564,
  BROKER_EDITOR_MAX_STAKE_CENTS_564,
@@ -82,4 +83,17 @@ test('no profit guarantee regardless of planning budget',()=>{
  const s=planStakeAfterDemoLoss564(cfg(1));
  assert.equal(s.mayPlaceBrokerOrder,false);
  assert.equal(s.accountBalanceVerified,false);
+});
+
+test('staged Android editor also observes planned DEMO allocation and broker proof',()=>{
+ const kotlin=readFileSync(new URL('../.github/native-overlay/DemoLossStakeEditor563.kt',import.meta.url),'utf8');
+ const editor=readFileSync(new URL('../.github/native-overlay/DemoStakeEditor.kt',import.meta.url),'utf8');
+ assert.ok(kotlin.includes('ALLOCATED_DEMO_BUDGET_CENTS_564 = 157044L'));
+ assert.ok(kotlin.includes('accumulatedLosses + next > ALLOCATED_DEMO_BUDGET_CENTS_564'));
+ assert.ok(kotlin.includes('losses.size >= MAX_LOSSES_BEFORE_RISK_STOP'));
+ assert.ok(kotlin.includes('r.closedProofReadTwice'));
+ assert.ok(kotlin.includes('r.zeroOpenReadTwice'));
+ assert.ok(kotlin.includes('DemoStakeEditor.setExactDemoStake'));
+ assert.ok(editor.includes('SOLD DEMO INSUFICIENT'));
+ assert.ok(!kotlin.includes('pressVerifiedDemoStakeOnce429('));
 });
