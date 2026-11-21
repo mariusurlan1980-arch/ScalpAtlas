@@ -39,6 +39,6 @@ test('584: prior trade receipt and 92pct guards still required',()=>{
 });
 test('584: new Motorola build uses correct package and new regression',()=>{
  assert.match(flow,/versionCode'\]=585/);
- assert.match(flow,/ScalpAtlas-584-CONFIRMED-STAKE-G24\.apk/);
+ assert.match(flow,/ScalpAtlas-585-DEMO-MG-ROTATION-G24\.apk/);
  assert.match(flow,/test_584_confirmed_stake_rearm\.mjs/);
 });
