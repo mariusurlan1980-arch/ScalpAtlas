@@ -185,6 +185,32 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
       .commit()
   }
 
+  /**
+   * 577: Allow rotation among independently verified QT Demo FX pairs
+   * ONLY while the base $1.09 has been broker-confirmed and no loss
+   * recovery is active. This changes the permitted pair, NOT the stake.
+   *
+   * Caller MUST independently prove exact current pair, both 92% payouts,
+   * the $1.09 editable broker amount, account identity, no outstanding
+   * attempt and an empty position gate. This is not an order operation.
+   */
+  @Synchronized
+  fun rebindVerifiedBasePair(accountKey:String,newPair:String):Boolean {
+    if (!isEnabled() || isRiskStopped() ||
+        !accountKey.startsWith("QT_DEMO:") ||
+        accountKey != prefs.getString("accountKey",null) ||
+        newPair.isBlank() || newPair == "NEIDENTIFICAT" ||
+        prefs.getInt("losses",-1) != 0 ||
+        prefs.getLong("pendingStake",-1L) != 0L ||
+        prefs.getLong("confirmedStake",-1L) != 109L)
+      return false
+    if (newPair == prefs.getString("pair",null)) return true
+    return prefs.edit()
+      .putString("pair",newPair)
+      .putString("status","MIZĂ QT DEMO 1,09 USD • PERECHE CONFIRMATĂ")
+      .commit()
+  }
+
   @Synchronized
   fun permitsFreshDemoOrder(
     accountKey:String,pair:String,stakeCents:Long
