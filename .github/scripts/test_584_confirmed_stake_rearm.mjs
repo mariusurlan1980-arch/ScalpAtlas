@@ -38,7 +38,7 @@ test('584: prior trade receipt and 92pct guards still required',()=>{
  assert.match(service,/private const val CHART_ONLY_DEMO_462 = true/);
 });
 test('584: new Motorola build uses correct package and new regression',()=>{
- assert.match(flow,/versionCode'\]=586/);
+ assert.match(flow,/versionCode'\]=587/);
  assert.match(flow,/ScalpAtlas-586-QUOTE-DIAG-G24\.apk/);
  assert.match(flow,/test_584_confirmed_stake_rearm\.mjs/);
 });
