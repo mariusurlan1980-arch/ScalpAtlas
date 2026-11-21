@@ -29,7 +29,7 @@ test('selector and trade/history blockers remain intact until verified chart',()
     'tradePositionGate.state() != TradePositionGate.State.READY',
     'TouchTestService.ready()', 'TouchTestService.demoFxAccountInForeground()',
     'lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")',
-    'getBoolean("attempted", false)','pairReady(System.currentTimeMillis())',
+    'getBoolean("attempted", false)','pairReady(nowPair572)',
     'TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92',
     'demoAutoStakePlan565.enableFromVerifiedDemo("QT_DEMO:" + pkg, pair)'
   ]) assert.ok(guard.includes(phrase),phrase);
