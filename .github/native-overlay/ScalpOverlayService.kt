@@ -938,15 +938,38 @@ class ScalpOverlayService : Service() {
     // failed preflight. Retry on the next monitor frame; moving the panel
     // alone cannot grant a new order, pair rebind or session rearm.
     if(liftOverlayOffDemoOrderButtons557()) {
-      autoDemoLastPreflightReason="586 • PANOU MUTAT • REVERIFIC SUMĂ/PAYOUT"
+      autoDemoLastPreflightReason="587 • PANOU MUTAT • RECITIRE BROKER"
+      // 587: Schedule a single same-pair read after Android has redrawn
+      // SELL. No gesture and no auto-order are dispatched by this callback.
+      // The existing complete QT DEMO, capture, order and stake guards
+      // in maybeApplyVerifiedDemoStake565 are checked again from scratch.
+      after(1_500L) {
+        if(!shuttingDown && !fxRotationNavigating && mediaProjection!=null &&
+            currentPair(System.currentTimeMillis())==pair)
+          maybeApplyVerifiedDemoStake565(
+            android.os.SystemClock.elapsedRealtime())
+      }
       return
     }
-    // 581: require a fresh, independently identified pair and BOTH physical
-    // 92% buttons before moving a PENDING (not yet edited) recovery stake.
-    // This never changes the loss count or the amount. The native editor
-    // will still perform its mandatory SET_TEXT and exact readback.
-    if(TouchTestService.readVisibleDemoPair()!=pair ||
-        TouchTestService.readVerifiedDemoPayoutForPair(pair)!=92)return
+    // 587: Report the actual failed broker evidence instead of leaving
+    // "PANOU MUTAT" as a stale reason for the entire rotating session.
+    // These reads are diagnostic only and cannot alter an order or MG.
+    val visiblePair587=try {
+      TouchTestService.readVisibleDemoPair()
+    } catch (_:Throwable) { null }
+    if(visiblePair587!=pair) {
+      autoDemoLastPreflightReason=if(visiblePair587==null)
+        "587 • ANTET QT DEMO/FX NECITIT"
+      else "587 • CER " + pair.take(12) + " • VĂD " + visiblePair587.take(12)
+      return
+    }
+    val payout587=try {
+      TouchTestService.readVerifiedDemoPayoutForPair(pair)
+    } catch (_:Throwable) { null }
+    if(payout587!=92) {
+      autoDemoLastPreflightReason="587 • PAYOUT BUY/SELL 92% NECONFIRMAT"
+      return
+    }
     // 584: A stored CONFIRMED base/recovery stake has pendingStake=0.
     // The old flow below edits only nonzero pending stakes, so it never
     // rearmed a consumed DEMO session that was already correctly funded.
@@ -956,6 +979,14 @@ class ScalpOverlayService : Service() {
     val confirmedQuote584=try {
       TouchTestService.readBrokerDemoOrder476(pair)
     } catch (_:Throwable) { null }
+    if(confirmedQuote584==null) {
+      val brokerReason587=try {
+        TouchTestService.inspectBrokerDemoOrder488(
+          pair,currentOverlayBounds488())
+      } catch (_:Throwable) { "BLOCAT: CITIRE BROKER ANDROID" }
+      autoDemoLastPreflightReason=
+        ("587 • " + brokerReason587.removePrefix("BLOCAT: ")).take(90)
+    }
     if(confirmedQuote584!=null && confirmedQuote584.second==92) {
       val currentAmount584=confirmedQuote584.first
       if(currentAmount584==109L)
@@ -1006,11 +1037,19 @@ class ScalpOverlayService : Service() {
         proposal=demoAutoStakePlan565.pending(key,pair)
       // After a verified LOSS, keep the separate 581 guard and readback.
       if(proposal.stakeCents==null) {
-        if(!demoAutoStakePlan565.rebindPendingRecoveryPair581(key,pair))return
+        if(!demoAutoStakePlan565.rebindPendingRecoveryPair581(key,pair)) {
+          autoDemoLastPreflightReason="587 • " +
+            demoAutoStakePlan565.preflightReason583(
+              key,pair,confirmedQuote584?.first).take(74)
+          return
+        }
         proposal=demoAutoStakePlan565.pending(key,pair)
       }
     }
-    val amount=proposal.stakeCents ?: return
+    val amount=proposal.stakeCents ?: run {
+      autoDemoLastPreflightReason="587 • " + proposal.reason.take(72)
+      return
+    }
     // 577: confirm a broker amount ALREADY set to the exact planned stake
     // without touching the edit field. OFF->ON previously consumed LIVE and
     // then depended on an unnecessary SET_TEXT, often leaving it stranded.
