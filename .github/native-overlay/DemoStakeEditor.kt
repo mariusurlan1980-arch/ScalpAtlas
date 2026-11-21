@@ -62,6 +62,30 @@ object DemoStakeEditor {
     return centsOf(normalized)
   }
 
+  /**
+   * 579: shared STRICT parser for a balance from the independently proven
+   * QT Demo header tile. The order preflight had a second parser which
+   * rejected 1,572.68 and 1.572,68, silently blocking BUY/SELL even with
+   * an already-confirmed 1.09 stake. Never accept a numeric suffix alone.
+   *
+   * Callers must independently verify QT Demo (and no QT Real), the
+   * bounded account header tile, and a unique positive USD balance.
+   * This function does not authorize a broker gesture.
+   */
+  internal fun demoBalanceFromVerifiedHeader579(raw: String): Long? {
+    val compact = raw.trim().replace(Regex("""\\s+"""), " ")
+    // Accept the literal account label only at the BEGINNING, not embedded
+    // elsewhere in a price, chart label, or unrelated user-visible text.
+    val withoutHeader = compact.replace(
+      Regex("""(?i)^QT\\s+Demo\\b\\s*"""), ""
+    )
+    val numeric = withoutHeader
+      .replace(Regex("""(?i)^(?:USD\\s*|\\$\\s*)"""), "")
+      .replace(Regex("""(?i)\\s*(?:USD|\\$)$"""), "")
+      .trim()
+    return brokerBalanceCents567(numeric)
+  }
+
   private val brokerBalanceToken567 = Regex(
     """(?<![\d.,])(?:\d{1,3}(?:,\d{3})+\.\d{2}|\d{1,3}(?:\.\d{3})+,\d{2}|\d{1,5}[.,]\d{2})(?![\d.,])"""
   )
@@ -148,7 +172,14 @@ object DemoStakeEditor {
   fun readRotationPayout(svc: AccessibilityService, realAccount: Boolean = false): Int? {
     val chart = readChart(svc, realAccount).first ?: return null
     val payout = readChartPayout(chart).first ?: return null
-    return payout.takeIf { svc.rootInActiveWindow == chart.root }
+    // 579: AccessibilityService may return a FRESH wrapper object for the
+    // same active QT Demo window; object equality rejected valid FX quotes.
+    // Use stable package identity, with the caller's pair rechecked both
+    // BEFORE and AFTER this read. Account Demo/Real and BUY/SELL payout
+    // remain independently validated by readChart/readChartPayout.
+    return payout.takeIf {
+      svc.rootInActiveWindow?.packageName?.toString() == chart.pkg
+    }
   }
 
   private fun inspect(svc: AccessibilityService): Pair<Screen?, String> {
