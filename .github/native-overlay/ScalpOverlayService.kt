@@ -941,8 +941,19 @@ class ScalpOverlayService : Service() {
         TouchTestService.readVerifiedDemoPayoutForPair(pair)!=92)return
     var proposal=demoAutoStakePlan565.pending(key,pair)
     if(proposal.stakeCents==null) {
-      if(!demoAutoStakePlan565.rebindPendingRecoveryPair581(key,pair))return
-      proposal=demoAutoStakePlan565.pending(key,pair)
+      // 583: a verified $1.09 broker quote is enough to rebind the base
+      // stake plan to this NEW pair, not enough to authorize BUY/SELL.
+      val baseQuote583=try {
+        TouchTestService.readBrokerDemoOrder476(pair)==(109L to 92)
+      } catch (_:Throwable) { false }
+      if(baseQuote583 &&
+          demoAutoStakePlan565.rebindVerifiedBasePair(key,pair))
+        proposal=demoAutoStakePlan565.pending(key,pair)
+      // After a verified LOSS, keep the separate 581 guard and readback.
+      if(proposal.stakeCents==null) {
+        if(!demoAutoStakePlan565.rebindPendingRecoveryPair581(key,pair))return
+        proposal=demoAutoStakePlan565.pending(key,pair)
+      }
     }
     val amount=proposal.stakeCents ?: return
     // 577: confirm a broker amount ALREADY set to the exact planned stake
@@ -5143,7 +5154,9 @@ class ScalpOverlayService : Service() {
                 if (order565==null || order565.second!=92 || pkg565==null ||
                     !demoAutoStakePlan565.permitsFreshDemoOrder(
                       "QT_DEMO:" + pkg565,pair,order565.first))
-                  "BLOCAT: MIZĂ 565 NECONFIRMATĂ • FĂRĂ ORDIN"
+                  "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
+                     if(pkg565==null)null else "QT_DEMO:" + pkg565,
+                     pair,order565?.first)
                 else if (order565 != null) "PREGĂTIT AUTO DEMO"
                 else "BLOCAT: MIZĂ / PAYOUT / TIMP QT DEMO NECONFIRMATE"
               } else TouchTestService.preflightOneDollarDemoOrder(pair)
@@ -7889,7 +7902,9 @@ class ScalpOverlayService : Service() {
                   if (order565 == null || package565 == null ||
                       !demoAutoStakePlan565.permitsFreshDemoOrder(
                         "QT_DEMO:" + package565,pair,order565.first))
-                    "BLOCAT: MIZĂ AUTO 565 NECONFIRMATĂ"
+                    "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
+                      if(package565==null)null else "QT_DEMO:" + package565,
+                      pair,order565?.first)
                   else TouchTestService.inspectBrokerDemoOrder488(
                     pair,currentOverlayBounds488())
                 }
@@ -8060,7 +8075,9 @@ class ScalpOverlayService : Service() {
               CHART_ONLY_DEMO_462 && demoAutoStakePlan565.isEnabled() &&
                 !demoAutoStakePlan565.permitsFreshDemoOrder(
                   "QT_DEMO:" + package429,tradePair429,stake429!!) ->
-                "BLOCAT: MIZĂ AUTO 565 / PERECHE NECONFIRMATĂ"
+                "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
+                  if(package429==null)null else "QT_DEMO:" + package429,
+                  tradePair429,stake429)
               CHART_ONLY_DEMO_462 &&
                 !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
                 "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"
