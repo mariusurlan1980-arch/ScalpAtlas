@@ -69,11 +69,12 @@ test('580 quote is from full current Qt Demo, visible pair, both broker buttons,
 });
 
 test('580 rotating base pair requires exact 1.09 quote + independent 92 and no pending order',()=>{
- const start=rotation.indexOf('val currentBase577=try {');
+ const start=rotation.indexOf('val verifiedQuote585=try {');
  const end=rotation.indexOf('demoAutoStakePlan565.rebindVerifiedBasePair(',start);
  const part=rotation.slice(start,end);
- assert.ok(part.includes('TouchTestService.readBrokerDemoOrder476(pair) == (109L to 92)'));
- assert.ok(part.includes('TouchTestService.readVerifiedDemoPayoutForPair(pair) == 92'));
+ assert.ok(part.includes('TouchTestService.readBrokerDemoOrder476(pair)'));
+ assert.ok(part.includes('TouchTestService.readVerifiedDemoPayoutForPair(pair)==92'));
+ assert.ok(part.includes('verifiedQuote585.first==109L'));
  const pre=rotation.slice(rotation.indexOf('lastFxRotationMismatch548 = "PERECHE + PAYOUT'),end);
  for(const piece of [
   '!realAccountSafetyStop517','!accountRecheckPending',
