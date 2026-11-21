@@ -2462,7 +2462,27 @@ class ScalpOverlayService : Service() {
                                   receiptIndependentlyVerified = true
                                 )
                               else false
-                              if (ledgerUpdated429) {
+                              if (ledgerUpdated429 &&
+                                  (demoAutoStakePlan565.isEnabled() ||
+                                   demoAutoStakePlan565.isRiskStopped())) {
+                                // 581: the early CLOSED UUID proves an
+                                // outcome, but NOT two independent EMPTY OPEN
+                                // reads. Keep the attempt flag until the 437
+                                // matching CLOSED + 0 OPEN 2/2 settlement
+                                // applies the MG ladder durably. Navigate to
+                                // OPEN for read-only proof, never BUY/SELL.
+                                autoDemoSessionRequested = false
+                                autoDemoSessionConsumed = true
+                                autoDemoArmed = false
+                                autoDemoMarket = null
+                                touchProbeStatus?.text =
+                                  "581 • CLOSED CITIT • AȘTEPT 0 DESCHISE 2/2 • MG ÎN PAUZĂ"
+                                if (expectedPackage429 != null)
+                                  attemptBrokerOpenTabWithVisualProof455(
+                                    verifiedDemoReview, expectedPackage429,
+                                    android.os.SystemClock.elapsedRealtime()
+                                  )
+                              } else if (ledgerUpdated429) {
                                 // Persist exactly once; a restart must never
                                 // replay the last physical Android order.
                                 val cleared429 = pendingPrefs429.edit()
@@ -2504,12 +2524,26 @@ class ScalpOverlayService : Service() {
                                 // history review even when the old order is
                                 // unresolved. Back is navigation only; the
                                 // persistent unknown-ID lock stays intact.
-                                returnToChartAfterReview458(
-                                  true,
-                                  historyPageVisible433 &&
-                                    System.currentTimeMillis() - historyPageLastSeen433 in
-                                      0L..5_000L
-                                )
+                                // 581: do not leave the history until the
+                                // MG series has its TWO empty-Open proofs.
+                                // The prior attempted marker remains durable.
+                                if (!demoAutoStakePlan565.isEnabled() &&
+                                    !demoAutoStakePlan565.isRiskStopped()) {
+                                  returnToChartAfterReview458(
+                                    true,
+                                    historyPageVisible433 &&
+                                      System.currentTimeMillis() - historyPageLastSeen433 in
+                                        0L..5_000L
+                                  )
+                                } else if (getSharedPreferences(
+                                    autoShockAttemptPrefs, Context.MODE_PRIVATE)
+                                      .getBoolean("attempted",false) &&
+                                    expectedPackage429!=null) {
+                                  attemptBrokerOpenTabWithVisualProof455(
+                                    true, expectedPackage429,
+                                    android.os.SystemClock.elapsedRealtime()
+                                  )
+                                }
                               }
                               closedHistoryInspectionInProgress = false
                             }, 800L)
