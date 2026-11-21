@@ -7,16 +7,16 @@ import android.content.SharedPreferences
  * results. This class NEVER places BUY/SELL or infers settlement from timer,
  * screen color, a click, or an empty Open tab.
  *
- * Fixed strategy: first stake $1.09, then $2.28, then $4.75 after losses;
- * three consecutive LOSS results trigger a persisted STOP. The user's
- * $1570.44 is a planned ceiling, NOT a broker-confirmed balance.
+ * Ten-level ladder: after every verified LOSS propose the next stake;
+ * after a verified WIN reset to $1.09. Stop after TEN losses OR before
+ * any stake outside the budget. $1,500 is planned, NOT broker-verified.
  */
 internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
   companion object {
-    const val PLANNED_BUDGET_CENTS = 157044L
+    const val PLANNED_BUDGET_CENTS = 150000L
     const val PAYOUT_EXACT = 92
-    const val STOP_AFTER_LOSSES = 3
-    const val EDITOR_MAX_STAKE_CENTS = 3964L
+    const val STOP_AFTER_LOSSES = 10
+    const val EDITOR_MAX_STAKE_CENTS = 81950L
     private val LADDER = longArrayOf(109L,228L,475L,992L,2070L,
       4320L,9016L,18816L,39268L,81950L)
   }
@@ -42,6 +42,9 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
     if(storedPair!=null && storedPair!=pair && losses>0)return false
     val pending=prefs.getLong("pendingStake",0L)
     val expected=LADDER[losses]
+    val cumLoss=(0 until losses).sumOf { LADDER[it] }
+    if (cumLoss + expected > PLANNED_BUDGET_CENTS ||
+        expected > EDITOR_MAX_STAKE_CENTS) return false
     if(pending!=0L && pending!=expected)return false
     return prefs.edit()
       .putBoolean("enabled",true)
@@ -112,8 +115,8 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
           .putLong("pendingStake",0L)
           .putBoolean("riskStopped",true)
           .putBoolean("enabled",false)
-          .putString("status","STOP • 3 LOSS DEMO • FĂRĂ ORDIN")
-        return if(edit.commit())"STOP • 3 LOSS CONFIRMATE" else "EROARE PERSISTENȚĂ • BLOCARE"
+          .putString("status","STOP • 10 LOSS DEMO • FĂRĂ ORDIN")
+        return if(edit.commit())"STOP • 10 LOSS CONFIRMATE" else "EROARE PERSISTENȚĂ • BLOCARE"
       }
       val next=LADDER[nextLosses]
       if(cumLoss+next>PLANNED_BUDGET_CENTS ||
@@ -152,8 +155,11 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
       return Proposal(null,null,"ALT CONT/PERECHE • FĂRĂ EDITARE")
     val losses=prefs.getInt("losses",0)
     val stake=prefs.getLong("pendingStake",0L)
+    val cumLoss=(0 until losses.coerceIn(0, STOP_AFTER_LOSSES))
+      .sumOf { LADDER[it] }
     if(losses !in 0 until STOP_AFTER_LOSSES ||
         stake==0L || stake!=LADDER[losses] ||
+        cumLoss+stake>PLANNED_BUDGET_CENTS ||
         stake>EDITOR_MAX_STAKE_CENTS)
       return Proposal(null,null,"NIMIC DE EDITAT SAU MIZĂ BLOCATĂ")
     return Proposal(stake,pair,"AȘTEAPTĂ SET_TEXT ȘI RECITIRE BROKER")
@@ -162,7 +168,11 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
   @Synchronized
   fun confirmEdited(accountKey:String, pair:String,
     stakeCents:Long, readBackConfirmed:Boolean):Boolean {
+    val losses=prefs.getInt("losses",0)
+    val cumLoss=if(losses in 0 until STOP_AFTER_LOSSES)
+      (0 until losses).sumOf { LADDER[it] } else Long.MAX_VALUE
     if(!readBackConfirmed || !isEnabled() ||
+        cumLoss+stakeCents>PLANNED_BUDGET_CENTS ||
         accountKey!=prefs.getString("accountKey",null) ||
         pair!=prefs.getString("pair",null) ||
         prefs.getLong("pendingStake",0L)!=stakeCents ||
@@ -184,7 +194,10 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
         pair!=prefs.getString("pair",null) ||
         stakeCents!=prefs.getLong("confirmedStake",-1L))
       return false
-    return stakeCents==LADDER[prefs.getInt("losses",0)]
+    val losses=prefs.getInt("losses",0)
+    return losses in 0 until STOP_AFTER_LOSSES &&
+      (0 until losses).sumOf { LADDER[it] } + stakeCents <= PLANNED_BUDGET_CENTS &&
+      stakeCents==LADDER[losses]
   }
 
   @Synchronized
