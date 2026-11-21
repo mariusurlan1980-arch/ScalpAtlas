@@ -88,3 +88,14 @@ test('never emits buy/sell instructions',()=>{
  assert.ok(!Object.hasOwn(s,'order'));assert.ok(!Object.hasOwn(s,'side'));
  assert.equal(s.analyticsOnly,true);
 });
+
+test('a previous three-loss safety stop remains in force after subsequent recovery',()=>{
+ const r=[
+  receipt(0,'LOSS'),receipt(1,'LOSS'),receipt(2,'LOSS'),
+  receipt(3,'WIN'),receipt(4,'WIN'),receipt(5,'WIN'),receipt(6,'WIN'),
+ ];
+ const summary=analyzeProfitDemo561(r);
+ assert.equal(summary.netCents,68);
+ assert.equal(summary.currentLossStreak,0);
+ assert.equal(summary.state,'PAUZA_RISC');
+});
