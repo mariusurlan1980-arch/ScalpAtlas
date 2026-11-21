@@ -67,8 +67,9 @@ test('577 FX rotation cannot rebind a pair while there is an attempt, open order
   'tradePositionGate.state() == TradePositionGate.State.READY',
   'demoRecoveryLedger.verifiedOpenPositionId429() == null',
   'getBoolean("attempted",false)',
-  'TouchTestService.readVerifiedDemoPayoutForPair(pair) == 92',
-  'TouchTestService.readBrokerDemoOrder476(pair) == (109L to 92)',
+  'TouchTestService.readVerifiedDemoPayoutForPair(pair)==92',
+  'TouchTestService.readBrokerDemoOrder476(pair)',
+  'verifiedQuote585.first==109L',
   'activeDemoExecutorPackageForReview()'
  ])assert.ok(context.includes(token),token);
  assert.ok(!context.includes('pressVerifiedDemoStakeOnce429'));
