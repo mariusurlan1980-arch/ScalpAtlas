@@ -3365,8 +3365,11 @@ class ScalpOverlayService : Service() {
       text = "+"
       textSize = 22f
       gravity = Gravity.CENTER
-      setTextColor(Color.rgb(54, 92, 121))
-      contentDescription = "Extinde Scalp Atlas"
+      setTypeface(typeface, android.graphics.Typeface.BOLD)
+      setTextColor(Color.rgb(27, 108, 167))
+      isClickable = true
+      isFocusable = true
+      contentDescription = "Extinde Scalp Atlas și afișează butonul MIZĂ AUTO DEMO"
     }
     header.addView(minimizeToggle, LinearLayout.LayoutParams(dp(28), dp(28)))
     root.addView(header)
@@ -5025,10 +5028,15 @@ class ScalpOverlayService : Service() {
         // Expiry, user OFF, pair change, lost service or confirmed SHOCK
         // still disarm as before.
       }
+      // 568: the opt-in MIZĂ AUTO DEMO row is only in expanded mode.
+      // The old hidden "+" made it impossible for users to authorize the
+      // 1.09 USD stake, leaving every new order PREFLIGHT BLOCAT.
+      // Keep a visible, dedicated toggle; X only stops LIVE, brain only moves.
       minimizeToggle.text = if (minimized) "+" else "−"
-      minimizeToggle.visibility = View.GONE // One-button pilot: no extra UI controls.
+      minimizeToggle.visibility = View.VISIBLE
       minimizeToggle.contentDescription = if (minimized)
-        "Extinde panoul Scalp Atlas" else "Micșorează panoul Scalp Atlas"
+        "Extinde panoul Scalp Atlas pentru MIZĂ AUTO DEMO" else
+        "Micșorează panoul Scalp Atlas"
       val window = overlayWindowParams ?: return
       window.width = dp(if (minimized) 144 else 224)
       val metrics = resources.displayMetrics
