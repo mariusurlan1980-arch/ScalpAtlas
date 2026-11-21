@@ -2205,7 +2205,26 @@ class ScalpOverlayService : Service() {
                     )
                   }
                 } else false
-                val savedReconciled437 = reconciled437 &&
+                // 581: the active CLOSED detail/EMPTY OPEN 2/2 route must
+                // advance the opt-in MG plan too. The previous build only
+                // updated it in passive (463) review. Persist WIN/LOSS/DRAW
+                // before retiring the one-shot Android attempt marker.
+                val mgWasEnabled581=demoAutoStakePlan565.isEnabled()
+                val mgOutcome581=if(reconciled437 && matchingAttempt437 &&
+                    closedProof437!=null && mgWasEnabled581)
+                  demoAutoStakePlan565.onVerifiedClosed(
+                    accountKey="QT_DEMO:" + expectedPackage429,
+                    pair=closedProof437.pair,
+                    positionId=closedProof437.positionId,
+                    stakeCents=closedProof437.stakeCents,
+                    payoutPercent=closedProof437.payoutPercent,
+                    netProfitCents=closedProof437.netProfitCents,
+                    matchingOpenClosedAndZeroOpen=true
+                  )
+                else null
+                val mgSaved581= !mgWasEnabled581 ||
+                  (matchingAttempt437 && martingaleResultDurable581(mgOutcome581))
+                val savedReconciled437 = reconciled437 && mgSaved581 &&
                   pendingPrefs429.edit().putBoolean("attempted", false)
                     .remove("expectedPair429").remove("expectedPackage429")
                     .remove("expectedStakeCents429").remove("expectedPayout429")
@@ -2233,6 +2252,8 @@ class ScalpOverlayService : Service() {
                 // This fallback does NOT call onVerifiedDemoClosed and
                 // does NOT modify the recovery ledger.
                 val unknownBaseEligible454 = !savedReconciled437 &&
+                  !demoAutoStakePlan565.isEnabled() &&
+                  !demoAutoStakePlan565.isRiskStopped() &&
                   verifiedClosedDetail437 == null &&
                   (oldShockAttempt || oldSellAttempt) &&
                   demoRecoveryLedger.verifiedOpenPositionId429() == null &&
@@ -2285,9 +2306,16 @@ class ScalpOverlayService : Service() {
                   else -> true
                 }
                 if (savedOldSell && savedOldShock) {
-                  autoDemoSessionRequested = !pendingReceipt429
-                  autoDemoSessionConsumed = pendingReceipt429
-                  autoDemoEntryCycleStartedAt = if (!pendingReceipt429)
+                  // 581: never arm a next gesture directly from settlement
+                  // with MG enabled. The pending ladder stake must first be
+                  // entered, re-read, and accepted by independent QT Demo
+                  // preflight on the current pair. 10 LOSS stops completely.
+                  val normalRearm581 = !pendingReceipt429 &&
+                    !mgWasEnabled581 && !demoAutoStakePlan565.isEnabled() &&
+                    !demoAutoStakePlan565.isRiskStopped()
+                  autoDemoSessionRequested = normalRearm581
+                  autoDemoSessionConsumed = !normalRearm581
+                  autoDemoEntryCycleStartedAt = if (normalRearm581)
                     System.currentTimeMillis() else 0L
                   autoDemoArmed = false
                   autoDemoMarket = null
@@ -2298,6 +2326,9 @@ class ScalpOverlayService : Service() {
                   autoDemoLastPreflightReason =
                     "0 POZIȚII DEMO CONFIRMATE • REVIN LA GRAFIC"
                   touchProbeStatus?.text = when {
+                    savedReconciled437 && mgWasEnabled581 ->
+                      "581 • " + (mgOutcome581 ?: "MIZĂ MG NECONFIRMATĂ").take(75) +
+                        " • AȘTEPT SUMĂ BROKER"
                     unknownBaseCleared454 ->
                       "✅ 0 DESCHISE 2/2 • DEMO 1 USD REACTIVAT • FĂRĂ MG RETROACTIV"
                     savedReconciled437 && alreadySettled444 ->
