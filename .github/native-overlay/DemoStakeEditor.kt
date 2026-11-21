@@ -15,7 +15,7 @@ import java.util.Locale
  * Aborts on QT Real, unknown broker, uncertain amount, payout, pair or balance.
  * 566: accepts larger DEMO-only stake amounts up to $819.50, but requires
  * fresh broker UI payout=92%, QT DEMO balance >= stake, and exact readback.
- * A higher editor limit does NOT bypass the planned $1500 risk ledger.
+ * A higher editor limit does NOT bypass the planned $1572.44 risk ledger.
  * No coordinates are tapped: ACTION_SET_TEXT targets a verified editable node.
  */
 object DemoStakeEditor {
@@ -41,6 +41,30 @@ object DemoStakeEditor {
     }
     return whole * 100 + two
   }
+
+  /**
+   * 567: Pocket Option may show QT DEMO USD 1,572.68 (US thousands), while
+   * some locales show 1.572,68. Parse the WHOLE amount, never a suffix
+   * like 572.68 from a 1,572.68 balance. All ambiguous inputs fail closed.
+   * This is used only for the HEADER BALANCE, not the editable stake.
+   */
+  private fun brokerBalanceCents567(raw: String): Long? {
+    val candidate = raw.trim()
+    val normalized = when {
+      Regex("""^\\d{1,3}(?:,\\d{3})+\\.\\d{2}$""").matches(candidate) ->
+        candidate.replace(",", "")
+      Regex("""^\\d{1,3}(?:\\.\\d{3})+,\\d{2}$""").matches(candidate) ->
+        candidate.replace(".", "").replace(',', '.')
+      Regex("""^\\d{1,5}[.,]\\d{2}$""").matches(candidate) ->
+        candidate.replace(',', '.')
+      else -> return null
+    }
+    return centsOf(normalized)
+  }
+
+  private val brokerBalanceToken567 = Regex(
+    """(?<![\\d.,])(?:\\d{1,3}(?:,\\d{3})+\\.\\d{2}|\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d{1,5}[.,]\\d{2})(?![\\d.,])"""
+  )
 
   private data class Chart(
     val root: AccessibilityNodeInfo, val pkg: String, val w: Int, val h: Int,
@@ -166,9 +190,10 @@ object DemoStakeEditor {
     val balance = labels.filter {
       it.rect.centerX() in (w * .48f).toInt()..(w * .86f).toInt() &&
       it.rect.centerY() < h * .17f
-    }.mapNotNull {
-      Regex("""(?<!\d)(\d{1,5}[.,]\d{2})(?!\d)""").find(it.value)
-        ?.groupValues?.getOrNull(1)?.let(::centsOf)
+    }.flatMap { item ->
+      brokerBalanceToken567.findAll(item.value).mapNotNull {
+        brokerBalanceCents567(it.value)
+      }.toList()
     }.distinct()
     if (balance.size != 1)
       return null to "BLOCAT: SOLD QT DEMO NECONFIRMAT"
