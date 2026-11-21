@@ -1,0 +1,22 @@
+name: Scalp Atlas 562 Martingale bankroll simulator DEMO
+on:
+  push:
+    branches: [experiment/scalpatlas-562-martingale-ten-demo-simulator]
+    paths:
+      - scalp-atlas-new/martingaleTenDemo562.ts
+      - scalp-atlas-new/martingaleTenDemo562.test.mjs
+      - .github/workflows/scalp-atlas-562-martingale-demo.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulator-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify 10-level Martingale simulation and broker-balance safeguards
+        working-directory: scalp-atlas-new
+        run: node --experimental-strip-types --test martingaleTenDemo562.test.mjs
