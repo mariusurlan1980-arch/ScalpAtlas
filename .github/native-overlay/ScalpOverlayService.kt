@@ -360,6 +360,9 @@ class ScalpOverlayService : Service() {
   private var pendingStakeOptInAt571 = 0L
   // 572: diagnostic ONLY. Never use a displayed reason as order permission.
   private var stakeOptInReason572 = "AȘTEPT GRAFIC QT DEMO"
+  // 574: show the LAST failed opt-in reason even after VERIFIC becomes OFF.
+  // Diagnostic state cannot arm BUY/SELL or alter broker validation.
+  private var stakeOptInLastFailureAt574 = 0L
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
   private var lastShockOrderStatus: String? = null
@@ -813,6 +816,7 @@ class ScalpOverlayService : Service() {
       pendingStakeOptIn571 = false
       pendingStakeOptInAt571 = 0L
       stakeOptInReason572 = message
+      stakeOptInLastFailureAt574 = nowElapsed
       autoStakeToggle565?.text = "MIZĂ AUTO DEMO • OFF"
       touchProbeStatus?.text = message
     }
@@ -879,6 +883,7 @@ class ScalpOverlayService : Service() {
     pendingStakeOptIn571 = false
     pendingStakeOptInAt571 = 0L
     stakeOptInReason572 = "572 • VERIFICAT • EDITARE MIZĂ"
+    stakeOptInLastFailureAt574 = 0L
     // Exactly as 565: retire the previous order session before any edit.
     // A new DEMO order still needs 1.09 readback and a fresh verified signal.
     autoDemoSessionRequested = false
@@ -4991,8 +4996,10 @@ class ScalpOverlayService : Service() {
         if (pendingStakeOptIn571) {
           pendingStakeOptIn571 = false
           pendingStakeOptInAt571 = 0L
+          stakeOptInReason572 = "574 • CERERE ANULATĂ"
+          stakeOptInLastFailureAt574 = android.os.SystemClock.elapsedRealtime()
           text = "MIZĂ AUTO DEMO • OFF"
-          probeStatus.text = "571 • CERERE ANULATĂ • FĂRĂ ORDIN"
+          probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
         } else if (demoAutoStakePlan565.isEnabled()) {
           demoAutoStakePlan565.disable()
           text = "MIZĂ AUTO DEMO • OFF"
@@ -5007,6 +5014,7 @@ class ScalpOverlayService : Service() {
           // a changing pair or touching any broker order control.
           pendingStakeOptIn571 = true
           pendingStakeOptInAt571 = android.os.SystemClock.elapsedRealtime()
+          stakeOptInLastFailureAt574 = 0L
           val requestAt572 = pendingStakeOptInAt571
           stakeOptInReason572 = "572 • AȘTEPT GRAFIC QT DEMO"
           text = "MIZĂ AUTO DEMO • VERIFIC"
@@ -5019,6 +5027,7 @@ class ScalpOverlayService : Service() {
               pendingStakeOptIn571 = false
               pendingStakeOptInAt571 = 0L
               stakeOptInReason572 = "572 • CERERE ON EXPIRATĂ"
+              stakeOptInLastFailureAt574 = android.os.SystemClock.elapsedRealtime()
               text = "MIZĂ AUTO DEMO • OFF"
               probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
             }
@@ -8150,6 +8159,9 @@ class ScalpOverlayService : Service() {
         realAccountSafetyStop517 -> "🤖 OPRIT • PORNEȘTE LIVE PE QT DEMO"
         accountRecheckPending -> "🤖 CONT ÎN VERIFICARE • ORDINE ÎN PAUZĂ"
         !TouchTestService.ready() -> "🤖 AȘTEPT ACCESIBILITATEA"
+        // 574: show the live opt-in blocker, not a stale generic "MIZĂ OFF"
+        // while the same visible toggle reads VERIFIC.
+        pendingStakeOptIn571 -> "🤖 MIZĂ VERIFIC • " + stakeOptInReason572.take(50)
         !demoAccountIdentified -> "🤖 CONT NECONFIRMAT • ORDINE ÎN PAUZĂ"
         fxRotationTradePaused516 ->
           "ARMAT · TRADE ACTIV"
@@ -8381,6 +8393,18 @@ class ScalpOverlayService : Service() {
           else -> "🤖 ARMAT • PREFLIGHT " + autoDemoLastPreflightReason.take(26)
         }
         touchProbeStatus?.text = state546 + "\n" + counts546 + "\n" + diagnostic556.take(92)
+      }
+      // 574: render this AFTER other frequent LIVE, rotation, broker-monitor
+      // diagnostics; otherwise they overwrite the precise reason from 572.
+      // No permission change: real/risk/position gates always remain active.
+      val optInFailureRecent574 = stakeOptInLastFailureAt574 > 0L &&
+        android.os.SystemClock.elapsedRealtime() - stakeOptInLastFailureAt574 in 0L..30_000L
+      if (!realAccountIdentified && !realAccountSafetyStop517 &&
+          !demoAutoStakePlan565.isRiskStopped() &&
+          (pendingStakeOptIn571 || optInFailureRecent574)) {
+        val status574 = if (pendingStakeOptIn571)
+          "MIZĂ AUTO • VERIFIC" else "MIZĂ AUTO • OFF"
+        touchProbeStatus?.text = status574 + "\n" + stakeOptInReason572.take(95)
       }
       captureStatusText?.text = scanStatus
       setLiveCameraDotActive(scanStatus == "LIVE")
