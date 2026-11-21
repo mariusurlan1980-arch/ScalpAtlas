@@ -51,11 +51,11 @@ object DemoStakeEditor {
   private fun brokerBalanceCents567(raw: String): Long? {
     val candidate = raw.trim()
     val normalized = when {
-      Regex("""^\\d{1,3}(?:,\\d{3})+\\.\\d{2}$""").matches(candidate) ->
+      Regex("""^\d{1,3}(?:,\d{3})+\.\d{2}$""").matches(candidate) ->
         candidate.replace(",", "")
-      Regex("""^\\d{1,3}(?:\\.\\d{3})+,\\d{2}$""").matches(candidate) ->
+      Regex("""^\d{1,3}(?:\.\d{3})+,\d{2}$""").matches(candidate) ->
         candidate.replace(".", "").replace(',', '.')
-      Regex("""^\\d{1,5}[.,]\\d{2}$""").matches(candidate) ->
+      Regex("""^\d{1,5}[.,]\d{2}$""").matches(candidate) ->
         candidate.replace(',', '.')
       else -> return null
     }
@@ -63,7 +63,7 @@ object DemoStakeEditor {
   }
 
   private val brokerBalanceToken567 = Regex(
-    """(?<![\\d.,])(?:\\d{1,3}(?:,\\d{3})+\\.\\d{2}|\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d{1,5}[.,]\\d{2})(?![\\d.,])"""
+    """(?<![\d.,])(?:\d{1,3}(?:,\d{3})+\.\d{2}|\d{1,3}(?:\.\d{3})+,\d{2}|\d{1,5}[.,]\d{2})(?![\d.,])"""
   )
 
   private data class Chart(
