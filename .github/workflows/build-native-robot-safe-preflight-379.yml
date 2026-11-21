@@ -24,6 +24,7 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
+      - '.github/scripts/test_568_expand_miza.mjs'
       - '.github/scripts/test_566_balance_risk.mjs'
       - '.github/scripts/test_567_start109_balance.mjs'
       - '.github/scripts/test_568_expand_miza.mjs'
