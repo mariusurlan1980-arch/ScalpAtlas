@@ -1826,6 +1826,10 @@ class ScalpOverlayService : Service() {
         "BLOCAT • MIZĂ AUTO DEMO OFF"
       autoDemoSessionConsumed && stakeStatus578.contains("AȘTEAPTĂ CONFIRMARE") ->
         "MIZĂ ON • SUMA BROKER NECONFIRMATĂ"
+      autoDemoSessionConsumed && fxRotationNavigating &&
+        gate578==TradePositionGate.State.READY &&
+        !previousShock578 && !previousSell578 ->
+        "MIZĂ ON • ROTAȚIE • AȘTEPT CONFIRMAREA PERECHII"
       autoDemoSessionConsumed ->
         "MIZĂ ON • SESIUNE NEARMATĂ • " + autoDemoLastPreflightReason.take(43)
       !autoDemoSessionRequested ->
@@ -4471,12 +4475,25 @@ class ScalpOverlayService : Service() {
           // QT Demo broker quote on the SAME live pair. A noneditable WebView
           // value must not prevent base-pair rotation. Broker code checks both
           // order buttons, exact amount, 5-min expiry and sufficient balance.
-          val currentBase577=try {
-            TouchTestService.readBrokerDemoOrder476(pair) == (109L to 92) &&
-              TouchTestService.readVerifiedDemoPayoutForPair(pair) == 92
-          } catch (_:Throwable) { false }
-          if(pkg577!=null && currentBase577) {
-            demoAutoStakePlan565.rebindVerifiedBasePair("QT_DEMO:"+pkg577,pair)
+          // 585: Previously only the base 1.09 USD plan followed the
+          // rotating pair. A CONFIRMED MG stake could remain tied to the
+          // previous pair, causing "PERECHE PLAN DIFERITĂ" on the next chart.
+          // Verify the current QT Demo pair, the displayed exact amount,
+          // both 92% buttons and the five-minute expiry before rebinding.
+          // Rebinding never resets the LOSS count or grants BUY/SELL.
+          val verifiedQuote585=try {
+            TouchTestService.readBrokerDemoOrder476(pair)
+              ?.takeIf { it.second==92 &&
+                TouchTestService.readVerifiedDemoPayoutForPair(pair)==92 }
+          } catch (_:Throwable) { null }
+          if(pkg577!=null && verifiedQuote585!=null) {
+            val account585="QT_DEMO:"+pkg577
+            if(verifiedQuote585.first==109L)
+              demoAutoStakePlan565.rebindVerifiedBasePair(account585,pair)
+            else if(TouchTestService.verifiedExactDemoStakeReadOnly577(
+                pair,verifiedQuote585.first))
+              demoAutoStakePlan565.rebindConfirmedRecoveryPair584(
+                account585,pair,verifiedQuote585.first)
           }
         }
         // Start the scan timer once the chart switch is verified. The order
@@ -4508,6 +4525,15 @@ class ScalpOverlayService : Service() {
         // chart. Do not count selector/OCR frames or fabricate trend signals.
         chartDwellStartedAt549 = android.os.SystemClock.elapsedRealtime()
         currentDwellPair549 = pair
+        // 585: Once the new instrument has had its normal 6-second OCR
+        // settle interval, retry the existing strict rearm routine on that
+        // SAME chart. An unchecked selector row never triggers this.
+        after(7_000L) {
+          if(!fxRotationNavigating && currentDwellPair549==pair &&
+              !shuttingDown && mediaProjection!=null)
+            maybeApplyVerifiedDemoStake565(
+              android.os.SystemClock.elapsedRealtime())
+        }
         pairAnalysisFrames549 = 0
         lastShockReject549 = "AȘTEAPTĂ DATE"
         lastTrendReject549 = "AȘTEAPTĂ DATE"
