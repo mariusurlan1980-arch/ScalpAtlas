@@ -38,12 +38,12 @@ test('574 pending reason takes priority over stale preflight text and remains co
  assert.ok(updater.includes('!realAccountSafetyStop517'));
  assert.ok(updater.includes('!demoAutoStakePlan565.isRiskStopped()'));
  const compact=s.slice(s.indexOf('fun applyCompactMode()'),s.indexOf('minimizeToggle.setOnClickListener {'));
- assert.ok(compact.includes('tapTestRow552.visibility = if (minimized) View.GONE else View.VISIBLE'));
+ assert.ok(compact.includes('tapTestRow552.visibility = View.GONE'));
  assert.ok(compact.includes('windowManager.updateViewLayout(root, window)'));
 });
 test('574 signed Android workflow with dedicated regression test',()=>{
- assert.ok(w.includes("expo['android']['versionCode']=574"));
- assert.ok(w.includes('ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24.apk'));
+ assert.ok(w.includes("expo['android']['versionCode']=575"));
+ assert.ok(w.includes('ScalpAtlas-575-MINI-CHENAR-DEMO-G24.apk'));
  assert.ok(w.includes('node --test .github/scripts/test_574_visible_optin_reason.mjs'));
  assert.ok(w.includes('apksigner'));
 });
