@@ -73,15 +73,15 @@ object DemoStakeEditor {
    * This function does not authorize a broker gesture.
    */
   internal fun demoBalanceFromVerifiedHeader579(raw: String): Long? {
-    val compact = raw.trim().replace(Regex("""\\s+"""), " ")
+    val compact = raw.trim().replace(Regex("""\s+"""), " ")
     // Accept the literal account label only at the BEGINNING, not embedded
     // elsewhere in a price, chart label, or unrelated user-visible text.
     val withoutHeader = compact.replace(
-      Regex("""(?i)^QT\\s+Demo\\b\\s*"""), ""
+      Regex("""(?i)^QT\s+Demo\b\s*"""), ""
     )
     val numeric = withoutHeader
-      .replace(Regex("""(?i)^(?:USD\\s*|\\$\\s*)"""), "")
-      .replace(Regex("""(?i)\\s*(?:USD|\\$)$"""), "")
+      .replace(Regex("""(?i)^(?:USD\s*|\$\s*)"""), "")
+      .replace(Regex("""(?i)\s*(?:USD|\$)$"""), "")
       .trim()
     return brokerBalanceCents567(numeric)
   }
