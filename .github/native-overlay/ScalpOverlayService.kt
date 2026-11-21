@@ -934,22 +934,40 @@ class ScalpOverlayService : Service() {
     val proposal=demoAutoStakePlan565.pending(key,pair)
     val amount=proposal.stakeCents ?: return
     if(TouchTestService.readVerifiedDemoPayoutForPair(pair)!=92)return
-    // Explicitly retire the order session BEFORE changing a broker field.
+    // 577: confirm a broker amount ALREADY set to the exact planned stake
+    // without touching the edit field. OFF->ON previously consumed LIVE and
+    // then depended on an unnecessary SET_TEXT, often leaving it stranded.
+    // Two independent current-pair amount checks and exact QT Demo payout
+    // still fail closed. Neither branch submits BUY/SELL.
+    val formatted=java.lang.String.format(java.util.Locale.US,
+      "%d.%02d USD",amount/100L,amount%100L)
+    val alreadyVerified577=try {
+      TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount) &&
+        TouchTestService.readBrokerDemoOrder476(pair) == (amount to 92)
+    } catch (_:Throwable) { false }
+    // Retire the old order session before any optional broker field edit.
     autoDemoArmed=false
     autoDemoSessionRequested=false
     autoDemoSessionConsumed=true
     autoDemoMarket=null
     autoDemoExpiry=0L
     lastAutoStakeEdit565At=nowElapsed
-    val result=try {
+    val result=if(alreadyVerified577)
+      "SUMĂ QT DEMO CONFIRMATĂ " + formatted
+    else try {
       TouchTestService.setVerifiedDemoRecoveryStakeOnBroker(pair,amount)
     } catch (e:Exception) {
       android.util.Log.e("ScalpAtlas565","QT DEMO amount edit blocked",e)
       "BLOCAT: ANDROID " + e.javaClass.simpleName.take(24)
     }
-    val formatted=java.lang.String.format(java.util.Locale.US,
-      "%d.%02d USD",amount/100L,amount%100L)
+    // Read back independently AFTER the optional edit too. A text-action
+    // success is never a confirmed broker amount or a trading permission.
+    val readBack577=try {
+      TouchTestService.verifiedExactDemoStakeReadOnly577(pair,amount) &&
+        TouchTestService.readBrokerDemoOrder476(pair) == (amount to 92)
+    } catch (_:Throwable) { false }
     val confirmed=result.startsWith("SUMĂ QT DEMO CONFIRMATĂ " + formatted) &&
+      readBack577 &&
       demoAutoStakePlan565.confirmEdited(key,pair,amount,true)
     // 566: opt-in QT DEMO may resume after a verified settlement and broker
     // readback, but ONLY with a future fresh signal and ongoing LIVE consent.
@@ -1677,7 +1695,18 @@ class ScalpOverlayService : Service() {
 
   private fun demoOrderVerificationStatus(): String {
     val reason = demoOrderVerificationReason
-    return if (reason.isNullOrBlank()) "ARMAT · VERIFIC ORDINUL"
+    // 577: OFF->ON consumes the old session even before a first gesture.
+    // Explain that this is a stake readback wait, NOT an attempted order.
+    val hadAttempt577=getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
+      .getBoolean("attempted",false) ||
+      getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
+        .getBoolean("attempted",false)
+    return if (reason.isNullOrBlank() && autoDemoSessionConsumed &&
+      demoAutoStakePlan565.isEnabled() &&
+      !demoAutoStakePlan565.isRiskStopped() && !hadAttempt577 &&
+      tradePositionGate.state()==TradePositionGate.State.READY)
+        "MIZĂ ON • AȘTEPT CONFIRMARE SUMĂ DIN QT DEMO"
+    else if (reason.isNullOrBlank()) "ARMAT · VERIFIC ORDINUL"
     else "ORDINE ÎN PAUZĂ · " + reason
       .replaceFirst(Regex("^\\d+ • "), "")
       .removeSuffix(" • FĂRĂ ORDIN")
@@ -4225,6 +4254,35 @@ class ScalpOverlayService : Service() {
           return
         }
         lastFxRotationMismatch548 = "PERECHE + PAYOUT 92% CONFIRMATE"
+        // 577: base-stake rotation was silently rejected because the
+        // stake plan stored the first ON pair forever. Rebind the plan pair
+        // ONLY on a newly verified live QT Demo chart with exactly $1.09,
+        // both broker payout buttons at 92%, and no outstanding attempt.
+        // This does not place an order or rearm a consumed session.
+        if (demoAutoStakePlan565.isEnabled() &&
+            !demoAutoStakePlan565.isRiskStopped() &&
+            !realAccountSafetyStop517 && !accountRecheckPending &&
+            !fxRotationTradePaused516 && !closedHistoryInspectionInProgress &&
+            !historyPageVisible433 && TouchTestService.ready() &&
+            TouchTestService.demoFxAccountInForeground() &&
+            !TouchTestService.realFxAccountVisible() &&
+            lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
+            mediaProjection != null && robotArmedContinuously513 &&
+            tradePositionGate.state() == TradePositionGate.State.READY &&
+            demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+            !getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
+              .getBoolean("attempted",false) &&
+            !getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
+              .getBoolean("attempted",false)) {
+          val pkg577=TouchTestService.activeDemoExecutorPackageForReview()
+          val currentBase577=try {
+            TouchTestService.verifiedExactDemoStakeReadOnly577(pair,109L) &&
+              TouchTestService.readBrokerDemoOrder476(pair) == (109L to 92)
+          } catch (_:Throwable) { false }
+          if(pkg577!=null && currentBase577) {
+            demoAutoStakePlan565.rebindVerifiedBasePair("QT_DEMO:"+pkg577,pair)
+          }
+        }
         // Start the scan timer once the chart switch is verified. The order
         // preflight independently checks payout, M5 and fresh candle evidence.
         if (fxRotationNavigating) {
