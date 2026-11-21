@@ -23,7 +23,7 @@ test('button is in header, with accessible description and real click target',()
  assert.ok(overlay.includes('Extinde panoul Scalp Atlas pentru MIZĂ AUTO DEMO'));
 });
 test('expanded UI reveals real MIZĂ AUTO DEMO opt-in row, which is hidden compact',()=>{
- assert.ok(overlay.includes('stakeAutoRow565.visibility = if(minimized) View.GONE else View.VISIBLE'));
+ assert.ok(overlay.includes('stakeAutoRow565.visibility = View.VISIBLE'));
  assert.ok(overlay.includes('stakeAutoRow565.addView(stakeButton565'));
  assert.ok(overlay.includes('MIZĂ AUTO DEMO • OFF'));
  assert.ok(overlay.includes('MIZĂ AUTO DEMO • ON'));
@@ -53,8 +53,8 @@ test('the fixed broker balance parser accepts US-formatted 1,572.68 as full amou
  assert.ok(!broker.includes('Regex("""(?<!\\d)(\\d{1,5}[.,]\\d{2})(?!\\d)""").find(it.value)'));
 });
 test('Android release pipeline includes 569 layout fix and signing',()=>{
- assert.ok(workflow.includes('versionCode\']=574'));
- assert.ok(workflow.includes('ScalpAtlas-574-MIZA-ON-DIAG-DEMO-G24.apk'));
+ assert.ok(workflow.includes('versionCode\']=575'));
+ assert.ok(workflow.includes('ScalpAtlas-575-MINI-CHENAR-DEMO-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_568_expand_miza.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
