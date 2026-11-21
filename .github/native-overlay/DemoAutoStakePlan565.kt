@@ -249,6 +249,37 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
   }
 
   /**
+   * 584: A confirmed post-LOSS stake can follow the next verified FX pair
+   * without recalculating MG, clearing a broker order, or editing Sumă.
+   * Caller must already have independently read the EXACT displayed stake,
+   * current QT DEMO pair, payout 92%, READY order gate and no prior attempt.
+   * A pending/unconfirmed stake is NEVER eligible.
+   */
+  @Synchronized
+  fun rebindConfirmedRecoveryPair584(
+    accountKey:String,newPair:String,brokerStakeCents:Long
+  ):Boolean {
+    if(!isEnabled() || isRiskStopped() ||
+        !accountKey.startsWith("QT_DEMO:") ||
+        accountKey!=prefs.getString("accountKey",null) ||
+        newPair.isBlank() || newPair=="NEIDENTIFICAT") return false
+    val losses=prefs.getInt("losses",-1)
+    if(losses !in 1 until STOP_AFTER_LOSSES) return false
+    val expected=LADDER[losses]
+    if(prefs.getLong("pendingStake",-1L)!=0L ||
+        prefs.getLong("confirmedStake",-1L)!=expected ||
+        brokerStakeCents!=expected) return false
+    val spent=(0 until losses).sumOf { LADDER[it] }
+    if(spent+expected>PLANNED_BUDGET_CENTS ||
+        expected>EDITOR_MAX_STAKE_CENTS)return false
+    if(prefs.getString("pair",null)==newPair)return true
+    return prefs.edit()
+      .putString("pair",newPair)
+      .putString("status","MG MIZĂ CONFIRMATĂ • PERECHE " + newPair.take(18))
+      .commit()
+  }
+
+  /**
    * 583: Read-only explanation of an order rejected by the 565 plan.
    * Never binds a currency, confirms a stake, changes MG levels, or
    * grants an order. The existing permitsFreshDemoOrder is authoritative.
