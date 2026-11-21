@@ -358,6 +358,8 @@ class ScalpOverlayService : Service() {
   // return to a stable QT Demo chart. This grants NO order permission.
   private var pendingStakeOptIn571 = false
   private var pendingStakeOptInAt571 = 0L
+  // 572: diagnostic ONLY. Never use a displayed reason as order permission.
+  private var stakeOptInReason572 = "AȘTEPT GRAFIC QT DEMO"
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
   private var lastShockOrderStatus: String? = null
@@ -810,6 +812,7 @@ class ScalpOverlayService : Service() {
     fun cancel(message: String) {
       pendingStakeOptIn571 = false
       pendingStakeOptInAt571 = 0L
+      stakeOptInReason572 = message
       autoStakeToggle565?.text = "MIZĂ AUTO DEMO • OFF"
       touchProbeStatus?.text = message
     }
@@ -824,27 +827,58 @@ class ScalpOverlayService : Service() {
       cancel("571 • STOP RISC / QT REAL • FĂRĂ ORDIN")
       return
     }
-    // Wait for rotation to finish. A selector list is not a stable chart.
-    if (accountRecheckPending || fxRotationNavigating ||
-        fxRotationTradePaused516 || closedHistoryInspectionInProgress ||
-        historyPageVisible433 || !TouchTestService.ready() ||
-        !TouchTestService.demoFxAccountInForeground() ||
-        !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
-        tradePositionGate.state() != TradePositionGate.State.READY ||
-        getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-          .getBoolean("attempted", false) ||
-        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
-          .getBoolean("attempted", false)) return
-    val pair = currentPair(System.currentTimeMillis())
-    val pkg = TouchTestService.activeDemoExecutorPackageForReview() ?: return
-    if (pair == "NEIDENTIFICAT" || !pairReady(System.currentTimeMillis()) ||
-        TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92) return
+    // 572: Explain exactly which original 571 guard is holding the opt-in.
+    // All branches remain read-only; NONE can authorize BUY or SELL.
+    val priorShock572 = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+      .getBoolean("attempted", false)
+    val priorSell572 = getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+      .getBoolean("attempted", false)
+    val waiting572 = when {
+      accountRecheckPending -> "REVERIFIC CONTUL"
+      fxRotationNavigating -> "ROTAȚIE • SELECTEZ PERECHEA"
+      fxRotationTradePaused516 -> "TRADE ÎN PAUZĂ"
+      closedHistoryInspectionInProgress || historyPageVisible433 ->
+        "ISTORIC / ORDIN ÎN VERIFICARE"
+      !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
+      !TouchTestService.demoFxAccountInForeground() ->
+        "QT DEMO NECITIT DE ACCESIBILITATE"
+      !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ->
+        "CONT DEMO NECONFIRMAT"
+      tradePositionGate.state() != TradePositionGate.State.READY ->
+        "ORDIN ACTIV / STARE NECUNOSCUTĂ"
+      priorShock572 || priorSell572 -> "ORDIN ANTERIOR NECONFIRMAT"
+      else -> null
+    }
+    if (waiting572 != null) {
+      stakeOptInReason572 = "572 • " + waiting572
+      touchProbeStatus?.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
+      return
+    }
+    val nowPair572 = System.currentTimeMillis()
+    val pair = currentPair(nowPair572)
+    if (pair == "NEIDENTIFICAT" || !pairReady(nowPair572)) {
+      stakeOptInReason572 = "572 • PERECHE NECONFIRMATĂ"
+      touchProbeStatus?.text = stakeOptInReason572
+      return
+    }
+    val pkg = TouchTestService.activeDemoExecutorPackageForReview()
+    if (pkg == null) {
+      stakeOptInReason572 = "572 • BROKER QT NECITIT"
+      touchProbeStatus?.text = stakeOptInReason572
+      return
+    }
+    if (TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92) {
+      stakeOptInReason572 = "572 • PAYOUT 92% NECONFIRMAT"
+      touchProbeStatus?.text = stakeOptInReason572
+      return
+    }
     if (!demoAutoStakePlan565.enableFromVerifiedDemo("QT_DEMO:" + pkg, pair)) {
       cancel("571 • MIZĂ/CONT ANTERIOR NECONFIRMAT • FĂRĂ ORDIN")
       return
     }
     pendingStakeOptIn571 = false
     pendingStakeOptInAt571 = 0L
+    stakeOptInReason572 = "572 • VERIFICAT • EDITARE MIZĂ"
     // Exactly as 565: retire the previous order session before any edit.
     // A new DEMO order still needs 1.09 readback and a fresh verified signal.
     autoDemoSessionRequested = false
@@ -4708,7 +4742,7 @@ class ScalpOverlayService : Service() {
           demoAutoStakePlan565.isRiskStopped() ->
             "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
           !demoAutoStakePlan565.isEnabled() ->
-            if (pendingStakeOptIn571) "571 • AȘTEPT GRAFIC DEMO STABIL"
+            if (pendingStakeOptIn571) stakeOptInReason572
             else "BLOCAT: PORNEȘTE MIZĂ AUTO DEMO • START 1,09 USD"
           mediaProjection == null || shuttingDown || !autoDemoSessionRequested ||
             autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO FĂRĂ AUTORIZARE"
@@ -4885,7 +4919,7 @@ class ScalpOverlayService : Service() {
               demoAutoStakePlan565.isRiskStopped() ->
                 "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
               !demoAutoStakePlan565.isEnabled() ->
-                if (pendingStakeOptIn571) "571 • CERERE ON ÎN VERIFICARE"
+                if (pendingStakeOptIn571) stakeOptInReason572
                 else "BLOCAT: ACTIVEAZĂ MIZĂ AUTO DEMO • START 1,09 USD"
               mediaProjection == null || !autoDemoSessionRequested ||
                 autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO / ORDIN ANTERIOR NEVERIFICAT"
@@ -4973,9 +5007,22 @@ class ScalpOverlayService : Service() {
           // a changing pair or touching any broker order control.
           pendingStakeOptIn571 = true
           pendingStakeOptInAt571 = android.os.SystemClock.elapsedRealtime()
+          val requestAt572 = pendingStakeOptInAt571
+          stakeOptInReason572 = "572 • AȘTEPT GRAFIC QT DEMO"
           text = "MIZĂ AUTO DEMO • VERIFIC"
-          probeStatus.text = "571 • AȘTEPT GRAFIC QT DEMO STABIL • FĂRĂ ORDIN"
-          maybeFinishStakeOptIn571(pendingStakeOptInAt571)
+          probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
+          maybeFinishStakeOptIn571(requestAt572)
+          // Independent expiry even if the broker-monitor callback stops.
+          // This ONLY cancels a stale request; never clicks the broker.
+          mainHandler.postDelayed({
+            if (pendingStakeOptIn571 && pendingStakeOptInAt571 == requestAt572) {
+              pendingStakeOptIn571 = false
+              pendingStakeOptInAt571 = 0L
+              stakeOptInReason572 = "572 • CERERE ON EXPIRATĂ"
+              text = "MIZĂ AUTO DEMO • OFF"
+              probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
+            }
+          }, 90_500L)
         }
       }
     }
@@ -7575,7 +7622,7 @@ class ScalpOverlayService : Service() {
             demoAutoStakePlan565.isRiskStopped() ->
               "STOP RISC 565 • FĂRĂ ORDIN"
             !demoAutoStakePlan565.isEnabled() ->
-              if (pendingStakeOptIn571) "571 • CERERE ON • AȘTEPT GRAFIC"
+              if (pendingStakeOptIn571) stakeOptInReason572
               else "BLOCAT: MIZĂ AUTO OFF • APASĂ +"
             realAccountSafetyStop517 -> "QT REAL DETECTAT • RESTART LIVE DOAR PE DEMO"
             !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
