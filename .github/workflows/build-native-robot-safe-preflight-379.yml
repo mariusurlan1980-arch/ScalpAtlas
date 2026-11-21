@@ -847,7 +847,7 @@ jobs:
           grep -Fq 'robotArmedContinuously513 = true' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'fxRotationStatusButton513 = fxButton' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val persistentRobotStatus513 =' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'ARMAT · VERIFIC ORDINUL' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'BLOCAT • STARE POZIȚIE NECUNOSCUTĂ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '🤖 OPRIT • QT REAL • ORDINE BLOCATE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'tradePositionGate.state() == TradePositionGate.State.READY' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (persistentRobotStatus513 != null)' .github/native-overlay/ScalpOverlayService.kt
