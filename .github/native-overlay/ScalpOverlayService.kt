@@ -1353,6 +1353,18 @@ class ScalpOverlayService : Service() {
    * Nothing about chart movement, time, a gesture or account balance settles
    * a trade. This is not a substitute for a broker-supported order-status API.
    */
+  // 581: a broker-verified CLOSE must be DURABLY applied to the MG plan
+  // before clearing the previous-attempt marker. Duplicate UUID is safe;
+  // a SharedPreferences write failure is NOT a verified next stake.
+  private fun martingaleResultDurable581(status:String?):Boolean =
+    status==null ||
+    status.startsWith("LOSS CONFIRMAT") ||
+    status.startsWith("WIN CONFIRMAT") ||
+    status.startsWith("DRAW CONFIRMAT") ||
+    status.startsWith("DUPLICAT CLOSED") ||
+    ((status.startsWith("STOP") || status.startsWith("STOP DEMO")) &&
+      demoAutoStakePlan565.isRiskStopped())
+
   private fun inspectPassiveDemoProof463(
     nowElapsed: Long,
     reviewPackage: String?,
@@ -1453,18 +1465,9 @@ class ScalpOverlayService : Service() {
         )
     if (!ledgerUpdated) return "463 • REGISTRU DEMO NU ACCEPTĂ DOVADA • BLOCAT"
 
-    // Exact proof and ledger are durable before clearing the gesture flag.
-    val cleared = prefs.edit().putBoolean("attempted", false)
-      // 557: matched CLOSED receipt + zero-OPEN proof is required to
-      // retire a pending manual BUY test in CHART-ONLY.
-      .putBoolean("manualTest552PendingVerifiedClose557", false)
-      .remove("expectedPair429").remove("expectedPackage429")
-      .remove("expectedStakeCents429").remove("expectedPayout429")
-      .remove("brokerStake476").remove("expectedSide437").remove("attemptedAt429")
-      .remove("attemptedWallAt454").commit()
-    if (!cleared)
-      return "463 • REZULTAT CITIT, DAR BLOCAREA NU S-A SALVAT"
-
+    // 581: position and closed UUID are independently verified above.
+    // Persist the exact WIN/LOSS/DRAW to the MG plan BEFORE removing the
+    // Android attempt marker. If persistence fails, keep the old lock.
     val gateReady = when (tradePositionGate.state()) {
       TradePositionGate.State.OPEN ->
         tradePositionGate.brokerConfirmedClosed(closed.positionId, true)
@@ -1472,10 +1475,8 @@ class ScalpOverlayService : Service() {
         tradePositionGate.brokerVerifiedEmptyDemoReview(true)
       TradePositionGate.State.SUBMITTING -> false
     }
-    // 565: only THIS fully matched CLOSED 2/2 + EMPTY OPEN 2/2 event can
-    // advance the opt-in loss plan. No timer, BIP, or standalone chart
-    // observation can ever increase the broker stake.
-    val nextStakeStatus565 = if (gateReady && demoAutoStakePlan565.isEnabled())
+    val martingaleActive581 = demoAutoStakePlan565.isEnabled()
+    val nextStakeStatus565 = if (gateReady && martingaleActive581)
       demoAutoStakePlan565.onVerifiedClosed(
         accountKey=ledgerKey, pair=closed.pair, positionId=closed.positionId,
         stakeCents=closed.stakeCents, payoutPercent=closed.payoutPercent,
@@ -1483,11 +1484,26 @@ class ScalpOverlayService : Service() {
         matchingOpenClosedAndZeroOpen=true
       )
     else null
+    if (!gateReady ||
+        (martingaleActive581 && !martingaleResultDurable581(nextStakeStatus565)))
+      return "581 • REZULTAT / MIZĂ MG NESALVATE • ORDIN RĂMÂNE BLOCAT"
+
+    val cleared = prefs.edit().putBoolean("attempted", false)
+      .putBoolean("manualTest552PendingVerifiedClose557", false)
+      .remove("expectedPair429").remove("expectedPackage429")
+      .remove("expectedStakeCents429").remove("expectedPayout429")
+      .remove("brokerStake476").remove("expectedSide437").remove("attemptedAt429")
+      .remove("attemptedWallAt454").commit()
+    if (!cleared)
+      return "581 • REZULTAT SALVAT, DAR BLOCAREA NU S-A SALVAT"
+
     verifiedClosedDetail437 = null
     verifiedClosedDetailAt437 = 0L
-    // 565 opt-in: NO automatic next order after a settlement. The native
-    // editor prepares Sumă separately, then the user restarts QT DEMO LIVE.
-    val canRearmBase = gateReady && !demoAutoStakePlan565.isEnabled() &&
+    // 581: MG AUTO continues the series only AFTER the next confirmed
+    // broker Sumă readback. Never rearm directly on an inferred close.
+    // Normal non-MG pilot remains unchanged.
+    val canRearmBase = gateReady && !martingaleActive581 &&
+      !demoAutoStakePlan565.isEnabled() &&
       !demoAutoStakePlan565.isRiskStopped() &&
       (manualStake || (!demoRecoveryLedger.isRecovering429() &&
       demoRecoveryLedger.quote(payout).stakeCents == 100L))
@@ -1500,7 +1516,7 @@ class ScalpOverlayService : Service() {
     autoDemoEntryCycleStartedAt = if (canRearmBase)
       System.currentTimeMillis() else 0L
     return if (nextStakeStatus565 != null)
-      "565 • " + nextStakeStatus565.take(82) + " • FĂRĂ ORDIN"
+      "581 • " + nextStakeStatus565.take(82) + " • VERIFIC MIZA ÎNAINTE DE ORDIN"
     else if (canRearmBase)
       "476 • ORDIN ÎNCHIS VERIFICAT • DEMO REACTIVAT"
     else "463 • REZULTAT VERIFICAT • NOI ORDINE BLOCATE (FĂRĂ MG)"
