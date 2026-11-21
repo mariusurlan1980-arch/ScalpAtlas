@@ -54,7 +54,7 @@ test('the fixed broker balance parser accepts US-formatted 1,572.68 as full amou
 });
 test('Android release pipeline includes 569 layout fix and signing',()=>{
  assert.ok(workflow.includes('versionCode\']=570'));
- assert.ok(workflow.includes('ScalpAtlas-570-PREFLIGHT-RISC-DEMO-G24.apk'));
+ assert.ok(workflow.includes('ScalpAtlas-571-QUEUED-MIZA-DEMO-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_568_expand_miza.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
