@@ -55,3 +55,13 @@ test('entry stake is independently set to 1.09, never borrowed from old 4.00 UI'
  assert.match(source,/before.balanceCents < stakeCents/);
  assert.match(source,/buyPayout != 92/);
 });
+
+test('no manual or automatic broker order without opt-in start and exact 1.09 readback',()=>{
+ const overlay=readFileSync(new URL('../native-overlay/ScalpOverlayService.kt',import.meta.url),'utf8');
+ assert.ok(overlay.includes('BLOCAT: PORNEȘTE MIZĂ AUTO DEMO • START 1,09 USD'));
+ assert.ok(overlay.includes('BLOCAT: ACTIVEAZĂ MIZĂ AUTO DEMO • START 1,09 USD'));
+ assert.ok(overlay.includes('BLOCAT: START MIZĂ AUTO DEMO 1,09 USD'));
+ assert.ok(overlay.includes('val readyForDemo = demoAutoStakePlan565.isEnabled() &&'));
+ assert.ok(overlay.includes('BLOCAT: START 1,09 USD NECONFIRMAT • FĂRĂ ORDIN'));
+ assert.ok(overlay.includes('demoAutoStakePlan565.permitsFreshDemoOrder('));
+});
