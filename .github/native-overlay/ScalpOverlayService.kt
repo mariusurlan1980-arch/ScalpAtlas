@@ -933,6 +933,14 @@ class ScalpOverlayService : Service() {
     val brokerPkg=TouchTestService.activeDemoExecutorPackageForReview() ?: return
     if(pair=="NEIDENTIFICAT" || !pairReady(now))return
     val key="QT_DEMO:" + brokerPkg
+    // 586: The compact overlay can hide the physical SELL button.
+    // Relocate it BEFORE reading the amount/payout, not only after a
+    // failed preflight. Retry on the next monitor frame; moving the panel
+    // alone cannot grant a new order, pair rebind or session rearm.
+    if(liftOverlayOffDemoOrderButtons557()) {
+      autoDemoLastPreflightReason="586 • PANOU MUTAT • REVERIFIC SUMĂ/PAYOUT"
+      return
+    }
     // 581: require a fresh, independently identified pair and BOTH physical
     // 92% buttons before moving a PENDING (not yet edited) recovery stake.
     // This never changes the loss count or the amount. The native editor
@@ -7972,12 +7980,16 @@ class ScalpOverlayService : Service() {
                 CHART_ONLY_DEMO_462 && demoAutoStakePlan565.isEnabled() -> {
                   val order565=TouchTestService.readBrokerDemoOrder476(pair)
                   val package565=TouchTestService.activeDemoExecutorPackageForReview()
-                  if (order565 == null || package565 == null ||
-                      !demoAutoStakePlan565.permitsFreshDemoOrder(
+                  // 586: A missing broker quote is NOT proof of a stale
+                  // plan pair. Expose the Android read-only failure first.
+                  if (package565 == null) "BLOCAT: BROKER QT DEMO NECITIT"
+                  else if (order565 == null)
+                    TouchTestService.inspectBrokerDemoOrder488(
+                      pair,currentOverlayBounds488())
+                  else if (!demoAutoStakePlan565.permitsFreshDemoOrder(
                         "QT_DEMO:" + package565,pair,order565.first))
                     "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
-                      if(package565==null)null else "QT_DEMO:" + package565,
-                      pair,order565?.first)
+                      "QT_DEMO:" + package565,pair,order565.first)
                   else TouchTestService.inspectBrokerDemoOrder488(
                     pair,currentOverlayBounds488())
                 }
