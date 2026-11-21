@@ -1599,10 +1599,15 @@ class ScalpOverlayService : Service() {
             verifiedDemoAccountAt > 0L &&
             proofNow463 - verifiedDemoAccountAt in 0L..90_000L &&
             !diagnostic.contains("QT REAL IDENTIFICAT")
+          // 565: edit Sumă only on a fresh QT DEMO chart, never in history.
+          // Existing CLOSED proof and one-position gate are NOT bypassed.
+          maybeApplyVerifiedDemoStake565(proofNow463)
           val passiveStatus463 = inspectPassiveDemoProof463(
             proofNow463, proofPackage463, chartCache463
           )
-          val pilotStatus464 = if (passiveStatus463 == null && autoDemoSessionConsumed)
+          val pilotStatus464 = if (passiveStatus463 == null &&
+              autoDemoSessionConsumed && !demoAutoStakePlan565.isEnabled() &&
+              !demoAutoStakePlan565.isRiskStopped())
             maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
           else null
           // 557: proof-based release only; never clear a pending order
