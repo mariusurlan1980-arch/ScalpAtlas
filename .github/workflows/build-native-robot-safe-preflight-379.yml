@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 560 MIN/MAX local DEMO preview G24
+name: Build Scalp Atlas 565 QT DEMO verified-loss stake editor G24
 
 on:
   push:
-    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo]
+    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -61,6 +61,13 @@ jobs:
           grep -Fq 'val previewSecond559 =' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TEST FĂRĂ ORDIN' .github/native-overlay/ScalpOverlayService.kt
 
+      - name: Verify 565 QT DEMO after-loss stake controls
+        run: |
+          set -e
+          node --test .github/scripts/test_565_after_loss.mjs
+          node --experimental-strip-types --test scalp-atlas-new/allocatedBudgetAfterLoss564.test.mjs
+          grep -Fq 'DemoAutoStakePlan565' .github/native-overlay/ScalpOverlayService.kt
+
       - name: Verify 560 MIN MAX local read-only preview before Android build
         run: |
           set -e
@@ -113,10 +120,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.90'
+          expo['version']='3.2.95'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=560
+          expo['android']['versionCode']=565
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -192,7 +199,7 @@ jobs:
           grep -Fq 'fxButton.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'brainEclipse.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeStatus.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'if (minimized || CHART_ONLY_DEMO_462) View.GONE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'stakeAutoRow565.visibility = if(minimized) View.GONE else View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val next499 = when' .github/native-overlay/ScalpOverlayService.kt
           # 500: use true screen edges and remember the exact manual position.
           grep -Fq 'putBoolean("freePosition500", true)' .github/native-overlay/ScalpOverlayService.kt
@@ -1330,8 +1337,9 @@ jobs:
           cp .github/native-overlay/TradePositionGate.kt "$JAVA_DIR/TradePositionGate.kt"
           cp .github/native-overlay/DemoRecoveryLedger.kt "$JAVA_DIR/DemoRecoveryLedger.kt"
           cp .github/native-overlay/DemoStakeEditor.kt "$JAVA_DIR/DemoStakeEditor.kt"
+          cp .github/native-overlay/DemoAutoStakePlan565.kt "$JAVA_DIR/DemoAutoStakePlan565.kt"
           cp .github/native-overlay/BrokerAdapterRegistry.kt "$JAVA_DIR/BrokerAdapterRegistry.kt"
-          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt DemoRecoveryLedger.kt DemoStakeEditor.kt; do
+          for name in ScalpOverlayPackage.kt ScalpOverlayModule.kt ScalpOverlayService.kt SignalJournal.kt LiveTestMonitor.kt TouchTestActivity.kt TouchTestService.kt TradePositionGate.kt BrokerAdapterRegistry.kt DemoRecoveryLedger.kt DemoStakeEditor.kt DemoAutoStakePlan565.kt; do
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$name"
           done
 
@@ -2527,27 +2535,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-560-MINMAX-DEMO-PREVIEW-G24.apk
+          cp "$APK" ScalpAtlas-565-AFTER-LOSS-STAKE-QT-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-560-MINMAX-DEMO-PREVIEW-G24
-          path: ScalpAtlas-560-MINMAX-DEMO-PREVIEW-G24.apk
+          name: ScalpAtlas-565-AFTER-LOSS-STAKE-QT-DEMO-G24
+          path: ScalpAtlas-565-AFTER-LOSS-STAKE-QT-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/experiment/scalpatlas-560-reversal-min-max-m5-demo'
+        if: github.ref == 'refs/heads/feature/scalpatlas-565-demo-stake-after-closed-loss'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-560-MINMAX-DEMO-PREVIEW-G24.apk"
+          FILE="ScalpAtlas-565-AFTER-LOSS-STAKE-QT-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-560-minmax-demo-preview-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-565-after-loss-stake-demo-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 560 - MIN MAX local si 2 lumanari M5 QT Demo PREVIEW" \
-            --notes "560 PREVIEW adauga verificare experimentala a unui MINIM/MAXIM local vizual, prima lumanare M5 inchisa in directia intoarcerii si a doua de aceeasi culoare cu retragere si revenire. Confirmare pe 3 lumanari anterioare; pixelii nu sunt confirmare a cotatiilor brokerului. Noua regula NU autorizeaza BUY/SELL automat; protectiile si executia DEMO vechi raman neschimbate. Teste pe Motorola necesare. NU utiliza cont REAL. Nicio garantie de profit."
+            --title "Scalp Atlas 565 - modificare miza dupa LOSS verificat QT DEMO G24" \
+            --notes "565 QT DEMO: opt-in pentru editarea separata a mizei initiale 1.09 USD si dupa LOSS broker CLOSED verificat 2.28, apoi 4.75 USD. WIN verificat reseteaza la 1.09 USD; 3 LOSS consecutive opresc sesiunea. Este necesar ca utilizatorul sa arate manual detaliile Inchos 2/2 si Deschis zero 2/2; fara dovada, miza nu se modifica. Nu executa automat urmatorul ordin dupa editare; nu modifica cont REAL. Modelul optic 560 MIN/MAX ramane PREVIEW, nu devine automat. Bugetul 1570.44 este planificat, nu confirmat in broker; 10 niveluri cer 1572.44. Fara garantii de profit. Testare pe Motorola obligatorie."
