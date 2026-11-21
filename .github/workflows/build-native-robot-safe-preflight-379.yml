@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 586 QT DEMO unmask broker quote diagnostics G24
+name: Build Scalp Atlas 587 QT DEMO post-panel preflight recheck G24
 
 on:
   push:
-    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo, fix/scalpatlas-568-visible-expand-stake-demo, fix/scalpatlas-569-visible-left-expand-miza, fix/scalpatlas-570-preflight-risk-message, fix/scalpatlas-571-queued-demo-stake-optin, fix/scalpatlas-572-stake-optin-diagnostic, fix/scalpatlas-573-compact-audio-preflight, fix/scalpatlas-574-visible-optin-reason, fix/scalpatlas-575-mini-overlay-visible-miza, fix/scalpatlas-576-payout-readonly-mini-safe, fix/scalpatlas-577-base-stake-rearm-pair-rotation, fix/scalpatlas-578-clear-order-gate-reason, fix/scalpatlas-579-demo-balance-parse, fix/scalpatlas-580-base109-readback, fix/scalpatlas-581-martingale-settlement-rearm, fix/scalpatlas-582-demo-history-dual-clock, fix/scalpatlas-583-verified-base-stake-pair-rebind, fix/scalpatlas-584-confirmed-base-rearm, fix/scalpatlas-585-demo-rearm-pair-synchronization, fix/scalpatlas-586-unmask-demo-quote-diagnostics]
+    branches: [fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo, fix/scalpatlas-568-visible-expand-stake-demo, fix/scalpatlas-569-visible-left-expand-miza, fix/scalpatlas-570-preflight-risk-message, fix/scalpatlas-571-queued-demo-stake-optin, fix/scalpatlas-572-stake-optin-diagnostic, fix/scalpatlas-573-compact-audio-preflight, fix/scalpatlas-574-visible-optin-reason, fix/scalpatlas-575-mini-overlay-visible-miza, fix/scalpatlas-576-payout-readonly-mini-safe, fix/scalpatlas-577-base-stake-rearm-pair-rotation, fix/scalpatlas-578-clear-order-gate-reason, fix/scalpatlas-579-demo-balance-parse, fix/scalpatlas-580-base109-readback, fix/scalpatlas-581-martingale-settlement-rearm, fix/scalpatlas-582-demo-history-dual-clock, fix/scalpatlas-583-verified-base-stake-pair-rebind, fix/scalpatlas-584-confirmed-base-rearm, fix/scalpatlas-585-demo-rearm-pair-synchronization, fix/scalpatlas-586-unmask-demo-quote-diagnostics, fix/scalpatlas-587-stake-preflight-recheck]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -47,6 +47,7 @@ on:
       - '.github/scripts/test_584_confirmed_stake_rearm.mjs'
       - '.github/scripts/test_585_mg_rotation_rearm.mjs'
       - '.github/scripts/test_586_quote_read_diagnostic.mjs'
+      - '.github/scripts/test_587_broker_preflight_recheck.mjs'
       - '.github/native-overlay/DemoAutoStakePlan565.kt'
       - '.github/native-overlay/TouchTestService.kt'
       - '.github/native-overlay/DemoStakeEditor.kt'
@@ -88,7 +89,7 @@ jobs:
           grep -Fq 'val previewSecond559 =' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'TEST FĂRĂ ORDIN' .github/native-overlay/ScalpOverlayService.kt
 
-      - name: Verify 586 quote diagnostic, 585 MG rotation and previous order protections
+      - name: Verify 587 post-panel preflight, 586 diagnostics and DEMO safety
         run: |
           set -e
           node --experimental-strip-types --test .github/scripts/test_566_balance_risk.mjs
@@ -112,6 +113,7 @@ jobs:
           node --test .github/scripts/test_584_confirmed_stake_rearm.mjs
           node --test .github/scripts/test_585_mg_rotation_rearm.mjs
           node --test .github/scripts/test_586_quote_read_diagnostic.mjs
+          node --test .github/scripts/test_587_broker_preflight_recheck.mjs
           node --experimental-strip-types --test scalp-atlas-new/allocatedBudgetAfterLoss564.test.mjs
           grep -Fq 'DemoAutoStakePlan565' .github/native-overlay/ScalpOverlayService.kt
 
@@ -170,7 +172,7 @@ jobs:
           expo['version']='3.2.99'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=586
+          expo['android']['versionCode']=587
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2582,27 +2584,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-586-QUOTE-DIAG-G24.apk
+          cp "$APK" ScalpAtlas-587-PREFLIGHT-DIAG-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-586-QUOTE-DIAG-G24
-          path: ScalpAtlas-586-QUOTE-DIAG-G24.apk
+          name: ScalpAtlas-587-PREFLIGHT-DIAG-G24
+          path: ScalpAtlas-587-PREFLIGHT-DIAG-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-586-unmask-demo-quote-diagnostics'
+        if: github.ref == 'refs/heads/fix/scalpatlas-587-stake-preflight-recheck'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-586-QUOTE-DIAG-G24.apk"
+          FILE="ScalpAtlas-587-PREFLIGHT-DIAG-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-586-quote-diagnostics-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-587-preflight-recheck-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 586 - Diagnostic QT Demo si panou departe de BUY SELL" \
+            --title "Scalp Atlas 587 - Recitire broker dupa mutarea panoului si diagnostic QT Demo" \
             --notes "581: Martingale QT Demo bazat STRICT pe CLOSED 2/2 si 0 OPEN 2/2, in ambele trasee de confirmare, cu salvare durabila inainte sa fie eliberata protectia ordinului precedent. LOSS dovedit creste la urmatoarea treapta 1.09/2.28/4.75/9.92/20.70/43.20/90.16/188.16/392.68/819.50, WIN reset 1.09, DRAW repeta, 10 LOSS ori buget >1572.44 opreste. Orice noua miza este mai intai editata si verificata independent in QT Demo; la schimbarea perechii, payout BUY+SELL 92% si contul sunt obligatorii. Fila Deschis goala, bipul sau timpul NU aplica Martingale. Un singur ordin, M5, expirare 5 minute, semnal SOC nou. Fara promisiune de executie reala pe Motorola; validare practica obligatorie."
