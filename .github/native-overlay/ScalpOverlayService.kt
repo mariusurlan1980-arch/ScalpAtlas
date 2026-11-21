@@ -4708,7 +4708,8 @@ class ScalpOverlayService : Service() {
           demoAutoStakePlan565.isRiskStopped() ->
             "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
           !demoAutoStakePlan565.isEnabled() ->
-            "BLOCAT: PORNEȘTE MIZĂ AUTO DEMO • START 1,09 USD"
+            if (pendingStakeOptIn571) "571 • AȘTEPT GRAFIC DEMO STABIL"
+            else "BLOCAT: PORNEȘTE MIZĂ AUTO DEMO • START 1,09 USD"
           mediaProjection == null || shuttingDown || !autoDemoSessionRequested ||
             autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO FĂRĂ AUTORIZARE"
           realAccountSafetyStop517 || accountRecheckPending ||
@@ -4884,7 +4885,8 @@ class ScalpOverlayService : Service() {
               demoAutoStakePlan565.isRiskStopped() ->
                 "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
               !demoAutoStakePlan565.isEnabled() ->
-                "BLOCAT: ACTIVEAZĂ MIZĂ AUTO DEMO • START 1,09 USD"
+                if (pendingStakeOptIn571) "571 • CERERE ON ÎN VERIFICARE"
+                else "BLOCAT: ACTIVEAZĂ MIZĂ AUTO DEMO • START 1,09 USD"
               mediaProjection == null || !autoDemoSessionRequested ||
                 autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO / ORDIN ANTERIOR NEVERIFICAT"
               onePairEvalEnabled -> "BLOCAT: OPREȘTE AUTO SIM"
@@ -7573,7 +7575,8 @@ class ScalpOverlayService : Service() {
             demoAutoStakePlan565.isRiskStopped() ->
               "STOP RISC 565 • FĂRĂ ORDIN"
             !demoAutoStakePlan565.isEnabled() ->
-              "BLOCAT: MIZĂ AUTO OFF • APASĂ +"
+              if (pendingStakeOptIn571) "571 • CERERE ON • AȘTEPT GRAFIC"
+              else "BLOCAT: MIZĂ AUTO OFF • APASĂ +"
             realAccountSafetyStop517 -> "QT REAL DETECTAT • RESTART LIVE DOAR PE DEMO"
             !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
             // 550: "NEIDENTIFICAT" is a temporarily unreadable broker
