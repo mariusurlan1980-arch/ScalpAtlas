@@ -1,0 +1,22 @@
+name: Scalp Atlas 561 DEMO profit validation
+on:
+  push:
+    branches: [experiment/scalpatlas-561-demo-profit-validation]
+    paths:
+      - scalp-atlas-new/profitValidationDemo561.ts
+      - scalp-atlas-new/profitValidationDemo561.test.mjs
+      - .github/workflows/scalp-atlas-561-profit-validation.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Test verified-closed-receipt profit performance and fail-closed risk
+        working-directory: scalp-atlas-new
+        run: node --experimental-strip-types --test profitValidationDemo561.test.mjs
