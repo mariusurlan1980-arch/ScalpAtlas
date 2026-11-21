@@ -216,6 +216,38 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
       .commit()
   }
 
+  /**
+   * 581: After a broker-verified LOSS (or DRAW) only, the next unpaid
+   * Martingale stake may follow the rotating FX list on a NEW, separately
+   * verified QT Demo pair. Caller must prove an empty order gate, no saved
+   * gesture and a current 92% BUY/SELL quote BEFORE invoking this method.
+   *
+   * Rebinding never edits the broker, changes ladder state, unlocks an
+   * attempt or authorizes an order. The exact new amount must still be
+   * written and re-read by the independent native broker preflight.
+   */
+  @Synchronized
+  fun rebindPendingRecoveryPair581(accountKey:String,newPair:String):Boolean {
+    if (!isEnabled() || isRiskStopped() ||
+        !accountKey.startsWith("QT_DEMO:") ||
+        accountKey!=prefs.getString("accountKey",null) ||
+        newPair.isBlank() || newPair=="NEIDENTIFICAT") return false
+    val losses=prefs.getInt("losses",-1)
+    if (losses !in 1 until STOP_AFTER_LOSSES) return false
+    val expected=LADDER[losses]
+    val spent=(0 until losses).sumOf{ LADDER[it] }
+    if (prefs.getLong("pendingStake",-1L)!=expected ||
+        expected>EDITOR_MAX_STAKE_CENTS ||
+        spent+expected>PLANNED_BUDGET_CENTS) return false
+    if (prefs.getString("pair",null)==newPair) return true
+    return prefs.edit()
+      .putString("pair",newPair)
+      .putString("status","MG LOSS " + losses +
+        " • EDITEZ " + (expected/100).toString() + "." +
+        (expected%100).toString().padStart(2,'0') + " USD • QT DEMO")
+      .commit()
+  }
+
   @Synchronized
   fun permitsFreshDemoOrder(
     accountKey:String,pair:String,stakeCents:Long
