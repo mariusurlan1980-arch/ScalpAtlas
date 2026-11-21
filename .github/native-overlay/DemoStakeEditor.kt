@@ -13,6 +13,9 @@ import java.util.Locale
  * closed-trade receipt; currently the application does not have such a reader.
  *
  * Aborts on QT Real, unknown broker, uncertain amount, payout, pair or balance.
+ * 566: accepts larger DEMO-only stake amounts up to $819.50, but requires
+ * fresh broker UI payout=92%, QT DEMO balance >= stake, and exact readback.
+ * A higher editor limit does NOT bypass the planned $1500 risk ledger.
  * No coordinates are tapped: ACTION_SET_TEXT targets a verified editable node.
  */
 object DemoStakeEditor {
@@ -189,7 +192,7 @@ object DemoStakeEditor {
     svc: AccessibilityService,
     stakeCents: Long
   ): Boolean {
-    if (stakeCents !in 100L..3964L) return false
+    if (stakeCents !in 100L..81950L) return false
     val (screen, _) = inspect(svc)
     return screen != null &&
       centsOf(screen.input.value) == stakeCents &&
@@ -207,7 +210,7 @@ object DemoStakeEditor {
     expectedPairMatches: () -> Boolean,
     stakeCents: Long
   ): String {
-    if (!expectedPairMatches() || stakeCents !in 100L..3964L)
+    if (!expectedPairMatches() || stakeCents !in 100L..81950L)
       return "BLOCAT: PERECHE SAU MIZĂ NECONFIRMATĂ"
     val (before, reason) = inspect(svc)
     if (before == null) return reason
