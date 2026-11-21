@@ -923,6 +923,8 @@ class ScalpOverlayService : Service() {
         mediaProjection==null || lastCapturedImageAt<=0L ||
         now-lastCapturedImageAt !in 0L..3500L ||
         !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.realFxAccountVisible() ||
         getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
           .getBoolean("attempted",false) ||
         getSharedPreferences(sell404TestPrefs,Context.MODE_PRIVATE)
@@ -931,9 +933,18 @@ class ScalpOverlayService : Service() {
     val brokerPkg=TouchTestService.activeDemoExecutorPackageForReview() ?: return
     if(pair=="NEIDENTIFICAT" || !pairReady(now))return
     val key="QT_DEMO:" + brokerPkg
-    val proposal=demoAutoStakePlan565.pending(key,pair)
+    // 581: require a fresh, independently identified pair and BOTH physical
+    // 92% buttons before moving a PENDING (not yet edited) recovery stake.
+    // This never changes the loss count or the amount. The native editor
+    // will still perform its mandatory SET_TEXT and exact readback.
+    if(TouchTestService.readVisibleDemoPair()!=pair ||
+        TouchTestService.readVerifiedDemoPayoutForPair(pair)!=92)return
+    var proposal=demoAutoStakePlan565.pending(key,pair)
+    if(proposal.stakeCents==null) {
+      if(!demoAutoStakePlan565.rebindPendingRecoveryPair581(key,pair))return
+      proposal=demoAutoStakePlan565.pending(key,pair)
+    }
     val amount=proposal.stakeCents ?: return
-    if(TouchTestService.readVerifiedDemoPayoutForPair(pair)!=92)return
     // 577: confirm a broker amount ALREADY set to the exact planned stake
     // without touching the edit field. OFF->ON previously consumed LIVE and
     // then depended on an unnecessary SET_TEXT, often leaving it stranded.
