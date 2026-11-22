@@ -41,7 +41,7 @@ test('588: Martingale only follows a broker verified result and retains risk cap
 });
 
 test('588: release workflow builds the new Motorola package and runs this test',()=>{
-  assert.match(workflow,/versionCode'\]=590/);
-  assert.match(workflow,/ScalpAtlas-590-HISTORY-PRIORITY-G24\.apk/);
+  assert.match(workflow,/versionCode'\]=591/);
+  assert.match(workflow,/ScalpAtlas-591-PERSPECTIVES-RETURN-G24\.apk/);
   assert.match(workflow,/test_588_manual_overlay_lock\.mjs/);
 });
