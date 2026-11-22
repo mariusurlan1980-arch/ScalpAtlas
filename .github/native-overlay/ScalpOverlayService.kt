@@ -6868,14 +6868,22 @@ class ScalpOverlayService : Service() {
     }
     // Read-only far-right "Mai multe" proof, two separate OCR frames.
     fun exactFooter595(regex: Regex, xMin:Float, xMax:Float):Pair<Float,Float>? {
-      val candidates=lines.flatMap { line -> listOf(line) + line.elements }.mapNotNull { item ->
+      val fromLines=lines.mapNotNull { item ->
         val r=item.boundingBox ?: return@mapNotNull null
         val x=r.centerX().toFloat()/frame.width
         val y=r.centerY().toFloat()/frame.height
         if (x !in xMin..xMax || y !in 0.855f..0.985f ||
             !regex.matches(item.text.trim())) null else Pair(x,y)
-      }.distinctBy { (x,y) -> Pair((x*100).toInt(),(y*100).toInt()) }
-      return candidates.singleOrNull()
+      }
+      val fromWords=words459.mapNotNull { item ->
+        val r=item.boundingBox ?: return@mapNotNull null
+        val x=r.centerX().toFloat()/frame.width
+        val y=r.centerY().toFloat()/frame.height
+        if (x !in xMin..xMax || y !in 0.855f..0.985f ||
+            !regex.matches(item.text.trim())) null else Pair(x,y)
+      }
+      // Prefer line, then individual OCR elements, never double-count.
+      return (if(fromLines.isNotEmpty()) fromLines else fromWords).singleOrNull()
     }
     val more595=if (pkg != null)
       exactFooter595(Regex("""(?i)^(?:Mai\s+multe|More)$"""),.76f,.985f) else null
@@ -6899,15 +6907,23 @@ class ScalpOverlayService : Service() {
     val quickRegex595=Regex(
       """(?i)^(?:Tranzac[țt]ionare\s+rapid[ăa]|Quick\s+Trading|Quick\s+Trade)$"""
     )
-    val quickCandidates595=if(pkg != null)
-      lines.flatMap { line -> listOf(line)+line.elements }.mapNotNull { item ->
+    val quickCandidates595=if(pkg != null) {
+      val fromLines=lines.mapNotNull { item ->
         val rect=item.boundingBox ?: return@mapNotNull null
         val x=rect.centerX().toFloat()/frame.width
         val y=rect.centerY().toFloat()/frame.height
         if(x !in 0.07f..0.93f || y !in 0.20f..0.86f ||
            !quickRegex595.matches(item.text.trim())) null else Pair(x,y)
-      }.distinctBy{(x,y)->Pair((x*100).toInt(),(y*100).toInt())}
-    else emptyList()
+      }
+      val fromWords=words459.mapNotNull { item ->
+        val rect=item.boundingBox ?: return@mapNotNull null
+        val x=rect.centerX().toFloat()/frame.width
+        val y=rect.centerY().toFloat()/frame.height
+        if(x !in 0.07f..0.93f || y !in 0.20f..0.86f ||
+           !quickRegex595.matches(item.text.trim())) null else Pair(x,y)
+      }
+      if(fromLines.isNotEmpty()) fromLines else fromWords
+    } else emptyList()
     if(quickCandidates595.size==1 && pkg != null) {
       val (x,y)=quickCandidates595.single()
       quickEntrySamples595=if(quickEntryPkg595==pkg &&
