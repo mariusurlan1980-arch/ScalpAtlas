@@ -296,6 +296,10 @@ class ScalpOverlayService : Service() {
   // leave the user on the chart, while the unverified old ID stays locked.
   private var lastPerspectiveReturnAttempt457 = 0L
   private var lastPerspectivesTradingReturn591 = 0L
+  // 592: schedule ONE short, post-expiry history visit at a time.
+  // A 3-second visual review is never equivalent to CLOSED settlement.
+  private var historyPeekStartedAt592 = 0L
+  private var historyPeekRetryAfter592 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
@@ -1304,9 +1308,11 @@ class ScalpOverlayService : Service() {
     if (!cachedDemoVerifiedOnChart || !ocrVerifiedHistoryPage || !freshHistory)
       return "ISTORIC • PAGINA NECONFIRMATĂ • FĂRĂ NAVIGARE"
     val result = TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
-      cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage = true
+      cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage = true,
+      overlayBounds = currentOverlayBounds488()
     )
-    if (result.contains("REVIN LA GRAFIC"))
+    if (result.contains("TRADING DEMO SELECTAT") ||
+        result.contains("TRADING DEMO GEST TRIMIS"))
       historyReturnPauseUntil457 =
         android.os.SystemClock.elapsedRealtime() + 20_000L
     return result
@@ -1662,6 +1668,10 @@ class ScalpOverlayService : Service() {
   ): String? {
     val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
     if (!autoDemoSessionConsumed) return null
+    // 592: time-based rearming is forbidden. Only an exact CLOSED broker
+    // receipt and independent EMPTY OPEN 2/2 may clear a pending gesture.
+    if (prefs.getBoolean("attempted", false))
+      return "592 • ORDIN ANTERIOR NECONFIRMAT • FĂRĂ REARMARE"
     // 557: elapsed 5 minutes is not broker-confirmed manual-test closure.
     if (prefs.getBoolean("manualTest552PendingVerifiedClose557", false))
       return "557 • TEST BUY DEMO ÎNCHIDERE NECONFIRMATĂ • FĂRĂ ORDIN"
@@ -1914,6 +1924,71 @@ class ScalpOverlayService : Service() {
           lastBrokerAccountStatus = diagnostic
           touchProbeStatus?.text = "🤖 " + diagnostic.take(115)
         }
+        // 592: Account identity takes precedence over EVERY navigation
+        // and order action. Never switch to Real, or try to switch FROM
+        // Real with Android gestures. A genuine Real header stops the robot.
+        if (diagnostic.contains("QT REAL IDENTIFICAT") ||
+            TouchTestService.realFxAccountVisible()) {
+          realAccountSafetyStop517 = true
+          autoDemoSessionRequested = false
+          autoDemoSessionConsumed = true
+          autoDemoArmed = false
+          touchProbeStatus?.text =
+            "🛑 QT REAL DETECTAT • ROBOT OPRIT • REVENIRE MANUALĂ DEMO"
+          mainHandler.postDelayed(this, 2500L)
+          return
+        }
+        // 592: Wait for the configured five-minute DEMO expiry before
+        // inspecting settlement. The elapsed time is a scheduling hint,
+        // NOT a broker CLOSED receipt, WIN/LOSS or permission to rearm.
+        val attemptPrefs592 = getSharedPreferences(
+          autoShockAttemptPrefs, Context.MODE_PRIVATE)
+        val attempted592 = attemptPrefs592.getBoolean("attempted", false)
+        val attemptWall592 = attemptPrefs592.getLong("attemptedWallAt454", -1L)
+        val attemptElapsed592 = attemptPrefs592.getLong("attemptedAt429", -1L)
+        val nowElapsed592 = android.os.SystemClock.elapsedRealtime()
+        val wallAge592 = System.currentTimeMillis() - attemptWall592
+        val elapsedAge592 = nowElapsed592 - attemptElapsed592
+        val afterExpiry592 = attempted592 &&
+          ((attemptWall592 > 0L &&
+             wallAge592 in (DEMO_TEST_EXPIRY_MS_465 + 3_000L)..86_400_000L) ||
+           (attemptElapsed592 > 0L &&
+             elapsedAge592 in (DEMO_TEST_EXPIRY_MS_465 + 3_000L)..86_400_000L))
+        val historyFresh592 = historyPageVisible433 &&
+          System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+        if (!attempted592) {
+          historyPeekStartedAt592 = 0L
+          historyPeekRetryAfter592 = 0L
+        }
+        if (afterExpiry592 && historyFresh592 &&
+            historyPeekStartedAt592 == 0L &&
+            nowElapsed592 >= historyPeekRetryAfter592 &&
+            !realAccountSafetyStop517) {
+          historyPeekStartedAt592 = nowElapsed592
+          val reviewPkg592 = TouchTestService.activeDemoExecutorPackageForReview()
+          mainHandler.postDelayed({
+            // A short review may fail to read two independent receipts.
+            // Still return to QT Demo Trading, retaining the old-order lock.
+            val reviewNow592 = android.os.SystemClock.elapsedRealtime()
+            historyPeekRetryAfter592 = reviewNow592 + 60_000L
+            historyPeekStartedAt592 = 0L
+            if (!shuttingDown && mediaProjection != null &&
+                !realAccountSafetyStop517 && TouchTestService.ready() &&
+                !TouchTestService.realFxAccountVisible() &&
+                reviewPkg592 != null &&
+                TouchTestService.activeDemoExecutorPackageForReview() == reviewPkg592) {
+              val reviewStillFresh592 = historyPageVisible433 &&
+                System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+              val result592 = if (reviewStillFresh592)
+                returnToChartAfterReview458(true, true)
+              else "592 • ISTORICUL NU MAI ESTE VIZIBIL • FĂRĂ ORDIN"
+              demoOrderVerificationReason = result592
+              lastAutoDemoHistoryNavStatus = result592
+              lastAutoDemoHistoryNavStatusAt = reviewNow592
+              touchProbeStatus?.text = "🤖 " + result592.take(100)
+            }
+          }, 3_000L)
+        }
         // 591: Recover a broker COPY-SIGNAL feed misidentified as chart.
         // Exact QT Demo + page title + bottom-right Trading label only.
         // A gesture never settles an order or opens a new one.
@@ -1967,8 +2042,9 @@ class ScalpOverlayService : Service() {
         val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&
           !shuttingDown && !realAccountSafetyStop517 &&
           mediaProjection != null && TouchTestService.ready() &&
-          getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-            .getBoolean("attempted", false)
+          // 592: no history visit while the 5-minute DEMO trade is active;
+          // pause further navigation for 60s after each <=3s review.
+          afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592
         if (pendingAutoHistory589) {
           // The marker survives process death; the session flags do not.
           // Reestablish the locked inspection state before UI navigation.
