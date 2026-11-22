@@ -76,3 +76,25 @@ test('595 signed Motorola release',()=>{
  assert.match(flow,/ScalpAtlas-596-MORE-VERIFY-G24\.apk/);
  assert.match(flow,/apksigner/);
 });
+
+test('596 explicit restart releases REAL stop only for clean QT Demo with no previous order',()=>{
+ const restart=service.split('fxButton.setOnClickListener {')[1]
+   .split('root.addView(fxButton')[0];
+ assert.ok(restart);
+ for (const condition of [
+   'realAccountSafetyStop517 && mediaProjection != null',
+   'TouchTestService.demoFxAccountInForeground()',
+   '!TouchTestService.realFxAccountVisible()',
+   'lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")',
+   'previousAuto596',
+   'previousSell596',
+   'tradePositionGate.state() == TradePositionGate.State.READY',
+   'demoRecoveryLedger.verifiedOpenPositionId429() == null',
+   '!closedHistoryInspectionInProgress',
+   '!previousAuto596 && !previousSell596 && cleanPosition596',
+   'autoDemoSessionRequested = true',
+   'autoDemoSessionConsumed = false',
+   'autoDemoLockedAt = lockedAt'
+ ]) assert.ok(restart.includes(condition),condition);
+ assert.match(restart,/if \(!previousAuto596 && !previousSell596 && cleanPosition596\)/);
+});
