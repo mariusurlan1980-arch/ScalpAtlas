@@ -336,6 +336,10 @@ class ScalpOverlayService : Service() {
   private var moreNavAttemptAt595 = 0L
   private var quickNavAttemptAt595 = 0L
   private var lastSocialUncover595 = 0L
+  // 596: a page-specific, throttled Accessibility fallback for More.
+  // It requires two independent OCR reads of the selected Demo history tab.
+  private var lastMoreAccessFallback596 = 0L
+  private var lastHistoryNavigationDiag596 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
@@ -2156,6 +2160,55 @@ class ScalpOverlayService : Service() {
           touchProbeStatus?.text="🤖 "+status595
           mainHandler.postDelayed(this,2500L)
           return
+        }
+        // 596: WebView OCR may miss the tiny far-right "Mai multe"
+        // footer even when Android Accessibility sees the exact label.
+        // Use a SECOND, independent source only after 2/2 OCR-selected
+        // QT Demo history proof. This is a footer navigation-only gesture.
+        val historySelected596 = historyPageVisible433 &&
+          System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L &&
+          ((historyPageTab433 == "DESCHIS" &&
+            openTabVisualConsecutive429 >= 2 &&
+            System.currentTimeMillis()-lastOpenTabVisualAt429 in 0L..5_000L) ||
+           (historyPageTab433 == "ÎNCHIS" &&
+            closedTabVisualConsecutive >= 2 &&
+            System.currentTimeMillis()-lastClosedTabVisualAt in 0L..5_000L))
+        if (navPkg595 != null && historySelected596 &&
+            moreFooterSamples595 < 2 &&
+            recoveryNow595-lastMoreAccessFallback596 !in 0L..15_000L) {
+          lastMoreAccessFallback596=recoveryNow595
+          val tapped596=navGesture595 {
+            TouchTestService.tapExactDemoMoreAccessibility596(
+              expectedBrokerPackage=navPkg595,
+              historyOcrTwoFramesVerified=true,
+              cachedDemoVerifiedOnChart=true,
+              overlayBounds=Rect()
+            )
+          }
+          val msg596=if (tapped596)
+            "596 • MAI MULTE IDENTIFICAT • VERIFIC MENIUL TRADING"
+          else "596 • ISTORIC QT DEMO • MAI MULTE OCR/ACCESIBILITATE 0/2"
+          if (tapped596) {
+            moreNavAttemptAt595=recoveryNow595
+            nonChartSafety595=true
+            historyReturnPauseUntil457=recoveryNow595+20_000L
+          }
+          lastAutoDemoHistoryNavStatus=msg596
+          lastAutoDemoHistoryNavStatusAt=recoveryNow595
+          touchProbeStatus?.text="🤖 "+msg596
+          mainHandler.postDelayed(this,2500L)
+          return
+        }
+        if (navPkg595 != null && historySelected596 &&
+            recoveryNow595-lastHistoryNavigationDiag596 !in 0L..7_000L) {
+          lastHistoryNavigationDiag596=recoveryNow595
+          val msg596=when {
+            moreFooterSamples595 >= 2 -> "596 • ISTORIC QT DEMO • MAI MULTE OCR 2/2"
+            moreFooterSamples595 == 1 -> "596 • ISTORIC QT DEMO • MAI MULTE OCR 1/2"
+            else -> "596 • ISTORIC QT DEMO • MAI MULTE NECITIT"
+          }
+          lastAutoDemoHistoryNavStatus=msg596
+          lastAutoDemoHistoryNavStatusAt=recoveryNow595
         }
         // Amount edits depend on broker-verified settled trade receipts;
         // the existing 424 build has no automatic receipt reader, so this
@@ -7150,6 +7203,11 @@ class ScalpOverlayService : Service() {
       }
       historyPageVisible433 = true
       historyPageLastSeen433 = observedAt
+      // 596: History is never the candlestick terminal. Keep pair
+      // rotation and new-order submissions stopped until two fresh chart
+      // frames independently confirm asset/M5/BUY/SELL.
+      nonChartSafety595 = true
+      chartProofSamples595 = 0
       // 447: The next MediaProjection+OCR frame must observe the real
       // QT Demo banner, not an area occluded by our own status pill.
       dockOverlayForBrokerHistory447()
@@ -7217,8 +7275,11 @@ class ScalpOverlayService : Service() {
     // 593: During the 3-second post-expiry QT Demo history visit,
     // 3s OCR frames cannot provide two independent samples in time.
     // Use a faster, bounded READ-ONLY schedule only on that page.
+    // 596: Also read More/Quick menus quickly after navigation,
+    // without inferring a chart from the menu.
     val historyOcrPeriod593 = if (historyPageVisible433 ||
-        historyPeekStartedAt592 > 0L) 900L else OCR_INTERVAL_MS
+        historyPeekStartedAt592 > 0L || nonChartSafety595) 900L
+        else OCR_INTERVAL_MS
     if (ocrBusy || now - lastOcrAttemptAt < historyOcrPeriod593) return
     ocrBusy = true
     lastOcrAttemptAt = now
