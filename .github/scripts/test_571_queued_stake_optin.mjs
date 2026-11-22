@@ -56,8 +56,8 @@ test('monitor processes queued request after independent account check, before a
   assert.ok(identity>0 && finish>identity && edit>finish);
 });
 test('workflow builds version 571 and includes the new safety test',()=>{
-  assert.ok(workflow.includes("expo['android']['versionCode']=591"));
+  assert.ok(workflow.includes("expo['android']['versionCode']=592"));
   assert.ok(workflow.includes('node --test .github/scripts/test_571_queued_stake_optin.mjs'));
-  assert.ok(workflow.includes('ScalpAtlas-591-PERSPECTIVES-RETURN-G24.apk'));
+  assert.ok(workflow.includes('ScalpAtlas-592-DEMO-HISTORY-3S-G24.apk'));
   assert.ok(workflow.includes('apksigner'));
 });
