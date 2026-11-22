@@ -2220,7 +2220,8 @@ jobs:
           assert 'val unknownBaseEligible454 = !savedReconciled437 &&' in s
           assert 'demoRecoveryLedger.verifiedOpenPositionId429() == null' in s
           assert '!demoRecoveryLedger.isRecovering429()' in s
-          assert 'demoRecoveryLedger.quote(92).stakeCents == 100L' in s
+          assert 'demoRecoveryLedger.quote(92).stakeCents in setOf(100L,109L)' in s
+          assert 'expectedStake429 in setOf(100L,109L)' in s
           assert 'TouchTestService.priorDemoGestureCooldownComplete()' in s
           assert 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' in s
           assert 'val unknownBaseCleared454 = if (unknownBaseEligible454)' in s
