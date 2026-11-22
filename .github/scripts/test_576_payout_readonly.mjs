@@ -61,8 +61,8 @@ test('576 keeps strict stake editing even with a separate payout-only read',()=>
 });
 
 test('576 signed Android build includes strict payout regression checks',()=>{
-  assert.ok(workflow.includes("expo['android']['versionCode']=591"));
+  assert.ok(workflow.includes("expo['android']['versionCode']=592"));
   assert.ok(workflow.includes('node --test .github/scripts/test_576_payout_readonly.mjs'));
-  assert.ok(workflow.includes('ScalpAtlas-591-PERSPECTIVES-RETURN-G24.apk'));
+  assert.ok(workflow.includes('ScalpAtlas-592-DEMO-HISTORY-3S-G24.apk'));
   assert.ok(workflow.includes('apksigner'));
 });
