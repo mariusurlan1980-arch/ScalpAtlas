@@ -8,7 +8,7 @@ const flow=readFileSync(new URL('../workflows/build-native-robot-safe-preflight-
 test('591 no broker Perspective click as a chart-return target',()=>{
  assert.doesNotMatch(service,/TouchTestService\.tapVerifiedDemoPerspectiveFooter457\(/);
  const back=service.split('private fun returnToChartAfterReview458(')[1].split('private fun navigateVerifiedDemoHistory431(')[0];
- assert.match(back,/returnToDemoChartAfterVerifiedEmptyReview\(/);
+ assert.match(back,/tapVerifiedDemoMoreFooter595\(/);
  assert.match(back,/historyPageVisible433/);
  assert.match(back,/!cachedDemoVerifiedOnChart/);
  assert.match(back,/!ocrVerifiedHistoryPage/);
@@ -30,11 +30,11 @@ test('591 exactly identifies copy feed, QT Demo and bottom-right Trading footer'
 
 test('591 safe remediation only for persisted order, no forced rearm',()=>{
  const monitor=service.split('private fun startBrokerAccountMonitor()')[1].split('private fun startDemoClickMonitor()')[0];
- assert.match(monitor,/val pendingPerspectives591 =/);
+ assert.match(monitor,/val socialFresh595=/);
  assert.match(monitor,/\.getBoolean\("attempted", false\)/);
  assert.match(monitor,/!realAccountSafetyStop517/);
- assert.match(monitor,/returnFromDemoPerspectivesToTrading591\(/);
- assert.match(monitor,/lastPerspectivesTradingReturn591 >= 10_000L/);
+ assert.match(monitor,/tapVerifiedDemoMoreFooter595\(/);
+ assert.match(monitor,/recoveryNow595-moreNavAttemptAt595 !in 0L\.\.10_000L/);
  assert.match(service,/VERIFIC ORDIN ANTERIOR • FĂRĂ ORDIN NOU/);
  assert.doesNotMatch(service,/"ARMAT · TRADE ACTIV"/);
  assert.match(service,/private const val CHART_ONLY_DEMO_462 = true/);
@@ -44,7 +44,7 @@ test('591 safe remediation only for persisted order, no forced rearm',()=>{
 test('591 Android release retains prior 590 tests and signs a distinct G24 build',()=>{
  assert.match(flow,/test_590_pending_order_history_priority\.mjs/);
  assert.match(flow,/test_591_perspectives_safe_return\.mjs/);
- assert.match(flow,/versionCode'\]=594/);
- assert.match(flow,/ScalpAtlas-594-SAFE-RETURN-G24\.apk/);
+ assert.match(flow,/versionCode'\]=595/);
+ assert.match(flow,/ScalpAtlas-595-REAL-CHART-G24\.apk/);
  assert.match(flow,/apksigner/);
 });
