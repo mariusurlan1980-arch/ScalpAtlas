@@ -5,40 +5,46 @@ const service=readFileSync(new URL('../native-overlay/ScalpOverlayService.kt',im
 const plan=readFileSync(new URL('../native-overlay/DemoAutoStakePlan565.kt',import.meta.url),'utf8');
 const flow=readFileSync(new URL('../workflows/build-native-robot-safe-preflight-379.yml',import.meta.url),'utf8');
 
-test('590 unresolved persisted DEMO order preempts 5-minute rotation timeout',()=>{
+test('601 old pending order blocks submissions, not an expired M5 chart rotation',()=>{
  const fn=service.split('fun pauseForTrade516(): Boolean {')[1].split('fun stopOnReal517(',1)[0];
- const old=fn.indexOf('val attemptedAt = prefs.getLong("attemptedAt429", 0L)');
- const pending=fn.indexOf('if (prefs.getBoolean("attempted", false))');
- assert.ok(pending>=0 && old>pending);
- for(const a of ['fxRotationTradePaused516 = true','fxRotationNavigating = false',
-  'pendingHistoryRetryScheduled590', 'after(3_000L)', 'pauseForTrade516()',
-  'fxRotationTradePaused516 = false','seekChart()'])assert.ok(fn.includes(a),a);
- assert.doesNotMatch(fn,/\.putBoolean\("attempted", false\)/);
- assert.doesNotMatch(fn,/pressVerifiedDemoStakeOnce429\(/);
+ for (const item of [
+   'val persistedAttempt601 = prefs.getBoolean("attempted", false)',
+   'val attemptedAt = prefs.getLong("attemptedAt429", -1L)',
+   'val attemptedWall601 = prefs.getLong("attemptedWallAt454", -1L)',
+   'val pendingFiveMinuteOrder = persistedAttempt601 &&',
+   'elapsedAge601 in 0L..(DEMO_TEST_EXPIRY_MS_465 + 15_000L)',
+   'wallAge601 in 0L..(DEMO_TEST_EXPIRY_MS_465 + 15_000L)',
+   'val orderMayBeActive = pendingFiveMinuteOrder || visuallyActive || verifiedOpen',
+   'if (nonChartSafety595)',
+   'return false'
+ ]) assert.ok(fn.includes(item),item);
+ assert.doesNotMatch(fn,/if \(prefs.getBoolean\("attempted", false\)\)\s*\{/);
+ assert.doesNotMatch(fn,/\.putBoolean\("attempted", false\)|pressVerifiedDemoStakeOnce429\(/);
 });
-test('590 all asynchronous FX navigation paths defer to history review',()=>{
- for(const name of ['beginNavigation','verifyChart','recoverNavigation',
-   'awaitList','confirmSelection','searchUnvisited506']) {
-    const found=service.indexOf('fun '+name+'(');
-    assert.ok(found>=0,name);
-    const opening=service.slice(found,found+330);
-    assert.ok(opening.includes('pauseForTrade516()'),name);
+
+test('601 every FX navigation checks chart safety instead of prior-order marker',()=>{
+ for (const name of ['beginNavigation','verifyChart','recoverNavigation',
+   'awaitList','confirmSelection','searchUnvisited506']){
+   const at=service.indexOf('fun '+name+'(');
+   assert.ok(at>=0,name);
+   assert.ok(service.slice(at,at+350).includes('pauseForTrade516()'),name);
  }
 });
-test('590 does not infer settled order from elapsed time or override proof',()=>{
- const start=service.indexOf('private fun inspectPassiveDemoProof463(');
- const end=service.indexOf('private fun maybeRearmExpiredDemoPilot464(');
- const proof=service.slice(start,end);
- for(const a of ['verifiedClosedDetail437','closed.positionId','closed.pair != expectedPair',
+test('601 settlement and Martingale locks retain strict broker proof',()=>{
+ const proof=service.split('private fun inspectPassiveDemoProof463(')[1]
+   .split('private fun maybeRearmExpiredDemoPilot464(')[0];
+ for(const item of ['verifiedClosedDetail437','closed.positionId',
    'closed.stakeCents != stake','closed.payoutPercent != payout',
-   'brokerOpenTimeMatchesAttempt437','demoEmptyReviewReads','martingaleResultDurable581',
-   '.putBoolean("attempted", false)'])assert.ok(proof.includes(a),a);
+   'brokerOpenTimeMatchesAttempt437','demoEmptyReviewReads',
+   'martingaleResultDurable581','.putBoolean("attempted", false)'])
+   assert.ok(proof.includes(item),item);
  assert.ok(proof.indexOf('onVerifiedClosed(')<proof.indexOf('.putBoolean("attempted", false)'));
- assert.ok(service.includes('private const val CHART_ONLY_DEMO_462 = true'));
- assert.ok(plan.includes('PAYOUT_EXACT = 92'));
+ assert.match(service,/private const val CHART_ONLY_DEMO_462 = true/);
+ assert.match(plan,/PAYOUT_EXACT = 92/);
 });
-test('590 build includes this regression and new signed Motorola APK',()=>{
- assert.ok(flow.includes('test_590_pending_order_history_priority.mjs'));
- assert.ok(flow.includes("expo['android']['versionCode']=600"));
- assert.ok(flow.includes('ScalpAtlas-600-OVERLAY-QT-DEMO-G24.apk'));
+test('601 signed Android build retains 3-second history regression',()=>{
+ assert.match(flow,/versionCode'\]=601/);
+ assert.match(flow,/ScalpAtlas-601-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/test_600_chart_first_3s\.mjs/);
+ assert.match(flow,/test_601_rotation_independent_order\.mjs/);
 });
