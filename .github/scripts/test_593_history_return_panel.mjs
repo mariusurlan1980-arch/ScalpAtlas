@@ -15,7 +15,7 @@ test('593 briefly uncovers Trading footer and restores the manual pinned overlay
    'overlayDuringHistory593?.visibility = oldVisibility593',
    'overlayView === overlayDuringHistory593',
    'returnToChartAfterReview458(true, true)', '}, 3_000L)',
-   'historyPeekRetryAfter592 = reviewNow592 + 60_000L'
+   'historyPeekRetryAfter592 = reviewNow592 + 8_000L'
  ]) assert.ok(monitor.includes(x),x);
  assert.match(monitor,/!TouchTestService\.realFxAccountVisible\(\)/);
  assert.match(monitor,/reviewPkg592 != null/);
