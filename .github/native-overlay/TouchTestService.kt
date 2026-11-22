@@ -2069,6 +2069,58 @@ class TouchTestService : AccessibilityService() {
       } catch (_: Throwable) { false }
     }
 
+    /**
+     * 596: Read-only Accessibility fallback for the exact FAR-RIGHT More
+     * footer on an already OCR-confirmed QT Demo history page. Never use
+     * third-tab geometry ("Tranzacționare Socială"), top account selector,
+     * Android Back, BUY/SELL, or inferred coordinates. A gesture request
+     * does not establish that the menu opened.
+     */
+    fun tapExactDemoMoreAccessibility596(
+      expectedBrokerPackage: String,
+      historyOcrTwoFramesVerified: Boolean,
+      cachedDemoVerifiedOnChart: Boolean,
+      overlayBounds: Rect
+    ): Boolean {
+      if (!historyOcrTwoFramesVerified || !cachedDemoVerifiedOnChart ||
+          realFxAccountVisible()) return false
+      val info=activeDemoHistoryNodes(cachedDemoVerifiedOnChart) ?: return false
+      val (svc,root,labels)=info
+      val pkg=root.packageName?.toString().orEmpty()
+      if(pkg != expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString()!=pkg ||
+          !BrokerAdapterRegistry.hasDemoExecutor(pkg)) return false
+      val metrics=android.util.DisplayMetrics()
+      try {
+        val wm=svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      val name=Regex("""(?i)^(?:Mai\\s+multe|More)$""")
+      val candidates=labels.filter{(node,bounds)->
+        bounds.centerX() in (metrics.widthPixels*0.77f).toInt()..(metrics.widthPixels*0.985f).toInt() &&
+        bounds.centerY() in (metrics.heightPixels*0.855f).toInt()..(metrics.heightPixels*0.985f).toInt() &&
+        bounds.width() in 12..(metrics.widthPixels*0.28f).toInt() &&
+        bounds.height() in 12..(metrics.heightPixels*0.11f).toInt() &&
+        listOfNotNull(node.text?.toString(),node.contentDescription?.toString()).any{
+          name.matches(it.replace(Regex("""\\s+""")," ").trim())
+        }
+      }
+      if(candidates.isEmpty())return false
+      val selected=candidates.minByOrNull{(_,r)->r.width().toLong()*r.height()}
+        ?: return false
+      if(candidates.any{(_,r)->
+          kotlin.math.abs(r.centerX()-selected.second.centerX())>metrics.widthPixels*0.05f ||
+          kotlin.math.abs(r.centerY()-selected.second.centerY())>metrics.heightPixels*0.025f
+        } || overlayBounds.contains(selected.second.centerX(),selected.second.centerY()))
+        return false
+      if(svc.rootInActiveWindow?.packageName?.toString()!=pkg ||
+          realFxAccountVisible())return false
+      return clickExactDemoNavigationLabel(
+        svc,root,labels,name,0.77f,0.985f,0.855f,0.985f
+      )
+    }
+
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
       cachedDemoVerifiedOnChart: Boolean = false,
       ocrVerifiedEmptyOpenTab: Boolean = false
