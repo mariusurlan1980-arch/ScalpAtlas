@@ -5148,9 +5148,9 @@ class ScalpOverlayService : Service() {
               TouchTestService.demoFxAccountInForeground() &&
               !TouchTestService.realFxAccountVisible() &&
               !historyPageVisible433
-            if (!safeFxSelector605) {
+            if (!safeFxSelector605 || current == null) {
               recoverNavigation(previous, "AȘTEPT GRAFICUL QT")
-            } else if (TouchTestService.readFxChartPayout(current!!, false) == null) {
+            } else if (TouchTestService.readFxChartPayout(current, false) == null) {
               visited.add(current)
               beginNavigation()
               openList(current, false)
