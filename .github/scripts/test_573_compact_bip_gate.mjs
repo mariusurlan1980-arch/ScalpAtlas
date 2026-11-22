@@ -51,6 +51,6 @@ test('573 chart signal remains available visually, with unchanged trading gate',
 test('573 signed APK pipeline includes new tests',()=>{
  assert.ok(flow.includes("expo['android']['versionCode']=589"));
  assert.ok(flow.includes('node --test .github/scripts/test_573_compact_bip_gate.mjs'));
- assert.ok(flow.includes('ScalpAtlas-589-MANUAL-POS-G24.apk'));
+ assert.ok(flow.includes('ScalpAtlas-589-AUTO-HISTORY-G24.apk'));
  assert.ok(flow.includes('apksigner'));
 });
