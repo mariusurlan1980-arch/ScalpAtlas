@@ -855,7 +855,7 @@ jobs:
           grep -Fq 'val brokerOpenTradeHint516 =' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq '!fxRotationTradePaused516 && !brokerOpenTradeHint516 && brokerConnected' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'DEMO_TEST_EXPIRY_MS_465 + 45_000L' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'ARMAT · TRADE ACTIV' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'VERIFIC ORDIN ANTERIOR • FĂRĂ ORDIN NOU' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'showMoneyBurstOnVerifiedDemoVisualEvent512(' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'verifyNewVisualDemoBadge512(tradePair429, attemptedWall512, badgeBefore512)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'for (i in 0 until 28)' .github/native-overlay/ScalpOverlayService.kt
