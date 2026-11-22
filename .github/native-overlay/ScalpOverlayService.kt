@@ -300,6 +300,13 @@ class ScalpOverlayService : Service() {
   // A 3-second visual review is never equivalent to CLOSED settlement.
   private var historyPeekStartedAt592 = 0L
   private var historyPeekRetryAfter592 = 0L
+  // 593: visible QT Demo Trading footer verified in two distinct OCR frames.
+  // It is navigation-only evidence, never a broker order receipt.
+  @Volatile private var tradingFooterSamples593 = 0
+  @Volatile private var tradingFooterX593 = -1f
+  @Volatile private var tradingFooterY593 = -1f
+  @Volatile private var tradingFooterAt593 = 0L
+  @Volatile private var tradingFooterPackage593: String? = null
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
@@ -1307,10 +1314,35 @@ class ScalpOverlayService : Service() {
       System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
     if (!cachedDemoVerifiedOnChart || !ocrVerifiedHistoryPage || !freshHistory)
       return "ISTORIC • PAGINA NECONFIRMATĂ • FĂRĂ NAVIGARE"
-    val result = TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+    val effectiveBounds593 = if (overlayView?.visibility == View.INVISIBLE)
+      Rect() else currentOverlayBounds488()
+    var result = TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
       cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage = true,
-      overlayBounds = currentOverlayBounds488()
+      overlayBounds = effectiveBounds593
     )
+    // 593: With the panel briefly hidden, QT WebView may still not expose
+    // footer Accessibility nodes. Only TWO distinct OCR reads of the exact
+    // bottom-right Trading label may authorize a physical nav gesture.
+    // This never selects a broker account, taps BUY/SELL, or unlocks a trade.
+    val expectedPackage593 = TouchTestService.activeDemoExecutorPackageForReview()
+    val ocrTrading593 = result.contains("TRADING NECITIT") ||
+      result.contains("TRADING AMBIGUU") ||
+      result.contains("TRADING GEST RESPINS")
+    if (ocrTrading593 && cachedDemoVerifiedOnChart &&
+        expectedPackage593 != null && tradingFooterPackage593 == expectedPackage593 &&
+        tradingFooterSamples593 >= 2 &&
+        System.currentTimeMillis() - tradingFooterAt593 in 0L..5_000L &&
+        !TouchTestService.realFxAccountVisible()) {
+      val sent593 = TouchTestService.tapVerifiedDemoTradingFooterOcr593(
+        expectedPackage593, tradingFooterX593, tradingFooterY593,
+        cachedDemoVerifiedOnChart = true,
+        ocrVerifiedHistoryPage = true,
+        overlayBounds = effectiveBounds593
+      )
+      tradingFooterSamples593 = 0
+      if (sent593)
+        result = "593 • TRADING DEMO GEST TRIMIS • VERIFIC GRAFIC"
+    }
     if (result.contains("TRADING DEMO SELECTAT") ||
         result.contains("TRADING DEMO GEST TRIMIS"))
       historyReturnPauseUntil457 =
@@ -6677,6 +6709,50 @@ class ScalpOverlayService : Service() {
     // 433: Page identity must come from actual history TITLE and both tabs,
     // not the chart footer "Tranzacții" or any historical FX row.
     val trueHistoryPage433 = historyIdentity454 && openTab && closedTab && pkg != null
+    // 593: OCR fallback for the exact bottom-right broker Trading footer.
+    // Two independent captures and a matching QT Demo package are mandatory.
+    val tradingRegex593 = Regex(
+      """(?i)^(?:Tranzacționare|Tranzactionare|Tranzacţionare|Trading|Trade)$"""
+    )
+    val tradingLines593 = if (trueHistoryPage433 && pkg != null)
+      lines.mapNotNull { line ->
+        val b = line.boundingBox ?: return@mapNotNull null
+        val x = b.centerX().toFloat() / frame.width
+        val y = b.centerY().toFloat() / frame.height
+        if (x !in 0.58f..0.98f || y !in 0.86f..0.985f ||
+            !tradingRegex593.matches(line.text.trim())) null
+        else Pair(x, y)
+      } else emptyList()
+    val tradingWords593 = if (tradingLines593.isEmpty() &&
+        trueHistoryPage433 && pkg != null)
+      words459.mapNotNull { word ->
+        val b = word.boundingBox ?: return@mapNotNull null
+        val x = b.centerX().toFloat() / frame.width
+        val y = b.centerY().toFloat() / frame.height
+        if (x !in 0.58f..0.98f || y !in 0.86f..0.985f ||
+            !tradingRegex593.matches(word.text.trim())) null
+        else Pair(x, y)
+      } else emptyList()
+    val tradingCandidates593 = if (tradingLines593.isNotEmpty())
+      tradingLines593 else tradingWords593
+    if (tradingCandidates593.size == 1 && pkg != null) {
+      val (x, y) = tradingCandidates593.single()
+      if (tradingFooterSamples593 > 0 &&
+          tradingFooterPackage593 == pkg &&
+          observedAt - tradingFooterAt593 in 750L..6_000L &&
+          kotlin.math.abs(x - tradingFooterX593) <= .035f &&
+          kotlin.math.abs(y - tradingFooterY593) <= .025f)
+        tradingFooterSamples593 = (tradingFooterSamples593 + 1).coerceAtMost(3)
+      else tradingFooterSamples593 = 1
+      tradingFooterX593 = x
+      tradingFooterY593 = y
+      tradingFooterAt593 = observedAt
+      tradingFooterPackage593 = pkg
+    } else {
+      tradingFooterSamples593 = 0
+      tradingFooterAt593 = 0L
+      tradingFooterPackage593 = null
+    }
     // 457: Bottom "Perspective" is a safe NON-ORDER navigation control.
     // Its coordinates must be found independently in two fresh OCR frames.
     val perspectiveLabels457 = if (trueHistoryPage433) lines.mapNotNull { line ->
@@ -6835,7 +6911,12 @@ class ScalpOverlayService : Service() {
   }
 
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
-    if (ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
+    // 593: During the 3-second post-expiry QT Demo history visit,
+    // 3s OCR frames cannot provide two independent samples in time.
+    // Use a faster, bounded READ-ONLY schedule only on that page.
+    val historyOcrPeriod593 = if (historyPageVisible433 ||
+        historyPeekStartedAt592 > 0L) 900L else OCR_INTERVAL_MS
+    if (ocrBusy || now - lastOcrAttemptAt < historyOcrPeriod593) return
     ocrBusy = true
     lastOcrAttemptAt = now
 
