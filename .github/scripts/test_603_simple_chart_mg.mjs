@@ -24,7 +24,7 @@ test('603 display MG block truthfully without changing trade settlement',()=>{
  assert.match(src,/tradePositionGate\.brokerVerifiedEmptyDemoReview\(true\)/);
 });
 test('603 signed APK identity',()=>{
- assert.match(flow,/versionCode'\]=605/);
- assert.match(flow,/ScalpAtlas-605-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/versionCode'\]=606/);
+ assert.match(flow,/ScalpAtlas-606-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/test_603_simple_chart_mg\.mjs/);
 });
