@@ -10,7 +10,7 @@ test('594 QT Demo history auto-return is independent of trade age but orders rem
   const monitor=service.split('private fun startBrokerAccountMonitor()')[1]
     .split('private fun startDemoClickMonitor()')[0];
   const returnGate = monitor.slice(monitor.indexOf('// 594: Once the same-package QT Demo history'),
-    monitor.indexOf('val pendingPerspectives591'));
+    monitor.indexOf('val socialFresh595='));
   assert.match(returnGate,/if \(historyFresh592 &&/);
   assert.doesNotMatch(returnGate,/if \(afterExpiry592 && historyFresh592/);
   for (const requirement of ['historyPeekStartedAt592 = nowElapsed592',
@@ -54,8 +54,8 @@ test('594 derived gesture never leaves bottom navigation or accesses Real, trade
   assert.doesNotMatch(fn,/GLOBAL_ACTION_BACK|performGlobalAction|pressVerifiedDemoStakeOnce429|pressAutoOneDollarDemoOrderOnce/);
   const ret=service.split('private fun returnToChartAfterReview458(')[1]
     .split('private fun navigateVerifiedDemoHistory431(')[0];
-  assert.match(ret,/derivedTradingSamples594 >= 2/);
-  assert.match(ret,/tapDerivedDemoTradingFooter594\(/);
+  assert.match(ret,/moreFooterSamples595 < 2/);
+  assert.match(ret,/tapVerifiedDemoMoreFooter595\(/);
   assert.match(ret,/tradingFooterPackage593 == expectedPackage593/);
 });
 test('594 no false WIN, LOSS or attempted-order reset from navigation',()=>{
@@ -73,7 +73,7 @@ test('594 no false WIN, LOSS or attempted-order reset from navigation',()=>{
 test('594 APK for Motorola keeps all prior tests and signature',()=>{
   assert.match(flow,/test_593_history_return_panel\.mjs/);
   assert.match(flow,/test_594_safe_history_footer\.mjs/);
-  assert.match(flow,/versionCode'\]=594/);
-  assert.match(flow,/ScalpAtlas-594-SAFE-RETURN-G24\.apk/);
+  assert.match(flow,/versionCode'\]=595/);
+  assert.match(flow,/ScalpAtlas-595-REAL-CHART-G24\.apk/);
   assert.match(flow,/apksigner/);
 });
