@@ -86,8 +86,8 @@ test('577 empty Open tab remains insufficient proof to clear previous attempted 
 });
 
 test('577 Android signed release ships rearm and strict pair tests',()=>{
- assert.ok(workflow.includes("expo['android']['versionCode']=591"));
- assert.ok(workflow.includes('ScalpAtlas-591-PERSPECTIVES-RETURN-G24.apk'));
+ assert.ok(workflow.includes("expo['android']['versionCode']=592"));
+ assert.ok(workflow.includes('ScalpAtlas-592-DEMO-HISTORY-3S-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_577_base_rearm.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
