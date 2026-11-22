@@ -295,6 +295,7 @@ class ScalpOverlayService : Service() {
   // 457: Navigation is not settlement. A bounded history read should
   // leave the user on the chart, while the unverified old ID stays locked.
   private var lastPerspectiveReturnAttempt457 = 0L
+  private var lastPerspectivesTradingReturn591 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
@@ -1295,31 +1296,19 @@ class ScalpOverlayService : Service() {
     cachedDemoVerifiedOnChart: Boolean,
     ocrVerifiedHistoryPage: Boolean
   ): String {
-    val pkg = TouchTestService.activeDemoExecutorPackageForReview()
+    // 591: Perspective opens the copied-signal feed, NOT the chart.
+    // Never click that footer. Only a verified history page allows BACK.
     val freshHistory = historyPageVisible433 &&
       System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
-    val freshPerspective = cachedDemoVerifiedOnChart &&
-      ocrVerifiedHistoryPage && freshHistory && pkg != null &&
-      perspectiveOcrPackage457 == pkg &&
-      perspectiveOcrSamples457 >= 2 &&
-      System.currentTimeMillis() - perspectiveOcrAt457 in 0L..6_000L
-    if (freshPerspective && pkg != null) {
-      val sent = TouchTestService.tapVerifiedDemoPerspectiveFooter457(
-        pkg, perspectiveOcrX457, perspectiveOcrY457,
-        cachedDemoVerifiedOnChart = true,
-        ocrConfirmedHistoryPage = true
-      )
-      perspectiveOcrSamples457 = 0
-      if (sent) {
-        historyReturnPauseUntil457 =
-          android.os.SystemClock.elapsedRealtime() + 180_000L
-        return "PERSPECTIVE • GEST TRIMIS • VERIFIC GRAFIC • FĂRĂ ORDIN NOU"
-      }
-    }
-    // Only a broker-verified HISTORY page permits the legacy Back fallback.
-    return TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
-      cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage && freshHistory
+    if (!cachedDemoVerifiedOnChart || !ocrVerifiedHistoryPage || !freshHistory)
+      return "ISTORIC • PAGINA NECONFIRMATĂ • FĂRĂ NAVIGARE"
+    val result = TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
+      cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage = true
     )
+    if (result.contains("REVIN LA GRAFIC"))
+      historyReturnPauseUntil457 =
+        android.os.SystemClock.elapsedRealtime() + 20_000L
+    return result
   }
 
   private fun navigateVerifiedDemoHistory431(
@@ -1924,6 +1913,36 @@ class ScalpOverlayService : Service() {
           lastBrokerAccountStatus = diagnostic
           touchProbeStatus?.text = "🤖 " + diagnostic.take(115)
         }
+        // 591: Recover a broker COPY-SIGNAL feed misidentified as chart.
+        // Exact QT Demo + page title + bottom-right Trading label only.
+        // A gesture never settles an order or opens a new one.
+        val pendingPerspectives591 =
+          getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+            .getBoolean("attempted", false) &&
+          !realAccountSafetyStop517 &&
+          !diagnostic.contains("QT REAL IDENTIFICAT") &&
+          TouchTestService.ready()
+        val perspectivesNow591 = android.os.SystemClock.elapsedRealtime()
+        if (pendingPerspectives591 &&
+            (lastPerspectivesTradingReturn591 <= 0L ||
+             perspectivesNow591 - lastPerspectivesTradingReturn591 >= 10_000L)) {
+          val recovery591 = TouchTestService.returnFromDemoPerspectivesToTrading591(
+            cachedDemoVerifiedOnChart =
+              diagnostic.contains("QT DEMO IDENTIFICAT") ||
+                (verifiedDemoAccountPackage != null &&
+                 perspectivesNow591 - verifiedDemoAccountAt in 0L..90_000L),
+            overlayBounds = currentOverlayBounds488()
+          )
+          if (recovery591 != null) {
+            lastPerspectivesTradingReturn591 = perspectivesNow591
+            lastAutoDemoHistoryNavStatus = recovery591
+            lastAutoDemoHistoryNavStatusAt = perspectivesNow591
+            demoOrderVerificationReason = recovery591
+            touchProbeStatus?.text = "🤖 " + recovery591.take(100)
+            mainHandler.postDelayed(this, 2500L)
+            return
+          }
+        }
         // Amount edits depend on broker-verified settled trade receipts;
         // the existing 424 build has no automatic receipt reader, so this
         // event cannot be produced by Android gesture callbacks or SHOCK.
@@ -2212,37 +2231,20 @@ class ScalpOverlayService : Service() {
           if (timedOutClosedList457 && !closedHistoryInspectionInProgress &&
               nowReview - lastPerspectiveReturnAttempt457 >= 30_000L &&
               historyReturnPauseUntil457 <= nowReview) {
-            val freshPerspective457 = perspectiveOcrSamples457 >= 2 &&
-              perspectiveOcrPackage457 == expectedPackage429 &&
-              System.currentTimeMillis() - perspectiveOcrAt457 in 0L..6_000L &&
-              perspectiveOcrX457 in 0.20f..0.63f &&
-              perspectiveOcrY457 in 0.84f..0.985f &&
-              historyPageVisible433 &&
-              System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
-            if (freshPerspective457) {
-              lastPerspectiveReturnAttempt457 = nowReview
-              val sent457 = TouchTestService.tapVerifiedDemoPerspectiveFooter457(
-                expectedPackage429!!, perspectiveOcrX457, perspectiveOcrY457,
-                cachedDemoVerifiedOnChart = verifiedDemoReview,
-                ocrConfirmedHistoryPage = true
-              )
-              perspectiveOcrSamples457 = 0
-              if (sent457) {
-                // Page transition itself still requires a NEW chart frame.
-                historyReturnPauseUntil457 = nowReview + 180_000L
-                lastClosedHistoryScanKey442 = listOf(
-                  expectedPackage429.orEmpty(), expectedPair429.orEmpty(),
-                  attemptedAt429.toString()
-                ).joinToString("|")
-                lastClosedHistoryScanAt442 = nowReview
-              }
-              touchProbeStatus?.text = if (sent457)
-                "🔎 PERSPECTIVE • REVENIRE TRIMISĂ • VERIFIC GRAFIC • MG BLOCAT"
-              else "🔒 PERSPECTIVE • GEST RESPINS • FĂRĂ ORDIN"
-            } else {
-              touchProbeStatus?.text =
-                "🔎 PERSPECTIVE • AȘTEPT ETICHETA OCR 2/2 • FĂRĂ ORDIN"
-            }
+            // 591: leave verified history with BACK, NOT Perspective.
+            // The previous attempted order remains persistently locked.
+            lastPerspectiveReturnAttempt457 = nowReview
+            lastClosedHistoryScanKey442 = listOf(
+              expectedPackage429.orEmpty(), expectedPair429.orEmpty(),
+              attemptedAt429.toString()
+            ).joinToString("|")
+            lastClosedHistoryScanAt442 = nowReview
+            touchProbeStatus?.text = "🔎 591 • " +
+              returnToChartAfterReview458(
+                verifiedDemoReview,
+                historyPageVisible433 &&
+                  System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+              ).take(85)
           }
           val closedDetail438 = verifiedClosedDetail437
           if (closedDetail438 != null && pendingReceipt429 &&
