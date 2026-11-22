@@ -41,6 +41,14 @@ test('595 read-only More -> exact Quick Trading is never a social button, accoun
  assert.match(touch,/xFraction !in 0\.76f\.\.0\.985f/);
  assert.match(touch,/yFraction !in 0\.20f\.\.0\.86f/);
 });
+test('595 briefly uncovers rightmost More footer so masked OCR can read two frames',()=>{
+ assert.match(monitor,/lastSocialUncover595=recoveryNow595/);
+ assert.match(monitor,/moreFooterSamples595 < 2/);
+ assert.match(monitor,/overlayUncover595.visibility=View.INVISIBLE/);
+ assert.match(monitor,/overlayUncover595.visibility=was595/);
+ assert.match(monitor,/4_000L/);
+ assert.match(monitor,/!TouchTestService.realFxAccountVisible\(\)/);
+});
 test('595 FX scanner pauses until fresh M5, asset, BUY and SELL screen proof',()=>{
  const fx=service.split('fun pauseForTrade516(): Boolean {')[1].split('fun stopOnReal517(',1)[0];
  assert.match(fx,/if \(nonChartSafety595\) \{/);
