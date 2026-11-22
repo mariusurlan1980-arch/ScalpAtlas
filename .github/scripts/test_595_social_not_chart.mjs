@@ -98,3 +98,25 @@ test('596 explicit restart releases REAL stop only for clean QT Demo with no pre
  ]) assert.ok(restart.includes(condition),condition);
  assert.match(restart,/if \(!previousAuto596 && !previousSell596 && cleanPosition596\)/);
 });
+
+test('597 CLOSED detail retries are bounded and never bypass broker settlement',()=>{
+ const serviceText=service;
+ const section=serviceText.split('val closedAttemptKey458 =')[1]
+   .split('// 458: The missing step')[0];
+ assert.ok(section, 'pending CLOSED-row review exists');
+ for (const guard of [
+   'closedRowRetryCount597 < 2',
+   'closedRowRetryCount597++',
+   'closedRowSamples438 >= 2',
+   'System.currentTimeMillis() - closedRowAt438 in 0L..6_000L',
+   'nowReview - lastClosedRowTapAt438 >= 30_000L',
+   '!closedHistoryInspectionInProgress',
+   'TouchTestService.tapVerifiedDemoClosedRowOcr438('
+ ]) assert.ok(section.includes(guard),guard);
+ assert.doesNotMatch(section,/putBoolean\\("attempted", false\\)|pressVerifiedDemoStakeOnce429|pressAutoOneDollarDemoOrderOnce/);
+ const proof=serviceText.split('private fun inspectPassiveDemoProof463(')[1]
+   .split('private fun maybeRearmExpiredDemoPilot464(')[0];
+ assert.match(proof,/val closed = verifiedClosedDetail437/);
+ assert.match(proof,/brokerOpenTimeMatchesAttempt437/);
+ assert.match(proof,/closed.positionId/);
+});
