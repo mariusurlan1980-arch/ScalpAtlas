@@ -2060,35 +2060,80 @@ class ScalpOverlayService : Service() {
             }
           }, 3_000L)
         }
-        // 591: Recover a broker COPY-SIGNAL feed misidentified as chart.
-        // Exact QT Demo + page title + bottom-right Trading label only.
-        // A gesture never settles an order or opens a new one.
-        val pendingPerspectives591 =
-          getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-            .getBoolean("attempted", false) &&
-          !realAccountSafetyStop517 &&
-          !diagnostic.contains("QT REAL IDENTIFICAT") &&
-          TouchTestService.ready()
-        val perspectivesNow591 = android.os.SystemClock.elapsedRealtime()
-        if (pendingPerspectives591 &&
-            (lastPerspectivesTradingReturn591 <= 0L ||
-             perspectivesNow591 - lastPerspectivesTradingReturn591 >= 10_000L)) {
-          val recovery591 = TouchTestService.returnFromDemoPerspectivesToTrading591(
-            cachedDemoVerifiedOnChart =
-              diagnostic.contains("QT DEMO IDENTIFICAT") ||
-                (verifiedDemoAccountPackage != null &&
-                 perspectivesNow591 - verifiedDemoAccountAt in 0L..90_000L),
-            overlayBounds = currentOverlayBounds488()
-          )
-          if (recovery591 != null) {
-            lastPerspectivesTradingReturn591 = perspectivesNow591
-            lastAutoDemoHistoryNavStatus = recovery591
-            lastAutoDemoHistoryNavStatusAt = perspectivesNow591
-            demoOrderVerificationReason = recovery591
-            touchProbeStatus?.text = "🤖 " + recovery591.take(100)
-            mainHandler.postDelayed(this, 2500L)
-            return
+        // 595: QT Demo's third bottom tab is SOCIAL, not the M5 chart.
+        // Safe recovery is staged: verified rightmost "Mai multe" footer,
+        // then an EXACT "Tranzacționare rapidă"/"Quick Trading" entry.
+        // Neither Android tap is settlement or permission for a new order.
+        val recoveryNow595=android.os.SystemClock.elapsedRealtime()
+        val demoForNavigation595=!realAccountSafetyStop517 &&
+          !TouchTestService.realFxAccountVisible() && TouchTestService.ready() &&
+          (diagnostic.contains("QT DEMO IDENTIFICAT") ||
+            (verifiedDemoAccountPackage != null &&
+             recoveryNow595 - verifiedDemoAccountAt in 0L..90_000L))
+        val navPkg595=if(demoForNavigation595)
+          TouchTestService.activeDemoExecutorPackageForReview() else null
+        val overlayForNav595=overlayView
+        fun navGesture595(action:()->Boolean):Boolean {
+          val was595=overlayForNav595?.visibility ?: View.VISIBLE
+          if(overlayForNav595 != null && was595==View.VISIBLE)
+            overlayForNav595.visibility=View.INVISIBLE
+          val dispatched=try { action() } catch (_:Exception){false}
+          // The broker gesture takes ~75ms; do not put the overlay back
+          // above the target before Android completes dispatch.
+          mainHandler.postDelayed({
+            if(!shuttingDown && overlayView===overlayForNav595)
+              overlayForNav595?.visibility=was595
+          },400L)
+          return dispatched
+        }
+        if(navPkg595 != null && nonChartSafety595 &&
+           quickEntrySamples595 >= 2 &&
+           quickEntryPkg595 == navPkg595 &&
+           System.currentTimeMillis()-quickEntryAt595 in 0L..5_000L &&
+           recoveryNow595 - moreNavAttemptAt595 in 0L..20_000L &&
+           recoveryNow595 - quickNavAttemptAt595 !in 0L..10_000L){
+          val clickQuick595=navGesture595 {
+            TouchTestService.tapVerifiedDemoQuickTradingEntry595(
+              navPkg595,quickEntryX595,quickEntryY595,
+              previouslyDemoVerified=true,twoOcrSamples=true,
+              overlayBounds=Rect()
+            )
           }
+          quickEntrySamples595=0
+          quickNavAttemptAt595=recoveryNow595
+          val status595=if(clickQuick595)
+            "595 • TRADING RAPID SELECTAT • VERIFIC M5 ȘI LUMÂNĂRI"
+            else "595 • MENIU TRADING RAPID NECONFIRMAT • FĂRĂ ORDIN"
+          lastAutoDemoHistoryNavStatus=status595
+          lastAutoDemoHistoryNavStatusAt=recoveryNow595
+          touchProbeStatus?.text="🤖 "+status595
+          mainHandler.postDelayed(this,2500L)
+          return
+        }
+        val socialFresh595=socialPageSeen595 &&
+          System.currentTimeMillis()-socialPageAt595 in 0L..5_000L
+        if(navPkg595 != null && socialFresh595 &&
+           moreFooterSamples595 >= 2 &&
+           moreFooterPkg595 == navPkg595 &&
+           System.currentTimeMillis()-moreFooterAt595 in 0L..5_000L &&
+           recoveryNow595-moreNavAttemptAt595 !in 0L..10_000L) {
+          val clickMore595=navGesture595 {
+            TouchTestService.tapVerifiedDemoMoreFooter595(
+              navPkg595, moreFooterX595, moreFooterY595,
+              previouslyDemoVerified=true,twoOcrSamples=true,
+              overlayBounds=Rect()
+            )
+          }
+          moreFooterSamples595=0
+          moreNavAttemptAt595=recoveryNow595
+          val status595=if(clickMore595)
+            "595 • SOCIAL EXCLUS • MAI MULTE • CAUT TRADING RAPID"
+            else "595 • MAI MULTE NECONFIRMAT • FĂRĂ ORDIN"
+          lastAutoDemoHistoryNavStatus=status595
+          lastAutoDemoHistoryNavStatusAt=recoveryNow595
+          touchProbeStatus?.text="🤖 "+status595
+          mainHandler.postDelayed(this,2500L)
+          return
         }
         // Amount edits depend on broker-verified settled trade receipts;
         // the existing 424 build has no automatic receipt reader, so this
@@ -4391,6 +4436,21 @@ class ScalpOverlayService : Service() {
           return false
         }
         val elapsed = android.os.SystemClock.elapsedRealtime()
+        // 595: Never scan FX pairs or submit an order from Social/More
+        // or from a screen that has not yet passed two fresh M5 proofs.
+        if (nonChartSafety595) {
+          fxRotationTradePaused516 = true
+          fxRotationNavigating = false
+          fxButton.text = "🤖 GRAFIC M5 NECONFIRMAT • SOCIAL INTERZIS"
+          if (!pendingHistoryRetryScheduled590) {
+            pendingHistoryRetryScheduled590 = true
+            after(3_000L) {
+              pendingHistoryRetryScheduled590 = false
+              if (!shuttingDown && running) pauseForTrade516()
+            }
+          }
+          return true
+        }
         val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
         // 590: A persisted possible broker order has priority over FX rotation
         // regardless of its age. Expiration is NOT proof of closure.
