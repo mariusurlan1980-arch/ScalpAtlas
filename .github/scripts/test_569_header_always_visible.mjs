@@ -42,8 +42,8 @@ test('old risk and 1.09 DEMO stake guards remain in place',()=>{
  assert.ok(ui.includes('BLOCAT: START 1,09 USD NECONFIRMAT'));
 });
 test('APK workflow targets Motorola version 569',()=>{
- assert.ok(workflow.includes("expo['android']['versionCode']=595"));
- assert.ok(workflow.includes('ScalpAtlas-595-REAL-CHART-G24.apk'));
+ assert.ok(workflow.includes("expo['android']['versionCode']=596"));
+ assert.ok(workflow.includes('ScalpAtlas-596-MORE-VERIFY-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_569_header_always_visible.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
