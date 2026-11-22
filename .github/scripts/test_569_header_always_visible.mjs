@@ -43,7 +43,7 @@ test('old risk and 1.09 DEMO stake guards remain in place',()=>{
 });
 test('APK workflow targets Motorola version 569',()=>{
  assert.ok(workflow.includes("expo['android']['versionCode']=589"));
- assert.ok(workflow.includes('ScalpAtlas-589-MANUAL-POS-G24.apk'));
+ assert.ok(workflow.includes('ScalpAtlas-589-AUTO-HISTORY-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_569_header_always_visible.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
