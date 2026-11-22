@@ -109,14 +109,12 @@ export default function App() {
       if (response === 'STARTED') {
         setSession('ON');
         lastNativeLive.current = true;
-        setStatus('Suprapunere pornită. Deschid pagina oficială Pocket Option Demo…');
-        // Open only the broker's official DEMO entry, not a Real trading URL.
-        // The native order gate must independently verify QT Demo/M5/92%.
-        try {
-          await Linking.openURL(POCKET_OPTION_QT_DEMO_URL);
-        } catch {
-          setStatus('Suprapunerea este pornită, dar pagina Demo nu s-a deschis. Deschide Pocket Option manual pe QT Demo.');
-        }
+        // 599: Never force-launch the public Demo URL on every LIVE restart:
+        // it can open an unrelated broker page instead of the user's chart.
+        // Keep the existing Pocket Option task/session unchanged. Return to
+        // its QT Demo M5 candlestick chart manually, then inspect OCR proof.
+        // Do not infer the chart from having opened a URL or Android gesture.
+        setStatus('Suprapunere pornită. Revino manual pe graficul QT Demo M5.');
       } else if (response === 'OVERLAY_PERMISSION_REQUIRED') {
         setSession('OFF');
         setStatus('Permite „Afișare peste alte aplicații”, apoi apasă din nou LIVE.');
@@ -196,11 +194,11 @@ export default function App() {
               accessibilityRole="button"
               accessibilityLabel="Deschide pagina oficială Pocket Option Demo"
               onPress={() => { void Linking.openURL(POCKET_OPTION_QT_DEMO_URL).catch(() => {
-                setStatus('Pagina Demo nu s-a deschis. Verifică browserul instalat.');
+                setStatus('Pagina Demo nu s-a deschis. Revino manual în Pocket Option pe grafic.');
               }); }}
               style={styles.demoButton}
             >
-              <Text style={styles.demoButtonText}>DESCHIDE BROKER DEMO</Text>
+              <Text style={styles.demoButtonText}>OPȚIONAL: DESCHIDE PAGINA DEMO</Text>
             </Pressable>
           )}
 
