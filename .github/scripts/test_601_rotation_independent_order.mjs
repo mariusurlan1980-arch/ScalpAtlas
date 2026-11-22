@@ -8,6 +8,7 @@ const monitor=service.split('private fun startBrokerAccountMonitor()')[1]
 const rotation=service.split('fun pauseForTrade516(): Boolean {')[1].split('fun stopOnReal517(',1)[0];
 
 test('601 old attempt never freezes scanning beyond active-trade interval',()=>{
+ assert.equal((rotation.match(/val prefs = getSharedPreferences\\(autoShockAttemptPrefs, Context\\.MODE_PRIVATE\\)/g)||[]).length,1);
  assert.match(rotation,/val pendingFiveMinuteOrder = persistedAttempt601 &&/);
  assert.match(rotation,/DEMO_TEST_EXPIRY_MS_465 \+ 15_000L/);
  assert.match(rotation,/val orderMayBeActive = pendingFiveMinuteOrder \|\| visuallyActive \|\| verifiedOpen/);
