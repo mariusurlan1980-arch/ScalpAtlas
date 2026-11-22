@@ -49,8 +49,8 @@ test('573 chart signal remains available visually, with unchanged trading gate',
  assert.ok(source.includes('BLOCAT: MIZĂ AUTO OFF • APASĂ +'));
 });
 test('573 signed APK pipeline includes new tests',()=>{
- assert.ok(flow.includes("expo['android']['versionCode']=593"));
+ assert.ok(flow.includes("expo['android']['versionCode']=594"));
  assert.ok(flow.includes('node --test .github/scripts/test_573_compact_bip_gate.mjs'));
- assert.ok(flow.includes('ScalpAtlas-593-HISTORY-RETURN-G24.apk'));
+ assert.ok(flow.includes('ScalpAtlas-594-SAFE-RETURN-G24.apk'));
  assert.ok(flow.includes('apksigner'));
 });
