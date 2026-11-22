@@ -105,7 +105,7 @@ test('new isolated 566 prefs prevent accidental reuse of old three-loss STOP',()
 test('release pipeline packages 571 and retains apk signer',()=>{
  assert.ok(workflow.includes('DemoAutoStakePlan565.kt'));
  assert.ok(workflow.includes('node --experimental-strip-types --test .github/scripts/test_566_balance_risk.mjs'));
- assert.ok(workflow.includes("expo['android']['versionCode']=593"));
+ assert.ok(workflow.includes("expo['android']['versionCode']=594"));
  assert.ok(workflow.includes('apksigner'));
 });
 
