@@ -38,7 +38,9 @@ test('592 QT Real detection halts robot instead of switching accounts',()=>{
  assert.match(monitor,/QT REAL DETECTAT • ROBOT OPRIT/);
  const returnFn=service.split('private fun returnToChartAfterReview458(')[1]
    .split('private fun navigateVerifiedDemoHistory431(')[0];
- assert.match(returnFn,/overlayBounds = currentOverlayBounds488\(\)/);
+ assert.match(returnFn,/val effectiveBounds593 = if \(overlayView\?\.visibility == View\.INVISIBLE\)/);
+ assert.match(returnFn,/Rect\(\) else currentOverlayBounds488\(\)/);
+ assert.match(returnFn,/overlayBounds = effectiveBounds593/);
  assert.doesNotMatch(returnFn,/tapVerifiedDemoPerspectiveFooter457/);
 });
 
