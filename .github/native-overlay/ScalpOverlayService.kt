@@ -125,6 +125,9 @@ class ScalpOverlayService : Service() {
   private var rotatingBrainAnimator467: android.animation.ObjectAnimator? = null
   private var overlayView: View? = null
   @Volatile private var overlayWindowParams: WindowManager.LayoutParams? = null
+  // 588: User drags override automatic safety relocation. A manually
+  // obscured BUY/SELL must FAIL read-only preflight, never authorize a click.
+  @Volatile private var overlayDragActive588 = false
   private var compactStatusText: TextView? = null
   private var signalText: TextView? = null
   private var strategyHeaderText: TextView? = null
@@ -5533,6 +5536,7 @@ class ScalpOverlayService : Service() {
     val dragListener = View.OnTouchListener { hitView499, event ->
       when (event.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
+          overlayDragActive588 = true
           startX = params.x
           startY = params.y
           touchX = event.rawX
@@ -5596,9 +5600,11 @@ class ScalpOverlayService : Service() {
             // A genuine tap must retain the original ROTATION toggle.
             fxButton.performClick()
           }
+          overlayDragActive588 = false
           true
         }
         MotionEvent.ACTION_CANCEL -> {
+          overlayDragActive588 = false
           positionSavedCorner498()
           true
         }
@@ -7774,6 +7780,14 @@ class ScalpOverlayService : Service() {
     if (shuttingDown || mediaProjection == null ||
         !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
         realAccountSafetyStop517) return false
+    // 588: Respect the precise manual position. Previously this method
+    // lifted EVERY panel crossing 70% screen height, even when the user
+    // intentionally dragged it there and it did not cover a trade button.
+    // If a pinned panel really covers BUY/SELL, inspectBrokerDemoOrder488
+    // returns BLOCAT: PANOU PESTE ..., and no order may be sent.
+    if (overlayDragActive588 ||
+        getSharedPreferences("scalp_overlay_position498", Context.MODE_PRIVATE)
+          .getBoolean("freePosition500", false)) return false
     val view = overlayView ?: return false
     val params = overlayWindowParams ?: return false
     val actual = currentOverlayBounds488()
