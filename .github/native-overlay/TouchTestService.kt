@@ -1819,9 +1819,13 @@ class TouchTestService : AccessibilityService() {
       // OCR caller already independently identified the page and both
       // broker tabs. Do not permit navigation from a chart, account chooser,
       // copy feed, or any different broker page.
+      // 593: The QT WebView may hide page labels from Accessibility.
+      // The caller already supplied fresh MediaProjection history proof
+      // (title and both tabs); do not require duplicate Accessibility text.
+      // The broker package and Real-account gate are still checked above.
       if (!title && !historyPageIdentity454(labels, h) &&
-          !confirmedDemoHistoryPageReadOnly431(cachedDemoVerifiedOnChart))
-        return "592 • TRANZACȚII NECONFIRMATE • FĂRĂ NAVIGARE"
+          !ocrVerifiedHistoryPage)
+        return "593 • TRANZACȚII NECONFIRMATE • FĂRĂ NAVIGARE"
 
       val footerName = Regex("""(?i)^(?:Tranzacționare|Tranzactionare|Tranzacţionare|Trading|Trade)$""")
       val targets = labels.filter { (node, rect) ->
@@ -1894,8 +1898,8 @@ class TouchTestService : AccessibilityService() {
     ): Boolean {
       if (!cachedDemoVerifiedOnChart || !ocrVerifiedHistoryPage ||
           !centerXFraction.isFinite() || !centerYFraction.isFinite() ||
-          centerXFraction !in .58f.. .98f ||
-          centerYFraction !in .86f.. .985f ||
+          centerXFraction !in 0.58f..0.98f ||
+          centerYFraction !in 0.86f..0.985f ||
           realFxAccountVisible()) return false
       val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart) ?: return false
       val (svc, root, _) = info
