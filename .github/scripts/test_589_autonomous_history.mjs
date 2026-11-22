@@ -11,11 +11,17 @@ test('589 auto history is allowed only for persisted QT Demo gesture in safe rev
   for (const requirement of [
     'CHART_ONLY_DEMO_462', '!shuttingDown', '!realAccountSafetyStop517',
     'mediaProjection != null', 'TouchTestService.ready()',
-    '.getBoolean("attempted", false)',
+    // 592 moves the persisted attempt check into the earlier
+    // after-expiry gate; the old review gate must now require that gate.
+    'afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592',
     'autoDemoSessionConsumed = true',
     'autoDemoSessionRequested = false',
     'autoDemoArmed = false'
   ]) assert.ok(gate.includes(requirement), requirement);
+  const monitor = service.slice(service.indexOf('private fun startBrokerAccountMonitor()'),
+    service.indexOf('private fun startDemoClickMonitor()'));
+  assert.ok(monitor.includes('val attempted592 = attemptPrefs592.getBoolean("attempted", false)'));
+  assert.ok(monitor.includes('val afterExpiry592 = attempted592'));
   assert.ok(!gate.includes('putBoolean("attempted", false)'));
   assert.ok(!gate.includes('beginAttempt()'));
   assert.ok(!gate.includes('pressVerifiedDemoStakeOnce429('));
