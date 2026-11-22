@@ -8,7 +8,9 @@ const prepare=service.split('private fun maybeApplyVerifiedDemoStake565(')[1].sp
 
 test('587: automatic post-move retry is scoped to the same chart and re-enters all safety checks',()=>{
  const block=prepare.split('if(liftOverlayOffDemoOrderButtons557()) {')[1].split('val visiblePair587=try')[0];
- assert.match(block,/after\(1_500L\)/);
+ assert.match(block,/mainHandler\.postDelayed\(\{/);
+ assert.match(block,/\}, 1_500L\)/);
+ assert.doesNotMatch(block,/\bafter\(1_500L\)/);
  assert.match(block,/!shuttingDown && !fxRotationNavigating && mediaProjection!=null/);
  assert.match(block,/currentPair\(System\.currentTimeMillis\(\)\)==pair/);
  assert.match(block,/maybeApplyVerifiedDemoStake565\(/);
