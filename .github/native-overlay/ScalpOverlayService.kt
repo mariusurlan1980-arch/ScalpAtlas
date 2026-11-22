@@ -1290,8 +1290,9 @@ class ScalpOverlayService : Service() {
   }
 
   /** 458: On a verified history page prefer its OCR-confirmed broker
-   * "Perspective" footer over Android GLOBAL_BACK. A navigation gesture
-   * never proves settlement or changes any persisted order flags. */
+   * 591: Never use the broker "Perspective" footer for chart return.
+   * Only navigate away from a verified history page, with no settlement
+   * or order authorization from the Android navigation result. */
   private fun returnToChartAfterReview458(
     cachedDemoVerifiedOnChart: Boolean,
     ocrVerifiedHistoryPage: Boolean
@@ -8582,7 +8583,10 @@ class ScalpOverlayService : Service() {
         pendingStakeOptIn571 -> "🤖 MIZĂ VERIFIC • " + stakeOptInReason572.take(50)
         !demoAccountIdentified -> "🤖 CONT NECONFIRMAT • ORDINE ÎN PAUZĂ"
         fxRotationTradePaused516 ->
-          "ARMAT · TRADE ACTIV"
+          if (demoRecoveryLedger.verifiedOpenPositionId429() != null &&
+              tradePositionGate.state() == TradePositionGate.State.OPEN)
+            "POZIȚIE QT DEMO CONFIRMATĂ • ROTAȚIE PAUZĂ"
+          else "VERIFIC ORDIN ANTERIOR • FĂRĂ ORDIN NOU"
         tradePositionGate.state() != TradePositionGate.State.READY ||
           autoDemoSessionConsumed -> demoOrderVerificationStatus()
         fxRotationNavigating ->
