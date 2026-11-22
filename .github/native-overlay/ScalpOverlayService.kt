@@ -2022,11 +2022,15 @@ class ScalpOverlayService : Service() {
         val nowElapsed592 = android.os.SystemClock.elapsedRealtime()
         val wallAge592 = System.currentTimeMillis() - attemptWall592
         val elapsedAge592 = nowElapsed592 - attemptElapsed592
+        // 602: even an older pending DEMO gesture requires a bounded
+        // read-only settlement review. The old 24-hour ceiling prevented
+        // history navigation forever after one day; it is NOT a valid
+        // reason to classify an order as closed or release its lock.
         val afterExpiry592 = attempted592 &&
           ((attemptWall592 > 0L &&
-             wallAge592 in (DEMO_TEST_EXPIRY_MS_465 + 3_000L)..86_400_000L) ||
+             wallAge592 >= DEMO_TEST_EXPIRY_MS_465 + 3_000L) ||
            (attemptElapsed592 > 0L &&
-             elapsedAge592 in (DEMO_TEST_EXPIRY_MS_465 + 3_000L)..86_400_000L))
+             elapsedAge592 >= DEMO_TEST_EXPIRY_MS_465 + 3_000L))
         val historyFresh592 = historyPageVisible433 &&
           System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
         val attemptKey600 = if (attempted592 && attemptWall592 > 0L)
@@ -2038,8 +2042,15 @@ class ScalpOverlayService : Service() {
         val chartPrefs600 = getSharedPreferences(
           chartFirstPrefs600, Context.MODE_PRIVATE
         )
+        // 602: "reviewed" means only a temporary NAVIGATION cooldown.
+        // Never mark an unresolved broker order as permanently reviewed.
+        // One <=3s inspection per ~5min; the chart remains the priority.
+        val previousReviewWall602 =
+          chartPrefs600.getLong("completedAtWall602", -1L)
         val reviewCompleted600 = attemptKey600 != null &&
-          chartPrefs600.getString("completedAttempt", null) == attemptKey600
+          chartPrefs600.getString("completedAttempt", null) == attemptKey600 &&
+          previousReviewWall602 > 0L &&
+          System.currentTimeMillis() - previousReviewWall602 in 0L..297_000L
         if (!attempted592) {
           historyPeekStartedAt592 = 0L
           historyPeekRetryAfter592 = 0L
@@ -2070,14 +2081,18 @@ class ScalpOverlayService : Service() {
             overlayDuringHistory593.visibility = View.INVISIBLE
           mainHandler.postDelayed({
             val reviewNow592 = android.os.SystemClock.elapsedRealtime()
-            // 600: Exactly one three-second CLOSED-review window for this
-            // persisted DEMO attempt. If evidence is incomplete, block the
-            // next order instead of reopening history every eight seconds.
-            historyPeekRetryAfter592 = reviewNow592 + 24L * 60 * 60_000L
+            // 602: one <=3-second history visit per ~5-minute cycle,
+            // including older persisted unknown attempts. We retry only
+            // read-only settlement verification; we NEVER infer WIN/LOSS or
+            // unlock the next order merely from the review timeout.
+            historyPeekRetryAfter592 = reviewNow592 + 297_000L
             historyPeekStartedAt592 = 0L
             if (reviewKey600 != null) {
               getSharedPreferences(chartFirstPrefs600, Context.MODE_PRIVATE)
-                .edit().putString("completedAttempt", reviewKey600).commit()
+                .edit()
+                .putString("completedAttempt", reviewKey600)
+                .putLong("completedAtWall602", System.currentTimeMillis())
+                .commit()
             }
             try {
               if (!shuttingDown && mediaProjection != null &&
