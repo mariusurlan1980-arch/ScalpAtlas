@@ -102,8 +102,8 @@ test('580 never weakens Martingale amount editing, verified CLOSED or one-positi
 });
 
 test('580 signed G24 release includes new base-stake verification regression',()=>{
- assert.ok(wf.includes("expo['android']['versionCode']=598"));
+ assert.ok(wf.includes("expo['android']['versionCode']=600"));
  assert.ok(wf.includes('node --test .github/scripts/test_580_base109_readback.mjs'));
- assert.ok(wf.includes('ScalpAtlas-598-OVERLAY-QT-DEMO-G24.apk'));
+ assert.ok(wf.includes('ScalpAtlas-600-OVERLAY-QT-DEMO-G24.apk'));
  assert.ok(wf.includes('apksigner'));
 });
