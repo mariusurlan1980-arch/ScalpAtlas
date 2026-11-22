@@ -38,9 +38,9 @@ test('592 QT Real detection halts robot instead of switching accounts',()=>{
  assert.match(monitor,/QT REAL DETECTAT • ROBOT OPRIT/);
  const returnFn=service.split('private fun returnToChartAfterReview458(')[1]
    .split('private fun navigateVerifiedDemoHistory431(')[0];
- assert.match(returnFn,/val effectiveBounds593 = if \(overlayView\?\.visibility == View\.INVISIBLE\)/);
+ assert.match(returnFn,/val bounds595 = if \(overlayView\?\.visibility == View\.INVISIBLE\)/);
  assert.match(returnFn,/Rect\(\) else currentOverlayBounds488\(\)/);
- assert.match(returnFn,/overlayBounds = effectiveBounds593/);
+ assert.match(returnFn,/bounds595/);
  assert.doesNotMatch(returnFn,/tapVerifiedDemoPerspectiveFooter457/);
 });
 
@@ -59,7 +59,7 @@ test('592 old uncertain order can never rearm from elapsed time or skip broker p
 
 test('592 new signed Motorola artifact and regression checks',()=>{
  assert.match(workflow,/test_592_demo_history_no_real\.mjs/);
- assert.match(workflow,/versionCode'\]=594/);
- assert.match(workflow,/ScalpAtlas-594-SAFE-RETURN-G24\.apk/);
+ assert.match(workflow,/versionCode'\]=595/);
+ assert.match(workflow,/ScalpAtlas-595-REAL-CHART-G24\.apk/);
  assert.match(workflow,/apksigner/);
 });
