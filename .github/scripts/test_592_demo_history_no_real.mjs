@@ -21,7 +21,7 @@ test('592 waits until 5-minute expiry and keeps the review to 3 seconds',()=>{
    .split('private fun startDemoClickMonitor()')[0];
  for(const x of ['val afterExpiry592 = attempted592','DEMO_TEST_EXPIRY_MS_465 + 3_000L',
   'val historyFresh592 = historyPageVisible433',
-  'historyPeekStartedAt592 = nowElapsed592', 'historyPeekRetryAfter592 = reviewNow592 + 60_000L',
+  'historyPeekStartedAt592 = nowElapsed592', 'historyPeekRetryAfter592 = reviewNow592 + 8_000L',
   '}, 3_000L)', 'afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592'])
    assert.ok(monitor.includes(x),x);
  const one=monitor.indexOf('afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592');
