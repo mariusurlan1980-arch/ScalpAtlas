@@ -31,7 +31,7 @@ test('586: relocation does not authorize trades or change Martingale state',()=>
  assert.doesNotMatch(s,/beginAttempt|pressVerifiedDemoStakeOnce429|rebindVerifiedBasePair|onVerifiedClosed/);
 });
 test('586: signed Android workflow includes exact new build and test',()=>{
- assert.match(workflow,/versionCode'\]=607/);
- assert.match(workflow,/ScalpAtlas-607-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(workflow,/versionCode'\]=608/);
+ assert.match(workflow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(workflow,/test_586_quote_read_diagnostic\.mjs/);
 });
