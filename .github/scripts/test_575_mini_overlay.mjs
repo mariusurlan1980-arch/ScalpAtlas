@@ -37,7 +37,7 @@ test('575 compact diagnostics remain visible and separate from broker order perm
 });
 test('575 APK uses signed publishing pipeline',()=>{
  assert.ok(workflow.includes("expo['android']['versionCode']=589"));
- assert.ok(workflow.includes('ScalpAtlas-589-MANUAL-POS-G24.apk'));
+ assert.ok(workflow.includes('ScalpAtlas-589-AUTO-HISTORY-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_575_mini_overlay.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
