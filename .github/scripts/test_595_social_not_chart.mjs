@@ -72,8 +72,8 @@ test('595 no Real access and broker-settlement 2/2 stays mandatory',()=>{
 });
 test('595 signed Motorola release',()=>{
  assert.match(flow,/test_595_social_not_chart\.mjs/);
- assert.match(flow,/versionCode'\]=607/);
- assert.match(flow,/ScalpAtlas-607-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/versionCode'\]=608/);
+ assert.match(flow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/apksigner/);
 });
 

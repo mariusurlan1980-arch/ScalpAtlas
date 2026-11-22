@@ -61,7 +61,7 @@ test('596 navigation remains diagnostically transparent and cannot settle order'
 });
 test('596 build produces different signed APK and runs regression',()=>{
  assert.match(workflow,/test_596_accessible_more_diagnostics\.mjs/);
- assert.match(workflow,/versionCode'\]=607/);
- assert.match(workflow,/ScalpAtlas-607-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(workflow,/versionCode'\]=608/);
+ assert.match(workflow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(workflow,/apksigner/);
 });

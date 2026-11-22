@@ -28,7 +28,7 @@ test('605 does not change the SELL button or bypass proof and MG safety',()=>{
   assert.match(touch,/fun readFxChartPayout\(/);
 });
 test('605 unique Android APK release',()=>{
-  assert.match(flow,/versionCode'\]=607/);
-  assert.match(flow,/ScalpAtlas-607-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=608/);
+  assert.match(flow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_605_skip_unreadable_payout\.mjs/);
 });

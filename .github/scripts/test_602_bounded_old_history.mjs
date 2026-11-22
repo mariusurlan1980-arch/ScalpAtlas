@@ -37,7 +37,7 @@ test('602 protects one-position / broker receipt / MG position gate',()=>{
   assert.ok(proof.indexOf('onVerifiedClosed(')<proof.indexOf('.putBoolean("attempted", false)'));
 });
 test('602 current signed release and regressions',()=>{
-  assert.match(flow,/versionCode'\]=607/);
-  assert.match(flow,/ScalpAtlas-607-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=608/);
+  assert.match(flow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_602_bounded_old_history\.mjs/);
 });

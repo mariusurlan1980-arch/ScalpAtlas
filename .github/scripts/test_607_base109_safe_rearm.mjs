@@ -25,7 +25,7 @@ test('607 strict Demo and original outcome guards remain',()=>{
  assert.match(service,/demoAutoStakePlan565\.onVerifiedClosed\(/);
 });
 test('607 signed Motorola build',()=>{
- assert.match(workflow,/versionCode'\]=607/);
- assert.match(workflow,/ScalpAtlas-607-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(workflow,/versionCode'\]=608/);
+ assert.match(workflow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(workflow,/test_607_base109_safe_rearm\.mjs/);
 });
