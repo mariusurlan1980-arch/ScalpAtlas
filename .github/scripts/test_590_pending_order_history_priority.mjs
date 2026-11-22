@@ -39,6 +39,6 @@ test('590 does not infer settled order from elapsed time or override proof',()=>
 });
 test('590 build includes this regression and new signed Motorola APK',()=>{
  assert.ok(flow.includes('test_590_pending_order_history_priority.mjs'));
- assert.ok(flow.includes("expo['android']['versionCode']=590"));
- assert.ok(flow.includes('ScalpAtlas-590-HISTORY-PRIORITY-G24.apk'));
+ assert.ok(flow.includes("expo['android']['versionCode']=591"));
+ assert.ok(flow.includes('ScalpAtlas-591-PERSPECTIVES-RETURN-G24.apk'));
 });
