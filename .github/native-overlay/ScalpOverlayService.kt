@@ -4615,7 +4615,6 @@ class ScalpOverlayService : Service() {
           }
           return true
         }
-        val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
         // 601: Keep rotation separate from order execution. A persisted
         // uncertain QT Demo order must block BUY/SELL and Martingale through
         // the existing order/settlement gates, but must NOT freeze observation
