@@ -2351,11 +2351,15 @@ jobs:
           assert 'if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589) {' in monitor
           before, after=monitor.split('if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589) {',1)
           pending=before.split('val pendingAutoHistory589 =',1)[1]
-          for required in ['CHART_ONLY_DEMO_462','getBoolean("attempted", false)',
+          for required in ['CHART_ONLY_DEMO_462','afterExpiry592',
               '!realAccountSafetyStop517', '!shuttingDown', 'TouchTestService.ready()',
               'mediaProjection != null', 'autoDemoSessionConsumed = true',
               'autoDemoSessionRequested = false', 'autoDemoArmed = false']:
               assert required in pending, required
+          # 592: attempt marker is checked in afterExpiry592 above the history gate.
+          assert 'val attempted592 = attemptPrefs592.getBoolean("attempted", false)' in before
+          assert 'val afterExpiry592 = attempted592' in before
+          assert 'nowElapsed592 >= historyPeekRetryAfter592' in pending
           guard=after.split('// 410: On the broker',1)[0]
           assert 'mainHandler.postDelayed(this, 2500L)' in guard
           assert '\n          return\n' in guard
