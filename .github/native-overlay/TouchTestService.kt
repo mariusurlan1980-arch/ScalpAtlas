@@ -1877,6 +1877,52 @@ class TouchTestService : AccessibilityService() {
         "592 • TRADING DEMO GEST RESPINS • FĂRĂ ORDIN"
     }
 
+    /**
+     * 593: Fallback exclusively for a TWO-frame OCR-identified QT Demo
+     * "Tranzacționare/Trading" footer on an independently verified history
+     * page. This never touches an account selector or any trade button.
+     * Callers must first uncover the footer and provide fresh OCR evidence.
+     * The Android gesture is only navigation; it is not broker settlement.
+     */
+    fun tapVerifiedDemoTradingFooterOcr593(
+      expectedBrokerPackage: String,
+      centerXFraction: Float,
+      centerYFraction: Float,
+      cachedDemoVerifiedOnChart: Boolean,
+      ocrVerifiedHistoryPage: Boolean,
+      overlayBounds: Rect
+    ): Boolean {
+      if (!cachedDemoVerifiedOnChart || !ocrVerifiedHistoryPage ||
+          !centerXFraction.isFinite() || !centerYFraction.isFinite() ||
+          centerXFraction !in .58f.. .98f ||
+          centerYFraction !in .86f.. .985f ||
+          realFxAccountVisible()) return false
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart) ?: return false
+      val (svc, root, _) = info
+      if (root.packageName?.toString() != expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage))
+        return false
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      if (metrics.widthPixels < 300 || metrics.heightPixels < 600) return false
+      val x = metrics.widthPixels * centerXFraction
+      val y = metrics.heightPixels * centerYFraction
+      if (overlayBounds.contains(x.toInt(), y.toInt())) return false
+      if (svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
+          realFxAccountVisible()) return false
+      val path = Path().apply { moveTo(x, y) }
+      val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0L, 75L)).build()
+      return try {
+        svc.dispatchGesture(gesture, null, Handler(Looper.getMainLooper()))
+      } catch (_: Throwable) { false }
+    }
+
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
       cachedDemoVerifiedOnChart: Boolean = false,
       ocrVerifiedEmptyOpenTab: Boolean = false
