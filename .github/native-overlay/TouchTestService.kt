@@ -1978,6 +1978,97 @@ class TouchTestService : AccessibilityService() {
       } catch (_: Throwable) { false }
     }
 
+
+    /**
+     * 595: A four-tab broker bottom bar has "Social Trading" as tab 3.
+     * Only the OCR-confirmed far RIGHT "Mai multe / More" tab may be
+     * used to look for Quick Trading in a separate menu.
+     * This navigation NEVER changes account type or trade state.
+     */
+    fun tapVerifiedDemoMoreFooter595(
+      expectedBrokerPackage: String,
+      xFraction: Float,
+      yFraction: Float,
+      previouslyDemoVerified: Boolean,
+      twoOcrSamples: Boolean,
+      overlayBounds: Rect
+    ): Boolean {
+      if (!previouslyDemoVerified || !twoOcrSamples ||
+          !xFraction.isFinite() || !yFraction.isFinite() ||
+          xFraction !in 0.76f..0.985f ||
+          yFraction !in 0.865f..0.99f ||
+          realFxAccountVisible()) return false
+      val info=activeDemoHistoryNodes(previouslyDemoVerified) ?: return false
+      val (svc, root, _)=info
+      if (root.packageName?.toString() != expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage))
+        return false
+      val metrics=android.util.DisplayMetrics()
+      try {
+        val wm=svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      if (metrics.widthPixels < 300 || metrics.heightPixels < 600) return false
+      val x=metrics.widthPixels*xFraction
+      val y=metrics.heightPixels*yFraction
+      if (overlayBounds.contains(x.toInt(),y.toInt()) ||
+          svc.rootInActiveWindow?.packageName?.toString() != expectedBrokerPackage ||
+          realFxAccountVisible()) return false
+      val path=Path().apply { moveTo(x,y) }
+      val gesture=GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path,0L,75L)).build()
+      return try {
+        svc.dispatchGesture(gesture,null,Handler(Looper.getMainLooper()))
+      } catch (_: Throwable) { false }
+    }
+
+    /**
+     * 595: From More, click ONLY an exact "Tranzacționare rapidă /
+     * Quick Trading" menu entry independently read in two OCR frames.
+     * Never select Social, Real, the account tile or BUY/SELL.
+     * An Android gesture alone is NOT evidence of a candlestick chart.
+     */
+    fun tapVerifiedDemoQuickTradingEntry595(
+      expectedBrokerPackage: String,
+      xFraction: Float,
+      yFraction: Float,
+      previouslyDemoVerified: Boolean,
+      twoOcrSamples: Boolean,
+      overlayBounds: Rect
+    ): Boolean {
+      if (!previouslyDemoVerified || !twoOcrSamples ||
+          !xFraction.isFinite() || !yFraction.isFinite() ||
+          xFraction !in 0.07f..0.93f ||
+          yFraction !in 0.20f..0.86f ||
+          realFxAccountVisible()) return false
+      val info=activeDemoHistoryNodes(previouslyDemoVerified) ?: return false
+      val (svc,root,_)=info
+      if (root.packageName?.toString()!=expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString()!=expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage))
+        return false
+      val metrics=android.util.DisplayMetrics()
+      try {
+        val wm=svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return false }
+      if (metrics.widthPixels < 300 || metrics.heightPixels < 600) return false
+      val x=metrics.widthPixels*xFraction
+      val y=metrics.heightPixels*yFraction
+      if (overlayBounds.contains(x.toInt(),y.toInt()) ||
+          svc.rootInActiveWindow?.packageName?.toString()!=expectedBrokerPackage ||
+          realFxAccountVisible()) return false
+      val path=Path().apply { moveTo(x,y) }
+      val gesture=GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path,0L,75L)).build()
+      return try {
+        svc.dispatchGesture(gesture,null,Handler(Looper.getMainLooper()))
+      } catch (_: Throwable) { false }
+    }
+
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
       cachedDemoVerifiedOnChart: Boolean = false,
       ocrVerifiedEmptyOpenTab: Boolean = false
