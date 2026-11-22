@@ -46,7 +46,7 @@ test('585: rotation status does not erase unresolved-order protections',()=>{
 });
 
 test('585: Android pipeline uses correct version and regression test',()=>{
-  assert.match(flow,/expo\['android'\]\['versionCode'\]=588/);
-  assert.match(flow,/ScalpAtlas-588-MANUAL-POS-G24\.apk/);
+  assert.match(flow,/expo\['android'\]\['versionCode'\]=589/);
+  assert.match(flow,/ScalpAtlas-589-AUTO-HISTORY-G24\.apk/);
   assert.match(flow,/test_585_mg_rotation_rearm\.mjs/);
 });
