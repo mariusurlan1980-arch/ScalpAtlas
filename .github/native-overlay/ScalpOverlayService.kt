@@ -320,6 +320,11 @@ class ScalpOverlayService : Service() {
   // the old order gate and MG lock if the three-second read is insufficient.
   private var lastClosedTabNavigation600 = 0L
   private var lastChartReturnAttempt600 = 0L
+  // 604: A future automatic history visit is allowed only after this
+  // SESSION has demonstrated a correct same-broker More -> Quick Trading
+  // -> two-frame QT Demo M5 candlestick return. Without that proof, keep
+  // the chart visible; do not strand the user again in Transactions.
+  private var brokerChartReturnProven604 = false
   private val chartFirstPrefs600 = "scalp_atlas_chart_first_600"
   // 593: visible QT Demo Trading footer verified in two distinct OCR frames.
   // It is navigation-only evidence, never a broker order receipt.
@@ -1380,6 +1385,12 @@ class ScalpOverlayService : Service() {
       return "595 • CAUT MAI MULTE 2/2 • FĂRĂ SOCIAL"
     if (android.os.SystemClock.elapsedRealtime() - moreNavAttemptAt595 in 0L..7_000L)
       return "595 • AȘTEPT MENIUL MAI MULTE"
+    // 604: Once More was opened during THIS history visit, do not
+    // repeatedly toggle it every seven seconds. The separately verified
+    // Quick Trading action remains available when its menu entry appears.
+    if (moreNavAttemptAt595 > 0L && historyPageFirstSeenAt603 > 0L &&
+        moreNavAttemptAt595 >= historyPageFirstSeenAt603)
+      return "604 • MAI MULTE DEJA VERIFICAT • CAUT TRADING RAPID"
     val bounds595 = if (overlayView?.visibility == View.INVISIBLE)
       Rect() else currentOverlayBounds488()
     val sent595 = TouchTestService.tapVerifiedDemoMoreFooter595(
@@ -2203,6 +2214,8 @@ class ScalpOverlayService : Service() {
           val status595=if(clickQuick595)
             "595 • TRADING RAPID SELECTAT • VERIFIC M5 ȘI LUMÂNĂRI"
             else "595 • MENIU TRADING RAPID NECONFIRMAT • FĂRĂ ORDIN"
+          // A dispatched gesture alone NEVER proves the chart returned;
+          // see the separately verified M5/asset/BUY/SELL OCR pair below.
           lastAutoDemoHistoryNavStatus=status595
           lastAutoDemoHistoryNavStatusAt=recoveryNow595
           touchProbeStatus?.text="🤖 "+status595
@@ -2350,6 +2363,9 @@ class ScalpOverlayService : Service() {
         // This does NOT relax the previous-order marker, one-position gate,
         // strict 92% quote, or account/pair/UUID/amount checks.
         val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&
+          // 604: never leave a working M5 chart for automated history
+          // before the safe chart-return route has proven successful.
+          (historyFresh592 || brokerChartReturnProven604) &&
           !shuttingDown && !realAccountSafetyStop517 &&
           mediaProjection != null && TouchTestService.ready() &&
           // 592: no history visit while the 5-minute DEMO trade is active;
@@ -7252,6 +7268,12 @@ class ScalpOverlayService : Service() {
       if(chartProofSamples595>=2){
         nonChartSafety595=false
         socialPageSeen595=false
+        // 604: verify same-package Quick Trading navigation by
+        // independent two-frame QT Demo chart evidence, not by click.
+        if (quickNavAttemptAt595 > 0L &&
+            android.os.SystemClock.elapsedRealtime() - quickNavAttemptAt595
+              in 0L..20_000L && pkg == verifiedDemoAccountPackage)
+          brokerChartReturnProven604=true
       }
     }else{
       chartProofSamples595=0
@@ -7371,6 +7393,9 @@ class ScalpOverlayService : Service() {
       historyPageVisible433 = false
       historyPageFirstSeenAt603 = 0L
       historyPageTab433 = "NECUNOSCUT"
+      // A new history visit may attempt a single More navigation again,
+      // but only if a future broker receipt makes it necessary.
+      moreNavAttemptAt595 = 0L
     }
     val selectedOpen429 = historyIdentity454 && openTab && closedTab &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
