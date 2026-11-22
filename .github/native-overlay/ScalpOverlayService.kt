@@ -2823,10 +2823,13 @@ class ScalpOverlayService : Service() {
                 // Never erase a legacy SELL 404 attempt merely because the
                 // OPEN tab is empty. It has no authenticated CLOSED receipt
                 // in this flow; a genuine receipt-review must resolve it.
-                // 454: The old unknown order must not block DEMO forever
-                // after TWO explicit broker-confirmed zero-OPEN reads. When
-                // the historical UUID cannot be recovered, permit a NEW
-                // DEMO base-$1 cycle, but NEVER infer WIN/LOSS or apply MG.
+                // 607: An old unknown base-stake attempt may be released
+                // only after TWO independent broker-confirmed EMPTY OPEN reads.
+                // Older builds used $1.00; current QT Demo uses $1.09.
+                // This does NOT infer WIN/LOSS, reconcile a missing UUID,
+                // advance Martingale, or authorize an immediate BUY/SELL.
+                // The NEXT order still requires fresh QT Demo, M5, 92%,
+                // $1.09 broker quote and a confirmed new SHOCK signal.
                 // A previously verified OPEN UUID, a recovery cycle, two
                 // concurrent legacy markers, a non-base stake, or an
                 // unverified DEMO account always keeps the lock intact.
@@ -2839,8 +2842,8 @@ class ScalpOverlayService : Service() {
                   (oldShockAttempt || oldSellAttempt) &&
                   demoRecoveryLedger.verifiedOpenPositionId429() == null &&
                   !demoRecoveryLedger.isRecovering429() &&
-                  demoRecoveryLedger.quote(92).stakeCents == 100L &&
-                  (!oldShockAttempt || expectedStake429 == 100L) &&
+                  demoRecoveryLedger.quote(92).stakeCents in setOf(100L,109L) &&
+                  (!oldShockAttempt || expectedStake429 in setOf(100L,109L)) &&
                   reviewPackage != null && reviewPackage == verifiedDemoAccountPackage &&
                   TouchTestService.priorDemoGestureCooldownComplete()
                 val unknownBaseCleared454 = if (unknownBaseEligible454) {
@@ -2911,7 +2914,7 @@ class ScalpOverlayService : Service() {
                       "581 • " + (mgOutcome581 ?: "MIZĂ MG NECONFIRMATĂ").take(75) +
                         " • AȘTEPT SUMĂ BROKER"
                     unknownBaseCleared454 ->
-                      "✅ 0 DESCHISE 2/2 • DEMO 1 USD REACTIVAT • FĂRĂ MG RETROACTIV"
+                      "✅ 0 DESCHISE 2/2 • DEMO BAZĂ REACTIVAT • FĂRĂ MG RETROACTIV"
                     savedReconciled437 && alreadySettled444 ->
                       "✅ ID ÎNCHIS REVERIFICAT • FĂRĂ DUBLU WIN/LOSS • DEMO REACTIVAT"
                     savedReconciled437 ->
@@ -2945,13 +2948,13 @@ class ScalpOverlayService : Service() {
                     lastClosedHistoryScanAt442 > 0L &&
                     tick - lastClosedHistoryScanAt442 in
                       0L until closedHistoryScanPauseMs442
-                  // 454: Once two broker-proven ZERO-OPEN samples safely
-                  // rearmed an unknown base-$1 DEMO cycle, do NOT re-open
+                  // 607: Once two broker-proven ZERO-OPEN samples safely
+                  // rearmed an unknown base-$1.00/$1.09 DEMO cycle, do NOT re-open
                   // the same old CLOSED history. Return to the live chart.
                   closedHistoryInspectionInProgress =
                     !scanRecently442 && !unknownBaseCleared454
                   val navigation = if (unknownBaseCleared454)
-                    "✅ QT DEMO 0 DESCHISE • REVIN LA GRAFIC • AUTO 1 USD"
+                    "✅ QT DEMO 0 DESCHISE • REVIN LA GRAFIC • MIZĂ DIN BROKER"
                   else if (scanRecently442)
                     "ISTORIC DEMO • PAUZĂ REVERIFICARE • FĂRĂ ORDIN"
                   else TouchTestService.advanceDemoClosedHistoryNavigation(
