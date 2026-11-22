@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 601 ROTATION AFTER CLOSED 3S G24
+name: Build Scalp Atlas 602 BOUNDED DEMO CLOSED REVIEW G24
 
 on:
   push:
-    branches: [fix/scalpatlas-601-rotation-not-order-lock, fix/scalpatlas-600-chart-99-closed-3s, fix/scalpatlas-600-no-forced-demo-page, fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo, fix/scalpatlas-568-visible-expand-stake-demo, fix/scalpatlas-569-visible-left-expand-miza, fix/scalpatlas-570-preflight-risk-message, fix/scalpatlas-571-queued-demo-stake-optin, fix/scalpatlas-572-stake-optin-diagnostic, fix/scalpatlas-573-compact-audio-preflight, fix/scalpatlas-574-visible-optin-reason, fix/scalpatlas-575-mini-overlay-visible-miza, fix/scalpatlas-576-payout-readonly-mini-safe, fix/scalpatlas-577-base-stake-rearm-pair-rotation, fix/scalpatlas-578-clear-order-gate-reason, fix/scalpatlas-579-demo-balance-parse, fix/scalpatlas-580-base109-readback, fix/scalpatlas-581-martingale-settlement-rearm, fix/scalpatlas-582-demo-history-dual-clock, fix/scalpatlas-583-verified-base-stake-pair-rebind, fix/scalpatlas-584-confirmed-base-rearm, fix/scalpatlas-585-demo-rearm-pair-synchronization, fix/scalpatlas-586-unmask-demo-quote-diagnostics, fix/scalpatlas-587-stake-preflight-recheck, fix/scalpatlas-588-manual-overlay-lock, fix/scalpatlas-589-autonomous-demo-history, fix/scalpatlas-590-pending-order-history-priority, fix/scalpatlas-591-perspectives-safe-return, fix/scalpatlas-592-demo-3s-history-no-real, fix/scalpatlas-593-return-after-open-proof, fix/scalpatlas-594-demo-history-safe-footer, fix/scalpatlas-595-social-is-not-chart, fix/scalpatlas-596-safe-navigation-diagnostics, fix/scalpatlas-600-no-forced-demo-page]
+    branches: [fix/scalpatlas-602-bounded-history-retries, fix/scalpatlas-601-rotation-not-order-lock, fix/scalpatlas-600-chart-99-closed-3s, fix/scalpatlas-600-no-forced-demo-page, fix/scalpatlas-555-early-timing-preserve-554, feature/scalpatlas-history-timeout441, fix/scalpatlas-closed-history-loop, fix/scalpatlas-readonly-broker-window443, fix/scalpatlas-repeat-settlement444, fix/scalpatlas-verified-open-closed-bridge445, fix/scalpatlas-closed-row-ocr446, fix/scalpatlas-history-header-dock447, fix/scalpatlas-sequential-demo448, fix/scalpatlas-early-history-dock449, fix/scalpatlas-simple-shock-demo450, fix/scalpatlas-martingale-overlay451, fix/scalpatlas-simple-engine452, fix/scalpatlas-fresh-bip-auto-demo453, fix/scalpatlas-history-rearm-demo454, fix/scalpatlas-open-tab-visual-proof455, fix/scalpatlas-physical-history-nav456, fix/scalpatlas-return-to-chart457, fix/scalpatlas-rearm-open-tab458, fix/scalpatlas-open-tab-accessibility459, fix/scalpatlas-chart-only462, fix/scalpatlas-passive-proof463, fix/scalpatlas-demo-expiry-pilot464, experiment/scalpatlas-second-candle494, fix/scalpatlas-rotation-reconnect495, fix/scalpatlas-demo-preflight-visibility496, fix/scalpatlas-balance20-overlay497, fix/scalpatlas-four-corners498, fix/scalpatlas-compact-easy-drag499, fix/scalpatlas-free-drag-edges500, fix/scalpatlas-adaptive-m5-observation501, fix/scalpatlas-rotation-guard502, fix/scalpatlas-rotation-30s503, fix/scalpatlas-analyzer-watchdog504, fix/scalpatlas-unique-fx-sweep505, fix/scalpatlas-selector-search506, fix/scalpatlas-selector-recovery507, fix/scalpatlas-demo-account-touch-guard508, fix/scalpatlas-continuous-arm513, fix/scalpatlas-rotation-stall514, fix/scalpatlas-selector-verified-gesture515, fix/scalpatlas-active-trade-pause-burst516, fix/scalpatlas-demo-only-major-fx517, fix/scalpatlas-wider-fx-sweep518, fix/scalpatlas-selector-accessibility-fallback519, fix/scalpatlas-rotation-animation520, feature/android-soc-doua-lumanari, fix/order-verification-diagnostic, experiment/scalpatlas-early-second-554, fix/scalpatlas-556-bip-execution-diagnostic, fix/scalpatlas-557-manual-to-auto-proof, fix/scalpatlas-558-rearm-overlay-guard, feature/scalpatlas-559-native-demo-signal-preview, experiment/scalpatlas-560-reversal-min-max-m5-demo, feature/scalpatlas-565-demo-stake-after-closed-loss, feature/scalpatlas-566-ten-loss-balance-guard-qt-demo, feature/scalpatlas-567-157244-ten-level-qt-demo, fix/scalpatlas-568-visible-expand-stake-demo, fix/scalpatlas-569-visible-left-expand-miza, fix/scalpatlas-570-preflight-risk-message, fix/scalpatlas-571-queued-demo-stake-optin, fix/scalpatlas-572-stake-optin-diagnostic, fix/scalpatlas-573-compact-audio-preflight, fix/scalpatlas-574-visible-optin-reason, fix/scalpatlas-575-mini-overlay-visible-miza, fix/scalpatlas-576-payout-readonly-mini-safe, fix/scalpatlas-577-base-stake-rearm-pair-rotation, fix/scalpatlas-578-clear-order-gate-reason, fix/scalpatlas-579-demo-balance-parse, fix/scalpatlas-580-base109-readback, fix/scalpatlas-581-martingale-settlement-rearm, fix/scalpatlas-582-demo-history-dual-clock, fix/scalpatlas-583-verified-base-stake-pair-rebind, fix/scalpatlas-584-confirmed-base-rearm, fix/scalpatlas-585-demo-rearm-pair-synchronization, fix/scalpatlas-586-unmask-demo-quote-diagnostics, fix/scalpatlas-587-stake-preflight-recheck, fix/scalpatlas-588-manual-overlay-lock, fix/scalpatlas-589-autonomous-demo-history, fix/scalpatlas-590-pending-order-history-priority, fix/scalpatlas-591-perspectives-safe-return, fix/scalpatlas-592-demo-3s-history-no-real, fix/scalpatlas-593-return-after-open-proof, fix/scalpatlas-594-demo-history-safe-footer, fix/scalpatlas-595-social-is-not-chart, fix/scalpatlas-596-safe-navigation-diagnostics, fix/scalpatlas-600-no-forced-demo-page]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -59,6 +59,7 @@ on:
       - '.github/scripts/test_596_accessible_more_diagnostics.mjs'
       - '.github/scripts/test_600_chart_first_3s.mjs'
       - '.github/scripts/test_601_rotation_independent_order.mjs'
+      - '.github/scripts/test_602_bounded_old_history.mjs'
       - '.github/native-overlay/DemoAutoStakePlan565.kt'
       - '.github/native-overlay/TouchTestService.kt'
       - '.github/native-overlay/DemoStakeEditor.kt'
@@ -136,6 +137,7 @@ jobs:
           node --test .github/scripts/test_596_accessible_more_diagnostics.mjs
           node --test .github/scripts/test_600_chart_first_3s.mjs
           node --test .github/scripts/test_601_rotation_independent_order.mjs
+          node --test .github/scripts/test_602_bounded_old_history.mjs
           node --experimental-strip-types --test scalp-atlas-new/allocatedBudgetAfterLoss564.test.mjs
           grep -Fq 'DemoAutoStakePlan565' .github/native-overlay/ScalpOverlayService.kt
 
@@ -194,7 +196,7 @@ jobs:
           expo['version']='3.2.99'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=601
+          expo['android']['versionCode']=602
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2630,27 +2632,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-601-OVERLAY-QT-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-602-OVERLAY-QT-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-601-OVERLAY-QT-DEMO-G24
-          path: ScalpAtlas-601-OVERLAY-QT-DEMO-G24.apk
+          name: ScalpAtlas-602-OVERLAY-QT-DEMO-G24
+          path: ScalpAtlas-602-OVERLAY-QT-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/fix/scalpatlas-601-rotation-not-order-lock'
+        if: github.ref == 'refs/heads/fix/scalpatlas-602-bounded-history-retries'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-601-OVERLAY-QT-DEMO-G24.apk"
+          FILE="ScalpAtlas-602-OVERLAY-QT-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-601-rotation-chart-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-602-bounded-history-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 601 - Rotatie M5 reluata cu ordin anterior blocat" \
-            --notes "601: Rotatia si analiza M5 de 30s continua dupa expirarea ferestrei de 5 minute chiar daca ordinul vechi ramane neconfirmat. Verificarea CLOSED este limitata la 3s si se revine la grafic. Ordinele QT Demo/Martingale raman blocate pana la CLOSED verificat si zero OPEN confirmat. Nu deschide fortat brokerul la pornire."
+            --title "Scalp Atlas 602 - Verificare istoricului vechi la 3 secunde" \
+            --notes "602: Istoric read-only la maximum 3 secunde, reluat periodic pentru aceeasi incercare DEMO neconfirmata, inclusiv dupa 24 ore. Rotatie M5 la 30s si payout exact 92%. In lipsa CLOSED + zero OPEN verificat, ordinele si Martingale raman blocate. Navigarea si citirea pe Motorola se verifica separat."

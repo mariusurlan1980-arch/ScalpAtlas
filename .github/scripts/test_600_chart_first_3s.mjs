@@ -14,7 +14,7 @@ test('600 cap completed-trade inspection to 3 seconds, one per persisted order',
     'nowElapsed592 - historyPeekStartedAt592 in 0L..3_000L',
     'val reviewKey600 = attemptKey600',
     'putString("completedAttempt", reviewKey600)',
-    '24L * 60 * 60_000L','}, 3_000L)'])
+    '297_000L','}, 3_000L)'])
     assert.ok(monitor.includes(proof),proof);
   assert.match(monitor,/afterExpiry592 && !reviewCompleted600 &&/);
 });
@@ -35,7 +35,7 @@ test('600 preserve old-order settlement proof, demo-only guard and strict chart 
   assert.doesNotMatch(template,/await Linking\.openURL\(POCKET_OPTION_QT_DEMO_URL\)/);
 });
 test('600 Android version and artifact match',()=>{
-  assert.match(flow,/versionCode'\]=601/);
-  assert.match(flow,/ScalpAtlas-601-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=602/);
+  assert.match(flow,/ScalpAtlas-602-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_600_chart_first_3s\.mjs/);
 });
