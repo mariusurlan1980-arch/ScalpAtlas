@@ -108,8 +108,9 @@ class ScalpOverlayService : Service() {
     // A direction's 5-7 minute lock is NOT a 5-7 minute window for NEW entries.
     private const val ALERT_FRESH_MS = 30_000L
     private const val OCR_INTERVAL_MS = 3000L
-    // 462: intentional one-order safety mode; never enter history UI.
-    // Do NOT change this to allow consecutive orders without settlement.
+    // 589: chart-only SUBMISSION safety remains active. Only a persisted
+    // pending demo gesture may enter the guarded history-inspection path.
+    // Never allow consecutive orders without broker-verified settlement.
     private const val CHART_ONLY_DEMO_462 = true
     // 465: no hard count limit or extra 7-minute pause. The 5-minute
     // broker gesture lock remains aligned to the verified 5-minute DEMO
@@ -1922,14 +1923,31 @@ class ScalpOverlayService : Service() {
         // validated broker settlement and an explicitly tested risk policy.
         if (!CHART_ONLY_DEMO_462)
           maybePrepareAutomaticDemoRecoveryStake(android.os.SystemClock.elapsedRealtime())
-        // 462 CHART-ONLY DEMO: do not open, press, or scroll either the
-        // CLOSED or OPEN transaction tabs automatically. A single valid
-        // user-authorized DEMO SHOCK can still submit one broker order,
-        // subject to the unchanged preflight and persistent "attempted"
-        // guard. Without a broker-verified settlement, NO second order and
-        // NO Martingale are permitted; elapsed time is not settlement proof.
-        // Keep only the READ-ONLY broker identity monitor on the live chart.
-        if (CHART_ONLY_DEMO_462) {
+        // 589: CHART_ONLY forbids automatically opening history in normal
+        // scanning. A persisted uncertain QT Demo gesture is the narrow
+        // exception: reuse the existing supervised navigation-only history
+        // review (OPEN/CLOSED detail 2/2), but never infer settlement from
+        // time, balance, or Android gesture success. No further order until
+        // the same broker's exact settlement is durably verified.
+        // 589: CHART_ONLY protects order submission, not broker-history
+        // inspection. If an earlier QT Demo gesture is persisted as pending,
+        // allow the existing tightly checked OPEN/CLOSED history navigation
+        // and 2/2 receipt reconciliation path to run autonomously.
+        // This does NOT relax the previous-order marker, one-position gate,
+        // strict 92% quote, or account/pair/UUID/amount checks.
+        val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&
+          !shuttingDown && !realAccountSafetyStop517 &&
+          mediaProjection != null && TouchTestService.ready() &&
+          getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+            .getBoolean("attempted", false)
+        if (pendingAutoHistory589) {
+          // The marker survives process death; the session flags do not.
+          // Reestablish the locked inspection state before UI navigation.
+          autoDemoSessionConsumed = true
+          autoDemoSessionRequested = false
+          autoDemoArmed = false
+        }
+        if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589) {
           // Restore the <=90-second chart DEMO identity proof which v462
           // accidentally skipped before its early return. We may then read
           // a manually displayed broker receipt, WITHOUT touching the UI.
