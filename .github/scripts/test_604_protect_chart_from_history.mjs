@@ -31,7 +31,7 @@ test('604 keeps exact QT Demo and Martingale proof before subsequent order',()=>
   assert.match(service,/val historyReturnDue603 = historyFresh592 &&/);
 });
 test('604 distinct signed Motorola APK',()=>{
-  assert.match(workflow,/versionCode'\]=604/);
-  assert.match(workflow,/ScalpAtlas-604-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(workflow,/versionCode'\]=605/);
+  assert.match(workflow,/ScalpAtlas-605-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(workflow,/test_604_protect_chart_from_history\.mjs/);
 });
