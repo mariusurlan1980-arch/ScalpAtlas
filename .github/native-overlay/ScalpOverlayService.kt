@@ -335,6 +335,7 @@ class ScalpOverlayService : Service() {
   @Volatile private var nonChartSafety595 = false
   private var moreNavAttemptAt595 = 0L
   private var quickNavAttemptAt595 = 0L
+  private var lastSocialUncover595 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
@@ -2112,6 +2113,27 @@ class ScalpOverlayService : Service() {
         }
         val socialFresh595=socialPageSeen595 &&
           System.currentTimeMillis()-socialPageAt595 in 0L..5_000L
+        // The user's floating panel can cover the FAR-RIGHT More tab.
+        // Temporarily uncover it so MediaProjection can obtain two
+        // independent OCR frames; never guess the concealed coordinates.
+        if(navPkg595 != null && socialFresh595 &&
+           moreFooterSamples595 < 2 &&
+           recoveryNow595 - lastSocialUncover595 !in 0L..9_000L) {
+          lastSocialUncover595=recoveryNow595
+          val overlayUncover595=overlayView
+          val was595=overlayUncover595?.visibility ?: View.VISIBLE
+          if(overlayUncover595 != null && was595==View.VISIBLE){
+            overlayUncover595.visibility=View.INVISIBLE
+            mainHandler.postDelayed({
+              if(!shuttingDown && overlayView===overlayUncover595)
+                overlayUncover595.visibility=was595
+            },4_000L)
+          }
+          touchProbeStatus?.text=
+            "🤖 595 • SOCIAL EXCLUS • CITESC MAI MULTE 2/2"
+          mainHandler.postDelayed(this,2_500L)
+          return
+        }
         if(navPkg595 != null && socialFresh595 &&
            moreFooterSamples595 >= 2 &&
            moreFooterPkg595 == navPkg595 &&
