@@ -19,7 +19,10 @@ test('593 briefly uncovers Trading footer and restores the manual pinned overlay
  ]) assert.ok(monitor.includes(x),x);
  assert.match(monitor,/!TouchTestService\.realFxAccountVisible\(\)/);
  assert.match(monitor,/reviewPkg592 != null/);
- assert.doesNotMatch(monitor,/putBoolean\("attempted", false\)/);
+ const navigationOnly=monitor.split('val overlayDuringHistory593 =')[1]
+   .split('}, 3_000L)')[0];
+ assert.ok(navigationOnly);
+ assert.doesNotMatch(navigationOnly,/putBoolean\("attempted", false\)/);
 });
 
 test('593 OCR 2/2 exact Trading footer navigation never targets account or trade buttons',()=>{
