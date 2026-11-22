@@ -2362,7 +2362,7 @@ jobs:
           assert 'fun pressAutoOneDollarDemoOrderOnce(' in t
           print('589: pending DEMO order auto-opens strict history, chart-only submission and prior-order lock preserved')
           PY
-      - name: Verify 463 passive reconciliation without broker navigation
+      - name: Verify 463 passive receipt matching and guarded 589 broker navigation
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -2403,15 +2403,15 @@ jobs:
           assert 'inspectPassiveDemoProof463(' in monitor
           assert 'if (!CHART_ONLY_DEMO_462)' in monitor
           assert 'maybePrepareAutomaticDemoRecoveryStake' in monitor
-          # All historic navigation stays after the constant-true return.
-          before, after = monitor.split('if (CHART_ONLY_DEMO_462) {',1)
+          # History navigation is reachable only with a persisted pending Demo attempt.
+          before, after = monitor.split('if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589) {',1)
           guard = after.split('// 410: On the broker',1)[0]
           assert 'inspectPassiveDemoProof463(' in guard
           assert '\n          return\n' in guard
           assert 'navigateVerifiedDemoHistory431(' in after
           assert 'TouchTestService.inspectBrokerAccountReadOnly()' in before
           assert 'realOrderAdapterAvailable = false' in r
-          print('463 PASS: passive authentic receipt match, no chart-only history clicks or MG bypass')
+          print('589: passive authentic receipt match; no order-gate or Martingale bypass')
           PY
 
       - name: Verify timed rearm with broker stake and 5-minute QT DEMO expiry
@@ -2445,7 +2445,7 @@ jobs:
           assert 'TouchTestService.inspectBrokerDemoOrder488(' in pilot
           assert 'releaseUnknownGestureForExpiredDemoPilot464(' in pilot
           assert 'maybeRearmExpiredDemoPilot464(' in monitor
-          assert 'if (CHART_ONLY_DEMO_462) {' in monitor
+          assert 'if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589) {' in monitor
           assert 'CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null)' in s
           assert 'CHART_ONLY_DEMO_462 &&' in s
           assert 'confirmedFiveMinuteDemoExpiry465()' in s
