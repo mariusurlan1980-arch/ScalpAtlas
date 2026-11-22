@@ -56,7 +56,7 @@ test('594 derived gesture never leaves bottom navigation or accesses Real, trade
     .split('private fun navigateVerifiedDemoHistory431(')[0];
   assert.match(ret,/moreFooterSamples595 < 2/);
   assert.match(ret,/tapVerifiedDemoMoreFooter595\(/);
-  assert.match(ret,/tradingFooterPackage593 == expectedPackage593/);
+  assert.match(ret,/moreFooterPkg595 != pkg595/);
 });
 test('594 no false WIN, LOSS or attempted-order reset from navigation',()=>{
   const fn=service.split('private fun returnToChartAfterReview458(')[1]
