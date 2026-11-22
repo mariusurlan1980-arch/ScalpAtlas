@@ -56,6 +56,6 @@ test('monitor processes queued request after independent account check, before a
 test('workflow builds version 571 and includes the new safety test',()=>{
   assert.ok(workflow.includes("expo['android']['versionCode']=589"));
   assert.ok(workflow.includes('node --test .github/scripts/test_571_queued_stake_optin.mjs'));
-  assert.ok(workflow.includes('ScalpAtlas-589-MANUAL-POS-G24.apk'));
+  assert.ok(workflow.includes('ScalpAtlas-589-AUTO-HISTORY-G24.apk'));
   assert.ok(workflow.includes('apksigner'));
 });
