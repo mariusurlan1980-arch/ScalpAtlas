@@ -289,6 +289,11 @@ class ScalpOverlayService : Service() {
   private var firstClosedDetailAt437 = 0L
   @Volatile private var verifiedClosedDetail437: ClosedDetail437? = null
   @Volatile private var verifiedClosedDetailAt437 = 0L
+  // 606: CLOSED detail is independently OCR-verified 2/2. Its authenticated
+  // UUID/result may be retained across two short (~3s) history visits
+  // spaced five minutes apart, ONLY with unchanged pending attempt proof.
+  // Two fresh ZERO OPEN reads remain mandatory before settling or MG.
+  private val closedProofHorizon606 = 12L * 60_000L
   // 438: OCR-derived CLOSED row coordinates are navigation hints only.
   // They cannot count as a transaction receipt or release a prior lock.
   @Volatile private var closedRowAt438 = 0L
@@ -1614,7 +1619,7 @@ class ScalpOverlayService : Service() {
     if (historyPageTab433 != "DESCHIS") {
       val proof = verifiedClosedDetail437
       return if (proof != null &&
-          System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..90_000L &&
+          System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..closedProofHorizon606 &&
           proof.brokerPackage == expectedPackage &&
           proof.pair == expectedPair)
         "463 • DETALIU ÎNCHIS CITIT 2/2 • LIPSEȘTE DOVADA 0 DESCHISE"
@@ -1649,7 +1654,7 @@ class ScalpOverlayService : Service() {
     // Two empty-Open reads alone must NEVER clear a previous gesture.
     val closed = verifiedClosedDetail437
       ?: return "463 • ZERO DESCHISE 2/2 • LIPSEȘTE ID ÎNCHIS"
-    if (System.currentTimeMillis() - verifiedClosedDetailAt437 !in 0L..90_000L ||
+    if (System.currentTimeMillis() - verifiedClosedDetailAt437 !in 0L..closedProofHorizon606 ||
         closed.brokerPackage != expectedPackage ||
         closed.pair != expectedPair ||
         closed.stakeCents != stake ||
@@ -2720,7 +2725,7 @@ class ScalpOverlayService : Service() {
                 // provides sufficient evidence for rearming or LOSS.
                 val closedProof437 = verifiedClosedDetail437
                 val closedProofFresh437 = closedProof437 != null &&
-                  System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..90_000L
+                  System.currentTimeMillis() - verifiedClosedDetailAt437 in 0L..closedProofHorizon606
                 // 445: Reconcile BOTH possible paths:
                 // A) OPEN receipt was missed -> strict recovered CLOSED ID.
                 // B) OPEN receipt already has an exact broker UUID -> CLOSED
@@ -9396,7 +9401,7 @@ class ScalpOverlayService : Service() {
           !TouchTestService.ready() ->
             "🔒 DEMO • ACCESIBILITATE NECONECTATĂ"
           verifiedClosedDetail437 != null &&
-            now - verifiedClosedDetailAt437 in 0L..90_000L ->
+            now - verifiedClosedDetailAt437 in 0L..closedProofHorizon606 ->
             "📋 ÎNCHIS 2/2 • DESCHIDE TRANZACȚII > DESCHIS"
           firstClosedDetail437 != null &&
             now - firstClosedDetailAt437 in 0L..15_000L ->
