@@ -32,7 +32,7 @@ test('572 explains every original fail-closed preflight gate without granting an
 test('572 independent timeout only cancels the SAME pending user opt-in',()=>{
  assert.ok(click.includes('val requestAt572 = pendingStakeOptInAt571'));
  assert.ok(click.includes('pendingStakeOptIn571 && pendingStakeOptInAt571 == requestAt572'));
- assert.ok(click.includes('}, 90_500L)'));
+ assert.ok(click.includes('}, stakeOptInWindow608 + 500L)'));
  assert.ok(click.includes('text = "MIZĂ AUTO DEMO • OFF"'));
  assert.ok(click.includes('probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"'));
 });

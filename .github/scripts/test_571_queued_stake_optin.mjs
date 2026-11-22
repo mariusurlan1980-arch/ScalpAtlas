@@ -17,7 +17,7 @@ test('only the explicit user ON button creates a one-time pending request',()=>{
   assert.ok(toggle.includes('!TouchTestService.demoFxAccountInForeground()'));
 });
 test('queued opt-in expires and rejects REAL or persistent risk stop',()=>{
-  assert.ok(guard.includes('nowElapsed - pendingStakeOptInAt571 !in 0L..90_000L'));
+  assert.ok(guard.includes('nowElapsed - pendingStakeOptInAt571 !in 0L..stakeOptInWindow608'));
   assert.ok(guard.includes('TouchTestService.realFxAccountVisible()'));
   assert.ok(guard.includes('demoAutoStakePlan565.isRiskStopped()'));
   assert.ok(guard.includes('cancel("571 • STOP RISC / QT REAL • FĂRĂ ORDIN")'));
