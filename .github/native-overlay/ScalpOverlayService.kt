@@ -4968,9 +4968,16 @@ class ScalpOverlayService : Service() {
           return
         }
         if (payout == null) {
-          lastFxRotationMismatch548 = "PAYOUT 92% NECITIT PE " + pair.take(24)
-          if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
-          else recoverNavigation(pair, "PAYOUT NECONFIRMAT")
+          // 605: missing accessibility payout is NOT a missing chart.
+          // After a few read-only retries, skip this unverified pair and
+          // continue the FX scanner. No BUY/SELL is ever authorized.
+          lastFxRotationMismatch548 = "PAYOUT NECITIT • SAR " + pair.take(24)
+          if (checks > 20) after(750L) { verifyChart(pair, checks - 1) }
+          else {
+            visited.add(pair)
+            beginNavigation()
+            openList(pair, false)
+          }
           return
         }
         lastFxRotationMismatch548 = "PERECHE + PAYOUT 92% CONFIRMATE"
@@ -5134,8 +5141,19 @@ class ScalpOverlayService : Service() {
             recoverNavigation(previous, "VERIFIC GRAFICUL QT")
           } else {
             val current = TouchTestService.readVisibleFxPair(realAccount)
-            if (current == null || TouchTestService.readFxChartPayout(current, realAccount) == null) {
+            // 605: scan-only recovery requires a visible QT Demo pair and
+            // the allowlisted broker in foreground, not a readable payout.
+            // A missing payout is grounds to SKIP the pair, never trade it.
+            val safeFxSelector605 = current != null && !realAccount &&
+              TouchTestService.demoFxAccountInForeground() &&
+              !TouchTestService.realFxAccountVisible() &&
+              !historyPageVisible433
+            if (!safeFxSelector605) {
               recoverNavigation(previous, "AȘTEPT GRAFICUL QT")
+            } else if (TouchTestService.readFxChartPayout(current!!, false) == null) {
+              visited.add(current)
+              beginNavigation()
+              openList(current, false)
             } else if (current != previous && current != lastChartPair) {
               restoreOverlay()
               verifyChart(current, 24)
@@ -5162,8 +5180,12 @@ class ScalpOverlayService : Service() {
           return
         }
         val visiblePair = TouchTestService.readVisibleFxPair(realAccount)
-        val chartVisible = visiblePair != null &&
-          TouchTestService.readFxChartPayout(visiblePair, realAccount) != null
+        // 605: moving to the NEXT pair is navigation, not an order.
+        // The broker's pair selector may be visible while payout is
+        // inaccessible. Reject any history screen, Real or unknown app.
+        val chartVisible = visiblePair != null && !realAccount &&
+          TouchTestService.demoFxAccountInForeground() &&
+          !TouchTestService.realFxAccountVisible() && !historyPageVisible433
         if (!chartVisible) {
           val freshHistory = historyPageVisible433 &&
             System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
