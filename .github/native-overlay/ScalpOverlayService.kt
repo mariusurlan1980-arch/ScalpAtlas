@@ -943,12 +943,12 @@ class ScalpOverlayService : Service() {
       // SELL. No gesture and no auto-order are dispatched by this callback.
       // The existing complete QT DEMO, capture, order and stake guards
       // in maybeApplyVerifiedDemoStake565 are checked again from scratch.
-      after(1_500L) {
+      mainHandler.postDelayed({
         if(!shuttingDown && !fxRotationNavigating && mediaProjection!=null &&
             currentPair(System.currentTimeMillis())==pair)
           maybeApplyVerifiedDemoStake565(
             android.os.SystemClock.elapsedRealtime())
-      }
+      }, 1_500L)
       return
     }
     // 587: Report the actual failed broker evidence instead of leaving
