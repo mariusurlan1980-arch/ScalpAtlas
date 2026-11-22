@@ -73,7 +73,7 @@ test('594 no false WIN, LOSS or attempted-order reset from navigation',()=>{
 test('594 APK for Motorola keeps all prior tests and signature',()=>{
   assert.match(flow,/test_593_history_return_panel\.mjs/);
   assert.match(flow,/test_594_safe_history_footer\.mjs/);
-  assert.match(flow,/versionCode'\]=595/);
-  assert.match(flow,/ScalpAtlas-595-REAL-CHART-G24\.apk/);
+  assert.match(flow,/versionCode'\]=596/);
+  assert.match(flow,/ScalpAtlas-596-MORE-VERIFY-G24\.apk/);
   assert.match(flow,/apksigner/);
 });
