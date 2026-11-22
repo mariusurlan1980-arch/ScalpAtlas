@@ -2333,7 +2333,7 @@ jobs:
           print('459: bound physical Open label fallback, OCR word rect and intact order safety gates')
           PY
 
-      - name: Verify 462 chart-only mode cannot auto-enter trade history
+      - name: Verify 589 chart-only orders and guarded autonomous history exception
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -2342,23 +2342,26 @@ jobs:
           r=Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
           assert 'private const val CHART_ONLY_DEMO_462 = true' in s
           monitor=s.split('private fun startBrokerAccountMonitor()',1)[1].split('private fun startDemoClickMonitor()',1)[0]
-          assert 'if (CHART_ONLY_DEMO_462) {' in monitor
-          before, after=monitor.split('if (CHART_ONLY_DEMO_462) {',1)
+          assert 'if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589) {' in monitor
+          before, after=monitor.split('if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589) {',1)
+          pending=before.split('val pendingAutoHistory589 =',1)[1]
+          for required in ['CHART_ONLY_DEMO_462','getBoolean("attempted", false)',
+              '!realAccountSafetyStop517', '!shuttingDown', 'TouchTestService.ready()',
+              'mediaProjection != null', 'autoDemoSessionConsumed = true',
+              'autoDemoSessionRequested = false', 'autoDemoArmed = false']:
+              assert required in pending, required
           guard=after.split('// 410: On the broker',1)[0]
           assert 'mainHandler.postDelayed(this, 2500L)' in guard
           assert '\n          return\n' in guard
           assert 'advanceDemoClosedHistoryNavigation(' in after
           assert 'navigateVerifiedDemoHistory431(' in after
           assert 'TouchTestService.inspectBrokerAccountReadOnly()' in before
-          assert 'autoDemoSessionConsumed' in guard
           assert 'tradePositionGate.beginAttempt()' in s
-          assert 'getBoolean("attempted", false)' in s
           assert 'oldShockAttempt && !savedReconciled437 -> false' in s
           assert 'realOrderAdapterAvailable = false' in r
           assert 'fun pressAutoOneDollarDemoOrderOnce(' in t
-          print('462: on-chart demo account read, history auto navigation unreachable, one-order safeguards intact')
+          print('589: pending DEMO order auto-opens strict history, chart-only submission and prior-order lock preserved')
           PY
-
       - name: Verify 463 passive reconciliation without broker navigation
         run: |
           python3 - <<'PY'
