@@ -442,6 +442,11 @@ class ScalpOverlayService : Service() {
   // return to a stable QT Demo chart. This grants NO order permission.
   private var pendingStakeOptIn571 = false
   private var pendingStakeOptInAt571 = 0L
+  // 608: a user-requested MG ON remains pending for the current LIVE
+  // session while QT Demo order/history proof is incomplete. It is NOT
+  // equivalent to the MG plan being ON or to permission to BUY/SELL.
+  // Auto-cancel after one hour, when the session ends, or on Real/risk.
+  private val stakeOptInWindow608 = 60L * 60_000L
   // 572: diagnostic ONLY. Never use a displayed reason as order permission.
   private var stakeOptInReason572 = "AȘTEPT GRAFIC QT DEMO"
   // 574: show the LAST failed opt-in reason even after VERIFIC becomes OFF.
@@ -892,7 +897,9 @@ class ScalpOverlayService : Service() {
    * remains pending, instead of silently returning to OFF.
    *
    * No risk, account, payout, old-order or broker-stake guard is relaxed.
-   * The queue is memory-only, cancels on REAL, and expires after 90 seconds.
+   * The queue is memory-only, cancels on REAL, and expires after one hour.
+   * This avoids asking for another tap while the prior Demo order is
+   * unresolved; it NEVER activates MG without broker settlement proof.
    */
   private fun maybeFinishStakeOptIn571(nowElapsed: Long) {
     if (!pendingStakeOptIn571) return
@@ -906,7 +913,7 @@ class ScalpOverlayService : Service() {
     }
     if (shuttingDown || mediaProjection == null || overlayView == null ||
         pendingStakeOptInAt571 <= 0L ||
-        nowElapsed - pendingStakeOptInAt571 !in 0L..90_000L) {
+        nowElapsed - pendingStakeOptInAt571 !in 0L..stakeOptInWindow608) {
       cancel("571 • CERERE EXPIRATĂ • FĂRĂ ORDIN")
       return
     }
@@ -938,7 +945,14 @@ class ScalpOverlayService : Service() {
       else -> null
     }
     if (waiting572 != null) {
-      stakeOptInReason572 = "572 • " + waiting572
+      stakeOptInReason572 = "608 • " + waiting572
+      // 608: distinguish saved user intent from a funded/armed MG plan.
+      // Every existing broker, position, risk, quote and Real guard above
+      // remains unchanged.
+      autoStakeToggle565?.text = if (priorShock572 || priorSell572 ||
+          tradePositionGate.state() != TradePositionGate.State.READY)
+        "MG • AȘTEPT ÎNCHIDERE"
+      else "MG • VERIFIC QT DEMO"
       touchProbeStatus?.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
       return
     }
@@ -5893,8 +5907,9 @@ class ScalpOverlayService : Service() {
           text = "MIZĂ AUTO DEMO • VERIFIC"
           probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
           maybeFinishStakeOptIn571(requestAt572)
-          // Independent expiry even if the broker-monitor callback stops.
-          // This ONLY cancels a stale request; never clicks the broker.
+          // Independent one-hour expiry even if the broker-monitor stops.
+          // The pending user click persists through a slow broker-history
+          // review, but NOT across restarts, and it never clicks BUY/SELL.
           mainHandler.postDelayed({
             if (pendingStakeOptIn571 && pendingStakeOptInAt571 == requestAt572) {
               pendingStakeOptIn571 = false
@@ -5904,7 +5919,7 @@ class ScalpOverlayService : Service() {
               text = "MIZĂ AUTO DEMO • OFF"
               probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
             }
-          }, 90_500L)
+          }, stakeOptInWindow608 + 500L)
         }
       }
     }
