@@ -14,7 +14,7 @@ test('594 QT Demo history auto-return is independent of trade age but orders rem
   assert.match(returnGate,/if \(historyFresh592 &&/);
   assert.doesNotMatch(returnGate,/if \(afterExpiry592 && historyFresh592/);
   for (const requirement of ['historyPeekStartedAt592 = nowElapsed592',
-    'historyPeekRetryAfter592 = reviewNow592 + 24L * 60 * 60_000L',
+    'historyPeekRetryAfter592 = reviewNow592 + 297_000L',
     'overlayDuringHistory593.visibility = View.INVISIBLE',
     'overlayDuringHistory593?.visibility = oldVisibility593',
     'returnToChartAfterReview458(true, true)', '}, 3_000L)',
