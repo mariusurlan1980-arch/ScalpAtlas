@@ -2096,14 +2096,14 @@ class TouchTestService : AccessibilityService() {
         @Suppress("DEPRECATION")
         wm.defaultDisplay.getRealMetrics(metrics)
       } catch (_: Throwable) { return false }
-      val name=Regex("""(?i)^(?:Mai\\s+multe|More)$""")
+      val name=Regex("""(?i)^(?:Mai\s+multe|More)$""")
       val candidates=labels.filter{(node,bounds)->
         bounds.centerX() in (metrics.widthPixels*0.77f).toInt()..(metrics.widthPixels*0.985f).toInt() &&
         bounds.centerY() in (metrics.heightPixels*0.855f).toInt()..(metrics.heightPixels*0.985f).toInt() &&
         bounds.width() in 12..(metrics.widthPixels*0.28f).toInt() &&
         bounds.height() in 12..(metrics.heightPixels*0.11f).toInt() &&
         listOfNotNull(node.text?.toString(),node.contentDescription?.toString()).any{
-          name.matches(it.replace(Regex("""\\s+""")," ").trim())
+          name.matches(it.replace(Regex("""\s+""")," ").trim())
         }
       }
       if(candidates.isEmpty())return false
