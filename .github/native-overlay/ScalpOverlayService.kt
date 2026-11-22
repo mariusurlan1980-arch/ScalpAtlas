@@ -86,6 +86,15 @@ class ScalpOverlayService : Service() {
       else service.mainHandler.post { applyVisibility() }
     }
 
+    // Source of truth for the Android home screen: permission alone is not
+    // evidence that the overlay/capture service is still alive.
+    fun isCaptureSessionRunning(): Boolean {
+      val service = activeOverlayService ?: return false
+      return !service.shuttingDown &&
+        service.mediaProjection != null &&
+        service.overlayView != null
+    }
+
     private const val CHANNEL_ID = "scalp_atlas_overlay"
     private const val NOTIFICATION_ID = 4816
     private const val MIN_FRAME_INTERVAL_MS = 700L
