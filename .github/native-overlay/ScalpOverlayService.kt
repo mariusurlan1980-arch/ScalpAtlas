@@ -307,6 +307,14 @@ class ScalpOverlayService : Service() {
   @Volatile private var tradingFooterY593 = -1f
   @Volatile private var tradingFooterAt593 = 0L
   @Volatile private var tradingFooterPackage593: String? = null
+  // 594: independent OCR proof of adjacent Transactions/Perspective tabs,
+  // used ONLY to infer the third bottom navigation tab when Trading text
+  // is clipped by the broker WebView. This is not order/settlement proof.
+  @Volatile private var derivedTradingSamples594 = 0
+  @Volatile private var derivedTradingX594 = -1f
+  @Volatile private var derivedTradingY594 = -1f
+  @Volatile private var derivedTradingAt594 = 0L
+  @Volatile private var derivedTradingPackage594: String? = null
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
@@ -1343,6 +1351,26 @@ class ScalpOverlayService : Service() {
       if (sent593)
         result = "593 • TRADING DEMO GEST TRIMIS • VERIFIC GRAFIC"
     }
+    // 594: if WebView omitted Trading text, use only two fresh OCR
+    // frames of its adjacent footer labels. The screenshot-derived target
+    // is bounded to the third bottom tab. Never authorize a new order.
+    if (ocrTrading593 && !result.contains("GEST TRIMIS") &&
+        cachedDemoVerifiedOnChart && expectedPackage593 != null &&
+        derivedTradingPackage594 == expectedPackage593 &&
+        derivedTradingSamples594 >= 2 &&
+        System.currentTimeMillis() - derivedTradingAt594 in 0L..5_000L &&
+        !TouchTestService.realFxAccountVisible()) {
+      val sent594 = TouchTestService.tapDerivedDemoTradingFooter594(
+        expectedPackage593, derivedTradingX594, derivedTradingY594,
+        cachedDemoVerifiedOnChart = true,
+        ocrVerifiedHistoryPage = true,
+        twoFooterAnchorsVerified = true,
+        overlayBounds = effectiveBounds593
+      )
+      derivedTradingSamples594 = 0
+      if (sent594)
+        result = "594 • TRADING DEMO GEST TRIMIS • VERIFIC GRAFIC"
+    }
     if (result.contains("TRADING DEMO SELECTAT") ||
         result.contains("TRADING DEMO GEST TRIMIS"))
       historyReturnPauseUntil457 =
@@ -1992,7 +2020,12 @@ class ScalpOverlayService : Service() {
           historyPeekStartedAt592 = 0L
           historyPeekRetryAfter592 = 0L
         }
-        if (afterExpiry592 && historyFresh592 &&
+        // 594: Once the same-package QT Demo history is genuinely visible,
+        // always return to Trading after the short review. Navigation-only
+        // return must NOT depend on a fresh trade timestamp or the persisted
+        // attempted marker; those constraints govern OPENING history and
+        // placing orders, not safely LEAVING an already-open history page.
+        if (historyFresh592 &&
             historyPeekStartedAt592 == 0L &&
             nowElapsed592 >= historyPeekRetryAfter592 &&
             !realAccountSafetyStop517) {
@@ -2010,7 +2043,9 @@ class ScalpOverlayService : Service() {
             overlayDuringHistory593.visibility = View.INVISIBLE
           mainHandler.postDelayed({
             val reviewNow592 = android.os.SystemClock.elapsedRealtime()
-            historyPeekRetryAfter592 = reviewNow592 + 60_000L
+            // 594: retry a failed navigation in the next bounded review,
+            // not after an entire minute of staring at the history page.
+            historyPeekRetryAfter592 = reviewNow592 + 8_000L
             historyPeekStartedAt592 = 0L
             try {
               if (!shuttingDown && mediaProjection != null &&
@@ -6765,6 +6800,66 @@ class ScalpOverlayService : Service() {
       tradingFooterSamples593 = 0
       tradingFooterAt593 = 0L
       tradingFooterPackage593 = null
+    }
+    // 594: Distinct OCR samples of the two adjacent bottom navigation
+    // labels establish the broker's equally spaced third (Trading) footer.
+    // This is navigation-only, and only on the verified QT Demo history page.
+    fun footerAnchor594(regex: Regex, xmin: Float, xmax: Float): Pair<Float,Float>? {
+      fun fromLines(): List<Pair<Float,Float>> = lines.mapNotNull { line ->
+        val b = line.boundingBox ?: return@mapNotNull null
+        val x = b.centerX().toFloat() / frame.width
+        val y = b.centerY().toFloat() / frame.height
+        if (x !in xmin..xmax || y !in 0.86f..0.985f ||
+            !regex.matches(line.text.trim())) null else Pair(x,y)
+      }
+      val linesFound = fromLines()
+      val matches = if (linesFound.isNotEmpty()) linesFound else
+        words459.mapNotNull { word ->
+          val b = word.boundingBox ?: return@mapNotNull null
+          val x = b.centerX().toFloat() / frame.width
+          val y = b.centerY().toFloat() / frame.height
+          if (x !in xmin..xmax || y !in 0.86f..0.985f ||
+              !regex.matches(word.text.trim())) null else Pair(x,y)
+        }
+      return matches.singleOrNull()
+    }
+    val leftFooter594 = if (trueHistoryPage433)
+      footerAnchor594(
+        Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$"""),
+        0.03f, 0.27f
+      ) else null
+    val middleFooter594 = if (trueHistoryPage433)
+      footerAnchor594(
+        Regex("""(?i)^(?:Perspective|Perspectiva|Perspectivă|Perspectives)$"""),
+        0.22f, 0.56f
+      ) else null
+    if (leftFooter594 != null && middleFooter594 != null && pkg != null) {
+      val deltaX594 = middleFooter594.first - leftFooter594.first
+      val x594 = middleFooter594.first + deltaX594
+      val y594 = (middleFooter594.second + leftFooter594.second) / 2f
+      if (deltaX594 in 0.14f..0.32f &&
+          kotlin.math.abs(middleFooter594.second - leftFooter594.second) <= 0.035f &&
+          x594 in 0.58f..0.80f && y594 in 0.86f..0.985f) {
+        if (derivedTradingSamples594 > 0 &&
+            derivedTradingPackage594 == pkg &&
+            observedAt - derivedTradingAt594 in 750L..6_000L &&
+            kotlin.math.abs(x594 - derivedTradingX594) <= 0.025f &&
+            kotlin.math.abs(y594 - derivedTradingY594) <= 0.025f)
+          derivedTradingSamples594 = (derivedTradingSamples594 + 1).coerceAtMost(3)
+        else derivedTradingSamples594 = 1
+        derivedTradingX594 = x594
+        derivedTradingY594 = y594
+        derivedTradingAt594 = observedAt
+        derivedTradingPackage594 = pkg
+      } else {
+        derivedTradingSamples594 = 0
+        derivedTradingAt594 = 0L
+        derivedTradingPackage594 = null
+      }
+    } else {
+      derivedTradingSamples594 = 0
+      derivedTradingAt594 = 0L
+      derivedTradingPackage594 = null
     }
     // 457: Bottom "Perspective" is a safe NON-ORDER navigation control.
     // Its coordinates must be found independently in two fresh OCR frames.
