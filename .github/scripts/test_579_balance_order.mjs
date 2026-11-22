@@ -85,8 +85,8 @@ test('579 retains QT Demo only, 92%, one-position and verified result gating',()
  assert.ok(plan.includes('PAYOUT_EXACT = 92'));
 });
 test('579 signed Android release and balance regression included',()=>{
- assert.ok(pipeline.includes("expo['android']['versionCode']=604"));
+ assert.ok(pipeline.includes("expo['android']['versionCode']=605"));
  assert.ok(pipeline.includes('node --test .github/scripts/test_579_balance_order.mjs'));
- assert.ok(pipeline.includes('ScalpAtlas-604-OVERLAY-QT-DEMO-G24.apk'));
+ assert.ok(pipeline.includes('ScalpAtlas-605-OVERLAY-QT-DEMO-G24.apk'));
  assert.ok(pipeline.includes('apksigner'));
 });
