@@ -311,6 +311,12 @@ class ScalpOverlayService : Service() {
   // A 3-second visual review is never equivalent to CLOSED settlement.
   private var historyPeekStartedAt592 = 0L
   private var historyPeekRetryAfter592 = 0L
+  // 600: One post-expiry CLOSED-only inspection window per persisted trade.
+  // Never reopen history repeatedly for the same unconfirmed trade; preserve
+  // the old order gate and MG lock if the three-second read is insufficient.
+  private var lastClosedTabNavigation600 = 0L
+  private var lastChartReturnAttempt600 = 0L
+  private val chartFirstPrefs600 = "scalp_atlas_chart_first_600"
   // 593: visible QT Demo Trading footer verified in two distinct OCR frames.
   // It is navigation-only evidence, never a broker order receipt.
   @Volatile private var tradingFooterSamples593 = 0
@@ -2023,6 +2029,17 @@ class ScalpOverlayService : Service() {
              elapsedAge592 in (DEMO_TEST_EXPIRY_MS_465 + 3_000L)..86_400_000L))
         val historyFresh592 = historyPageVisible433 &&
           System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+        val attemptKey600 = if (attempted592 && attemptWall592 > 0L)
+          listOf(
+            attemptPrefs592.getString("expectedPackage429", "").orEmpty(),
+            attemptPrefs592.getString("expectedPair429", "").orEmpty(),
+            attemptWall592.toString()
+          ).joinToString("|") else null
+        val chartPrefs600 = getSharedPreferences(
+          chartFirstPrefs600, Context.MODE_PRIVATE
+        )
+        val reviewCompleted600 = attemptKey600 != null &&
+          chartPrefs600.getString("completedAttempt", null) == attemptKey600
         if (!attempted592) {
           historyPeekStartedAt592 = 0L
           historyPeekRetryAfter592 = 0L
@@ -2034,9 +2051,12 @@ class ScalpOverlayService : Service() {
         // placing orders, not safely LEAVING an already-open history page.
         if (historyFresh592 &&
             historyPeekStartedAt592 == 0L &&
+            (!attempted592 || afterExpiry592) &&
+            !reviewCompleted600 &&
             nowElapsed592 >= historyPeekRetryAfter592 &&
             !realAccountSafetyStop517) {
           historyPeekStartedAt592 = nowElapsed592
+          val reviewKey600 = attemptKey600
           val reviewPkg592 = TouchTestService.activeDemoExecutorPackageForReview()
           // 593: The user pins the robot in the bottom-right corner.
           // It obscures the broker's Trading footer. Hide (do not move)
@@ -2050,10 +2070,15 @@ class ScalpOverlayService : Service() {
             overlayDuringHistory593.visibility = View.INVISIBLE
           mainHandler.postDelayed({
             val reviewNow592 = android.os.SystemClock.elapsedRealtime()
-            // 594: retry a failed navigation in the next bounded review,
-            // not after an entire minute of staring at the history page.
-            historyPeekRetryAfter592 = reviewNow592 + 8_000L
+            // 600: Exactly one three-second CLOSED-review window for this
+            // persisted DEMO attempt. If evidence is incomplete, block the
+            // next order instead of reopening history every eight seconds.
+            historyPeekRetryAfter592 = reviewNow592 + 24L * 60 * 60_000L
             historyPeekStartedAt592 = 0L
+            if (reviewKey600 != null) {
+              getSharedPreferences(chartFirstPrefs600, Context.MODE_PRIVATE)
+                .edit().putString("completedAttempt", reviewKey600).commit()
+            }
             try {
               if (!shuttingDown && mediaProjection != null &&
                   !realAccountSafetyStop517 && TouchTestService.ready() &&
@@ -2080,6 +2105,23 @@ class ScalpOverlayService : Service() {
         // Safe recovery is staged: verified rightmost "Mai multe" footer,
         // then an EXACT "Tranzacționare rapidă"/"Quick Trading" entry.
         // Neither Android tap is settlement or permission for a new order.
+        // 600: For an already-open history screen, inspect only the
+        // completed-trade tab during the bounded 3-second visit. This is
+        // navigation only and never supplies WIN/LOSS or empty-OPEN proof.
+        if (historyFresh592 && afterExpiry592 && !reviewCompleted600 &&
+            historyPeekStartedAt592 > 0L &&
+            nowElapsed592 - historyPeekStartedAt592 in 0L..3_000L &&
+            historyPageTab433 == "DESCHIS" &&
+            nowElapsed592 - lastClosedTabNavigation600 !in 0L..3_000L) {
+          lastClosedTabNavigation600 = nowElapsed592
+          val closedNav600 = try {
+            TouchTestService.advanceDemoClosedHistoryNavigation(true)
+          } catch (_: Exception) { "600 • FILA ÎNCHIS NECONFIRMATĂ" }
+          touchProbeStatus?.text = "600 • ÎNCHIS MAX 3S • " +
+            closedNav600.take(72)
+          mainHandler.postDelayed(this, 900L)
+          return
+        }
         val recoveryNow595=android.os.SystemClock.elapsedRealtime()
         val demoForNavigation595=!realAccountSafetyStop517 &&
           !TouchTestService.realFxAccountVisible() && TouchTestService.ready() &&
@@ -2125,6 +2167,31 @@ class ScalpOverlayService : Service() {
           touchProbeStatus?.text="🤖 "+status595
           mainHandler.postDelayed(this,2500L)
           return
+        }
+        // 600: The three-second inspection is over. Continue ONLY
+        // verified chart-return navigation, not trade-history analysis.
+        // A pending unknown order remains locked for both AUTO and MG.
+        if (reviewCompleted600 && historyFresh592 &&
+            navPkg595 != null &&
+            recoveryNow595 - lastChartReturnAttempt600 !in 0L..2_500L) {
+          lastChartReturnAttempt600 = recoveryNow595
+          val navOverlay600 = overlayView
+          val savedVisibility600 = navOverlay600?.visibility ?: View.VISIBLE
+          if (navOverlay600 != null && savedVisibility600 == View.VISIBLE)
+            navOverlay600.visibility = View.INVISIBLE
+          val chartExit600 = returnToChartAfterReview458(true, true)
+          mainHandler.postDelayed({
+            if (!shuttingDown && overlayView === navOverlay600)
+              navOverlay600?.visibility = savedVisibility600
+          }, 400L)
+          lastAutoDemoHistoryNavStatus = "600 • REVENIRE GRAFIC • " + chartExit600
+          lastAutoDemoHistoryNavStatusAt = recoveryNow595
+          touchProbeStatus?.text = lastAutoDemoHistoryNavStatus.take(110)
+          if (chartExit600.contains("MAI MULTE DESCHIS") ||
+              chartExit600.contains("AȘTEPT MENIUL")) {
+            mainHandler.postDelayed(this, 2_500L)
+            return
+          }
         }
         val socialFresh595=socialPageSeen595 &&
           System.currentTimeMillis()-socialPageAt595 in 0L..5_000L
@@ -2246,7 +2313,8 @@ class ScalpOverlayService : Service() {
           mediaProjection != null && TouchTestService.ready() &&
           // 592: no history visit while the 5-minute DEMO trade is active;
           // pause further navigation for 60s after each <=3s review.
-          afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592
+          afterExpiry592 && !reviewCompleted600 &&
+          nowElapsed592 >= historyPeekRetryAfter592
         if (pendingAutoHistory589) {
           // The marker survives process death; the session flags do not.
           // Reestablish the locked inspection state before UI navigation.
