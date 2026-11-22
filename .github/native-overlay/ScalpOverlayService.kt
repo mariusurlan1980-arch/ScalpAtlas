@@ -1998,26 +1998,39 @@ class ScalpOverlayService : Service() {
             !realAccountSafetyStop517) {
           historyPeekStartedAt592 = nowElapsed592
           val reviewPkg592 = TouchTestService.activeDemoExecutorPackageForReview()
+          // 593: The user pins the robot in the bottom-right corner.
+          // It obscures the broker's Trading footer. Hide (do not move)
+          // that panel only for this bounded history review, then restore
+          // exactly its previous visibility and saved manual position.
+          // This is navigation-only and is NEVER a settlement proof.
+          val overlayDuringHistory593 = overlayView
+          val oldVisibility593 = overlayDuringHistory593?.visibility ?: View.VISIBLE
+          if (overlayDuringHistory593 != null &&
+              !shuttingDown && oldVisibility593 == View.VISIBLE)
+            overlayDuringHistory593.visibility = View.INVISIBLE
           mainHandler.postDelayed({
-            // A short review may fail to read two independent receipts.
-            // Still return to QT Demo Trading, retaining the old-order lock.
             val reviewNow592 = android.os.SystemClock.elapsedRealtime()
             historyPeekRetryAfter592 = reviewNow592 + 60_000L
             historyPeekStartedAt592 = 0L
-            if (!shuttingDown && mediaProjection != null &&
-                !realAccountSafetyStop517 && TouchTestService.ready() &&
-                !TouchTestService.realFxAccountVisible() &&
-                reviewPkg592 != null &&
-                TouchTestService.activeDemoExecutorPackageForReview() == reviewPkg592) {
-              val reviewStillFresh592 = historyPageVisible433 &&
-                System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
-              val result592 = if (reviewStillFresh592)
-                returnToChartAfterReview458(true, true)
-              else "592 • ISTORICUL NU MAI ESTE VIZIBIL • FĂRĂ ORDIN"
-              demoOrderVerificationReason = result592
-              lastAutoDemoHistoryNavStatus = result592
-              lastAutoDemoHistoryNavStatusAt = reviewNow592
-              touchProbeStatus?.text = "🤖 " + result592.take(100)
+            try {
+              if (!shuttingDown && mediaProjection != null &&
+                  !realAccountSafetyStop517 && TouchTestService.ready() &&
+                  !TouchTestService.realFxAccountVisible() &&
+                  reviewPkg592 != null &&
+                  TouchTestService.activeDemoExecutorPackageForReview() == reviewPkg592) {
+                val reviewStillFresh592 = historyPageVisible433 &&
+                  System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+                val result593 = if (reviewStillFresh592)
+                  returnToChartAfterReview458(true, true)
+                else "593 • ISTORIC NECONFIRMAT • FĂRĂ ATINGERE"
+                demoOrderVerificationReason = result593
+                lastAutoDemoHistoryNavStatus = result593
+                lastAutoDemoHistoryNavStatusAt = reviewNow592
+                touchProbeStatus?.text = "🤖 " + result593.take(100)
+              }
+            } finally {
+              if (overlayView === overlayDuringHistory593 && !shuttingDown)
+                overlayDuringHistory593?.visibility = oldVisibility593
             }
           }, 3_000L)
         }
