@@ -5299,9 +5299,35 @@ class ScalpOverlayService : Service() {
         // A deliberate scan restart exits the isolated manual diagnostic.
         manualDemoDiagnosticActive552 = false
         manualDemoTapStatus552 = null
+        // 596: After a user taps the stopped rotation bar, a fresh
+        // foreground QT Demo proof may release the REAL navigation latch.
+        // The previous 596 flow restarted FX rotation but left the DEMO
+        // order session consumed, so it could NEVER place a first order.
+        // Reauthorize ONLY a clean, unattempted session. Never clear a
+        // persisted gesture, OPEN position, or unresolved history review.
         if (realAccountSafetyStop517 && mediaProjection != null &&
-            TouchTestService.demoFxAccountInForeground()) {
+            TouchTestService.demoFxAccountInForeground() &&
+            !TouchTestService.realFxAccountVisible() &&
+            lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")) {
           realAccountSafetyStop517 = false
+          val previousAuto596 = getSharedPreferences(
+            autoShockAttemptPrefs, Context.MODE_PRIVATE
+          ).getBoolean("attempted", false)
+          val previousSell596 = getSharedPreferences(
+            sell404TestPrefs, Context.MODE_PRIVATE
+          ).getBoolean("attempted", false)
+          val cleanPosition596 =
+            tradePositionGate.state() == TradePositionGate.State.READY &&
+            demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+            !closedHistoryInspectionInProgress
+          if (!previousAuto596 && !previousSell596 && cleanPosition596) {
+            autoDemoSessionRequested = true
+            autoDemoSessionConsumed = false
+            autoDemoEntryCycleStartedAt = System.currentTimeMillis()
+            autoDemoArmed = false
+            autoDemoLockedAt = lockedAt // no replay of a prior SHOCK
+            autoDemoLastPreflightReason = "QT DEMO REVALIDAT • AȘTEPT SEMNAL NOU"
+          }
         }
         try { fxRotation.start() }
         catch (_: Exception) {
