@@ -2259,15 +2259,15 @@ jobs:
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           assert 'val datedHistory457 = lines.any { line ->' in o
           assert 'openTab && closedTab && (transactionsFooter454 || datedHistory457)' in o
-          assert 'perspectiveOcrSamples457 >= 2' in o
-          assert 'perspectiveOcrPackage457 == expectedPackage429' in o
+          assert 'fun returnFromDemoPerspectivesToTrading591(' in t
+          assert 'val pendingPerspectives591 =' in o
           assert 'val timedOutClosedList457 = closedList438 &&' in o
           assert 'nowReview - closedListFirstObservedAt454 >= 65_000L' in o
           assert 'closedAge458 >= 10_000L' in o
-          assert 'historyReturnPauseUntil457 = nowReview + 180_000L' in o
+          assert 'historyReturnPauseUntil457 =' in o
           assert 'lastClosedHistoryScanAt442 = nowReview' in o
-          assert 'tapVerifiedDemoPerspectiveFooter457(' in o
-          assert 'fun tapVerifiedDemoPerspectiveFooter457(' in t
+          assert 'tapVerifiedDemoPerspectiveFooter457(' not in o
+          assert 'fun returnFromDemoPerspectivesToTrading591(' in t
           assert 'ocrConfirmedHistoryPage: Boolean' in t
           assert 'if (!ocrConfirmedHistoryPage || !cachedDemoVerifiedOnChart) return false' in t
           assert 'centerXFraction !in 0.20f..0.63f' in t
@@ -2276,7 +2276,7 @@ jobs:
           assert 'return "ISTORIC DEMO • PAUZĂ NAVIGARE • GRAFIC • ORDIN VECHI BLOCAT"' in o
           assert 'oldShockAttempt && !savedReconciled437 -> false' in o
           assert 'realOrderAdapterAvailable = false' in Path('.github/native-overlay/BrokerAdapterRegistry.kt').read_text()
-          print('457 history recognition, Perspective physical touch and preserved order locks verified')
+          print('591: history recognition and safe return without tapping the copy feed')
           PY
 
       - name: Verify 458 Open-tab rearm before chart return and no repeated CLOSED row clicks
@@ -2298,7 +2298,7 @@ jobs:
           assert 'nowReview - openTabFirstObservedAt458 >= 45_000L' in o
           assert 'private fun returnToChartAfterReview458(' in o
           assert 'TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(' in o
-          assert 'TouchTestService.tapVerifiedDemoPerspectiveFooter457(' in o
+          assert 'TouchTestService.tapVerifiedDemoPerspectiveFooter457(' not in o
           assert 'demoEmptyReviewReads >= 2' in o
           assert 'tradePositionGate.brokerVerifiedEmptyDemoReview(true)' in o
           assert 'val unknownBaseEligible454 = !savedReconciled437 &&' in o
