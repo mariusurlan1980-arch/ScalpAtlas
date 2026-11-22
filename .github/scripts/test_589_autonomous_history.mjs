@@ -41,3 +41,12 @@ test('589 history exception never changes chart-only order gate or 92 percent MG
   assert.match(service, /tradePositionGate\.beginAttempt\(\)/);
   assert.match(service, /TouchTestService\.pressVerifiedDemoStakeOnce429\(/);
 });
+
+test('589 autonomous navigation is restricted to broker history controls', () => {
+  assert.match(service, /private fun navigateVerifiedDemoHistory431\(/);
+  assert.match(service, /attemptBrokerOpenTabWithVisualProof455\(/);
+  assert.match(service, /tapVerifiedDemoClosedRowOcr438\(/);
+  assert.match(service, /verifiedClosedDetail437/);
+  assert.match(service, /!realAccountSafetyStop517/);
+  assert.match(service, /!shuttingDown/);
+});
