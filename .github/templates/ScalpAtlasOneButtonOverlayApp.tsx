@@ -4,6 +4,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   NativeModules,
   Platform,
   Pressable,
@@ -15,12 +16,14 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 type Session = 'OFF' | 'STARTING' | 'ON';
+const POCKET_OPTION_QT_DEMO_URL = 'https://pocketoption.com/ro/cabinet/try-demo/';
 
 export default function App() {
   const [session, setSession] = useState<Session>('OFF');
   const [touchAccessStatus, setTouchAccessStatus] = useState('VERIFICARE…');
   const [status, setStatus] = useState('Pregătit pentru capturare. Semnalele ȘOC necesită validarea datelor live.');
   const busy = useRef(false);
+  const lastNativeLive = useRef<boolean | null>(null);
   const [installedBuild, setInstalledBuild] = useState('Se verifică versiunea instalată…');
   const [liveDiagnostics, setLiveDiagnostics] = useState('FLUX OPRIT · pornește LIVE pentru diagnostic');
 
@@ -54,6 +57,26 @@ export default function App() {
         .finally(() => { requesting = false; });
     };
     refresh();
+    // Detect Android killing the foreground capture service while the user
+    // is on the broker. Without this, the green LIVE button becomes a stale
+    // "STOP" button and the user cannot restart the disappeared overlay.
+    const refreshOverlay = () => {
+      if (!native.getOverlayStatus || busy.current) return;
+      native.getOverlayStatus().then((value: unknown) => {
+        if (!alive || busy.current) return;
+        const running = value === 'RUNNING';
+        if (lastNativeLive.current === true && !running) {
+          setStatus('Suprapunerea Android s-a oprit. Apasă PORNEȘTE LIVE pentru o sesiune nouă.');
+        } else if (lastNativeLive.current === null && running) {
+          setStatus('Suprapunerea Android este deja activă. Verifică QT Demo pe grafic.');
+        }
+        lastNativeLive.current = running;
+        setSession(running ? 'ON' : 'OFF');
+      }).catch(() => {
+        if (alive) setStatus('Nu pot verifica dacă suprapunerea este activă.');
+      });
+    };
+    refreshOverlay();
     const refreshTouch = () => {
       if (!native?.getTouchTestStatus) return;
       native.getTouchTestStatus().then((value: unknown) => {
@@ -61,7 +84,7 @@ export default function App() {
       }).catch(() => { if (alive) setTouchAccessStatus('NECUNOSCUT'); });
     };
     refreshTouch();
-    const interval = setInterval(() => { refresh(); refreshTouch(); }, 2500);
+    const interval = setInterval(() => { refresh(); refreshTouch(); refreshOverlay(); }, 2500);
     return () => { alive = false; clearInterval(interval); };
   }, []);
 
@@ -76,6 +99,7 @@ export default function App() {
       if (session === 'ON') {
         await NativeModules.ScalpOverlay.stopOverlayMode();
         setSession('OFF');
+        lastNativeLive.current = false;
         setStatus('Suprapunerea este oprită.');
         return;
       }
@@ -84,7 +108,15 @@ export default function App() {
       const response = await NativeModules.ScalpOverlay.startOverlayMode();
       if (response === 'STARTED') {
         setSession('ON');
-        setStatus('Suprapunere pornită. Deschide Pocket Option pe DEMO.');
+        lastNativeLive.current = true;
+        setStatus('Suprapunere pornită. Deschid pagina oficială Pocket Option Demo…');
+        // Open only the broker's official DEMO entry, not a Real trading URL.
+        // The native order gate must independently verify QT Demo/M5/92%.
+        try {
+          await Linking.openURL(POCKET_OPTION_QT_DEMO_URL);
+        } catch {
+          setStatus('Suprapunerea este pornită, dar pagina Demo nu s-a deschis. Deschide Pocket Option manual pe QT Demo.');
+        }
       } else if (response === 'OVERLAY_PERMISSION_REQUIRED') {
         setSession('OFF');
         setStatus('Permite „Afișare peste alte aplicații”, apoi apasă din nou LIVE.');
@@ -159,6 +191,19 @@ export default function App() {
             </Pressable>
           )}
 
+          {active && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Deschide pagina oficială Pocket Option Demo"
+              onPress={() => { void Linking.openURL(POCKET_OPTION_QT_DEMO_URL).catch(() => {
+                setStatus('Pagina Demo nu s-a deschis. Verifică browserul instalat.');
+              }); }}
+              style={styles.demoButton}
+            >
+              <Text style={styles.demoButtonText}>DESCHIDE BROKER DEMO</Text>
+            </Pressable>
+          )}
+
           <Text style={styles.status}>{status}</Text>
           <Text style={styles.touchAccess}>ACCESIBILITATE: {touchAccessStatus}</Text>
                     </>
@@ -203,6 +248,9 @@ const styles = StyleSheet.create({
   button: {backgroundColor:'#39e8a3',minHeight:70,borderRadius:20,paddingHorizontal:24,
     width:'100%',flexDirection:'row',alignItems:'center',justifyContent:'center'},
   buttonOn: {backgroundColor:'#d94f60'},
+  demoButton: {minHeight:44,marginTop:12,borderWidth:1,borderColor:'#39e8a3',
+    borderRadius:12,paddingHorizontal:12,alignItems:'center',justifyContent:'center',width:'100%'},
+  demoButtonText: {color:'#39e8a3',fontWeight:'800',fontSize:13},
   buttonLed: {width:11,height:11,borderRadius:6,backgroundColor:'#0a1713',marginRight:12},
   buttonLedOn: {backgroundColor:'#ffffff'},
   buttonText: {color:'#07140f',fontWeight:'900',fontSize:17,letterSpacing:.8},
