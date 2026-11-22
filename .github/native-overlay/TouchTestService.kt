@@ -1775,44 +1775,106 @@ class TouchTestService : AccessibilityService() {
         expectedPair, id, stakeValue, pnlValue)
     }
 
+    /**
+     * 592: There is NO broker-confirmed reason to use Android GLOBAL_BACK
+     * from Transactions. Some embedded broker routes can expose Real after
+     * Back. Return only by the exact QT DEMO bottom-right Trading tab.
+     * The target must be within the currently active allowlisted broker,
+     * with verified history identity; never click account tiles/Real/BUY/SELL.
+     * An accepted navigation tap never settles any order.
+     */
     fun returnToDemoChartAfterVerifiedEmptyReview(
       cachedDemoVerifiedOnChart: Boolean,
-      ocrVerifiedHistoryPage: Boolean = false
+      ocrVerifiedHistoryPage: Boolean = false,
+      overlayBounds: Rect = Rect()
     ): String {
+      if (!ocrVerifiedHistoryPage)
+        return "592 • ISTORIC NECONFIRMAT • FĂRĂ NAVIGARE"
       val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
-        ?: return "REVINO LA GRAFIC • FEREASTRA DEMO NECONFIRMATĂ"
+        ?: return "592 • QT DEMO/FEREASTRĂ NECONFIRMATĂ"
       val (svc, root, labels) = info
-      if (svc.rootInActiveWindow?.packageName?.toString() != root.packageName?.toString())
-        return "REVINO LA GRAFIC • BROKERUL NU ESTE ACTIV"
+      val pkg = root.packageName?.toString().orEmpty()
+      if (pkg.isBlank() ||
+          svc.rootInActiveWindow?.packageName?.toString() != pkg ||
+          !BrokerAdapterRegistry.hasDemoExecutor(pkg) ||
+          realFxAccountVisible())
+        return "592 • CONT REAL/NECUNOSCUT • NICIO ATINGERE"
       val metrics = android.util.DisplayMetrics()
       try {
         val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
         @Suppress("DEPRECATION")
         wm.defaultDisplay.getRealMetrics(metrics)
-      } catch (_: Throwable) { return "REVINO LA GRAFIC • ECRAN NECUNOSCUT" }
-      // Do not confuse the bottom navigation "Tranzacții" with the actual
-      // history PAGE TITLE. No automatic Back from a live trade chart.
-      val isHistory = labels.any { (node, bounds) ->
-        bounds.centerY() in (metrics.heightPixels * 0.09f).toInt()..
-          (metrics.heightPixels * 0.24f).toInt() &&
+      } catch (_: Throwable) { return "592 • ECRAN NECUNOSCUT" }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      if (w < 300 || h < 600)
+        return "592 • DIMENSIUNI NECONFIRMATE"
+
+      val title = labels.any { (node, rect) ->
+        rect.centerY() in (h * .09f).toInt()..(h * .24f).toInt() &&
           listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
             Regex("""(?i)^(?:Tranzacții|Tranzactii|Transactions|Trades)$""").matches(it.trim())
           }
       }
-      // 454: A two-frame visually verified page with both broker tabs
-      // and footer is safe for BACK navigation even when the WebView
-      // exposes no Accessibility title or clickable children.
-      // The caller supplies this only from fresh same-package OCR history
-      // evidence; no broker order or trade-status change follows this BACK.
-      if (!isHistory && !historyPageIdentity454(labels, metrics.heightPixels) &&
-          !ocrVerifiedHistoryPage)
-        return "GRAFIC • VERIFICARE BROKER NECESARĂ"
-      val accepted = try {
-        svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
-      } catch (_: Throwable) { false }
-      return if (accepted)
-        "✅ LISTĂ GOALĂ 2/2 • REVIN LA GRAFIC • AȘTEPT ȘOC"
-      else "✅ LISTĂ GOALĂ 2/2 • REVINO LA GRAFIC"
+      // OCR caller already independently identified the page and both
+      // broker tabs. Do not permit navigation from a chart, account chooser,
+      // copy feed, or any different broker page.
+      if (!title && !historyPageIdentity454(labels, h) &&
+          !confirmedDemoHistoryPageReadOnly431(cachedDemoVerifiedOnChart))
+        return "592 • TRANZACȚII NECONFIRMATE • FĂRĂ NAVIGARE"
+
+      val footerName = Regex("""(?i)^(?:Tranzacționare|Tranzactionare|Tranzacţionare|Trading|Trade)$""")
+      val targets = labels.filter { (node, rect) ->
+        rect.centerX() in (w * .58f).toInt()..(w * .98f).toInt() &&
+          rect.centerY() in (h * .86f).toInt()..(h * .985f).toInt() &&
+          rect.width() > 12 && rect.height() > 12 &&
+          rect.width() < w * .42f && rect.height() < h * .14f &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString()).any {
+            footerName.matches(it.replace(Regex("""\s+"""), " ").trim())
+          }
+      }
+      if (targets.isEmpty())
+        return "592 • TRADING NECITIT • NU ATING CONTUL"
+      val chosen = targets.minByOrNull { (_, r) -> r.width().toLong() * r.height() }
+        ?: return "592 • TRADING NECONFIRMAT"
+      if (targets.any { (_, r) ->
+          kotlin.math.abs(r.centerX() - chosen.second.centerX()) > w * .085f ||
+          kotlin.math.abs(r.centerY() - chosen.second.centerY()) > h * .035f
+        })
+        return "592 • TRADING AMBIGUU • NU ATING CONTUL"
+
+      var target: AccessibilityNodeInfo? = chosen.first
+      repeat(3) {
+        val node = target ?: return@repeat
+        val rect = Rect()
+        node.getBoundsInScreen(rect)
+        if (node.isClickable &&
+            rect.centerX() in (w * .58f).toInt()..(w * .98f).toInt() &&
+            rect.centerY() in (h * .86f).toInt()..(h * .985f).toInt() &&
+            rect.width() < w * .42f && rect.height() < h * .14f &&
+            svc.rootInActiveWindow?.packageName?.toString() == pkg &&
+            !realFxAccountVisible()) {
+          val clicked = try {
+            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+          } catch (_: Throwable) { false }
+          if (clicked)
+            return "592 • TRADING DEMO SELECTAT • VERIFIC GRAFICUL"
+        }
+        target = node.parent
+      }
+      // Unlike GLOBAL_BACK, physical fallback is restricted to an exact
+      // labelled footer, and is forbidden if the movable overlay covers it.
+      if (overlayBounds.contains(chosen.second.centerX(), chosen.second.centerY()))
+        return "592 • TRADING ACOPERIT DE ROBOT • FĂRĂ ATINGERE"
+      if (realFxAccountVisible())
+        return "592 • QT REAL DETECTAT • FĂRĂ ATINGERE"
+      val sent = clickExactDemoNavigationLabel(
+        svc, root, labels, footerName, .58f, .98f, .86f, .985f
+      )
+      return if (sent)
+        "592 • TRADING DEMO GEST TRIMIS • VERIFIC GRAFIC"
+      else
+        "592 • TRADING DEMO GEST RESPINS • FĂRĂ ORDIN"
     }
 
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
