@@ -44,7 +44,7 @@ test('591 safe remediation only for persisted order, no forced rearm',()=>{
 test('591 Android release retains prior 590 tests and signs a distinct G24 build',()=>{
  assert.match(flow,/test_590_pending_order_history_priority\.mjs/);
  assert.match(flow,/test_591_perspectives_safe_return\.mjs/);
- assert.match(flow,/versionCode'\]=602/);
- assert.match(flow,/ScalpAtlas-602-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/versionCode'\]=603/);
+ assert.match(flow,/ScalpAtlas-603-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/apksigner/);
 });

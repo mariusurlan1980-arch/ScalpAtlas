@@ -35,7 +35,7 @@ test('600 preserve old-order settlement proof, demo-only guard and strict chart 
   assert.doesNotMatch(template,/await Linking\.openURL\(POCKET_OPTION_QT_DEMO_URL\)/);
 });
 test('600 Android version and artifact match',()=>{
-  assert.match(flow,/versionCode'\]=602/);
-  assert.match(flow,/ScalpAtlas-602-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=603/);
+  assert.match(flow,/ScalpAtlas-603-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_600_chart_first_3s\.mjs/);
 });
