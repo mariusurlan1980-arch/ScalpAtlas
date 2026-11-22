@@ -283,10 +283,12 @@ class ScalpOverlayService : Service() {
   @Volatile private var closedRowY438 = -1f
   @Volatile private var closedRowSamples438 = 0
   private var lastClosedRowTapAt438 = 0L
-  // 458: At most ONE closed-row probe per persisted DEMO attempt.
-  // If it cannot produce a unique authenticated receipt, switch to OPEN
-  // and verify zero positions rather than clicking completed trades again.
+  // 597: At most TWO attempts to open an exact, 2/2 OCR-confirmed
+  // CLOSED row per pending DEMO gesture. This is navigation ONLY and
+  // never reauthorizes BUY/SELL or clears the persisted old-order lock.
   private var closedRowProbeKey458: String? = null
+  private var closedRowRetryKey597: String? = null
+  private var closedRowRetryCount597 = 0
   private var openTabFirstObservedAt458 = 0L
   // 454: An unmatched CLOSED-history page must not trap the G24 broker
   // indefinitely. These timers authorize navigation ONLY, never a trade.
@@ -2449,13 +2451,23 @@ class ScalpOverlayService : Service() {
           } else closedListFirstObservedAt454 = 0L
           val closedAttemptKey458 = listOf(expectedPackage429.orEmpty(),
             expectedPair429.orEmpty(), attemptedAt429.toString()).joinToString("|")
+          if (closedAttemptKey458 != closedRowRetryKey597) {
+            closedRowRetryKey597 = closedAttemptKey458
+            closedRowRetryCount597 = 0
+            closedRowProbeKey458 = null
+          }
+          val mayRetryClosedRow597 = closedRowRetryCount597 < 2 &&
+            (closedRowProbeKey458 != closedAttemptKey458 ||
+              nowReview - lastClosedRowTapAt438 >= 30_000L)
           if (closedList438 && historyReturnPauseUntil457 <= nowReview &&
-              closedRowProbeKey458 != closedAttemptKey458 &&
+              mayRetryClosedRow597 && !closedHistoryInspectionInProgress &&
               closedRowSamples438 >= 2 &&
               System.currentTimeMillis() - closedRowAt438 in 0L..6_000L &&
               nowReview - lastClosedRowTapAt438 > 20_000L) {
-            // Mark before dispatch. Even a rejected/cancelled gesture cannot
-            // cause endless clicks on a completed-trade row.
+            // A second attempt requires fresh, independent OCR 2/2 and
+            // the original exact broker/package/pair/payout/time filters.
+            // Never tap any row after the full detail has been verified.
+            closedRowRetryCount597++
             closedRowProbeKey458 = closedAttemptKey458
             lastClosedRowTapAt438 = nowReview
             val sent438 = TouchTestService.tapVerifiedDemoClosedRowOcr438(
