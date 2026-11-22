@@ -43,7 +43,7 @@ test('593 history OCR cadence allows independent samples before bounded return',
  const ocr=service.split('private fun scheduleTimeframeOcr(')[1]
    .split('private fun ',1)[0];
  assert.match(ocr,/val historyOcrPeriod593 = if \(historyPageVisible433/);
- assert.match(ocr,/900L else OCR_INTERVAL_MS/);
+ assert.match(ocr,/900L\s+else OCR_INTERVAL_MS/);
  assert.match(ocr,/now - lastOcrAttemptAt < historyOcrPeriod593/);
  const sampling=service.split('private fun recordExplicitEmptyOpenOcr(')[1]
    .split('private fun scheduleTimeframeOcr(')[0];
