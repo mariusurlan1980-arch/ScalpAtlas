@@ -59,7 +59,7 @@ test('592 old uncertain order can never rearm from elapsed time or skip broker p
 
 test('592 new signed Motorola artifact and regression checks',()=>{
  assert.match(workflow,/test_592_demo_history_no_real\.mjs/);
- assert.match(workflow,/versionCode'\]=593/);
- assert.match(workflow,/ScalpAtlas-593-HISTORY-RETURN-G24\.apk/);
+ assert.match(workflow,/versionCode'\]=594/);
+ assert.match(workflow,/ScalpAtlas-594-SAFE-RETURN-G24\.apk/);
  assert.match(workflow,/apksigner/);
 });
