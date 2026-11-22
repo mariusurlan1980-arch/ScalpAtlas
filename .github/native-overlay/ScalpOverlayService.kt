@@ -268,6 +268,10 @@ class ScalpOverlayService : Service() {
   // can set this. The history mode expires without fresh visual evidence.
   @Volatile private var historyPageVisible433 = false
   @Volatile private var historyPageLastSeen433 = 0L
+  // 603: monotonic start of the current verified history visit, independent
+  // of the settled-order marker. Enables a 3s chart-return watchdog even
+  // when no matching broker receipt is found.
+  @Volatile private var historyPageFirstSeenAt603 = 0L
   @Volatile private var historyPageTab433 = "NECUNOSCUT"
   // 437: A recently observed, individually identified CLOSED DEMO receipt
   // must have TWO independent live OCR reads, and is never an order itself.
@@ -2055,6 +2059,22 @@ class ScalpOverlayService : Service() {
           historyPeekStartedAt592 = 0L
           historyPeekRetryAfter592 = 0L
         }
+        // 603: Never present MG as executable when its old-order gate is
+        // locked. This is text-only, does not enable, stop or alter stakes.
+        if (!pendingStakeOptIn571) {
+          autoStakeToggle565?.text = when {
+            demoAutoStakePlan565.isRiskStopped() -> "MG • STOP RISC"
+            !demoAutoStakePlan565.isEnabled() -> "MG • OFF"
+            attempted592 ||
+              getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+                .getBoolean("attempted", false) ||
+              tradePositionGate.state() != TradePositionGate.State.READY ->
+              "MG • BLOCAT · ISTORIC"
+            autoDemoArmed && autoDemoSessionRequested && !autoDemoSessionConsumed ->
+              "MG • SEMNAL · AȘTEPT"
+            else -> "MG • CONFIGURAT · VERIFIC"
+          }
+        }
         // 594: Once the same-package QT Demo history is genuinely visible,
         // always return to Trading after the short review. Navigation-only
         // return must NOT depend on a fresh trade timestamp or the persisted
@@ -2138,6 +2158,12 @@ class ScalpOverlayService : Service() {
           return
         }
         val recoveryNow595=android.os.SystemClock.elapsedRealtime()
+        // 603: Chart-first independent of whether the previous attempt
+        // was already reviewed or even has a valid stored identifier.
+        // Time limits only the history view; no trade/MG gate is cleared.
+        val historyReturnDue603 = historyFresh592 &&
+          historyPageFirstSeenAt603 > 0L &&
+          recoveryNow595 - historyPageFirstSeenAt603 >= 3_000L
         val demoForNavigation595=!realAccountSafetyStop517 &&
           !TouchTestService.realFxAccountVisible() && TouchTestService.ready() &&
           (diagnostic.contains("QT DEMO IDENTIFICAT") ||
@@ -2186,7 +2212,7 @@ class ScalpOverlayService : Service() {
         // 600: The three-second inspection is over. Continue ONLY
         // verified chart-return navigation, not trade-history analysis.
         // A pending unknown order remains locked for both AUTO and MG.
-        if (reviewCompleted600 && historyFresh592 &&
+        if ((reviewCompleted600 || historyReturnDue603) && historyFresh592 &&
             navPkg595 != null &&
             recoveryNow595 - lastChartReturnAttempt600 !in 0L..2_500L) {
           lastChartReturnAttempt600 = recoveryNow595
@@ -6789,6 +6815,8 @@ class ScalpOverlayService : Service() {
       stake, payoutValues.single(), net, side437, openingSeconds)
     // The broker's opened CLOSED-detail sheet is not a live price chart:
     // never turn its historical pair/candles into new SHOCK signals.
+    if (!historyPageVisible433 || historyPageFirstSeenAt603 <= 0L)
+      historyPageFirstSeenAt603 = android.os.SystemClock.elapsedRealtime()
     historyPageVisible433 = true
     historyPageLastSeen433 = observedAt
     historyPageTab433 = "DETALIU ÎNCHIS"
@@ -7310,6 +7338,7 @@ class ScalpOverlayService : Service() {
       historyNavFailed431 = 0
       historyNavStalled431 = false
       if (!historyPageVisible433) {
+        historyPageFirstSeenAt603 = android.os.SystemClock.elapsedRealtime()
         // Invalidate only CHART analysis. Do not clear persisted broker
         // attempts, history receipts, trade gates or recovery accounting.
         tfVerified = false
@@ -7320,6 +7349,8 @@ class ScalpOverlayService : Service() {
         pendingMarketCount = 0
         clearOnInstrumentChange()
       }
+      if (historyPageFirstSeenAt603 <= 0L)
+        historyPageFirstSeenAt603 = android.os.SystemClock.elapsedRealtime()
       historyPageVisible433 = true
       historyPageLastSeen433 = observedAt
       // 596: History is never the candlestick terminal. Keep pair
@@ -7338,6 +7369,7 @@ class ScalpOverlayService : Service() {
     } else if (historyPageVisible433 &&
                observedAt - historyPageLastSeen433 > 6_000L) {
       historyPageVisible433 = false
+      historyPageFirstSeenAt603 = 0L
       historyPageTab433 = "NECUNOSCUT"
     }
     val selectedOpen429 = historyIdentity454 && openTab && closedTab &&
