@@ -36,7 +36,7 @@ test('587: rearm and Martingale cannot bypass confirmed stake or unresolved orde
  assert.match(plan,/prefs\.getLong\("confirmedStake",-1L\)!=expected/);
 });
 test('587: Android build and regression file',()=>{
- assert.match(workflow,/versionCode'\]=595/);
- assert.match(workflow,/ScalpAtlas-595-REAL-CHART-G24\.apk/);
+ assert.match(workflow,/versionCode'\]=596/);
+ assert.match(workflow,/ScalpAtlas-596-MORE-VERIFY-G24\.apk/);
  assert.match(workflow,/test_587_broker_preflight_recheck\.mjs/);
 });
