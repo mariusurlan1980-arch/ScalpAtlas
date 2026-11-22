@@ -122,8 +122,8 @@ test('581 one-position and broker receipt constraints remain',()=>{
 });
 
 test('581 signed G24 release runs 581 MG regression',()=>{
-  assert.ok(workflow.includes("expo['android']['versionCode']=593"));
-  assert.ok(workflow.includes('ScalpAtlas-593-HISTORY-RETURN-G24.apk'));
+  assert.ok(workflow.includes("expo['android']['versionCode']=594"));
+  assert.ok(workflow.includes('ScalpAtlas-594-SAFE-RETURN-G24.apk'));
   assert.ok(workflow.includes('node --test .github/scripts/test_581_martingale_settlement.mjs'));
   assert.ok(workflow.includes('apksigner'));
 });
