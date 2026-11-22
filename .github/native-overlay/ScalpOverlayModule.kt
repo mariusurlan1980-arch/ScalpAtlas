@@ -93,6 +93,14 @@ class ScalpOverlayModule(
    * writing any version label over the broker chart.
    */
   @ReactMethod
+  fun getOverlayStatus(promise: Promise) {
+    // The React screen must never show LIVE based solely on a stale JS flag.
+    promise.resolve(
+      if (ScalpOverlayService.isCaptureSessionRunning()) "RUNNING" else "STOPPED"
+    )
+  }
+
+  @ReactMethod
   fun getBuildInfo(promise: Promise) {
     try {
       val info = reactContext.packageManager.getPackageInfo(reactContext.packageName, 0)
