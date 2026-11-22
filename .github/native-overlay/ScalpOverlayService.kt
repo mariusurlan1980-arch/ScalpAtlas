@@ -315,6 +315,26 @@ class ScalpOverlayService : Service() {
   @Volatile private var derivedTradingY594 = -1f
   @Volatile private var derivedTradingAt594 = 0L
   @Volatile private var derivedTradingPackage594: String? = null
+  // 595: The third bottom broker tab is SOCIAL (not a candlestick chart).
+  // Navigation requires OCR-confirmed More -> exact Quick Trading entry,
+  // followed by fresh chart preflight. No guessing the third tab.
+  @Volatile private var socialPageSeen595 = false
+  @Volatile private var socialPageAt595 = 0L
+  @Volatile private var moreFooterSamples595 = 0
+  @Volatile private var moreFooterX595 = -1f
+  @Volatile private var moreFooterY595 = -1f
+  @Volatile private var moreFooterAt595 = 0L
+  @Volatile private var moreFooterPkg595: String? = null
+  @Volatile private var quickEntrySamples595 = 0
+  @Volatile private var quickEntryX595 = -1f
+  @Volatile private var quickEntryY595 = -1f
+  @Volatile private var quickEntryAt595 = 0L
+  @Volatile private var quickEntryPkg595: String? = null
+  @Volatile private var chartProofSamples595 = 0
+  @Volatile private var chartProofAt595 = 0L
+  @Volatile private var nonChartSafety595 = false
+  private var moreNavAttemptAt595 = 0L
+  private var quickNavAttemptAt595 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
   @Volatile private var perspectiveOcrPackage457: String? = null
@@ -1316,66 +1336,37 @@ class ScalpOverlayService : Service() {
     cachedDemoVerifiedOnChart: Boolean,
     ocrVerifiedHistoryPage: Boolean
   ): String {
-    // 591: Perspective opens the copied-signal feed, NOT the chart.
-    // Never click that footer. Only a verified history page allows BACK.
-    val freshHistory = historyPageVisible433 &&
+    // 595: Screenshot proves bottom tab THREE is "Tranzacționare Socială".
+    // Never tap the old Trading/third-tab OCR or 594 derived geometry.
+    // The only bounded exit is the far-right "Mai multe" footer, from which
+    // we may later select an independently verified Quick Trading entry.
+    val historyFresh595 = historyPageVisible433 &&
       System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
-    if (!cachedDemoVerifiedOnChart || !ocrVerifiedHistoryPage || !freshHistory)
-      return "ISTORIC • PAGINA NECONFIRMATĂ • FĂRĂ NAVIGARE"
-    val effectiveBounds593 = if (overlayView?.visibility == View.INVISIBLE)
+    if (!cachedDemoVerifiedOnChart || !ocrVerifiedHistoryPage || !historyFresh595)
+      return "595 • ISTORIC NECONFIRMAT • FĂRĂ NAVIGARE"
+    val pkg595 = TouchTestService.activeDemoExecutorPackageForReview()
+      ?: return "595 • QT DEMO NECONFIRMAT"
+    if (TouchTestService.realFxAccountVisible())
+      return "595 • QT REAL DETECTAT • FĂRĂ ATINGERE"
+    if (moreFooterSamples595 < 2 ||
+        moreFooterPkg595 != pkg595 ||
+        System.currentTimeMillis() - moreFooterAt595 !in 0L..5_000L)
+      return "595 • CAUT MAI MULTE 2/2 • FĂRĂ SOCIAL"
+    if (android.os.SystemClock.elapsedRealtime() - moreNavAttemptAt595 in 0L..7_000L)
+      return "595 • AȘTEPT MENIUL MAI MULTE"
+    val bounds595 = if (overlayView?.visibility == View.INVISIBLE)
       Rect() else currentOverlayBounds488()
-    var result = TouchTestService.returnToDemoChartAfterVerifiedEmptyReview(
-      cachedDemoVerifiedOnChart, ocrVerifiedHistoryPage = true,
-      overlayBounds = effectiveBounds593
+    val sent595 = TouchTestService.tapVerifiedDemoMoreFooter595(
+      pkg595, moreFooterX595, moreFooterY595, true, true, bounds595
     )
-    // 593: With the panel briefly hidden, QT WebView may still not expose
-    // footer Accessibility nodes. Only TWO distinct OCR reads of the exact
-    // bottom-right Trading label may authorize a physical nav gesture.
-    // This never selects a broker account, taps BUY/SELL, or unlocks a trade.
-    val expectedPackage593 = TouchTestService.activeDemoExecutorPackageForReview()
-    val ocrTrading593 = result.contains("TRADING NECITIT") ||
-      result.contains("TRADING AMBIGUU") ||
-      result.contains("TRADING GEST RESPINS")
-    if (ocrTrading593 && cachedDemoVerifiedOnChart &&
-        expectedPackage593 != null && tradingFooterPackage593 == expectedPackage593 &&
-        tradingFooterSamples593 >= 2 &&
-        System.currentTimeMillis() - tradingFooterAt593 in 0L..5_000L &&
-        !TouchTestService.realFxAccountVisible()) {
-      val sent593 = TouchTestService.tapVerifiedDemoTradingFooterOcr593(
-        expectedPackage593, tradingFooterX593, tradingFooterY593,
-        cachedDemoVerifiedOnChart = true,
-        ocrVerifiedHistoryPage = true,
-        overlayBounds = effectiveBounds593
-      )
-      tradingFooterSamples593 = 0
-      if (sent593)
-        result = "593 • TRADING DEMO GEST TRIMIS • VERIFIC GRAFIC"
+    moreFooterSamples595 = 0
+    if (sent595) {
+      moreNavAttemptAt595 = android.os.SystemClock.elapsedRealtime()
+      nonChartSafety595 = true
+      historyReturnPauseUntil457 = moreNavAttemptAt595 + 20_000L
+      return "595 • MAI MULTE DESCHIS • CAUT TRADING RAPID"
     }
-    // 594: if WebView omitted Trading text, use only two fresh OCR
-    // frames of its adjacent footer labels. The screenshot-derived target
-    // is bounded to the third bottom tab. Never authorize a new order.
-    if (ocrTrading593 && !result.contains("GEST TRIMIS") &&
-        cachedDemoVerifiedOnChart && expectedPackage593 != null &&
-        derivedTradingPackage594 == expectedPackage593 &&
-        derivedTradingSamples594 >= 2 &&
-        System.currentTimeMillis() - derivedTradingAt594 in 0L..5_000L &&
-        !TouchTestService.realFxAccountVisible()) {
-      val sent594 = TouchTestService.tapDerivedDemoTradingFooter594(
-        expectedPackage593, derivedTradingX594, derivedTradingY594,
-        cachedDemoVerifiedOnChart = true,
-        ocrVerifiedHistoryPage = true,
-        twoFooterAnchorsVerified = true,
-        overlayBounds = effectiveBounds593
-      )
-      derivedTradingSamples594 = 0
-      if (sent594)
-        result = "594 • TRADING DEMO GEST TRIMIS • VERIFIC GRAFIC"
-    }
-    if (result.contains("TRADING DEMO SELECTAT") ||
-        result.contains("TRADING DEMO GEST TRIMIS"))
-      historyReturnPauseUntil457 =
-        android.os.SystemClock.elapsedRealtime() + 20_000L
-    return result
+    return "595 • MAI MULTE GEST RESPINS • FĂRĂ ORDIN"
   }
 
   private fun navigateVerifiedDemoHistory431(
@@ -6860,6 +6851,112 @@ class ScalpOverlayService : Service() {
       derivedTradingSamples594 = 0
       derivedTradingAt594 = 0L
       derivedTradingPackage594 = null
+    }
+    // 595: The broker bottom THIRD tab is "Tranzacționare Socială",
+    // NOT the price chart. Identify it explicitly from the full page;
+    // never use this page as a positive trading/chart preflight.
+    val social595 = lines.any { line ->
+      val y=line.boundingBox?.centerY()?.toFloat()?.div(frame.height) ?: return@any false
+      y in 0.09f..0.38f &&
+      Regex("""(?i)^Tranzac[țt]ionare\s+Social[ăa]$""").matches(line.text.trim())
+    } || body.contains(Regex("""(?i)disponibil[ăa]\s+numai\s+pentru\s+conturile\s+reale"""))
+    if (social595 && pkg != null) {
+      socialPageSeen595 = true
+      socialPageAt595 = observedAt
+      nonChartSafety595 = true
+      chartProofSamples595 = 0
+    }
+    // Read-only far-right "Mai multe" proof, two separate OCR frames.
+    fun exactFooter595(regex: Regex, xMin:Float, xMax:Float):Pair<Float,Float>? {
+      val candidates=lines.flatMap { line -> listOf(line) + line.elements }.mapNotNull { item ->
+        val r=item.boundingBox ?: return@mapNotNull null
+        val x=r.centerX().toFloat()/frame.width
+        val y=r.centerY().toFloat()/frame.height
+        if (x !in xMin..xMax || y !in 0.855f..0.985f ||
+            !regex.matches(item.text.trim())) null else Pair(x,y)
+      }.distinctBy { (x,y) -> Pair((x*100).toInt(),(y*100).toInt()) }
+      return candidates.singleOrNull()
+    }
+    val more595=if (pkg != null)
+      exactFooter595(Regex("""(?i)^(?:Mai\s+multe|More)$"""),.76f,.985f) else null
+    if(more595 != null && pkg != null){
+      val (x,y)=more595
+      moreFooterSamples595=if(moreFooterPkg595==pkg &&
+        observedAt-moreFooterAt595 in 750L..6_000L &&
+        kotlin.math.abs(x-moreFooterX595)<=.035f &&
+        kotlin.math.abs(y-moreFooterY595)<=.03f)
+        (moreFooterSamples595+1).coerceAtMost(3) else 1
+      moreFooterX595=x
+      moreFooterY595=y
+      moreFooterAt595=observedAt
+      moreFooterPkg595=pkg
+    } else {
+      moreFooterSamples595=0
+      moreFooterPkg595=null
+    }
+    // Quick Trading must be a menu entry with an EXACT title and two
+    // independent OCR samples. Generic "Tranzacționare" is not enough.
+    val quickRegex595=Regex(
+      """(?i)^(?:Tranzac[țt]ionare\s+rapid[ăa]|Quick\s+Trading|Quick\s+Trade)$"""
+    )
+    val quickCandidates595=if(pkg != null)
+      lines.flatMap { line -> listOf(line)+line.elements }.mapNotNull { item ->
+        val rect=item.boundingBox ?: return@mapNotNull null
+        val x=rect.centerX().toFloat()/frame.width
+        val y=rect.centerY().toFloat()/frame.height
+        if(x !in 0.07f..0.93f || y !in 0.20f..0.86f ||
+           !quickRegex595.matches(item.text.trim())) null else Pair(x,y)
+      }.distinctBy{(x,y)->Pair((x*100).toInt(),(y*100).toInt())}
+    else emptyList()
+    if(quickCandidates595.size==1 && pkg != null) {
+      val (x,y)=quickCandidates595.single()
+      quickEntrySamples595=if(quickEntryPkg595==pkg &&
+          observedAt-quickEntryAt595 in 750L..6_000L &&
+          kotlin.math.abs(x-quickEntryX595)<.04f &&
+          kotlin.math.abs(y-quickEntryY595)<.03f)
+        (quickEntrySamples595+1).coerceAtMost(3) else 1
+      quickEntryX595=x
+      quickEntryY595=y
+      quickEntryAt595=observedAt
+      quickEntryPkg595=pkg
+    } else {
+      quickEntrySamples595=0
+      quickEntryPkg595=null
+    }
+    // Positive chart proof requires an identifiable instrument, M5, and
+    // real BUY/SELL order controls, in separate live frames. If it fails
+    // the robot remains paused, regardless of accepted navigation gestures.
+    val topText595=lines.filter{line->
+      val y=line.boundingBox?.centerY()?.toFloat()?.div(frame.height) ?: 1f
+      y in .11f.. .34f
+    }.joinToString(" "){it.text}
+    val pair595=Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\s*OTC\b""")
+      .containsMatchIn(topText595)
+    val m5595=lines.any{line->
+      val y=line.boundingBox?.centerY()?.toFloat()?.div(frame.height) ?: 1f
+      y in .18f.. .78f &&
+        Regex("""(?i)\bM\s*5\b""").containsMatchIn(line.text)
+    }
+    val buy595=lines.any{line->
+      val y=line.boundingBox?.centerY()?.toFloat()?.div(frame.height) ?: 0f
+      y in .69f.. .94f && Regex("""(?i)(?:CUMP[ĂA]RA[ȚT]I|BUY)""")
+        .containsMatchIn(line.text)
+    }
+    val sell595=lines.any{line->
+      val y=line.boundingBox?.centerY()?.toFloat()?.div(frame.height) ?: 0f
+      y in .69f.. .94f && Regex("""(?i)(?:VINDE[ȚT]I|SELL)""")
+        .containsMatchIn(line.text)
+    }
+    if(pkg != null && pair595 && m5595 && buy595 && sell595 && !social595){
+      chartProofSamples595=if(observedAt-chartProofAt595 in 750L..6_000L)
+        (chartProofSamples595+1).coerceAtMost(3) else 1
+      chartProofAt595=observedAt
+      if(chartProofSamples595>=2){
+        nonChartSafety595=false
+        socialPageSeen595=false
+      }
+    }else{
+      chartProofSamples595=0
     }
     // 457: Bottom "Perspective" is a safe NON-ORDER navigation control.
     // Its coordinates must be found independently in two fresh OCR frames.
