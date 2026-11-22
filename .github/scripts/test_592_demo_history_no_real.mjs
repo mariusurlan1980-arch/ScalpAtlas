@@ -21,10 +21,10 @@ test('592 waits until 5-minute expiry and keeps the review to 3 seconds',()=>{
    .split('private fun startDemoClickMonitor()')[0];
  for(const x of ['val afterExpiry592 = attempted592','DEMO_TEST_EXPIRY_MS_465 + 3_000L',
   'val historyFresh592 = historyPageVisible433',
-  'historyPeekStartedAt592 = nowElapsed592', 'historyPeekRetryAfter592 = reviewNow592 + 8_000L',
-  '}, 3_000L)', 'afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592'])
+  'historyPeekStartedAt592 = nowElapsed592', 'historyPeekRetryAfter592 = reviewNow592 + 24L * 60 * 60_000L',
+  '}, 3_000L)', 'afterExpiry592 && !reviewCompleted600 &&'])
    assert.ok(monitor.includes(x),x);
- const one=monitor.indexOf('afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592');
+ const one=monitor.indexOf('afterExpiry592 && !reviewCompleted600 &&');
  const nav=monitor.indexOf('if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589)');
  assert.ok(one>0&&one<nav);
 });
@@ -59,7 +59,7 @@ test('592 old uncertain order can never rearm from elapsed time or skip broker p
 
 test('592 new signed Motorola artifact and regression checks',()=>{
  assert.match(workflow,/test_592_demo_history_no_real\.mjs/);
- assert.match(workflow,/versionCode'\]=598/);
- assert.match(workflow,/ScalpAtlas-598-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(workflow,/versionCode'\]=600/);
+ assert.match(workflow,/ScalpAtlas-600-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(workflow,/apksigner/);
 });

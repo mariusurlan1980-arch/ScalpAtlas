@@ -14,14 +14,14 @@ test('594 QT Demo history auto-return is independent of trade age but orders rem
   assert.match(returnGate,/if \(historyFresh592 &&/);
   assert.doesNotMatch(returnGate,/if \(afterExpiry592 && historyFresh592/);
   for (const requirement of ['historyPeekStartedAt592 = nowElapsed592',
-    'historyPeekRetryAfter592 = reviewNow592 + 8_000L',
+    'historyPeekRetryAfter592 = reviewNow592 + 24L * 60 * 60_000L',
     'overlayDuringHistory593.visibility = View.INVISIBLE',
     'overlayDuringHistory593?.visibility = oldVisibility593',
     'returnToChartAfterReview458(true, true)', '}, 3_000L)',
     'reviewPkg592 != null', '!TouchTestService.realFxAccountVisible()'])
     assert.ok(returnGate.includes(requirement),requirement);
   assert.match(monitor,/val afterExpiry592 = attempted592/);
-  assert.match(monitor,/afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592/);
+  assert.match(monitor,/afterExpiry592 && !reviewCompleted600 &&/);
   assert.match(service,/private const val CHART_ONLY_DEMO_462 = true/);
 });
 test('594 infer Trading footer only from TWO independently read adjacent broker bottom labels',()=>{
@@ -73,7 +73,7 @@ test('594 no false WIN, LOSS or attempted-order reset from navigation',()=>{
 test('594 APK for Motorola keeps all prior tests and signature',()=>{
   assert.match(flow,/test_593_history_return_panel\.mjs/);
   assert.match(flow,/test_594_safe_history_footer\.mjs/);
-  assert.match(flow,/versionCode'\]=598/);
-  assert.match(flow,/ScalpAtlas-598-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=600/);
+  assert.match(flow,/ScalpAtlas-600-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/apksigner/);
 });

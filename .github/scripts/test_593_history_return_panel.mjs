@@ -15,7 +15,7 @@ test('593 briefly uncovers Trading footer and restores the manual pinned overlay
    'overlayDuringHistory593?.visibility = oldVisibility593',
    'overlayView === overlayDuringHistory593',
    'returnToChartAfterReview458(true, true)', '}, 3_000L)',
-   'historyPeekRetryAfter592 = reviewNow592 + 8_000L'
+   'historyPeekRetryAfter592 = reviewNow592 + 24L * 60 * 60_000L'
  ]) assert.ok(monitor.includes(x),x);
  assert.match(monitor,/!TouchTestService\.realFxAccountVisible\(\)/);
  assert.match(monitor,/reviewPkg592 != null/);
@@ -72,7 +72,7 @@ test('593 retains verified CLOSED 2/2, EMPTY OPEN 2/2, and no Real account order
 test('593 release maintains prior tests with distinct Motorola APK',()=>{
  assert.match(flow,/test_592_demo_history_no_real\.mjs/);
  assert.match(flow,/test_593_history_return_panel\.mjs/);
- assert.match(flow,/versionCode'\]=598/);
- assert.match(flow,/ScalpAtlas-598-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/versionCode'\]=600/);
+ assert.match(flow,/ScalpAtlas-600-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/apksigner/);
 });

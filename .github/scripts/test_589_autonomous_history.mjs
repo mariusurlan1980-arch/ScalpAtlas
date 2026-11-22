@@ -13,7 +13,7 @@ test('589 auto history is allowed only for persisted QT Demo gesture in safe rev
     'mediaProjection != null', 'TouchTestService.ready()',
     // 592 moves the persisted attempt check into the earlier
     // after-expiry gate; the old review gate must now require that gate.
-    'afterExpiry592 && nowElapsed592 >= historyPeekRetryAfter592',
+    'afterExpiry592 && !reviewCompleted600 &&',
     'autoDemoSessionConsumed = true',
     'autoDemoSessionRequested = false',
     'autoDemoArmed = false'
