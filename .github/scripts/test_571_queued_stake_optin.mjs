@@ -47,7 +47,9 @@ test('only verified opt-in retires the old session and attempts amount edit, nev
 });
 test('monitor processes queued request after independent account check, before amount edit',()=>{
   const position=src.indexOf('val diagnostic = try {',src.indexOf('private fun startBrokerAccountMonitor()'));
-  const tail=src.slice(position,position+5300);
+  // 591 adds guarded read-only page recovery before the existing opt-in flow.
+  // Inspect the complete account-monitor section instead of a brittle length cap.
+  const tail=src.slice(position,src.indexOf('private fun startDemoClickMonitor()',position));
   const identity=tail.indexOf('lastBrokerAccountStatus = diagnostic');
   const finish=tail.indexOf('maybeFinishStakeOptIn571(proofNow463)');
   const edit=tail.indexOf('maybeApplyVerifiedDemoStake565(proofNow463)');
