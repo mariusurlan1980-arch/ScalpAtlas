@@ -1184,6 +1184,94 @@ class TouchTestService : AccessibilityService() {
      * This is NAVIGATION ONLY. A touch can never reconcile, settle, or
      * re-arm any prior broker order.
      */
+
+    /**
+     * 591: "Perspective" is the broker's COPY-SIGNAL feed, NOT the live
+     * trading chart. From that exact page only, return through the labelled
+     * bottom-right "Tranzacționare"/"Trading" navigation item.
+     *
+     * This helper NEVER taps any copied-perspective action, BUY/SELL button,
+     * account selector or monetary field. It does not clear a pending order.
+     * A navigation click is NOT chart proof; the chart is verified separately.
+     */
+    fun returnFromDemoPerspectivesToTrading591(
+      cachedDemoVerifiedOnChart: Boolean,
+      overlayBounds: Rect
+    ): String? {
+      val info = activeDemoHistoryNodes(cachedDemoVerifiedOnChart)
+        ?: return null
+      val (svc, root, labels) = info
+      val pkg = root.packageName?.toString().orEmpty()
+      if (pkg.isBlank() ||
+          svc.rootInActiveWindow?.packageName?.toString() != pkg ||
+          !BrokerAdapterRegistry.hasDemoExecutor(pkg) ||
+          activeDemoHistoryNodes(false, realAccount = true) != null)
+        return null
+      val metrics = android.util.DisplayMetrics()
+      try {
+        val wm = svc.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getRealMetrics(metrics)
+      } catch (_: Throwable) { return null }
+      val w = metrics.widthPixels
+      val h = metrics.heightPixels
+      if (w < 300 || h < 600) return null
+      val isPerspectives = labels.any { (node, rect) ->
+        rect.centerX() < w * .60f &&
+          rect.centerY() in (h * .10f).toInt()..(h * .25f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+            .any { Regex("""(?i)^(?:Perspective|Perspectives|Perspectivă|Insights)$""").matches(it.trim()) }
+      }
+      if (!isPerspectives) return null
+
+      val tradingName591 = Regex("""(?i)^(?:Tranzacționare|Tranzactionare|Tranzacţionare|Trading|Trade)$""")
+      val controls = labels.filter { (node, rect) ->
+        rect.centerX() in (w * .58f).toInt()..(w * .98f).toInt() &&
+          rect.centerY() in (h * .86f).toInt()..(h * .975f).toInt() &&
+          rect.width() in 12..(w * .40f).toInt() &&
+          rect.height() in 12..(h * .11f).toInt() &&
+          listOfNotNull(node.text?.toString(), node.contentDescription?.toString())
+            .any { tradingName591.matches(it.replace(Regex("""\s+"""), " ").trim()) }
+      }
+      if (controls.isEmpty())
+        return "PERSPECTIVE • TRANZACȚIONARE NECITIT • FĂRĂ ORDIN"
+      val chosen = controls.minByOrNull { (_, bounds) -> bounds.width() * bounds.height() }
+        ?: return "PERSPECTIVE • TRADING NECONFIRMAT"
+      if (controls.any { (_, r) ->
+          kotlin.math.abs(r.centerX() - chosen.second.centerX()) > w * .08f ||
+          kotlin.math.abs(r.centerY() - chosen.second.centerY()) > h * .035f
+        }) return "PERSPECTIVE • BUTON TRADING AMBIGUU • FĂRĂ ORDIN"
+
+      // Prefer an exact clickable Accessibility node: the user's manually
+      // positioned floating panel can cover the physical bottom-right tab.
+      var target: AccessibilityNodeInfo? = chosen.first
+      repeat(3) {
+        val node = target ?: return@repeat
+        val rect = Rect()
+        node.getBoundsInScreen(rect)
+        val exactFooter = rect.centerX() in (w * .58f).toInt()..(w * .98f).toInt() &&
+          rect.centerY() in (h * .86f).toInt()..(h * .975f).toInt() &&
+          rect.width() <= w * .42f && rect.height() <= h * .13f
+        if (exactFooter && node.isClickable &&
+            svc.rootInActiveWindow?.packageName?.toString() == pkg) {
+          val submitted = try {
+            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+          } catch (_: Throwable) { false }
+          if (submitted)
+            return "PERSPECTIVE • TRADING CLICK TRIMIS • VERIFIC GRAFIC"
+        }
+        target = node.parent
+      }
+      // Physical navigation must never hit the floating robot instead of
+      // the broker's exact footer label, and never guess footer coordinates.
+      if (overlayBounds.contains(chosen.second.centerX(), chosen.second.centerY()))
+        return "PERSPECTIVE • TRADING ACOPERIT DE CHENAR • FĂRĂ ORDIN"
+      val sent = clickExactDemoNavigationLabel(svc, root, labels,
+        tradingName591, .58f, .98f, .86f, .975f)
+      return if (sent) "PERSPECTIVE • TRADING GEST TRIMIS • VERIFIC GRAFIC"
+        else "PERSPECTIVE • TRADING GEST RESPINS • FĂRĂ ORDIN"
+    }
+
     fun tapVerifiedDemoPerspectiveFooter457(
       expectedBrokerPackage: String,
       centerXFraction: Float,
