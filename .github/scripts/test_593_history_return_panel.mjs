@@ -53,8 +53,8 @@ test('593 history OCR cadence allows independent samples before bounded return',
    'tradingCandidates593.size == 1']) assert.ok(sampling.includes(x),x);
  const returnFn=service.split('private fun returnToChartAfterReview458(')[1]
    .split('private fun navigateVerifiedDemoHistory431(')[0];
- assert.match(returnFn,/tradingFooterSamples593 >= 2/);
- assert.match(returnFn,/tapVerifiedDemoTradingFooterOcr593\(/);
+ assert.match(returnFn,/moreFooterSamples595 < 2/);
+ assert.match(returnFn,/tapVerifiedDemoMoreFooter595\(/);
  assert.match(returnFn,/historyPageVisible433/);
 });
 
@@ -72,7 +72,7 @@ test('593 retains verified CLOSED 2/2, EMPTY OPEN 2/2, and no Real account order
 test('593 release maintains prior tests with distinct Motorola APK',()=>{
  assert.match(flow,/test_592_demo_history_no_real\.mjs/);
  assert.match(flow,/test_593_history_return_panel\.mjs/);
- assert.match(flow,/versionCode'\]=594/);
- assert.match(flow,/ScalpAtlas-594-SAFE-RETURN-G24\.apk/);
+ assert.match(flow,/versionCode'\]=595/);
+ assert.match(flow,/ScalpAtlas-595-REAL-CHART-G24\.apk/);
  assert.match(flow,/apksigner/);
 });
