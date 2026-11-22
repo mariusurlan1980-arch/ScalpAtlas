@@ -4616,36 +4616,26 @@ class ScalpOverlayService : Service() {
           return true
         }
         val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-        // 590: A persisted possible broker order has priority over FX rotation
-        // regardless of its age. Expiration is NOT proof of closure.
-        // Use one retry callback only, so rotation cannot steal the broker
-        // screen while the independent history monitor verifies CLOSED/OPEN.
-        if (prefs.getBoolean("attempted", false)) {
-          fxRotationTradePaused516 = true
-          fxRotationNavigating = false
-          fxButton.text = "🤖 VERIFIC ISTORIC QT DEMO • ROTAȚIE PAUZĂ"
-          if (!pendingHistoryRetryScheduled590) {
-            pendingHistoryRetryScheduled590 = true
-            after(3_000L) {
-              pendingHistoryRetryScheduled590 = false
-              if (!shuttingDown && running && !realAccountSafetyStop517) {
-                if (getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-                    .getBoolean("attempted", false)) {
-                  pauseForTrade516()
-                } else {
-                  fxRotationTradePaused516 = false
-                  tradePauseStart516 = 0L
-                  seekChart()
-                }
-              }
-            }
-          }
-          return true
-        }
-        val attemptedAt = prefs.getLong("attemptedAt429", 0L)
-        val pendingFiveMinuteOrder = prefs.getBoolean("attempted", false) &&
-          attemptedAt > 0L &&
-          elapsed - attemptedAt in 0L..(DEMO_TEST_EXPIRY_MS_465 + 15_000L)
+        // 601: Keep rotation separate from order execution. A persisted
+        // uncertain QT Demo order must block BUY/SELL and Martingale through
+        // the existing order/settlement gates, but must NOT freeze observation
+        // forever after its five-minute expiry. No trade is marked CLOSED.
+        val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+        val persistedAttempt601 = prefs.getBoolean("attempted", false)
+        val attemptedAt = prefs.getLong("attemptedAt429", -1L)
+        val attemptedWall601 = prefs.getLong("attemptedWallAt454", -1L)
+        val elapsedAge601 = elapsed - attemptedAt
+        val wallAge601 = System.currentTimeMillis() - attemptedWall601
+        // A fresh possibly OPEN order keeps the scanner on its chart.
+        // Missing/old timestamps are NOT settlement proof: they only mean
+        // that monitoring can resume; the original order lock is retained.
+        val pendingFiveMinuteOrder = persistedAttempt601 &&
+          ((attemptedAt > 0L &&
+            elapsedAge601 in 0L..(DEMO_TEST_EXPIRY_MS_465 + 15_000L)) ||
+           (attemptedWall601 > 0L &&
+            wallAge601 in 0L..(DEMO_TEST_EXPIRY_MS_465 + 15_000L)))
+        // 600: a verified broker-history screen is still not a chart.
+        // The 3-second history monitor controls chart return separately.
         val badge = readDemoBadgeForEffect512()
         if (badge != null && badge > 0) {
           tradeBadgePositiveReads516 = (tradeBadgePositiveReads516 + 1).coerceAtMost(3)
