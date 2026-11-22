@@ -161,6 +161,10 @@ class ScalpOverlayService : Service() {
   // 516: LIVE scanning may be armed while FX rotation pauses for an active
   // QT DEMO order. Never confuse a rotation pause with order settlement.
   private var fxRotationTradePaused516 = false
+  // 590: One in-flight retry timer owns the scanner pause while a persisted
+  // QT Demo order is unresolved. Never let the 5-minute dwell timeout
+  // race broker-history navigation or submit another order.
+  private var pendingHistoryRetryScheduled590 = false
   // 517: after QT REAL is ever observed, halt automatic navigation and
   // order dispatch for this LIVE session. Only the user may return to DEMO.
   private var realAccountSafetyStop517 = false
@@ -1864,7 +1868,12 @@ class ScalpOverlayService : Service() {
           .replaceFirst(Regex("^\\d+ • "), "")
           .removeSuffix(" • FĂRĂ ORDIN").take(84)
       previousShock578 || previousSell578 ->
-        "BLOCAT • ORDIN ANTERIOR FĂRĂ ÎNCHIDERE CONFIRMATĂ"
+        if (lastAutoDemoHistoryNavStatus.isNotBlank() &&
+            lastAutoDemoHistoryNavStatusAt > 0L &&
+            android.os.SystemClock.elapsedRealtime() - lastAutoDemoHistoryNavStatusAt
+              in 0L..12_000L)
+          "VERIFIC ISTORIC • " + lastAutoDemoHistoryNavStatus.take(65)
+        else "BLOCAT • ORDIN ANTERIOR FĂRĂ ÎNCHIDERE CONFIRMATĂ"
       gate578==TradePositionGate.State.OPEN ->
         "BLOCAT • POZIȚIE DESCHISĂ ÎN REGISTRUL DEMO"
       gate578==TradePositionGate.State.SUBMITTING ->
@@ -4233,6 +4242,32 @@ class ScalpOverlayService : Service() {
         }
         val elapsed = android.os.SystemClock.elapsedRealtime()
         val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+        // 590: A persisted possible broker order has priority over FX rotation
+        // regardless of its age. Expiration is NOT proof of closure.
+        // Use one retry callback only, so rotation cannot steal the broker
+        // screen while the independent history monitor verifies CLOSED/OPEN.
+        if (prefs.getBoolean("attempted", false)) {
+          fxRotationTradePaused516 = true
+          fxRotationNavigating = false
+          fxButton.text = "🤖 VERIFIC ISTORIC QT DEMO • ROTAȚIE PAUZĂ"
+          if (!pendingHistoryRetryScheduled590) {
+            pendingHistoryRetryScheduled590 = true
+            after(3_000L) {
+              pendingHistoryRetryScheduled590 = false
+              if (!shuttingDown && running && !realAccountSafetyStop517) {
+                if (getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+                    .getBoolean("attempted", false)) {
+                  pauseForTrade516()
+                } else {
+                  fxRotationTradePaused516 = false
+                  tradePauseStart516 = 0L
+                  seekChart()
+                }
+              }
+            }
+          }
+          return true
+        }
         val attemptedAt = prefs.getLong("attemptedAt429", 0L)
         val pendingFiveMinuteOrder = prefs.getBoolean("attempted", false) &&
           attemptedAt > 0L &&
@@ -4454,6 +4489,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun beginNavigation() {
+        if (pauseForTrade516()) return
         // 505: rejected or already-scanned pairs remain excluded across EVERY
         // chart switch; reset them only after a proven full selector sweep.
         pendingSearch506 = null
@@ -4478,7 +4514,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun verifyChart(pair: String, checks: Int) {
-        if (stopOnReal517()) return
+        if (stopOnReal517() || pauseForTrade516()) return
         // 505: never spend another 30-second dwell on a pair already visited
         // in the current round, including after an ambiguous selector tap.
         // This is rotation-only; it cannot authorize a broker order.
@@ -4653,6 +4689,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun recoverNavigation(previous: String?, reason: String) {
+        if (stopOnReal517() || pauseForTrade516()) return
         // A transient list/chart mismatch must not cancel unattended rotation.
         // Preserve visited pairs, and re-read the foreground broker before any action.
         fxRotationNavigating = true
@@ -4728,7 +4765,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun awaitList(pair: String, checks: Int, physicalOnly: Boolean, verifiedTapTried: Boolean = false) {
-        if (stopOnReal517()) return
+        if (stopOnReal517() || pauseForTrade516()) return
         if (TouchTestService.fxListVisible(realAccount)) {
           select(pair)
           return
@@ -4791,6 +4828,7 @@ class ScalpOverlayService : Service() {
 
       fun confirmSelection(pair: String, previous: String?, retryTap: Boolean) {
         if (stopOnReal517() || pauseForTrade516()) return
+        if (stopOnReal517() || pauseForTrade516()) return
         if (!TouchTestService.fxListVisible(realAccount)) {
           restoreOverlay()
           verifyChart(pair, 24)
@@ -4808,6 +4846,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun searchUnvisited506(previous: String?) {
+        if (stopOnReal517() || pauseForTrade516()) return
         if (stopOnReal517()) return
         // 506: a full two-way list pass discovered unvisited pairs but cannot
         // scroll to them. Use the unique QT selector search field for ONE
