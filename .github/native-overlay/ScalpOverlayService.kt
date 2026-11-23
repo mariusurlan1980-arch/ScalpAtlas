@@ -207,6 +207,11 @@ class ScalpOverlayService : Service() {
   private var lastConfirmedSide556 = "NONE"
   private var lastConfirmedAt556 = 0L
   private var gestureChecksAtSignal556 = 0
+  // 617: read-only trace of the last audible, confirmed DEMO signal.
+  // It is only a UI explanation, never permission for an order or replay.
+  private var audibleSignalAt617 = 0L
+  private var audibleSignalPair617: String? = null
+  private var audibleSignalGate617 = "AȘTEAPTĂ SEMNAL NOU"
   // 552: diagnostic-only, explicitly initiated once by a TWO-TAP user action.
   // Never trigger a broker order from this field, without user confirmation.
   private var manualDemoTapStatus552: String? = null
@@ -8710,6 +8715,9 @@ class ScalpOverlayService : Service() {
       lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
       tradePositionGate.state() == TradePositionGate.State.READY
     if (tradeAudioReady573) {
+      audibleSignalAt617 = now
+      audibleSignalPair617 = currentPair(now)
+      audibleSignalGate617 = "PRECHECK ÎN CURS"
       try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
       playBip(confirmedSignal)
     } else {
@@ -9255,8 +9263,24 @@ class ScalpOverlayService : Service() {
           touchProbeStatus?.text =
             "RECUPERARE DEMO • QUOTE / PAYOUT / SOLD NECONFIRMATE"
         } else if (!readyForDemo) {
+          // 617: identify the specific AFTER-BIP gate. The generic
+          // CADRU/TF message concealed a different pair OCR or MG failure.
+          val rejection617 = when {
+            !pairReady(now) || pairMismatch || pairLostLong ->
+              "PERECHE OCR / BROKER NECONFIRMATĂ"
+            !brokerConnected -> "CAPTURĂ / CADRU NECONFIRMAT"
+            manualTfConflict || (tfAutomatic && !tfVerified) ->
+              "TIMEFRAME M5 NECONFIRMAT"
+            demoAutoStakePlan565.isEnabled() && !planPairReady613 ->
+              "MG / MIZĂ / PERECHE • " +
+                autoDemoLastPreflightReason.take(31)
+            !firstBaseReady612 && !demoAutoStakePlan565.isEnabled() ->
+              "PRIMA MIZĂ DEMO NECONFIRMATĂ"
+            else -> "POZIȚIE / CONT / PROTECȚIE NECONFIRMATĂ"
+          }
+          audibleSignalGate617 = rejection617.take(85)
           touchProbeStatus?.text =
-            "FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT SEMNAL NOU"
+            "FĂRĂ ORDIN • " + rejection617 + " • AȘTEPT SEMNAL NOU"
         } else {
           // 419: CRITICAL ORDERING FIX. In 418 the prior-attempt marker was
           // committed BEFORE the broker preflight. If WebView rejected an
@@ -9369,6 +9393,7 @@ class ScalpOverlayService : Service() {
                   readDemoBadgeForEffect512() else null
                 // This is a helper invocation count, not a broker-order count.
                 demoDiagGestureChecks546 += 1
+                audibleSignalGate617 = "RUTINA GEST ANDROID APELATĂ • VERIFIC BROKER"
                 demoDiagLastGesture546 = "VERIFICARE ANDROID ÎN CURS"
                 val result = if (CHART_ONLY_DEMO_462 && stake429 != 100L)
                   TouchTestService.pressVerifiedDemoStakeOnce429(
@@ -9382,6 +9407,7 @@ class ScalpOverlayService : Service() {
                   activeSignal, tradePair429, stake429!!
                 )
                 demoDiagLastGesture546 = result.take(95)
+                audibleSignalGate617 = "GEST: " + result.take(67)
                 if (CHART_ONLY_DEMO_462 &&
                     (result.contains("ACCEPTAT DE ANDROID") ||
                      result.contains("TRANSMIS • AȘTEPT ID OPEN"))) {
@@ -9813,6 +9839,18 @@ class ScalpOverlayService : Service() {
         val postSignal556 = when {
           demoDiagGestureChecks546 > gestureChecksAtSignal556 ->
             "GEST: " + demoDiagLastGesture546.take(48)
+          audibleSignalAt617 == lastConfirmedAt556 &&
+            audibleSignalPair617 != null &&
+            now - audibleSignalAt617 in 0L..60_000L ->
+            "BIP • G0 • " + when {
+              audibleSignalGate617 != "PRECHECK ÎN CURS" ->
+                audibleSignalGate617.take(44)
+              fxRotationNavigating || currentPair(now) != audibleSignalPair617 ->
+                "ROTAȚIE / PERECHE SCHIMBATĂ"
+              !pairReady(now) -> "OCR PERECHE NECONFIRMAT"
+              !autoDemoArmed -> "PRECHECK: " + autoDemoLastPreflightReason.take(30)
+              else -> "FĂRĂ GEST • SEMNAL / CADRU EXPIRAT"
+            }
           realAccountIdentified || realAccountSafetyStop517 ->
             "QT REAL • ORDINE BLOCATE"
           !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
