@@ -122,3 +122,27 @@ test('617 audible signal persists G0 blocker across currency rotation without au
  assert.ok(svc.includes('val historyReviewWindow609 = 3_000L'));
  assert.ok(svc.includes('dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)'));
 });
+
+test('618 recovers actual 92% QT Demo chart without guessing an instrument or ordering',()=>{
+  const from=svc.indexOf('fun verifyChart(pair: String, checks: Int)');
+  const end=svc.indexOf('fun dwell(pair: String, deadline:',from);
+  assert.ok(from>0 && end>from);
+  const scanner=svc.slice(from,end);
+  for(const gate of [
+    'chartPair548 != null', 'chartPair548 != pair',
+    'chartPair548 !in visited', '!realAccount',
+    'TouchTestService.isPreferredFxPair517(chartPair548)',
+    'TouchTestService.demoFxAccountInForeground()',
+    '!TouchTestService.realFxAccountVisible()',
+    '!TouchTestService.fxListVisible(false)',
+    'TouchTestService.readFxChartPayout(chartPair548, false) == 92',
+    'after(900L)', 'actual618 == chartPair548',
+    'verifyChart(chartPair548, 8)', 'recoverNavigation(pair,'
+  ]) assert.ok(scanner.includes(gate),gate);
+  const proof= scanner.indexOf('actual618 == chartPair548');
+  const next = scanner.indexOf('verifyChart(chartPair548, 8)');
+  assert.ok(proof >= 0 && next > proof);
+  assert.ok(!scanner.includes('pressVerifiedDemoStakeOnce429('));
+  assert.ok(svc.includes('dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)'));
+  assert.ok(svc.includes('val historyReviewWindow609 = 3_000L'));
+});
