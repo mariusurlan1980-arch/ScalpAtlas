@@ -947,9 +947,24 @@ class ScalpOverlayService : Service() {
           pair, brokerOrder.first) &&
           demoAutoStakePlan565.rebindConfirmedRecoveryPair584(
             key613, pair, brokerOrder.first)
-      reconciled613 &&
-        demoAutoStakePlan565.permitsFreshDemoOrder(
-          key613, pair, brokerOrder.first)
+      if (!reconciled613) return false
+      // 616: When the user has opted into MG before the FIRST base trade,
+      // enableFromVerifiedDemo leaves pendingStake=109. The old pair rebind
+      // succeeded, but permitsFreshDemoOrder always rejected that pending
+      // base amount. Confirm it ONLY after exact live broker $1.09/92%
+      // READBACK above, on same independently confirmed QT Demo pair,
+      // expiry 5 min, empty position gate and no prior attempt. This writes
+      // only the already-requested BASE stake approval; it never taps,
+      // settles a result or changes the Martingale loss level.
+      if (brokerOrder.first == 109L &&
+          !demoAutoStakePlan565.permitsFreshDemoOrder(
+            key613, pair, brokerOrder.first)) {
+        if (!TouchTestService.confirmedFiveMinuteDemoExpiry465())
+          return false
+        demoAutoStakePlan565.confirmEdited(key613, pair, 109L, true)
+      }
+      demoAutoStakePlan565.permitsFreshDemoOrder(
+        key613, pair, brokerOrder.first)
     } catch (_: Throwable) { false }
   }
 
