@@ -7,8 +7,11 @@ const monitor=service.split('private fun startBrokerAccountMonitor()')[1].split(
 const ocr=service.split('private fun recordExplicitEmptyOpenOcr(')[1].split('private fun scheduleTimeframeOcr(')[0];
 const chartExit=service.split('private fun returnToChartAfterReview458(')[1].split('private fun navigateVerifiedDemoHistory431(')[0];
 
-test('604 no automatic history entry until safe broker chart route is independently proven',()=>{
-  assert.match(monitor,/val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&[\s\S]*?\(historyFresh592 \|\| brokerChartReturnProven604\) &&/);
+test('610 chart-first default, with explicit short-lived user-authorized history exception',()=>{
+  assert.match(monitor,/val userReview610 = historyReviewRequestedAt610 > 0L &&/);
+  assert.match(monitor,/val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&[\s\S]*?\(historyFresh592 \|\| brokerChartReturnProven604 \|\| userReview610\) &&/);
+  assert.match(monitor,/nowElapsed592 - historyReviewRequestedAt610 in 0L\.\.90_000L/);
+  assert.match(monitor,/pendingStakeOptIn571 &&/);
   assert.match(monitor,/if \(CHART_ONLY_DEMO_462 && !pendingAutoHistory589\) \{/);
   assert.match(ocr,/if\(chartProofSamples595>=2\)\{/);
   assert.match(ocr,/quickNavAttemptAt595 > 0L/);
