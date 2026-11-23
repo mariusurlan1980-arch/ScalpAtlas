@@ -13,14 +13,14 @@ test('602 stale QT Demo attempt >24h can be inspected READ ONLY, never treated a
   assert.match(monitor,/val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&/);
   assert.match(service,/martingaleResultDurable581\(nextStakeStatus565\)/);
 });
-test('602 repeated visit per pending trade remains bounded to 3 seconds per roughly five minutes',()=>{
+test('609 repeated history visit remains bounded, with 12s for old base attempt',()=>{
   for (const proof of [
     'val reviewCompleted600 = attemptKey600 != null',
     'previousReviewWall602 > 0L',
-    'System.currentTimeMillis() - previousReviewWall602 in 0L..297_000L',
-    'historyPeekRetryAfter592 = reviewNow592 + 297_000L',
+    'System.currentTimeMillis() - previousReviewWall602 in 0L..historyReviewCooldown609',
+    'historyPeekRetryAfter592 = reviewNow592 + historyReviewCooldown609',
     '.putLong("completedAtWall602", System.currentTimeMillis())',
-    '}, 3_000L)',
+    '}, historyReviewWindow609)',
     'TouchTestService.advanceDemoClosedHistoryNavigation(true)',
     'returnToChartAfterReview458(true, true)'
   ]) assert.ok(monitor.includes(proof),proof);
@@ -37,7 +37,7 @@ test('602 protects one-position / broker receipt / MG position gate',()=>{
   assert.ok(proof.indexOf('onVerifiedClosed(')<proof.indexOf('.putBoolean("attempted", false)'));
 });
 test('602 current signed release and regressions',()=>{
-  assert.match(flow,/versionCode'\]=608/);
-  assert.match(flow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=609/);
+  assert.match(flow,/ScalpAtlas-609-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_602_bounded_old_history\.mjs/);
 });
