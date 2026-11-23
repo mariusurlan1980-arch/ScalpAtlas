@@ -16,13 +16,14 @@ test('592 history review returns via Trading tab, never global Android Back',()=
  assert.doesNotMatch(nav,/press.*DemoOrder|onVerifiedClosed|putBoolean\("attempted", false\)/);
 });
 
-test('592 waits until 5-minute expiry and keeps the review to 3 seconds',()=>{
+test('609 preserves 5-minute expiry and bounds legacy EMPTY OPEN review to 12s',()=>{
  const monitor=service.split('private fun startBrokerAccountMonitor()')[1]
    .split('private fun startDemoClickMonitor()')[0];
  for(const x of ['val afterExpiry592 = attempted592','DEMO_TEST_EXPIRY_MS_465 + 3_000L',
   'val historyFresh592 = historyPageVisible433',
-  'historyPeekStartedAt592 = nowElapsed592', 'historyPeekRetryAfter592 = reviewNow592 + 297_000L',
-  '}, 3_000L)', 'afterExpiry592 && !reviewCompleted600 &&'])
+  'historyPeekStartedAt592 = nowElapsed592', 'historyPeekRetryAfter592 = reviewNow592 + historyReviewCooldown609',
+  'val historyReviewWindow609 = if (legacyBaseReview609) 12_000L else 3_000L',
+  '}, historyReviewWindow609)', 'afterExpiry592 && !reviewCompleted600 &&'])
    assert.ok(monitor.includes(x),x);
  const one=monitor.indexOf('afterExpiry592 && !reviewCompleted600 &&');
  const nav=monitor.indexOf('if (CHART_ONLY_DEMO_462 && !pendingAutoHistory589)');
