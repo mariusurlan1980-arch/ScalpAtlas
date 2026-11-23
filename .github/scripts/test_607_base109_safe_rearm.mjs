@@ -13,7 +13,7 @@ test('607 never infers WIN LOSS MG from broker EMPTY OPEN',()=>{
  const a=monitor.split('if (explicitZero) {')[1].split('val unknownBaseEligible454 = ')[0];
  assert.match(a,/demoEmptyReviewReads >= 2/);
  assert.match(a,/tradePositionGate\.brokerVerifiedEmptyDemoReview\(true\)/);
- assert.match(monitor,/if \(unknownBaseCleared454\) pendingReceipt429 = false/);
+ assert.match(monitor,/if \(unknownBaseCleared454\) \{\s+pendingReceipt429 = false\s+historyReviewRequestedAt610 = 0L/);
  assert.match(monitor,/val normalRearm581 = !pendingReceipt429 &&/);
  assert.match(monitor,/FĂRĂ MG RETROACTIV/);
  assert.match(service,/val readyForDemo = demoAutoStakePlan565\.isEnabled\(\)/);
