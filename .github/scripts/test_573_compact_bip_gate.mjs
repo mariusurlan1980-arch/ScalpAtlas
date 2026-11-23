@@ -46,7 +46,7 @@ test('573 chart signal remains available visually, with unchanged trading gate',
  assert.ok(part.includes('journal.record('));
  assert.ok(source.includes('demoAutoStakePlan565.permitsFreshDemoOrder('));
  assert.ok(source.includes('TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92'));
- assert.ok(source.includes('BLOCAT: MIZĂ AUTO OFF • APASĂ +'));
+ assert.ok(source.includes('BLOCAT: PRIMUL DEMO 1,09 / 92% SAU ORDIN VECHI NECONFIRMAT'));
 });
 test('573 signed APK pipeline includes new tests',()=>{
  assert.ok(flow.includes("expo['android']['versionCode']=612"));
