@@ -98,3 +98,27 @@ test('612 builds only a new signed G24 candidate, not an unvalidated order guara
  assert.ok(wf.includes('node --test .github/scripts/test_612_single_demo_mg_history.mjs'));
  assert.ok(wf.includes('apksigner'));
 });
+
+test('617 audible signal persists G0 blocker across currency rotation without authorizing an order',()=>{
+ const beepStart=svc.indexOf('val tradeAudioReady573 =');
+ const beepEnd=svc.indexOf('private fun formatSeconds(',beepStart);
+ const beep=svc.slice(beepStart,beepEnd);
+ assert.ok(beep.includes('audibleSignalAt617 = now'));
+ assert.ok(beep.includes('audibleSignalPair617 = currentPair(now)'));
+ assert.ok(beep.indexOf('audibleSignalAt617 = now') < beep.indexOf('playBip(confirmedSignal)'));
+ const rejected=svc.slice(svc.indexOf('} else if (!readyForDemo) {'),
+   svc.indexOf('} else {\n          // 419:',svc.indexOf('} else if (!readyForDemo) {')));
+ assert.ok(rejected.includes('val rejection617 = when'));
+ assert.ok(rejected.includes('!pairReady(now) || pairMismatch || pairLostLong'));
+ assert.ok(rejected.includes('!planPairReady613'));
+ assert.ok(rejected.includes('audibleSignalGate617 = rejection617.take(85)'));
+ assert.ok(!rejected.includes('pressVerifiedDemoStakeOnce429('));
+ const marker=svc.indexOf('val postSignal556 = when {');
+ const status=svc.slice(marker,svc.indexOf('val diagnostic556 =',marker));
+ assert.ok(status.includes('audibleSignalAt617 == lastConfirmedAt556'));
+ assert.ok(status.includes('BIP • G0 • '));
+ assert.ok(status.includes('demoDiagGestureChecks546 > gestureChecksAtSignal556'));
+ assert.ok(status.includes('ROTAȚIE / PERECHE SCHIMBATĂ'));
+ assert.ok(svc.includes('val historyReviewWindow609 = 3_000L'));
+ assert.ok(svc.includes('dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)'));
+});
