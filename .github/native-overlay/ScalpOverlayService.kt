@@ -9057,7 +9057,19 @@ class ScalpOverlayService : Service() {
         val brokerOpenTradeHint516 =
           TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
             .startsWith("QT DEMO • INDICATOR ")
-        val readyForDemo = demoAutoStakePlan565.isEnabled() &&
+        // 612: The final BUY/SELL authorization must agree with the
+        // read-only arming preflight. Version 611 required MG ON HERE even
+        // after the first fixed-base order had been proven safe elsewhere,
+        // so AUTO could appear armed but never actually submit that order.
+        // MG recovery stake still uses its stricter verified plan.
+        val firstBaseReady612 = if (!demoAutoStakePlan565.isEnabled() &&
+            expectedPair != null) try {
+          firstBaseDemoWithoutMg612(
+            expectedPair, TouchTestService.readBrokerDemoOrder476(expectedPair),
+            TouchTestService.activeDemoExecutorPackageForReview()
+          )
+        } catch (_: Throwable) { false } else false
+        val readyForDemo = (demoAutoStakePlan565.isEnabled() || firstBaseReady612) &&
           !demoAutoStakePlan565.isRiskStopped() && !fxRotationNavigating &&
           !realAccountSafetyStop517 && !accountRecheckPending &&
           expectedPair != null && TouchTestService.isPreferredFxPair517(expectedPair) &&
