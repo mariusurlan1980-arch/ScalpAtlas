@@ -72,7 +72,7 @@ test('593 retains verified CLOSED 2/2, EMPTY OPEN 2/2, and no Real account order
 test('593 release maintains prior tests with distinct Motorola APK',()=>{
  assert.match(flow,/test_592_demo_history_no_real\.mjs/);
  assert.match(flow,/test_593_history_return_panel\.mjs/);
- assert.match(flow,/versionCode'\]=610/);
- assert.match(flow,/ScalpAtlas-610-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/versionCode'\]=611/);
+ assert.match(flow,/ScalpAtlas-611-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/apksigner/);
 });
