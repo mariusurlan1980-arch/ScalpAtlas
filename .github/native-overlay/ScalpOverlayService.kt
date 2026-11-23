@@ -5272,6 +5272,22 @@ class ScalpOverlayService : Service() {
             maybeApplyVerifiedDemoStake565(
               android.os.SystemClock.elapsedRealtime())
         }
+        // 615: On the Motorola WebView, two chart-OCR confirmations and the
+        // six-second market settle may finish AFTER the 7-second attempt.
+        // Retry only stake PREPARATION on this same verified pair at 13s/20s.
+        // Each call repeats all account/position/amount/payout/old-order gates;
+        // never creates an order and never clears a pending settlement.
+        for (delay615 in listOf(13_000L, 20_000L)) {
+          after(delay615) {
+            val checkNow615 = System.currentTimeMillis()
+            if (!shuttingDown && mediaProjection != null &&
+                !fxRotationNavigating && !fxRotationTradePaused516 &&
+                currentDwellPair549 == pair &&
+                currentPair(checkNow615) == pair && pairReady(checkNow615))
+              maybeApplyVerifiedDemoStake565(
+                android.os.SystemClock.elapsedRealtime())
+          }
+        }
         pairAnalysisFrames549 = 0
         lastShockReject549 = "AȘTEAPTĂ DATE"
         lastTrendReject549 = "AȘTEAPTĂ DATE"
