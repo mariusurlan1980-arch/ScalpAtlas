@@ -951,7 +951,7 @@ class ScalpOverlayService : Service() {
       else -> null
     }
     if (waiting572 != null) {
-      stakeOptInReason572 = "610 • " + waiting572
+      stakeOptInReason572 = "611 • " + waiting572
       // 608: distinguish saved user intent from a funded/armed MG plan.
       // Every existing broker, position, risk, quote and Real guard above
       // remains unchanged.
@@ -5964,7 +5964,7 @@ class ScalpOverlayService : Service() {
               TouchTestService.demoFxAccountInForeground())
             requestAt572 else 0L
           stakeOptInReason572 = if (historyReviewRequestedAt610 > 0L)
-            "610 • CERERE VERIFICARE ISTORIC QT DEMO • FĂRĂ ORDIN"
+            "611 • CERERE VERIFICARE ISTORIC QT DEMO • FĂRĂ ORDIN"
           else "572 • AȘTEPT GRAFIC QT DEMO"
           text = "MIZĂ AUTO DEMO • VERIFIC"
           probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
