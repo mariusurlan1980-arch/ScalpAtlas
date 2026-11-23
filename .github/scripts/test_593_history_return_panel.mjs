@@ -14,13 +14,13 @@ test('593 briefly uncovers Trading footer and restores the manual pinned overlay
    'oldVisibility593 == View.VISIBLE',
    'overlayDuringHistory593?.visibility = oldVisibility593',
    'overlayView === overlayDuringHistory593',
-   'returnToChartAfterReview458(true, true)', '}, 3_000L)',
-   'historyPeekRetryAfter592 = reviewNow592 + 297_000L'
+   'returnToChartAfterReview458(true, true)', '}, historyReviewWindow609)',
+   'historyPeekRetryAfter592 = reviewNow592 + historyReviewCooldown609'
  ]) assert.ok(monitor.includes(x),x);
  assert.match(monitor,/!TouchTestService\.realFxAccountVisible\(\)/);
  assert.match(monitor,/reviewPkg592 != null/);
  const navigationOnly=monitor.split('val overlayDuringHistory593 =')[1]
-   .split('}, 3_000L)')[0];
+   .split('}, historyReviewWindow609)')[0];
  assert.ok(navigationOnly);
  assert.doesNotMatch(navigationOnly,/putBoolean\("attempted", false\)/);
 });
