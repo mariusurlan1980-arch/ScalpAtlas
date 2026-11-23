@@ -2137,11 +2137,11 @@ class ScalpOverlayService : Service() {
         // One <=3s inspection per ~5min; the chart remains the priority.
         val previousReviewWall602 =
           chartPrefs600.getLong("completedAtWall602", -1L)
-        // 609: A stale, unverified base-stake attempt needs TWO fresh
-        // broker OPEN=EMPTY reads before the 607 recovery path can even be
-        // considered. Version 608 changed to CLOSED after ~3 seconds and
-        // forcibly exited history before the independent OPEN OCR samples
-        // could complete. This is READ-ONLY review time, NOT an order grant.
+        // 612: A stale base-stake attempt still needs TWO independent
+        // broker OPEN=EMPTY reads (and stricter CLOSED proof for MG).
+        // The previous 12s on the history page violated the user's 3s
+        // chart-return priority. A partial visit NEVER unlocks a trade.
+        // This is READ-ONLY review time, not an order grant.
         val legacyBaseReview609 = attempted592 &&
           attemptPrefs592.getLong("expectedStakeCents429", -1L) in
             setOf(100L, 109L) &&
@@ -2150,7 +2150,14 @@ class ScalpOverlayService : Service() {
           demoRecoveryLedger.verifiedOpenPositionId429() == null &&
           !demoRecoveryLedger.isRecovering429() &&
           TouchTestService.priorDemoGestureCooldownComplete()
-        val historyReviewWindow609 = if (legacyBaseReview609) 12_000L else 3_000L
+        // 612: chart FIRST, even for a stale base-order review.
+        // Limit each history-page evidence window to three seconds.
+        // If 2/2 OPEN or exact CLOSED ID/P-L was not proven, return to
+        // chart and KEEP the prior order/MG lock; another bounded review may
+        // collect new independent broker evidence later. Starting chart
+        // navigation at this deadline is not proof that the broker accepted
+        // that navigation or a trade.
+        val historyReviewWindow609 = 3_000L
         val historyReviewCooldown609 = if (legacyBaseReview609) 30_000L else 297_000L
         val reviewCompleted600 = attemptKey600 != null &&
           chartPrefs600.getString("completedAttempt", null) == attemptKey600 &&
