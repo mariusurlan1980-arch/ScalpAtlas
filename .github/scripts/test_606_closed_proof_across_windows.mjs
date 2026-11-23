@@ -35,7 +35,7 @@ test('606 preserves Demo and strict martingale checks and previous chart rules',
   assert.match(service,/demoAutoStakePlan565\.onVerifiedClosed\(/);
 });
 test('606 release has unique signed Motorola artifact',()=>{
-  assert.match(flow,/versionCode'\]=611/);
-  assert.match(flow,/ScalpAtlas-611-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=612/);
+  assert.match(flow,/ScalpAtlas-612-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_606_closed_proof_across_windows\.mjs/);
 });

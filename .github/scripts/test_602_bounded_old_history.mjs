@@ -13,7 +13,7 @@ test('602 stale QT Demo attempt >24h can be inspected READ ONLY, never treated a
   assert.match(monitor,/val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&/);
   assert.match(service,/martingaleResultDurable581\(nextStakeStatus565\)/);
 });
-test('609 repeated history visit remains bounded, with 12s for old base attempt',()=>{
+test('612 each read-only history visit ends at three seconds',()=>{
   for (const proof of [
     'val reviewCompleted600 = attemptKey600 != null',
     'previousReviewWall602 > 0L',
@@ -37,7 +37,7 @@ test('602 protects one-position / broker receipt / MG position gate',()=>{
   assert.ok(proof.indexOf('onVerifiedClosed(')<proof.indexOf('.putBoolean("attempted", false)'));
 });
 test('602 current signed release and regressions',()=>{
-  assert.match(flow,/versionCode'\]=611/);
-  assert.match(flow,/ScalpAtlas-611-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=612/);
+  assert.match(flow,/ScalpAtlas-612-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_602_bounded_old_history\.mjs/);
 });

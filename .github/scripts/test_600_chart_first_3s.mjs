@@ -8,7 +8,7 @@ const template=readFileSync(new URL('../templates/ScalpAtlasOneButtonOverlayApp.
 const monitor=service.split('private fun startBrokerAccountMonitor()')[1]
   .split('private fun startDemoClickMonitor()')[0];
 
-test('609 retains three-second default while allowing verified base EMPTY OPEN review',()=>{
+test('612 uses three-second chart-first history even for legacy base attempts',()=>{
   for(const proof of ['val attemptKey600 =','completedAttempt',
     '!reviewCompleted600','historyPeekStartedAt592 > 0L',
     'nowElapsed592 - historyPeekStartedAt592 in 0L..3_000L',
@@ -35,7 +35,7 @@ test('600 preserve old-order settlement proof, demo-only guard and strict chart 
   assert.doesNotMatch(template,/await Linking\.openURL\(POCKET_OPTION_QT_DEMO_URL\)/);
 });
 test('600 Android version and artifact match',()=>{
-  assert.match(flow,/versionCode'\]=611/);
-  assert.match(flow,/ScalpAtlas-611-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=612/);
+  assert.match(flow,/ScalpAtlas-612-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_600_chart_first_3s\.mjs/);
 });
