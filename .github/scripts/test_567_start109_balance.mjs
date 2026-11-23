@@ -56,12 +56,13 @@ test('entry stake is independently set to 1.09, never borrowed from old 4.00 UI'
  assert.match(source,/buyPayout != 92/);
 });
 
-test('no manual or automatic broker order without opt-in start and exact 1.09 readback',()=>{
+test('612 manual BUY remains opt-in; initial automatic DEMO base is independent of MG, with exact broker readback',()=>{
  const overlay=readFileSync(new URL('../native-overlay/ScalpOverlayService.kt',import.meta.url),'utf8');
  assert.ok(overlay.includes('BLOCAT: PORNEȘTE MIZĂ AUTO DEMO • START 1,09 USD'));
- assert.ok(overlay.includes('BLOCAT: ACTIVEAZĂ MIZĂ AUTO DEMO • START 1,09 USD'));
- assert.ok(overlay.includes('BLOCAT: MIZĂ AUTO OFF • APASĂ +'));
- assert.ok(overlay.includes('val readyForDemo = demoAutoStakePlan565.isEnabled() &&'));
- assert.ok(overlay.includes('BLOCAT: START 1,09 USD NECONFIRMAT • FĂRĂ ORDIN'));
+ assert.ok(overlay.includes('private fun firstBaseDemoWithoutMg612('));
+ assert.ok(overlay.includes('brokerOrder != (109L to 92)'));
+ assert.ok(overlay.includes('val readyForDemo = (demoAutoStakePlan565.isEnabled() || firstBaseReady612) &&'));
+ assert.ok(overlay.includes('BLOCAT: PRIMUL DEMO 1,09 / 92% SAU ORDIN VECHI NECONFIRMAT'));
  assert.ok(overlay.includes('demoAutoStakePlan565.permitsFreshDemoOrder('));
+ assert.ok(overlay.includes('tradePositionGate.beginAttempt()'));
 });
