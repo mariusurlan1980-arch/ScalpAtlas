@@ -441,6 +441,11 @@ class ScalpOverlayService : Service() {
   // 571: one explicit, short-lived ON request can wait for the selector to
   // return to a stable QT Demo chart. This grants NO order permission.
   private var pendingStakeOptIn571 = false
+  // 614: two spaced, independent broker header reads can finish MG opt-in
+  // when screenshot OCR is temporarily unavailable. Never grants a trade.
+  private var mgNativePair614: String? = null
+  private var mgNativePairLastAt614 = 0L
+  private var mgNativePairReads614 = 0
   private var pendingStakeOptInAt571 = 0L
   // 610: a single user-initiated, short-lived permission to NAVIGATE to the
   // QT Demo history for a prior UNKNOWN base gesture. This is NOT a BUY/SELL
@@ -1067,9 +1072,41 @@ class ScalpOverlayService : Service() {
       return
     }
     val nowPair572 = System.currentTimeMillis()
-    val pair = currentPair(nowPair572)
-    if (pair == "NEIDENTIFICAT" || !pairReady(nowPair572)) {
-      stakeOptInReason572 = "572 • PERECHE NECONFIRMATĂ"
+    val opticalPair614 = currentPair(nowPair572)
+    val nativePair614 = try {
+      TouchTestService.readVisibleDemoPair()
+    } catch (_: Throwable) { null }
+    // A native-only reading is permitted for the USER-REQUESTED stake-plan
+    // opt-in, never for trade entry. Two reads must be time-separated and
+    // the captured foreground must still be QT Demo. A disagreement with
+    // a verified optical pair is ALWAYS a blocker, not a fallback.
+    if (nativePair614 == null ||
+        nativePair614 != mgNativePair614 ||
+        nowElapsed - mgNativePairLastAt614 !in 0L..4_000L) {
+      mgNativePair614 = nativePair614
+      mgNativePairReads614 = if (nativePair614 == null) 0 else 1
+      mgNativePairLastAt614 = nowElapsed
+    } else if (nowElapsed - mgNativePairLastAt614 >= 750L) {
+      mgNativePairReads614 = (mgNativePairReads614 + 1).coerceAtMost(3)
+      mgNativePairLastAt614 = nowElapsed
+    }
+    val nativeFallback614 = opticalPair614 == "NEIDENTIFICAT" &&
+      nativePair614 != null &&
+      (pendingMarket == null || pendingMarket == nativePair614) &&
+      TouchTestService.isPreferredFxPair517(nativePair614) &&
+      mgNativePairReads614 >= 2 && mediaProjection != null &&
+      lastCapturedImageAt > 0L &&
+      nowPair572 - lastCapturedImageAt in 0L..3500L
+    val pair = when {
+      opticalPair614 != "NEIDENTIFICAT" && pairReady(nowPair572) &&
+        nativePair614 == opticalPair614 -> opticalPair614
+      nativeFallback614 -> nativePair614!!
+      else -> "NEIDENTIFICAT"
+    }
+    if (pair == "NEIDENTIFICAT") {
+      stakeOptInReason572 = if (nativePair614 == null)
+        "572 • PERECHE BROKER NECITITĂ" else
+        "572 • PERECHE NECONFIRMATĂ 2/2 • AȘTEPT"
       touchProbeStatus?.text = stakeOptInReason572
       return
     }
@@ -5265,9 +5302,11 @@ class ScalpOverlayService : Service() {
         val liveCandidate = candidateCount > 0 &&
           now - candidateLastSeenAt in 0L..CANDIDATE_EVIDENCE_GRACE_MS &&
           now - candidateStartedAt in 0L..CANDIDATE_MAX_AGE_MS
-        if ((recentSignal || liveCandidate) && remaining > -5_000L) {
-          fxButton.text = "$pair • CONFIRM ȘOC"
-          after(minOf(750L, 5_000L + remaining)) { dwell(pair, deadline, retries) }
+        if ((recentSignal || liveCandidate) && remaining > -10_000L) {
+          fxButton.text = "$pair • CONFIRM ȘOC • MAX 10 S"
+          after(minOf(750L, 10_000L + remaining).coerceAtLeast(1L)) {
+            dwell(pair, deadline, retries)
+          }
           return
         }
         // Snapshot the reason before navigation clears the old chart.
@@ -6053,6 +6092,9 @@ class ScalpOverlayService : Service() {
           // User opt-in is recorded once, without prematurely binding to
           // a changing pair or touching any broker order control.
           pendingStakeOptIn571 = true
+          mgNativePair614 = null
+          mgNativePairLastAt614 = 0L
+          mgNativePairReads614 = 0
           pendingStakeOptInAt571 = android.os.SystemClock.elapsedRealtime()
           stakeOptInLastFailureAt574 = 0L
           val requestAt572 = pendingStakeOptInAt571
@@ -8631,6 +8673,7 @@ class ScalpOverlayService : Service() {
       !autoDemoSessionConsumed && autoDemoArmed &&
       demoAutoStakePlan565.isEnabled() && !demoAutoStakePlan565.isRiskStopped() &&
       !pendingStakeOptIn571 && !realAccountSafetyStop517 &&
+      autoDemoMarket == currentPair(now) &&
       !accountRecheckPending && !fxRotationNavigating &&
       !fxRotationTradePaused516 &&
       lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
