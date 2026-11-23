@@ -38,7 +38,7 @@ test('608 retain original strict dealer settlement and stake readback',()=>{
  assert.match(service,/brokerOpenTimeMatchesAttempt437\(/);
 });
 test('608 signed Motorola release identity',()=>{
- assert.match(flow,/versionCode'\]=608/);
- assert.match(flow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/versionCode'\]=609/);
+ assert.match(flow,/ScalpAtlas-609-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/test_608_deferred_mg_optin\.mjs/);
 });
