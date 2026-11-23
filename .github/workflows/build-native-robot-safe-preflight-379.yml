@@ -828,7 +828,7 @@ jobs:
           grep -Fq 'activeStrategy == "SHOCK"' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val pairLostLong = seenPair ==' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'AȘTEAPTĂ CADRU/TF ACTUAL' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT SEMNAL NOU' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'audibleSignalGate617 = rejection617.take(85)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'previewAutoOneDollarDemoOrder("BUY", expectedPair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'previewAutoOneDollarDemoOrder("SELL", expectedPair)' .github/native-overlay/TouchTestService.kt
           grep -Fq 'activeSignal, tradePair429' .github/native-overlay/ScalpOverlayService.kt
