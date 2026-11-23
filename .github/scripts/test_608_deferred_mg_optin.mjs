@@ -9,7 +9,8 @@ test('608 one explicit MG ON is remembered for one hour, not reset at 90 sec',()
  assert.match(service,/private val stakeOptInWindow608 = 60L \* 60_000L/);
  assert.match(queued,/nowElapsed - pendingStakeOptInAt571 !in 0L\.\.stakeOptInWindow608/);
  assert.match(start,/\}, stakeOptInWindow608 \+ 500L\)/);
- assert.doesNotMatch(queued,/0L\.\.90_000L/);
+ assert.doesNotMatch(queued,/nowElapsed - pendingStakeOptInAt571 !in 0L\.\.90_000L/);
+ assert.match(queued,/nowElapsed - historyReviewRequestedAt610 in 0L\.\.90_000L/);
  assert.doesNotMatch(start,/90_500L/);
  assert.match(start,/pendingStakeOptIn571 = true/);
  assert.match(start,/if \(pendingStakeOptIn571\) \{/);
