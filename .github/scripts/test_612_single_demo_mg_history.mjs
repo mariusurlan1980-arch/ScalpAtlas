@@ -30,6 +30,34 @@ test('612 permits one initial exact 1.09/92 QT Demo pilot without activating Mar
  assert.ok(!check.includes('putBoolean("attempted", false)'));
 });
 
+test('616 confirms pending 1.09 first base only from current verified QT Demo 92 percent broker quote, with all old order gates',()=>{
+  const from=svc.indexOf('private fun synchronizeVerifiedDemoPair613(');
+  const to=svc.indexOf('private fun firstBaseDemoWithoutMg612(',from);
+  assert.ok(from>0 && to>from);
+  const fn=svc.slice(from,to);
+  const checked=[
+    'demoAutoStakePlan565.isEnabled()', 'demoAutoStakePlan565.isRiskStopped()',
+    'brokerOrder.second != 92', 'brokerOrder.first <= 0L',
+    'tradePositionGate.state() != TradePositionGate.State.READY',
+    'demoRecoveryLedger.verifiedOpenPositionId429() != null',
+    'getBoolean("attempted", false)', 'TouchTestService.priorDemoGestureCooldownComplete()',
+    'TouchTestService.readVisibleDemoPair() != pair',
+    'TouchTestService.readBrokerDemoOrder476(pair) != brokerOrder',
+    'TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92',
+    'demoAutoStakePlan565.rebindVerifiedBasePair(key613, pair)',
+    'brokerOrder.first == 109L', '!demoAutoStakePlan565.permitsFreshDemoOrder(',
+    'TouchTestService.confirmedFiveMinuteDemoExpiry465()',
+    'demoAutoStakePlan565.confirmEdited(key613, pair, 109L, true)',
+    'demoAutoStakePlan565.permitsFreshDemoOrder('
+  ];
+  for(const rule of checked) assert.ok(fn.includes(rule),rule);
+  assert.ok(fn.indexOf('TouchTestService.readBrokerDemoOrder476(pair) != brokerOrder')<
+    fn.indexOf('demoAutoStakePlan565.confirmEdited(key613, pair, 109L, true)'));
+  assert.ok(!fn.includes('pressVerifiedDemoStakeOnce429('));
+  assert.ok(!fn.includes('onVerifiedClosed('));
+  assert.ok(!fn.includes('putBoolean("attempted", false)'));
+});
+
 test('612 connects exact first-base pilot to preflight, arming and final dispatch; MG stays locked until CLOSED',()=>{
  assert.ok(svc.includes('firstBaseDemoWithoutMg612(pair,order565,pkg565)'));
  assert.ok(svc.includes('firstBaseDemoWithoutMg612(tradePair429,manualOrder,package429)'));
