@@ -5191,7 +5191,37 @@ class ScalpOverlayService : Service() {
           fxButton.text = pair.removeSuffix(" OTC").take(8) + " ≠ " +
             (chartPair548?.removeSuffix(" OTC")?.take(8) ?: "?")
           if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
-          else recoverNavigation(pair, "PERECHE NECONFIRMATĂ")
+          else if (!realAccount && chartPair548 != null &&
+              chartPair548 != pair &&
+              chartPair548 !in visited && chartPair548 !in rejectedPairs &&
+              TouchTestService.isPreferredFxPair517(chartPair548) &&
+              TouchTestService.demoFxAccountInForeground() &&
+              !TouchTestService.realFxAccountVisible() &&
+              !TouchTestService.fxListVisible(false) &&
+              TouchTestService.readFxChartPayout(chartPair548, false) == 92) {
+            // 618: A delayed WebView selector tap can open a DIFFERENT
+            // eligible chart than the selected row. Do not cycle through
+            // 3/10/30s backoff if the CURRENT QT Demo chart is positively
+            // readable. Recheck its independently visible header and 92%
+            // payout after 900ms; this is SCANNER recovery, never order
+            // approval. All preflight, position and 2-frame SHOCK gates
+            // still run on the freshly identified instrument.
+            fxButton.text = "ROTAȚIE • RECITESC " + chartPair548
+            after(900L) {
+              val actual618 = TouchTestService.readVisibleDemoPair()
+              if (!shuttingDown && fxRotationNavigating &&
+                  actual618 == chartPair548 &&
+                  TouchTestService.demoFxAccountInForeground() &&
+                  !TouchTestService.realFxAccountVisible() &&
+                  !TouchTestService.fxListVisible(false) &&
+                  TouchTestService.readFxChartPayout(chartPair548, false) == 92)
+                verifyChart(chartPair548, 8)
+              else recoverNavigation(pair, "CER " + pair.take(11) +
+                " • VĂD " + (actual618 ?: "?").take(11))
+            }
+          } else recoverNavigation(pair,
+            "CER " + pair.take(11) + " • VĂD " +
+              (chartPair548 ?: "?").take(11))
           return
         }
         if (payout == null) {
