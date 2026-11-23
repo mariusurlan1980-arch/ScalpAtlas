@@ -9025,7 +9025,9 @@ class ScalpOverlayService : Service() {
                   else if (order565 == null)
                     TouchTestService.inspectBrokerDemoOrder488(
                       pair,currentOverlayBounds488())
-                  else if (!synchronizeVerifiedDemoPair613(pair,order565,package565))
+                  else if (!demoAutoStakePlan565.permitsFreshDemoOrder(
+                        "QT_DEMO:" + package565,pair,order565.first) &&
+                        !synchronizeVerifiedDemoPair613(pair,order565,package565))
                     "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
                       "QT_DEMO:" + package565,pair,order565.first)
                   else TouchTestService.inspectBrokerDemoOrder488(
