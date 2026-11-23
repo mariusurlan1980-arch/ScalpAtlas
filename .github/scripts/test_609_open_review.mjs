@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 const source = readFileSync(new URL('../native-overlay/ScalpOverlayService.kt', import.meta.url), 'utf8');
 const workflow = readFileSync(new URL('../workflows/build-native-robot-safe-preflight-379.yml', import.meta.url), 'utf8');
 
-test('609 extends only a safe legacy base-stake EMPTY OPEN read to 12 seconds', () => {
+test('612 bounds every QT Demo history review to three seconds', () => {
   const start = source.indexOf('val legacyBaseReview609 =');
   const end = source.indexOf('// 595: QT Demo', start);
   assert.ok(start > 0 && end > start);
@@ -19,7 +19,7 @@ test('609 extends only a safe legacy base-stake EMPTY OPEN read to 12 seconds', 
     'demoRecoveryLedger.verifiedOpenPositionId429() == null',
     '!demoRecoveryLedger.isRecovering429()',
     'TouchTestService.priorDemoGestureCooldownComplete()',
-    'val historyReviewWindow609 = if (legacyBaseReview609) 12_000L else 3_000L',
+    'val historyReviewWindow609 = 3_000L',
     'historyPeekRetryAfter592 = reviewNow592 + historyReviewCooldown609',
     '}, historyReviewWindow609)',
   ]) assert.ok(review.includes(proof), proof);
@@ -43,8 +43,8 @@ test('609 checks EMPTY OPEN twice before the legacy base-stake release', () => {
 });
 
 test('609 signed APK workflow references the guarded recovery test', () => {
-  assert.ok(workflow.includes("expo['android']['versionCode']=611"));
-  assert.ok(workflow.includes('ScalpAtlas-611-OVERLAY-QT-DEMO-G24.apk'));
+  assert.ok(workflow.includes("expo['android']['versionCode']=612"));
+  assert.ok(workflow.includes('ScalpAtlas-612-OVERLAY-QT-DEMO-G24.apk'));
   assert.ok(workflow.includes('node --test .github/scripts/test_609_open_review.mjs'));
   assert.ok(workflow.includes('apksigner'));
   assert.ok(workflow.includes("fix/scalpatlas-609-empty-open-review"));

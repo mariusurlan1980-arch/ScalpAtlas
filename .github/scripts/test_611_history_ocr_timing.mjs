@@ -47,8 +47,8 @@ test('611 does not weaken final 0 OPEN 2/2, DEMO-only or uncertain-order gate', 
 });
 
 test('611 signed Moto G24 build runs the timing regression and uses a distinct version', () => {
-  assert.ok(workflow.includes("expo['android']['versionCode']=611"));
-  assert.ok(workflow.includes('ScalpAtlas-611-OVERLAY-QT-DEMO-G24.apk'));
+  assert.ok(workflow.includes("expo['android']['versionCode']=612"));
+  assert.ok(workflow.includes('ScalpAtlas-612-OVERLAY-QT-DEMO-G24.apk'));
   assert.ok(workflow.includes('test_611_history_ocr_timing.mjs'));
   assert.ok(workflow.includes('apksigner'));
 });

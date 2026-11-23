@@ -55,8 +55,8 @@ test('610 preserves 609 two-read no-OPEN check and broker position safeguards', 
 });
 
 test('610 G24 signed release references regression, new code and arm64 APK', () => {
-  assert.ok(flow.includes("expo['android']['versionCode']=611"));
-  assert.ok(flow.includes('ScalpAtlas-611-OVERLAY-QT-DEMO-G24.apk'));
+  assert.ok(flow.includes("expo['android']['versionCode']=612"));
+  assert.ok(flow.includes('ScalpAtlas-612-OVERLAY-QT-DEMO-G24.apk'));
   assert.ok(flow.includes('node --test .github/scripts/test_610_history_bootstrap.mjs'));
   assert.ok(flow.includes('fix/scalpatlas-610-user-authorized-history-proof'));
   assert.ok(flow.includes('apksigner'));
