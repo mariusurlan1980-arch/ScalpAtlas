@@ -43,7 +43,10 @@ test('578 show requested versus visible instrument while rotation is still verif
  assert.ok(verify.includes('if (chartPair548 != pair) {'));
  assert.ok(verify.includes('fxButton.text = pair.removeSuffix(" OTC").take(8) + " ≠ " +'));
  assert.ok(verify.includes('chartPair548?.removeSuffix(" OTC")?.take(8) ?: "?"'));
- assert.ok(verify.includes('recoverNavigation(pair, "PERECHE NECONFIRMATĂ")'));
+ assert.ok(verify.includes('TouchTestService.readFxChartPayout(chartPair548, false) == 92'));
+ assert.ok(verify.includes('actual618 == chartPair548'));
+ assert.ok(verify.includes('verifyChart(chartPair548, 8)'));
+ assert.ok(verify.includes('else recoverNavigation(pair,'));
  assert.ok(verify.includes('TouchTestService.readFxChartPayout(pair, realAccount)'));
 });
 
