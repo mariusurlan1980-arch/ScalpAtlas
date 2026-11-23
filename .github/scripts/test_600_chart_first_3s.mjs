@@ -8,13 +8,13 @@ const template=readFileSync(new URL('../templates/ScalpAtlasOneButtonOverlayApp.
 const monitor=service.split('private fun startBrokerAccountMonitor()')[1]
   .split('private fun startDemoClickMonitor()')[0];
 
-test('600 cap completed-trade inspection to 3 seconds, one per persisted order',()=>{
+test('609 retains three-second default while allowing verified base EMPTY OPEN review',()=>{
   for(const proof of ['val attemptKey600 =','completedAttempt',
     '!reviewCompleted600','historyPeekStartedAt592 > 0L',
     'nowElapsed592 - historyPeekStartedAt592 in 0L..3_000L',
     'val reviewKey600 = attemptKey600',
     'putString("completedAttempt", reviewKey600)',
-    '297_000L','}, 3_000L)'])
+    '297_000L','}, historyReviewWindow609)'])
     assert.ok(monitor.includes(proof),proof);
   assert.match(monitor,/afterExpiry592 && !reviewCompleted600 &&/);
 });
@@ -35,7 +35,7 @@ test('600 preserve old-order settlement proof, demo-only guard and strict chart 
   assert.doesNotMatch(template,/await Linking\.openURL\(POCKET_OPTION_QT_DEMO_URL\)/);
 });
 test('600 Android version and artifact match',()=>{
-  assert.match(flow,/versionCode'\]=608/);
-  assert.match(flow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
+  assert.match(flow,/versionCode'\]=609/);
+  assert.match(flow,/ScalpAtlas-609-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(flow,/test_600_chart_first_3s\.mjs/);
 });
