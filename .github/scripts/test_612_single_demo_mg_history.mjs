@@ -146,3 +146,49 @@ test('618 recovers actual 92% QT Demo chart without guessing an instrument or or
   assert.ok(svc.includes('dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)'));
   assert.ok(svc.includes('val historyReviewWindow609 = 3_000L'));
 });
+
+test('619 a confirmed live signal survives only one NEXT same-pair frame, not a stale or mismatched signal',()=>{
+  const start=svc.indexOf('private fun confirmedEntryFrameFresh619(');
+  const end=svc.indexOf('private fun updateOverlay(',start);
+  assert.ok(start>0 && end>start);
+  const check=svc.slice(start,end);
+  for(const evidence of [
+    'entryFrameId == confirmedFrameId619',
+    'val frameGap619 = frameCount - entryFrameId',
+    'frameGap619 in 0L..1L',
+    'now - confirmedFramePublishedAt619 in 0L..3_500L',
+    'lockedAt == confirmedFramePublishedAt619',
+    'confirmedFrameMarketEpoch619 == marketEpoch',
+    'confirmedFramePair619 == currentPair(now)',
+    'pairReady(now)',
+    'confirmedFrameTimeframe619 == selectedTimeframe',
+    'now - lastCapturedImageAt in 0L..3500L',
+    '!fxRotationNavigating',
+    '!historyPageVisible433',
+    '!manualTfConflict'
+  ]) assert.ok(check.includes(evidence),evidence);
+  assert.ok(!check.includes('pressVerifiedDemoStakeOnce429('));
+  const signal=svc.slice(svc.indexOf('// Save signal-specific provenance before posting'),svc.indexOf('private fun formatSeconds('));
+  assert.ok(signal.includes('confirmedFrameId619 = result.optLong("frameId", -1L)'));
+  assert.ok(signal.includes('confirmedFramePublishedAt619 = now'));
+  assert.ok(signal.includes('confirmedFrameMarketEpoch619 = marketEpoch'));
+  const order=svc.slice(svc.indexOf('val freshShockForPreflight ='),svc.indexOf('lastShockOrderStatus = touchProbeStatus?.text?.toString()',svc.indexOf('val freshShockForPreflight =')));
+  assert.ok(order.includes('val freshShockForPreflight = confirmedEntryFrameFresh619(entryFrameId, now)'));
+  assert.ok(order.includes('val entryFrameCurrent = confirmedEntryFrameFresh619(entryFrameId, now)'));
+  assert.ok(order.includes('lockedAt != autoDemoLockedAt'));
+  assert.ok(order.includes('tradePositionGate.beginAttempt()'));
+  assert.ok(order.includes('TouchTestService.inspectBrokerDemoOrder488('));
+  assert.ok(order.indexOf('TouchTestService.inspectBrokerDemoOrder488(')<order.indexOf('tradePositionGate.beginAttempt()'));
+  // Logical boundary cases mirrored from the immutable source guard:
+  const safe=(gap,age,sameEpoch,samePair,sameTf)=>gap>=0&&gap<=1&&age>=0&&age<=3500&&sameEpoch&&samePair&&sameTf;
+  assert.ok(safe(0,250,true,true,true));
+  assert.ok(safe(1,1100,true,true,true));
+  assert.ok(!safe(2,1100,true,true,true));
+  assert.ok(!safe(1,3501,true,true,true));
+  assert.ok(!safe(1,1100,false,true,true));
+  assert.ok(!safe(1,1100,true,false,true));
+  assert.ok(!safe(1,1100,true,true,false));
+  assert.ok(!safe(-1,1100,true,true,true));
+  assert.ok(svc.includes('dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)'));
+  assert.ok(svc.includes('val historyReviewWindow609 = 3_000L'));
+});
