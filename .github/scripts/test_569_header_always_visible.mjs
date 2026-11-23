@@ -39,7 +39,7 @@ test('old risk and 1.09 DEMO stake guards remain in place',()=>{
  assert.ok(plan.includes('STOP_AFTER_LOSSES = 10'));
  assert.ok(plan.includes('private val LADDER = longArrayOf(109L,228L'));
  assert.ok(ui.includes('demoAutoStakePlan565.permitsFreshDemoOrder('));
- assert.ok(ui.includes('BLOCAT: START 1,09 USD NECONFIRMAT'));
+ assert.ok(ui.includes('BLOCAT: PRIMUL DEMO 1,09 / 92% SAU ORDIN VECHI NECONFIRMAT'));
 });
 test('APK workflow targets Motorola version 569',()=>{
  assert.ok(workflow.includes("expo['android']['versionCode']=612"));
