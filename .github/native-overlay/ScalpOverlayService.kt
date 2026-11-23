@@ -915,7 +915,7 @@ class ScalpOverlayService : Service() {
         demoAutoStakePlan565.isRiskStopped() ||
         brokerOrder != (109L to 92) ||
         brokerPackage.isNullOrBlank() ||
-        !robotArmedContinuously513 ||
+        !robotArmedContinuously513 || onePairEvalEnabled ||
         !autoDemoSessionRequested || autoDemoSessionConsumed ||
         mediaProjection == null || shuttingDown ||
         realAccountSafetyStop517 || accountRecheckPending ||
@@ -925,13 +925,16 @@ class ScalpOverlayService : Service() {
         demoRecoveryLedger.verifiedOpenPositionId429() != null ||
         demoRecoveryLedger.isRecovering429() ||
         demoRecoveryLedger.needsBaseStakeReset() ||
+        demoRecoveryLedger.quote(92).stakeCents != 100L ||
         getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
           .getBoolean("attempted", false) ||
         getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
           .getBoolean("attempted", false) ||
+        getSharedPreferences(demoClickTestPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false) ||
         !TouchTestService.priorDemoGestureCooldownComplete() ||
         !TouchTestService.ready() ||
-        !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
         !TouchTestService.demoFxAccountInForeground() ||
         TouchTestService.realFxAccountVisible())
       return false
