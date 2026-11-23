@@ -951,7 +951,7 @@ class ScalpOverlayService : Service() {
       else -> null
     }
     if (waiting572 != null) {
-      stakeOptInReason572 = "608 • " + waiting572
+      stakeOptInReason572 = "610 • " + waiting572
       // 608: distinguish saved user intent from a funded/armed MG plan.
       // Every existing broker, position, risk, quote and Real guard above
       // remains unchanged.

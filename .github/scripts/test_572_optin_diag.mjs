@@ -25,7 +25,7 @@ test('572 explains every original fail-closed preflight gate without granting an
   'TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92',
   'demoAutoStakePlan565.enableFromVerifiedDemo("QT_DEMO:" + pkg, pair)',
  ])assert.ok(gate.includes(check), check);
- assert.ok(gate.includes('stakeOptInReason572 = "608 • " + waiting572'));
+ assert.ok(gate.includes('stakeOptInReason572 = "610 • " + waiting572'));
  assert.ok(!gate.includes('pressVerifiedDemoStakeOnce429('));
  assert.ok(!gate.includes('dispatchGesture('));
 });
