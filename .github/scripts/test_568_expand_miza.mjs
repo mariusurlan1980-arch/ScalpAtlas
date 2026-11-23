@@ -42,7 +42,7 @@ test('startup always requires 1.09 and strict broker account, payout and readbac
  assert.ok(plan.includes('private val LADDER = longArrayOf(109L,228L,475L,992L'));
  assert.ok(plan.includes('PLANNED_BUDGET_CENTS = 157244L'));
  assert.ok(plan.includes('STOP_AFTER_LOSSES = 10'));
- assert.ok(overlay.includes('BLOCAT: START 1,09 USD NECONFIRMAT'));
+ assert.ok(overlay.includes('BLOCAT: PRIMUL DEMO 1,09 / 92% SAU ORDIN VECHI NECONFIRMAT'));
  assert.ok(overlay.includes('demoAutoStakePlan565.permitsFreshDemoOrder('));
  assert.ok(broker.includes('buyPayout != 92'));
  assert.ok(broker.includes('centsOf(after.input.value) != stakeCents'));
