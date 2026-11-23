@@ -46,7 +46,7 @@ test('610 never enters auto history before expired prior attempt and explicit pe
 
 test('610 preserves 609 two-read no-OPEN check and broker position safeguards', () => {
   assert.ok(src.includes('val legacyBaseReview609 = attempted592 &&'));
-  assert.ok(src.includes('val historyReviewWindow609 = if (legacyBaseReview609) 12_000L else 3_000L'));
+  assert.ok(src.includes('val historyReviewWindow609 = 3_000L'));
   assert.ok(src.includes('demoEmptyReviewReads >= 2'));
   assert.ok(src.includes('tradePositionGate.brokerVerifiedEmptyDemoReview(true)'));
   assert.ok(src.includes('val unknownBaseEligible454 = !savedReconciled437 &&'));
