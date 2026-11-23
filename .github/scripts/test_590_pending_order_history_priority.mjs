@@ -43,8 +43,8 @@ test('601 settlement and Martingale locks retain strict broker proof',()=>{
  assert.match(plan,/PAYOUT_EXACT = 92/);
 });
 test('601 signed Android build retains 3-second history regression',()=>{
- assert.match(flow,/versionCode'\]=609/);
- assert.match(flow,/ScalpAtlas-609-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/versionCode'\]=610/);
+ assert.match(flow,/ScalpAtlas-610-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/test_600_chart_first_3s\.mjs/);
  assert.match(flow,/test_601_rotation_independent_order\.mjs/);
 });
