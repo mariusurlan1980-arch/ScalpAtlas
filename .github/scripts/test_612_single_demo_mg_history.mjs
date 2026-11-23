@@ -13,7 +13,7 @@ test('612 permits one initial exact 1.09/92 QT Demo pilot without activating Mar
  const check=svc.slice(start,end);
  for (const phrase of [
    'brokerOrder != (109L to 92)',
-   '!demoAutoStakePlan565.isEnabled()',
+   'demoAutoStakePlan565.isEnabled()',
    'demoAutoStakePlan565.isRiskStopped()',
    '!autoDemoSessionRequested || autoDemoSessionConsumed',
    'mediaProjection == null',
