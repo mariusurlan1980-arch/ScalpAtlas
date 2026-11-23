@@ -1581,7 +1581,11 @@ jobs:
           overlay=s.split('private fun updateOverlay(',1)[1].split('override fun onDestroy()',1)[0]
           assert 'entryFrameId > 0L && Looper.myLooper() == Looper.getMainLooper()' in overlay
           assert 'update.run()' in overlay and 'else mainHandler.post(update)' in overlay
-          assert 'entryFrameId == frameCount' in overlay
+          assert 'val entryFrameCurrent = confirmedEntryFrameFresh619(entryFrameId, now)' in overlay
+          assert 'frameGap619 in 0L..1L' in s
+          assert 'entryFrameId == confirmedFrameId619' in s
+          assert 'confirmedFrameMarketEpoch619 == marketEpoch' in s
+          assert 'confirmedFramePair619 == currentPair(now)' in s
           print('492: confirmed result is processed on main before releasing its frame')
           PY492
 
