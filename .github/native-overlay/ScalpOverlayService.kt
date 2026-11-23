@@ -897,6 +897,58 @@ class ScalpOverlayService : Service() {
    * invalidates the elapsed-time proof, so the app fails closed.
    */
   /**
+   * Pair rotation can finish OCR confirmation before the saved Martingale
+   * plan has rebound. Only reconcile the plan's PAIR after independent,
+   * current QT Demo broker/FX/amount/92% proof and an empty order gate.
+   * Never update a LOSS level, acknowledge CLOSED, rearm, or tap BUY/SELL.
+   * Unconfirmed recovery amounts remain blocked by the unchanged plan.
+   */
+  private fun synchronizeVerifiedDemoPair613(
+    pair: String, brokerOrder: Pair<Long, Int>?, brokerPackage: String?
+  ): Boolean {
+    if (!CHART_ONLY_DEMO_462 || !demoAutoStakePlan565.isEnabled() ||
+        demoAutoStakePlan565.isRiskStopped() ||
+        brokerOrder == null || brokerOrder.second != 92 ||
+        brokerOrder.first <= 0L || brokerPackage.isNullOrBlank() ||
+        !robotArmedContinuously513 || mediaProjection == null || shuttingDown ||
+        realAccountSafetyStop517 || accountRecheckPending ||
+        fxRotationNavigating || fxRotationTradePaused516 ||
+        closedHistoryInspectionInProgress || historyPageVisible433 ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+        getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false) ||
+        !TouchTestService.priorDemoGestureCooldownComplete() ||
+        !TouchTestService.ready() ||
+        !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.realFxAccountVisible())
+      return false
+    val now613 = System.currentTimeMillis()
+    if (pair == "NEIDENTIFICAT" || !pairReady(now613) ||
+        currentPair(now613) != pair) return false
+    return try {
+      if (TouchTestService.readVisibleDemoPair() != pair ||
+          TouchTestService.readBrokerDemoOrder476(pair) != brokerOrder ||
+          TouchTestService.readVerifiedDemoPayoutForPair(pair) != 92)
+        return false
+      val key613 = "QT_DEMO:" + brokerPackage
+      val reconciled613 = if (brokerOrder.first == 109L)
+        demoAutoStakePlan565.rebindVerifiedBasePair(key613, pair)
+      else
+        TouchTestService.verifiedExactDemoStakeReadOnly577(
+          pair, brokerOrder.first) &&
+          demoAutoStakePlan565.rebindConfirmedRecoveryPair584(
+            key613, pair, brokerOrder.first)
+      reconciled613 &&
+        demoAutoStakePlan565.permitsFreshDemoOrder(
+          key613, pair, brokerOrder.first)
+    } catch (_: Throwable) { false }
+  }
+
+  /**
    * 612: The FIRST fixed-base QT DEMO trade must not require Martingale ON.
    * The MG opt-in edits stakes ONLY AFTER a uniquely verified CLOSED trade.
    * Requiring it before the first base trade created an ON/old-order deadlock.
@@ -5922,8 +5974,7 @@ class ScalpOverlayService : Service() {
                 val order565=TouchTestService.readBrokerDemoOrder476(pair)
                 val pkg565=TouchTestService.activeDemoExecutorPackageForReview()
                 if (order565==null || order565.second!=92 || pkg565==null ||
-                    !(demoAutoStakePlan565.permitsFreshDemoOrder(
-                      "QT_DEMO:" + pkg565,pair,order565.first) ||
+                    !(synchronizeVerifiedDemoPair613(pair,order565,pkg565) ||
                       firstBaseDemoWithoutMg612(pair,order565,pkg565)))
                   "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
                      if(pkg565==null)null else "QT_DEMO:" + pkg565,
@@ -8974,8 +9025,7 @@ class ScalpOverlayService : Service() {
                   else if (order565 == null)
                     TouchTestService.inspectBrokerDemoOrder488(
                       pair,currentOverlayBounds488())
-                  else if (!demoAutoStakePlan565.permitsFreshDemoOrder(
-                        "QT_DEMO:" + package565,pair,order565.first))
+                  else if (!synchronizeVerifiedDemoPair613(pair,order565,package565))
                     "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
                       "QT_DEMO:" + package565,pair,order565.first)
                   else TouchTestService.inspectBrokerDemoOrder488(
@@ -9069,7 +9119,14 @@ class ScalpOverlayService : Service() {
             TouchTestService.activeDemoExecutorPackageForReview()
           )
         } catch (_: Throwable) { false } else false
+        val planPairReady613 = if (demoAutoStakePlan565.isEnabled() &&
+            expectedPair != null) try {
+          synchronizeVerifiedDemoPair613(
+            expectedPair, TouchTestService.readBrokerDemoOrder476(expectedPair),
+            TouchTestService.activeDemoExecutorPackageForReview())
+        } catch (_: Throwable) { false } else false
         val readyForDemo = (demoAutoStakePlan565.isEnabled() || firstBaseReady612) &&
+          (!demoAutoStakePlan565.isEnabled() || planPairReady613) &&
           !demoAutoStakePlan565.isRiskStopped() && !fxRotationNavigating &&
           !realAccountSafetyStop517 && !accountRecheckPending &&
           expectedPair != null && TouchTestService.isPreferredFxPair517(expectedPair) &&
@@ -9159,8 +9216,8 @@ class ScalpOverlayService : Service() {
               CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
               CHART_ONLY_DEMO_462 && demoAutoStakePlan565.isEnabled() &&
-                !demoAutoStakePlan565.permitsFreshDemoOrder(
-                  "QT_DEMO:" + package429,tradePair429,stake429!!) ->
+                !synchronizeVerifiedDemoPair613(
+                  tradePair429,manualOrder,package429) ->
                 "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
                   if(package429==null)null else "QT_DEMO:" + package429,
                   tradePair429,stake429)
