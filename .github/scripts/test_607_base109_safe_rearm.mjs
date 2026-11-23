@@ -16,7 +16,7 @@ test('607 never infers WIN LOSS MG from broker EMPTY OPEN',()=>{
  assert.match(monitor,/if \(unknownBaseCleared454\) \{\s+pendingReceipt429 = false\s+historyReviewRequestedAt610 = 0L/);
  assert.match(monitor,/val normalRearm581 = !pendingReceipt429 &&/);
  assert.match(monitor,/FĂRĂ MG RETROACTIV/);
- assert.match(service,/val readyForDemo = demoAutoStakePlan565\.isEnabled\(\)/);
+ assert.match(service,/val readyForDemo = \(demoAutoStakePlan565\.isEnabled\(\) \|\| firstBaseReady612\)/);
  assert.match(service,/private const val CHART_ONLY_DEMO_462 = true/);
 });
 test('607 strict Demo and original outcome guards remain',()=>{
