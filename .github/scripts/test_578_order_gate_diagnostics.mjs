@@ -60,8 +60,8 @@ test('578 preserves independent position and broker validators',()=>{
 });
 
 test('578 android APK workflow retains signed release and regression',()=>{
- assert.ok(workflow.includes("expo['android']['versionCode']=610"));
- assert.ok(workflow.includes('ScalpAtlas-610-OVERLAY-QT-DEMO-G24.apk'));
+ assert.ok(workflow.includes("expo['android']['versionCode']=611"));
+ assert.ok(workflow.includes('ScalpAtlas-611-OVERLAY-QT-DEMO-G24.apk'));
  assert.ok(workflow.includes('node --test .github/scripts/test_578_order_gate_diagnostics.mjs'));
  assert.ok(workflow.includes('apksigner'));
 });
