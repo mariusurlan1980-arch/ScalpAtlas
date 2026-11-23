@@ -7,7 +7,7 @@ const monitor=src.split('private fun startBrokerAccountMonitor()')[1].split('pri
 test('603 short chart-return watchdog independent of previous order status',()=>{
  for(const x of ['historyPageFirstSeenAt603 = android.os.SystemClock.elapsedRealtime()',
  'historyPageFirstSeenAt603 = 0L','val historyReturnDue603 = historyFresh592 &&',
- 'recoveryNow595 - historyPageFirstSeenAt603 >= 3_000L',
+ 'recoveryNow595 - historyPageFirstSeenAt603 >= historyReviewWindow609',
  '(reviewCompleted600 || historyReturnDue603) && historyFresh592',
  'returnToChartAfterReview458(true, true)'])
    assert.ok(src.includes(x),x);
@@ -24,7 +24,7 @@ test('603 display MG block truthfully without changing trade settlement',()=>{
  assert.match(src,/tradePositionGate\.brokerVerifiedEmptyDemoReview\(true\)/);
 });
 test('603 signed APK identity',()=>{
- assert.match(flow,/versionCode'\]=608/);
- assert.match(flow,/ScalpAtlas-608-OVERLAY-QT-DEMO-G24\.apk/);
+ assert.match(flow,/versionCode'\]=609/);
+ assert.match(flow,/ScalpAtlas-609-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/test_603_simple_chart_mg\.mjs/);
 });
