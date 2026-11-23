@@ -212,6 +212,15 @@ class ScalpOverlayService : Service() {
   private var audibleSignalAt617 = 0L
   private var audibleSignalPair617: String? = null
   private var audibleSignalGate617 = "AȘTEAPTĂ SEMNAL NOU"
+  // 619: Immutable provenance of the accepted analyzer signal. The Android
+  // capture loop may already have taken ONE more frame by the time the
+  // main-thread overlay callback finishes the independent broker preflight.
+  // Never infer a signal from this later frame or carry it to a new pair.
+  private var confirmedFrameId619 = -1L
+  private var confirmedFramePublishedAt619 = 0L
+  private var confirmedFrameMarketEpoch619 = -1L
+  private var confirmedFramePair619 = "NEIDENTIFICAT"
+  private var confirmedFrameTimeframe619 = ""
   // 552: diagnostic-only, explicitly initiated once by a TWO-TAP user action.
   // Never trigger a broker order from this field, without user confirmation.
   private var manualDemoTapStatus552: String? = null
@@ -8754,6 +8763,13 @@ class ScalpOverlayService : Service() {
       lastShockOrderStatus = "SEMNAL " + confirmedSignal +
         " • FĂRĂ BIP/ORDIN • PREFLIGHT NECONFIRMAT"
     }
+    // Save signal-specific provenance before posting the UI callback;
+    // a newer capture can increment frameCount while preflight runs.
+    confirmedFrameId619 = result.optLong("frameId", -1L)
+    confirmedFramePublishedAt619 = now
+    confirmedFrameMarketEpoch619 = marketEpoch
+    confirmedFramePair619 = currentPair(now)
+    confirmedFrameTimeframe619 = selectedTimeframe
     lastConfirmedSide556 = confirmedSignal
     lastConfirmedAt556 = now
     gestureChecksAtSignal556 = demoDiagGestureChecks546
@@ -8912,6 +8928,35 @@ class ScalpOverlayService : Service() {
       return false
     }
     return true
+  }
+
+  /**
+   * 619: Accept the confirmed signal's OWN analyzed frame while the next
+   * same-pair capture is at most one frame ahead. Android may advance the
+   * capture counter between the verified JS RESULT and this main-thread UI
+   * preflight; strict equality to frameCount discarded those signals with G0.
+   *
+   * This remains a narrow, read-only provenance check, NOT permission to
+   * click: the independent QT Demo account/amount/92%/5-minute, one-position
+   * gate, current TF, current pair, signal lock and new-order preflights run
+   * unchanged. Never replay a lock, reuse on another FX pair or keep a signal
+   * longer than 3.5 seconds from confirmation.
+   */
+  private fun confirmedEntryFrameFresh619(entryFrameId: Long, now: Long): Boolean {
+    val frameGap619 = frameCount - entryFrameId
+    return entryFrameId > 0L && entryFrameId == confirmedFrameId619 &&
+      frameGap619 in 0L..1L &&
+      confirmedFramePublishedAt619 > 0L &&
+      now - confirmedFramePublishedAt619 in 0L..3_500L &&
+      lockedAt == confirmedFramePublishedAt619 &&
+      confirmedFrameMarketEpoch619 == marketEpoch &&
+      confirmedFramePair619 != "NEIDENTIFICAT" &&
+      confirmedFramePair619 == currentPair(now) &&
+      pairReady(now) &&
+      confirmedFrameTimeframe619 == selectedTimeframe &&
+      lastCapturedImageAt > 0L &&
+      now - lastCapturedImageAt in 0L..3500L &&
+      !fxRotationNavigating && !historyPageVisible433 && !manualTfConflict
   }
 
   private fun updateOverlay(
@@ -9076,8 +9121,7 @@ class ScalpOverlayService : Service() {
           lastConfirmedScalpPercent in 21..50) ||
         (activeStrategy == "SIMPLE_TREND" && lastConfirmedSimple553) ||
         (activeStrategy == "EARLY_SECOND" && lastConfirmedEarly554)
-      val freshShockForPreflight = entryFrameId > 0L && entryFrameId == frameCount &&
-        now - lastFrameAt in 0L..MAX_ALERT_ANALYSIS_AGE_MS &&
+      val freshShockForPreflight = confirmedEntryFrameFresh619(entryFrameId, now) &&
         activeSignal != "NONE" && eligibleSignal547 &&
         lockedAt > autoDemoEntryCycleStartedAt && lockedAt != autoDemoLockedAt &&
         now - lockedAt in 0L..4_000L
@@ -9256,8 +9300,7 @@ class ScalpOverlayService : Service() {
           (!tfAutomatic || (tfVerified &&
             now - confirmedTfAt in 0L..TF_STALE_MS))
         // A displayed signal lock must never replay an entry from an older frame.
-        val entryFrameCurrent = entryFrameId > 0L && entryFrameId == frameCount &&
-          now - lastFrameAt in 0L..MAX_ALERT_ANALYSIS_AGE_MS
+        val entryFrameCurrent = confirmedEntryFrameFresh619(entryFrameId, now)
         val newShock = activeSignal != "NONE" && entryFrameCurrent &&
           eligibleSignal547 &&
           lockedAt > 0L && now - lockedAt in 0L..5000L &&
