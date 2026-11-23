@@ -897,6 +897,50 @@ class ScalpOverlayService : Service() {
    * invalidates the elapsed-time proof, so the app fails closed.
    */
   /**
+   * 612: The FIRST fixed-base QT DEMO trade must not require Martingale ON.
+   * The MG opt-in edits stakes ONLY AFTER a uniquely verified CLOSED trade.
+   * Requiring it before the first base trade created an ON/old-order deadlock.
+   *
+   * This is only a read-only eligibility helper, NEVER an order trigger:
+   * LIVE screen capture and all broker/SHOCK/one-position checks still run.
+   * Every OLD attempted gesture, known OPEN ID, unconfirmed amount, Real
+   * account, recovering ladder and risk stop still blocks. The broker button
+   * helper independently rechecks the EXACT 1.09 USD / 92% / 5m quote.
+   */
+  private fun firstBaseDemoWithoutMg612(
+    pair: String, brokerOrder: Pair<Long, Int>?, brokerPackage: String?
+  ): Boolean {
+    if (!CHART_ONLY_DEMO_462 ||
+        demoAutoStakePlan565.isEnabled() ||
+        demoAutoStakePlan565.isRiskStopped() ||
+        brokerOrder != (109L to 92) ||
+        brokerPackage.isNullOrBlank() ||
+        !robotArmedContinuously513 ||
+        !autoDemoSessionRequested || autoDemoSessionConsumed ||
+        mediaProjection == null || shuttingDown ||
+        realAccountSafetyStop517 || accountRecheckPending ||
+        closedHistoryInspectionInProgress || fxRotationNavigating ||
+        fxRotationTradePaused516 ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+        demoRecoveryLedger.isRecovering429() ||
+        demoRecoveryLedger.needsBaseStakeReset() ||
+        getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
+          .getBoolean("attempted", false) ||
+        !TouchTestService.priorDemoGestureCooldownComplete() ||
+        !TouchTestService.ready() ||
+        !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.realFxAccountVisible())
+      return false
+    val now612 = System.currentTimeMillis()
+    return pair != "NEIDENTIFICAT" && pairReady(now612) &&
+      currentPair(now612) == pair
+  }
+
+  /**
    * 571: Consume the user's explicit ON intent only on a freshly verified,
    * stable QT DEMO chart. During currency-selector navigation the intent
    * remains pending, instead of silently returning to OFF.
@@ -5850,9 +5894,13 @@ class ScalpOverlayService : Service() {
             val condition = when {
               demoAutoStakePlan565.isRiskStopped() ->
                 "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
-              !demoAutoStakePlan565.isEnabled() ->
+              !demoAutoStakePlan565.isEnabled() &&
+                !firstBaseDemoWithoutMg612(
+                  pair, TouchTestService.readBrokerDemoOrder476(pair),
+                  TouchTestService.activeDemoExecutorPackageForReview()
+                ) ->
                 if (pendingStakeOptIn571) stakeOptInReason572
-                else "BLOCAT: ACTIVEAZĂ MIZĂ AUTO DEMO • START 1,09 USD"
+                else "BLOCAT: MIZĂ INIȚIALĂ DEMO / ORDIN VECHI NECONFIRMAT"
               mediaProjection == null || !autoDemoSessionRequested ||
                 autoDemoSessionConsumed -> "BLOCAT: SESIUNE DEMO / ORDIN ANTERIOR NEVERIFICAT"
               onePairEvalEnabled -> "BLOCAT: OPREȘTE AUTO SIM"
@@ -5864,8 +5912,9 @@ class ScalpOverlayService : Service() {
                 val order565=TouchTestService.readBrokerDemoOrder476(pair)
                 val pkg565=TouchTestService.activeDemoExecutorPackageForReview()
                 if (order565==null || order565.second!=92 || pkg565==null ||
-                    !demoAutoStakePlan565.permitsFreshDemoOrder(
-                      "QT_DEMO:" + pkg565,pair,order565.first))
+                    !(demoAutoStakePlan565.permitsFreshDemoOrder(
+                      "QT_DEMO:" + pkg565,pair,order565.first) ||
+                      firstBaseDemoWithoutMg612(pair,order565,pkg565)))
                   "BLOCAT: 583 • " + demoAutoStakePlan565.preflightReason583(
                      if(pkg565==null)null else "QT_DEMO:" + pkg565,
                      pair,order565?.first)
@@ -8877,9 +8926,13 @@ class ScalpOverlayService : Service() {
             // the user to opt in; do not disguise it as a disabled switch.
             demoAutoStakePlan565.isRiskStopped() ->
               "STOP RISC 565 • FĂRĂ ORDIN"
-            !demoAutoStakePlan565.isEnabled() ->
+            !demoAutoStakePlan565.isEnabled() &&
+              !firstBaseDemoWithoutMg612(
+                currentPair(now), TouchTestService.readBrokerDemoOrder476(currentPair(now)),
+                TouchTestService.activeDemoExecutorPackageForReview()
+              ) ->
               if (pendingStakeOptIn571) stakeOptInReason572
-              else "BLOCAT: MIZĂ AUTO OFF • APASĂ +"
+              else "BLOCAT: PRIMUL DEMO 1,09 / 92% SAU ORDIN VECHI NECONFIRMAT"
             realAccountSafetyStop517 -> "QT REAL DETECTAT • RESTART LIVE DOAR PE DEMO"
             !TouchTestService.ready() -> "ACCESIBILITATE NECONECTATĂ"
             // 550: "NEIDENTIFICAT" is a temporarily unreadable broker
@@ -9076,8 +9129,9 @@ class ScalpOverlayService : Service() {
             demoRecoveryLedger.quote(payout429).stakeCents == stake429
           val latestPreflight = try {
             when {
-              !demoAutoStakePlan565.isEnabled() ->
-                "BLOCAT: START 1,09 USD NECONFIRMAT • FĂRĂ ORDIN"
+              !demoAutoStakePlan565.isEnabled() &&
+                !firstBaseDemoWithoutMg612(tradePair429,manualOrder,package429) ->
+                "BLOCAT: PRIMUL DEMO 1,09 / 92% SAU ORDIN VECHI NECONFIRMAT"
               demoAutoStakePlan565.isRiskStopped() ->
                 "BLOCAT: STOP RISC 565 • FĂRĂ ORDIN"
               CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
