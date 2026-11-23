@@ -14,10 +14,10 @@ test('594 QT Demo history auto-return is independent of trade age but orders rem
   assert.match(returnGate,/if \(historyFresh592 &&/);
   assert.doesNotMatch(returnGate,/if \(afterExpiry592 && historyFresh592/);
   for (const requirement of ['historyPeekStartedAt592 = nowElapsed592',
-    'historyPeekRetryAfter592 = reviewNow592 + 297_000L',
+    'historyPeekRetryAfter592 = reviewNow592 + historyReviewCooldown609',
     'overlayDuringHistory593.visibility = View.INVISIBLE',
     'overlayDuringHistory593?.visibility = oldVisibility593',
-    'returnToChartAfterReview458(true, true)', '}, 3_000L)',
+    'returnToChartAfterReview458(true, true)', '}, historyReviewWindow609)',
     'reviewPkg592 != null', '!TouchTestService.realFxAccountVisible()'])
     assert.ok(returnGate.includes(requirement),requirement);
   assert.match(monitor,/val afterExpiry592 = attempted592/);
