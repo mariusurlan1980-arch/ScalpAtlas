@@ -2081,10 +2081,25 @@ class ScalpOverlayService : Service() {
         // One <=3s inspection per ~5min; the chart remains the priority.
         val previousReviewWall602 =
           chartPrefs600.getLong("completedAtWall602", -1L)
+        // 609: A stale, unverified base-stake attempt needs TWO fresh
+        // broker OPEN=EMPTY reads before the 607 recovery path can even be
+        // considered. Version 608 changed to CLOSED after ~3 seconds and
+        // forcibly exited history before the independent OPEN OCR samples
+        // could complete. This is READ-ONLY review time, NOT an order grant.
+        val legacyBaseReview609 = attempted592 &&
+          attemptPrefs592.getLong("expectedStakeCents429", -1L) in
+            setOf(100L, 109L) &&
+          !demoAutoStakePlan565.isEnabled() &&
+          !demoAutoStakePlan565.isRiskStopped() &&
+          demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+          !demoRecoveryLedger.isRecovering429() &&
+          TouchTestService.priorDemoGestureCooldownComplete()
+        val historyReviewWindow609 = if (legacyBaseReview609) 12_000L else 3_000L
+        val historyReviewCooldown609 = if (legacyBaseReview609) 30_000L else 297_000L
         val reviewCompleted600 = attemptKey600 != null &&
           chartPrefs600.getString("completedAttempt", null) == attemptKey600 &&
           previousReviewWall602 > 0L &&
-          System.currentTimeMillis() - previousReviewWall602 in 0L..297_000L
+          System.currentTimeMillis() - previousReviewWall602 in 0L..historyReviewCooldown609
         if (!attempted592) {
           historyPeekStartedAt592 = 0L
           historyPeekRetryAfter592 = 0L
@@ -2135,7 +2150,7 @@ class ScalpOverlayService : Service() {
             // including older persisted unknown attempts. We retry only
             // read-only settlement verification; we NEVER infer WIN/LOSS or
             // unlock the next order merely from the review timeout.
-            historyPeekRetryAfter592 = reviewNow592 + 297_000L
+            historyPeekRetryAfter592 = reviewNow592 + historyReviewCooldown609
             historyPeekStartedAt592 = 0L
             if (reviewKey600 != null) {
               getSharedPreferences(chartFirstPrefs600, Context.MODE_PRIVATE)
@@ -2164,7 +2179,7 @@ class ScalpOverlayService : Service() {
               if (overlayView === overlayDuringHistory593 && !shuttingDown)
                 overlayDuringHistory593?.visibility = oldVisibility593
             }
-          }, 3_000L)
+          }, historyReviewWindow609)
         }
         // 595: QT Demo's third bottom tab is SOCIAL, not the M5 chart.
         // Safe recovery is staged: verified rightmost "Mai multe" footer,
@@ -2177,6 +2192,7 @@ class ScalpOverlayService : Service() {
             historyPeekStartedAt592 > 0L &&
             nowElapsed592 - historyPeekStartedAt592 in 0L..3_000L &&
             historyPageTab433 == "DESCHIS" &&
+            !legacyBaseReview609 &&
             nowElapsed592 - lastClosedTabNavigation600 !in 0L..3_000L) {
           lastClosedTabNavigation600 = nowElapsed592
           val closedNav600 = try {
@@ -2193,7 +2209,7 @@ class ScalpOverlayService : Service() {
         // Time limits only the history view; no trade/MG gate is cleared.
         val historyReturnDue603 = historyFresh592 &&
           historyPageFirstSeenAt603 > 0L &&
-          recoveryNow595 - historyPageFirstSeenAt603 >= 3_000L
+          recoveryNow595 - historyPageFirstSeenAt603 >= historyReviewWindow609
         val demoForNavigation595=!realAccountSafetyStop517 &&
           !TouchTestService.realFxAccountVisible() && TouchTestService.ready() &&
           (diagnostic.contains("QT DEMO IDENTIFICAT") ||
