@@ -391,7 +391,7 @@ jobs:
           grep -Fq 'ROTAȚIE ACTIVĂ • OBSERV GRAFICUL' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'ROTAȚIE ACTIVĂ • SCHIMB PERECHEA' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'if (fxRotation.running) fxRotation.stop("ROTAȚIE • 30 S")' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'if ((recentSignal || liveCandidate) && remaining > -5_000L)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if ((recentSignal || liveCandidate) && remaining > -10_000L)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'autoDemoSessionRequested && !autoDemoSessionConsumed' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'observedShockPercent >= 15 && observedShockAt' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'if (tradeBusy())' .github/native-overlay/ScalpOverlayService.kt
