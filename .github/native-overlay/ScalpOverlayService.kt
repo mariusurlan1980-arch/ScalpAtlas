@@ -442,6 +442,11 @@ class ScalpOverlayService : Service() {
   // return to a stable QT Demo chart. This grants NO order permission.
   private var pendingStakeOptIn571 = false
   private var pendingStakeOptInAt571 = 0L
+  // 610: a single user-initiated, short-lived permission to NAVIGATE to the
+  // QT Demo history for a prior UNKNOWN base gesture. This is NOT a BUY/SELL
+  // opt-in, a broker receipt, a WIN/LOSS, or permission to clear the marker.
+  // Without this user action, the 604 chart-first protection is unchanged.
+  private var historyReviewRequestedAt610 = 0L
   // 608: a user-requested MG ON remains pending for the current LIVE
   // session while QT Demo order/history proof is incomplete. It is NOT
   // equivalent to the MG plan being ON or to permission to BUY/SELL.
@@ -906,6 +911,7 @@ class ScalpOverlayService : Service() {
     fun cancel(message: String) {
       pendingStakeOptIn571 = false
       pendingStakeOptInAt571 = 0L
+      historyReviewRequestedAt610 = 0L
       stakeOptInReason572 = message
       stakeOptInLastFailureAt574 = nowElapsed
       autoStakeToggle565?.text = "MIZĂ AUTO DEMO • OFF"
@@ -949,10 +955,15 @@ class ScalpOverlayService : Service() {
       // 608: distinguish saved user intent from a funded/armed MG plan.
       // Every existing broker, position, risk, quote and Real guard above
       // remains unchanged.
-      autoStakeToggle565?.text = if (priorShock572 || priorSell572 ||
-          tradePositionGate.state() != TradePositionGate.State.READY)
-        "MG • AȘTEPT ÎNCHIDERE"
-      else "MG • VERIFIC QT DEMO"
+      autoStakeToggle565?.text = when {
+        priorShock572 && historyReviewRequestedAt610 > 0L &&
+          nowElapsed - historyReviewRequestedAt610 in 0L..90_000L ->
+          "MG • VERIFIC ISTORIC"
+        priorShock572 || priorSell572 ||
+          tradePositionGate.state() != TradePositionGate.State.READY ->
+          "MG • AȘTEPT ÎNCHIDERE"
+        else -> "MG • VERIFIC QT DEMO"
+      }
       touchProbeStatus?.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
       return
     }
@@ -2037,6 +2048,7 @@ class ScalpOverlayService : Service() {
         if (diagnostic.contains("QT REAL IDENTIFICAT") ||
             TouchTestService.realFxAccountVisible()) {
           realAccountSafetyStop517 = true
+          historyReviewRequestedAt610 = 0L
           autoDemoSessionRequested = false
           autoDemoSessionConsumed = true
           autoDemoArmed = false
@@ -2397,10 +2409,21 @@ class ScalpOverlayService : Service() {
         // and 2/2 receipt reconciliation path to run autonomously.
         // This does NOT relax the previous-order marker, one-position gate,
         // strict 92% quote, or account/pair/UUID/amount checks.
+        val userReview610 = historyReviewRequestedAt610 > 0L &&
+          pendingStakeOptIn571 &&
+          nowElapsed592 - historyReviewRequestedAt610 in 0L..90_000L &&
+          attempted592 && !demoAutoStakePlan565.isEnabled() &&
+          !demoAutoStakePlan565.isRiskStopped() &&
+          demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+          !demoRecoveryLedger.isRecovering429() &&
+          !realAccountSafetyStop517 &&
+          TouchTestService.demoFxAccountInForeground() &&
+          lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")
         val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&
-          // 604: never leave a working M5 chart for automated history
-          // before the safe chart-return route has proven successful.
-          (historyFresh592 || brokerChartReturnProven604) &&
+          // 610: only an explicit, short-lived MG ON request can bootstrap
+          // the FIRST read-only history visit. Normal 604 chart protection
+          // stays intact without it. History/navigation cannot submit trades.
+          (historyFresh592 || brokerChartReturnProven604 || userReview610) &&
           !shuttingDown && !realAccountSafetyStop517 &&
           mediaProjection != null && TouchTestService.ready() &&
           // 592: no history visit while the 5-minute DEMO trade is active;
@@ -2899,7 +2922,10 @@ class ScalpOverlayService : Service() {
                   else !oldSellAttempt
                   shockCleared454 && sellCleared454
                 } else false
-                if (unknownBaseCleared454) pendingReceipt429 = false
+                if (unknownBaseCleared454) {
+                  pendingReceipt429 = false
+                  historyReviewRequestedAt610 = 0L
+                }
                 val savedOldSell = !oldSellAttempt || unknownBaseCleared454
                 // 448: The older code cleared an incomplete/stale prior
                 // SHOCK attempt whenever pendingReceipt429 was false (for
@@ -5899,6 +5925,7 @@ class ScalpOverlayService : Service() {
         if (pendingStakeOptIn571) {
           pendingStakeOptIn571 = false
           pendingStakeOptInAt571 = 0L
+          historyReviewRequestedAt610 = 0L
           stakeOptInReason572 = "574 • CERERE ANULATĂ"
           stakeOptInLastFailureAt574 = android.os.SystemClock.elapsedRealtime()
           text = "MIZĂ AUTO DEMO • OFF"
@@ -5919,7 +5946,26 @@ class ScalpOverlayService : Service() {
           pendingStakeOptInAt571 = android.os.SystemClock.elapsedRealtime()
           stakeOptInLastFailureAt574 = 0L
           val requestAt572 = pendingStakeOptInAt571
-          stakeOptInReason572 = "572 • AȘTEPT GRAFIC QT DEMO"
+          // 610: MG ON is an explicit user action. For an OLD persisted,
+          // uncertain DEMO gesture only, allow ONE bounded read-only history
+          // visit even if this session has not yet proven chart return (604).
+          // No SELL-only marker, verified OPEN UUID, active recovery cycle,
+          // active MG plan or REAL account qualifies for this bootstrap.
+          val oldShock610 = getSharedPreferences(
+            autoShockAttemptPrefs, Context.MODE_PRIVATE
+          ).getBoolean("attempted", false)
+          historyReviewRequestedAt610 = if (oldShock610 &&
+              !demoAutoStakePlan565.isEnabled() &&
+              !demoAutoStakePlan565.isRiskStopped() &&
+              demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+              !demoRecoveryLedger.isRecovering429() &&
+              !realAccountSafetyStop517 &&
+              lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") &&
+              TouchTestService.demoFxAccountInForeground())
+            requestAt572 else 0L
+          stakeOptInReason572 = if (historyReviewRequestedAt610 > 0L)
+            "610 • CERERE VERIFICARE ISTORIC QT DEMO • FĂRĂ ORDIN"
+          else "572 • AȘTEPT GRAFIC QT DEMO"
           text = "MIZĂ AUTO DEMO • VERIFIC"
           probeStatus.text = stakeOptInReason572 + " • FĂRĂ ORDIN"
           maybeFinishStakeOptIn571(requestAt572)
@@ -5930,6 +5976,7 @@ class ScalpOverlayService : Service() {
             if (pendingStakeOptIn571 && pendingStakeOptInAt571 == requestAt572) {
               pendingStakeOptIn571 = false
               pendingStakeOptInAt571 = 0L
+              historyReviewRequestedAt610 = 0L
               stakeOptInReason572 = "572 • CERERE ON EXPIRATĂ"
               stakeOptInLastFailureAt574 = android.os.SystemClock.elapsedRealtime()
               text = "MIZĂ AUTO DEMO • OFF"
