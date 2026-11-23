@@ -43,8 +43,8 @@ test('609 checks EMPTY OPEN twice before the legacy base-stake release', () => {
 });
 
 test('609 signed APK workflow references the guarded recovery test', () => {
-  assert.ok(workflow.includes("expo['android']['versionCode']=610"));
-  assert.ok(workflow.includes('ScalpAtlas-610-OVERLAY-QT-DEMO-G24.apk'));
+  assert.ok(workflow.includes("expo['android']['versionCode']=611"));
+  assert.ok(workflow.includes('ScalpAtlas-611-OVERLAY-QT-DEMO-G24.apk'));
   assert.ok(workflow.includes('node --test .github/scripts/test_609_open_review.mjs'));
   assert.ok(workflow.includes('apksigner'));
   assert.ok(workflow.includes("fix/scalpatlas-609-empty-open-review"));
