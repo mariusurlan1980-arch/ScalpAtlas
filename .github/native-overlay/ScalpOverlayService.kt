@@ -7505,11 +7505,18 @@ class ScalpOverlayService : Service() {
       // but only if a future broker receipt makes it necessary.
       moreNavAttemptAt595 = 0L
     }
+    // 611: History OCR samples are scheduled every ~900 ms on Moto G24.
+    // A >=1000 ms lower bound rejected consecutive genuinely new frames,
+    // preventing 0 OPEN OCR 2/2. Accept independently captured frames >=750 ms
+    // apart; the FINAL broker zero-open reconciliation still requires two
+    // separate positive reviews >=2 seconds apart, same QT Demo package.
+    // Never treat a single frame, elapsed expiry, or missing trade badge as
+    // an order result or Martingale settlement.
     val selectedOpen429 = historyIdentity454 && openTab && closedTab &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
     if (selectedOpen429) {
       if (lastOpenTabVisualPackage429 == pkg &&
-          observedAt - lastOpenTabVisualAt429 in 1000L..12000L)
+          observedAt - lastOpenTabVisualAt429 in 750L..12000L)
         openTabVisualConsecutive429 = (openTabVisualConsecutive429 + 1).coerceAtMost(3)
       else openTabVisualConsecutive429 = 1
       lastOpenTabVisualAt429 = observedAt
@@ -7527,7 +7534,7 @@ class ScalpOverlayService : Service() {
       selectedClosedTabVerifiedOnScreen(frame) && pkg != null
     if (closedSelected) {
       if (lastClosedTabVisualPackage == pkg &&
-          observedAt - lastClosedTabVisualAt in 1000L..12000L) {
+          observedAt - lastClosedTabVisualAt in 750L..12000L) {
         closedTabVisualConsecutive = (closedTabVisualConsecutive + 1).coerceAtMost(3)
       } else {
         closedTabVisualConsecutive = 1
@@ -7541,7 +7548,7 @@ class ScalpOverlayService : Service() {
     }
     if (qualified) {
       if (lastEmptyOpenOcrPackage == pkg &&
-          observedAt - lastEmptyOpenOcrAt in 1000L..12000L) {
+          observedAt - lastEmptyOpenOcrAt in 750L..12000L) {
         emptyOpenOcrConsecutive = (emptyOpenOcrConsecutive + 1).coerceAtMost(3)
       } else {
         emptyOpenOcrConsecutive = 1
