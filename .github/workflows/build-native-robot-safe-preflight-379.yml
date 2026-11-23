@@ -1255,7 +1255,7 @@ jobs:
           G=.github/native-overlay/TradePositionGate.kt
           grep -Fq 'A rejected optical/freshness check is NOT a broker order attempt' "$O"
           grep -Fq 'autoDemoLockedAt = lockedAt' "$O"
-          grep -Fq 'FĂRĂ ORDIN • CADRU/TF NECONFIRMAT • AȘTEPT SEMNAL NOU' "$O"
+          grep -Fq 'val rejection617 = when {' "$O"
           grep -Fq 'tradePositionGate.cancelBeforeDispatch()' "$O"
           grep -Fq 'autoDemoSessionConsumed = true // only a persisted attempt consumes session' "$O"
           grep -Fq 'fun cancelBeforeDispatch(): Boolean' "$G"
