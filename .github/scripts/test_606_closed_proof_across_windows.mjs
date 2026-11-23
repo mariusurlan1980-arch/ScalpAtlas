@@ -10,8 +10,8 @@ test('606 two independently verified CLOSED reads survive bounded five-minute re
   assert.match(passive,/verifiedClosedDetailAt437 in 0L\.\.closedProofHorizon606/);
   assert.match(passive,/verifiedClosedDetailAt437 !in 0L\.\.closedProofHorizon606/);
   assert.match(monitor,/verifiedClosedDetailAt437 in 0L\.\.closedProofHorizon606/);
-  assert.match(service,/historyPeekRetryAfter592 = reviewNow592 \+ 297_000L/);
-  assert.match(service,/\}, 3_000L\)/);
+  assert.match(service,/historyPeekRetryAfter592 = reviewNow592 \+ historyReviewCooldown609/);
+  assert.match(service,/\}, historyReviewWindow609\)/);
 });
 test('606 retaining CLOSE does not infer an order outcome or weaken missing OPEN guard',()=>{
   for(const v of ['closed.positionId','closed.stakeCents != stake','closed.payoutPercent != payout',
