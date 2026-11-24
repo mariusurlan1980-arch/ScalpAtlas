@@ -7747,8 +7747,20 @@ class ScalpOverlayService : Service() {
       val y=line.boundingBox?.centerY()?.toFloat()?.div(frame.height) ?: 1f
       y in .11f.. .34f
     }.joinToString(" "){it.text}
-    val pair595=Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\s*OTC\b""")
-      .containsMatchIn(topText595)
+    // 628: Returning from broker history may land on a regular FX chart
+    // with a lower payout. Recognizing that screen permits scanner recovery
+    // only; the independent exact 92% order checks remain unchanged.
+    val chartPairCandidates628 = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})(?:\s+(OTC))?\b""")
+      .findAll(topText595).map { match ->
+        match.groupValues[1].uppercase() + "/" + match.groupValues[2].uppercase() +
+          if (match.groupValues[3].isNotEmpty()) " OTC" else ""
+      }.distinct().toList()
+    val pair595 = chartPairCandidates628.singleOrNull()?.let { candidate ->
+      TouchTestService.isPreferredFxPair517(candidate) &&
+        TouchTestService.readVisibleFxPair(false) == candidate &&
+        TouchTestService.demoFxAccountInForeground() &&
+        !TouchTestService.realFxAccountVisible()
+    } == true
     val m5595=lines.any{line->
       val y=line.boundingBox?.centerY()?.toFloat()?.div(frame.height) ?: 1f
       y in .18f.. .78f &&
@@ -7764,7 +7776,8 @@ class ScalpOverlayService : Service() {
       y in .69f.. .94f && Regex("""(?i)(?:VINDE[ȚT]I|SELL)""")
         .containsMatchIn(line.text)
     }
-    if(pkg != null && pair595 && m5595 && buy595 && sell595 && !social595){
+    if(pkg != null && pair595 && m5595 && buy595 && sell595 && !social595 &&
+        !trueHistoryPage433 && !TouchTestService.fxListVisible(false)){
       chartProofSamples595=if(observedAt-chartProofAt595 in 750L..6_000L)
         (chartProofSamples595+1).coerceAtMost(3) else 1
       chartProofAt595=observedAt
