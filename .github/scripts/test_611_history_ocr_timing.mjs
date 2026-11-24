@@ -18,7 +18,7 @@ test('611 history OCR sampling at 900ms can accumulate two independent selected-
   assert.ok(!history.includes('observedAt - lastOpenTabVisualAt429 in 1000L..12000L'));
   assert.ok(!history.includes('observedAt - lastEmptyOpenOcrAt in 1000L..12000L'));
   assert.ok(service.includes('if (historyPageVisible433 ||'));
-  assert.ok(service.includes('historyPeekStartedAt592 > 0L || nonChartSafety595) 900L'));
+  assert.ok(service.includes('historyPeekStartedAt592 > 0L || nonChartSafety595 || chartResultAttempt631() != null) 900L'));
   const isIndependent = (elapsed) => elapsed >= 750 && elapsed <= 12000;
   assert.equal(isIndependent(900), true);
   assert.equal(isIndependent(899), true);
