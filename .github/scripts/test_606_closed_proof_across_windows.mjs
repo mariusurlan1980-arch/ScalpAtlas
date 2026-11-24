@@ -30,7 +30,7 @@ test('606 retaining CLOSE does not infer an order outcome or weaken missing OPEN
 test('606 preserves Demo and strict martingale checks and previous chart rules',()=>{
   assert.match(service,/private const val CHART_ONLY_DEMO_462 = true/);
   assert.match(service,/QT REAL DETECTAT • ROBOT OPRIT/);
-  assert.match(service,/\(historyFresh592 \|\| brokerChartReturnProven604 \|\| userReview610\) &&/);
+  assert.match(service,/\(historyFresh592 \|\| brokerChartReturnProven604 \|\| userReview610 \|\| verifiedExpiredReview624\) &&/);
   assert.match(service,/PAYOUT NECITIT • SAR/);
   assert.match(service,/demoAutoStakePlan565\.onVerifiedClosed\(/);
 });
