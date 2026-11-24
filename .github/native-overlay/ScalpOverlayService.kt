@@ -5217,9 +5217,11 @@ class ScalpOverlayService : Service() {
           // rotation row. A selector-in-progress is not broker order proof.
           fxButton.text = pair.removeSuffix(" OTC").take(8) + " ≠ " +
             (chartPair548?.removeSuffix(" OTC")?.take(8) ?: "?")
-          if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
-          else if (!realAccount && chartPair548 != null &&
-              chartPair548 != pair &&
+          // 621: Prefer a newly opened, independently verified chart over
+          // spending all 24 retries waiting for a different requested row.
+          // The previous/visited chart is NOT a successful selection.
+          if (fxRotationNavigating && !realAccount && chartPair548 != null &&
+              chartPair548 != pair && chartPair548 != lastChartPair &&
               chartPair548 !in visited && chartPair548 !in rejectedPairs &&
               TouchTestService.isPreferredFxPair517(chartPair548) &&
               TouchTestService.demoFxAccountInForeground() &&
@@ -5241,12 +5243,15 @@ class ScalpOverlayService : Service() {
                   TouchTestService.demoFxAccountInForeground() &&
                   !TouchTestService.realFxAccountVisible() &&
                   !TouchTestService.fxListVisible(false) &&
-                  TouchTestService.readFxChartPayout(chartPair548, false) == 92)
+                  TouchTestService.readFxChartPayout(chartPair548, false) == 92) {
+                rejectedPairs.add(pair) // failed selection, not a scanned chart
                 verifyChart(chartPair548, 8)
+              } else if (checks > 0) verifyChart(pair, checks - 1)
               else recoverNavigation(pair, "CER " + pair.take(11) +
                 " • VĂD " + (actual618 ?: "?").take(11))
             }
-          } else recoverNavigation(pair,
+          } else if (checks > 0) after(750L) { verifyChart(pair, checks - 1) }
+          else recoverNavigation(pair,
             "CER " + pair.take(11) + " • VĂD " +
               (chartPair548 ?: "?").take(11))
           return
