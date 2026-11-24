@@ -142,3 +142,14 @@ test('628 scanner chart proof recognizes regular FX without relaxing exact payou
  assert.match(service,/realAccountSafetyStop517 -> "🤖 OPRIT/);
  assert.match(service,/TouchTestService.readVerifiedDemoPayoutForPair\(pair\)/);
 });
+
+test('630 history pause retries the guarded scanner and cancelled retry cannot strand a restart',()=>{
+ const pause=service.split('fun pauseForTrade516(): Boolean {')[1].split('fun stopOnReal517(')[0];
+ assert.match(pause,/pendingHistoryRetryScheduled590 = false\s+if \(!shuttingDown && running\) seekChart\(\)/);
+ const stop=service.split('fun stop(message: String) {')[1].split('fun tradeBusy()')[0];
+ assert.match(stop,/pendingHistoryRetryScheduled590 = false/);
+ const seek=service.split('fun seekChart() {')[1].split('fun start() {')[0];
+ assert.match(seek,/stopOnReal517\(\)/);
+ assert.match(seek,/pauseForTrade516\(\)/);
+ assert.doesNotMatch(pause,/putBoolean\("attempted", false\)|onVerifiedClosed\(/);
+});
