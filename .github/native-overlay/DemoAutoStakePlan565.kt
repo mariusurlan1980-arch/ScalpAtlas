@@ -1,0 +1,345 @@
+package com.scalpatlas.app
+
+import android.content.SharedPreferences
+
+/**
+ * 565: QT DEMO-only, opt-in stake PREPARATION after broker-verifiable CLOSED
+ * results. This class NEVER places BUY/SELL or infers settlement from timer,
+ * screen color, a click, or an empty Open tab.
+ *
+ * Ten-level ladder: after every verified LOSS propose the next stake;
+ * after a verified WIN reset to $1.09. Stop after TEN losses OR before
+ * any stake outside the budget. $1,572.44 is planned, NOT broker-verified. Ten LOSS can consume it all.
+ */
+internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
+  companion object {
+    const val PLANNED_BUDGET_CENTS = 157244L
+    const val PAYOUT_EXACT = 92
+    const val STOP_AFTER_LOSSES = 10
+    const val EDITOR_MAX_STAKE_CENTS = 81950L
+    private val LADDER = longArrayOf(109L,228L,475L,992L,2070L,
+      4320L,9016L,18816L,39268L,81950L)
+  }
+  data class Proposal(val stakeCents: Long?, val pair: String?, val reason: String)
+
+  @Synchronized
+  fun isEnabled(): Boolean = prefs.getBoolean("enabled",false)
+
+  @Synchronized
+  fun isRiskStopped(): Boolean = prefs.getBoolean("riskStopped",false)
+
+  @Synchronized
+  fun enableFromVerifiedDemo(accountKey: String, pair: String): Boolean {
+    if (isRiskStopped() || !accountKey.startsWith("QT_DEMO:") ||
+        accountKey.length < 10 || pair.isBlank() || pair=="NEIDENTIFICAT")
+      return false
+    val storedAccount=prefs.getString("accountKey",null)
+    if(storedAccount!=null && storedAccount!=accountKey)return false
+    val losses=prefs.getInt("losses",0)
+    if(losses !in 0 until STOP_AFTER_LOSSES)return false
+    val storedPair=prefs.getString("pair",null)
+    // On resume, keep the same pair until the next planned stake is read back.
+    if(storedPair!=null && storedPair!=pair && losses>0)return false
+    val pending=prefs.getLong("pendingStake",0L)
+    val expected=LADDER[losses]
+    val cumLoss=(0 until losses).sumOf { LADDER[it] }
+    if (cumLoss + expected > PLANNED_BUDGET_CENTS ||
+        expected > EDITOR_MAX_STAKE_CENTS) return false
+    if(pending!=0L && pending!=expected)return false
+    return prefs.edit()
+      .putBoolean("enabled",true)
+      .putString("accountKey",accountKey)
+      .putString("pair",pair)
+      .putInt("losses",losses) // 622: persist the already validated level, including the initial zero
+      .putLong("pendingStake",expected)
+      .putString("status","MIZĂ QT DEMO ${expected/100}.${(expected%100).toString().padStart(2,'0')} USD • AȘTEAPTĂ CONFIRMARE")
+      .commit()
+  }
+
+  @Synchronized
+  private fun stopUnsafe(reason:String): String {
+    prefs.edit().putBoolean("riskStopped",true)
+      .putBoolean("enabled",false).putLong("pendingStake",0L)
+      .putString("status","STOP DEMO • " + reason.take(80)).commit()
+    return "STOP DEMO • " + reason.take(80)
+  }
+
+  @Synchronized
+  fun disable(): Boolean = prefs.edit()
+    .putBoolean("enabled",false)
+    .putLong("pendingStake",0L)
+    .putString("status","MIZĂ AUTO OFF • FĂRĂ MODIFICĂRI")
+    .commit()
+
+  /** Called only when the native analyzer has proven the SAME OPEN/CLOSED
+   * order, two independent CLOSED detail reads, two empty-OPEN reads and
+   * an exact broker-account/pair/stake/time/payout match.
+   * It remains idempotent through process death or observer duplication.
+   */
+  @Synchronized
+  fun onVerifiedClosed(
+    accountKey: String, pair: String, positionId: String,
+    stakeCents: Long, payoutPercent: Int, netProfitCents: Long,
+    matchingOpenClosedAndZeroOpen: Boolean
+  ): String {
+    if (!isEnabled()) return "MIZĂ AUTO OFF"
+    if (!matchingOpenClosedAndZeroOpen ||
+        !accountKey.startsWith("QT_DEMO:") ||
+        accountKey!=prefs.getString("accountKey",null) ||
+        pair!=prefs.getString("pair",null) || positionId.isBlank() ||
+        payoutPercent!=PAYOUT_EXACT ||
+        isRiskStopped())
+      return stopUnsafe("ÎNCHIDERE/CONT/PAYOUT NECONFIRMATE")
+    val ids=prefs.getStringSet("seenClosedIds",emptySet()).orEmpty()
+    if(positionId in ids)return "DUPLICAT CLOSED • MIZĂ NESCHIMBATĂ"
+    val losses=prefs.getInt("losses",0)
+    val pending=prefs.getLong("pendingStake",0L)
+    if(losses !in 0 until STOP_AFTER_LOSSES || pending != 0L ||
+        stakeCents!=LADDER[losses])
+      return stopUnsafe("MIZĂ ANTERIOARĂ/EDITARE NECONFIRMATĂ")
+    val nextIds=(ids+positionId).toList().takeLast(100).toSet()
+    // The broker must report the WHOLE stake lost; a partial/unknown
+    // settlement is not Martingale LOSS evidence.
+    if(netProfitCents<0L && netProfitCents != -stakeCents)
+      return stopUnsafe("LOSS PARȚIAL/NECONFORM")
+    // A nominal WIN at exact 92% must settle at the known cent range.
+    if(netProfitCents>0L &&
+        netProfitCents !in ((stakeCents*92L)/100L)..((stakeCents*92L+99L)/100L))
+      return stopUnsafe("WIN/PAYOUT NECONFORM")
+    val edit=prefs.edit().putStringSet("seenClosedIds",nextIds)
+    if(netProfitCents<0L){
+      val nextLosses=losses+1
+      val cumLoss=(0 until nextLosses).sumOf{LADDER[it]}
+      if(nextLosses>=STOP_AFTER_LOSSES) {
+        edit.putInt("losses",nextLosses)
+          .putLong("cumulativeLoss",cumLoss)
+          .putLong("pendingStake",0L)
+          .putBoolean("riskStopped",true)
+          .putBoolean("enabled",false)
+          .putString("status","STOP • 10 LOSS DEMO • FĂRĂ ORDIN")
+        return if(edit.commit())"STOP • 10 LOSS CONFIRMATE" else "EROARE PERSISTENȚĂ • BLOCARE"
+      }
+      val next=LADDER[nextLosses]
+      if(cumLoss+next>PLANNED_BUDGET_CENTS ||
+          next>EDITOR_MAX_STAKE_CENTS){
+        edit.putInt("losses",nextLosses).putLong("cumulativeLoss",cumLoss)
+          .putBoolean("riskStopped",true)
+          .putBoolean("enabled",false)
+          .putLong("pendingStake",0L)
+          .putString("status","STOP • MIZĂ SAU BUGET DEPĂȘIT")
+        return if(edit.commit())"STOP • BUGET/LIMITĂ ANDROID" else "EROARE PERSISTENȚĂ • BLOCARE"
+      }
+      edit.putInt("losses",nextLosses)
+        .putLong("cumulativeLoss",cumLoss)
+        .putLong("pendingStake",next)
+        .putString("status","LOSS CONFIRMAT • EDITEZ MIZA ${next/100}.${(next%100).toString().padStart(2,'0')} USD")
+      return if(edit.commit())"LOSS CONFIRMAT • MIZĂ PREGĂTITĂ" else "EROARE PERSISTENȚĂ • BLOCARE"
+    }
+    if(netProfitCents==0L){
+      edit.putLong("pendingStake",LADDER[losses])
+        .putString("status","DRAW • REFAC ACEEAȘI MIZĂ")
+      return if(edit.commit())"DRAW CONFIRMAT • MIZĂ NEMĂRITĂ" else "EROARE PERSISTENȚĂ"
+    }
+    // Verified WIN finishes the series. Only the next fresh cycle resets.
+    edit.putInt("losses",0).putLong("cumulativeLoss",0L)
+      .putLong("pendingStake",LADDER[0])
+      .putString("status","WIN CONFIRMAT • RESET MIZĂ 1,09 USD")
+    return if(edit.commit())"WIN CONFIRMAT • RESET 1,09 USD" else "EROARE PERSISTENȚĂ"
+  }
+
+  @Synchronized
+  fun pending(accountKey:String, pair:String):Proposal {
+    if(!isEnabled())return Proposal(null,null,"MIZĂ AUTO OFF")
+    if(isRiskStopped())return Proposal(null,null,"STOP RISC • MIZĂ NEMODIFICATĂ")
+    if(accountKey!=prefs.getString("accountKey",null) ||
+        pair!=prefs.getString("pair",null))
+      return Proposal(null,null,"ALT CONT/PERECHE • FĂRĂ EDITARE")
+    val losses=prefs.getInt("losses",0)
+    val stake=prefs.getLong("pendingStake",0L)
+    val cumLoss=(0 until losses.coerceIn(0, STOP_AFTER_LOSSES))
+      .sumOf { LADDER[it] }
+    if(losses !in 0 until STOP_AFTER_LOSSES ||
+        stake==0L || stake!=LADDER[losses] ||
+        cumLoss+stake>PLANNED_BUDGET_CENTS ||
+        stake>EDITOR_MAX_STAKE_CENTS)
+      return Proposal(null,null,"NIMIC DE EDITAT SAU MIZĂ BLOCATĂ")
+    return Proposal(stake,pair,"AȘTEAPTĂ SET_TEXT ȘI RECITIRE BROKER")
+  }
+
+  @Synchronized
+  fun confirmEdited(accountKey:String, pair:String,
+    stakeCents:Long, readBackConfirmed:Boolean):Boolean {
+    val losses=prefs.getInt("losses",0)
+    // Fail closed before indexing the ladder or adding a sentinel value.
+    if(losses !in 0 until STOP_AFTER_LOSSES) return false
+    val cumLoss=(0 until losses).sumOf { LADDER[it] }
+    if(!readBackConfirmed || !isEnabled() ||
+        stakeCents<0L || cumLoss+stakeCents>PLANNED_BUDGET_CENTS ||
+        accountKey!=prefs.getString("accountKey",null) ||
+        pair!=prefs.getString("pair",null) ||
+        prefs.getLong("pendingStake",0L)!=stakeCents ||
+        stakeCents!=LADDER[prefs.getInt("losses",0)] ||
+        isRiskStopped())return false
+    return prefs.edit().putLong("pendingStake",0L)
+      .putLong("confirmedStake",stakeCents)
+      .putString("status","MIZĂ QT DEMO CONFIRMATĂ • FĂRĂ ORDIN")
+      .commit()
+  }
+
+  // 622: Older enableFromVerifiedDemo stored the pending base but not the
+  // initial zero level. Recognize ONLY an unused legacy base plan. A missing
+  // level after any recorded settlement or cumulative loss remains invalid.
+  private fun legacyUnusedBase622():Boolean =
+    !prefs.contains("losses") &&
+      prefs.getLong("cumulativeLoss",0L)==0L &&
+      prefs.getStringSet("seenClosedIds",emptySet()).orEmpty().isEmpty()
+
+  /**
+   * 577: Allow rotation among independently verified QT Demo FX pairs
+   * ONLY while the base $1.09 has been broker-confirmed and no loss
+   * recovery is active. This changes the permitted pair, NOT the stake.
+   *
+   * Caller MUST independently prove exact current pair, both 92% payouts,
+   * the $1.09 editable broker amount, account identity, no outstanding
+   * attempt and an empty position gate. This is not an order operation.
+   */
+  @Synchronized
+  fun rebindVerifiedBasePair(accountKey:String,newPair:String):Boolean {
+    if (!isEnabled() || isRiskStopped() ||
+        !accountKey.startsWith("QT_DEMO:") ||
+        accountKey != prefs.getString("accountKey",null) ||
+        newPair.isBlank() || newPair == "NEIDENTIFICAT" ||
+        (prefs.getInt("losses",-1) != 0 && !legacyUnusedBase622()))
+      return false
+    // Either the first $1.09 is still pending confirmation, or exactly
+    // $1.09 was previously confirmed. Never rebind a recovery stake.
+    val pendingBase = prefs.getLong("pendingStake",-1L) == 109L
+    val confirmedBase = prefs.getLong("pendingStake",-1L) == 0L &&
+      prefs.getLong("confirmedStake",-1L) == 109L
+    if (!pendingBase && !confirmedBase)
+      return false
+    val migrateUnusedBase622 = legacyUnusedBase622()
+    if (newPair == prefs.getString("pair",null) && !migrateUnusedBase622) return true
+    val edit622 = prefs.edit()
+      .putString("pair",newPair)
+      .putString("status","MIZĂ QT DEMO 1,09 USD • PERECHE CONFIRMATĂ")
+    if (migrateUnusedBase622) edit622.putInt("losses",0)
+    return edit622.commit()
+  }
+
+  /**
+   * 581: After a broker-verified LOSS (or DRAW) only, the next unpaid
+   * Martingale stake may follow the rotating FX list on a NEW, separately
+   * verified QT Demo pair. Caller must prove an empty order gate, no saved
+   * gesture and a current 92% BUY/SELL quote BEFORE invoking this method.
+   *
+   * Rebinding never edits the broker, changes ladder state, unlocks an
+   * attempt or authorizes an order. The exact new amount must still be
+   * written and re-read by the independent native broker preflight.
+   */
+  @Synchronized
+  fun rebindPendingRecoveryPair581(accountKey:String,newPair:String):Boolean {
+    if (!isEnabled() || isRiskStopped() ||
+        !accountKey.startsWith("QT_DEMO:") ||
+        accountKey!=prefs.getString("accountKey",null) ||
+        newPair.isBlank() || newPair=="NEIDENTIFICAT") return false
+    val losses=prefs.getInt("losses",-1)
+    if (losses !in 1 until STOP_AFTER_LOSSES) return false
+    val expected=LADDER[losses]
+    val spent=(0 until losses).sumOf{ LADDER[it] }
+    if (prefs.getLong("pendingStake",-1L)!=expected ||
+        expected>EDITOR_MAX_STAKE_CENTS ||
+        spent+expected>PLANNED_BUDGET_CENTS) return false
+    if (prefs.getString("pair",null)==newPair) return true
+    return prefs.edit()
+      .putString("pair",newPair)
+      .putString("status","MG LOSS " + losses +
+        " • EDITEZ " + (expected/100).toString() + "." +
+        (expected%100).toString().padStart(2,'0') + " USD • QT DEMO")
+      .commit()
+  }
+
+  /**
+   * 584: A confirmed post-LOSS stake can follow the next verified FX pair
+   * without recalculating MG, clearing a broker order, or editing Sumă.
+   * Caller must already have independently read the EXACT displayed stake,
+   * current QT DEMO pair, payout 92%, READY order gate and no prior attempt.
+   * A pending/unconfirmed stake is NEVER eligible.
+   */
+  @Synchronized
+  fun rebindConfirmedRecoveryPair584(
+    accountKey:String,newPair:String,brokerStakeCents:Long
+  ):Boolean {
+    if(!isEnabled() || isRiskStopped() ||
+        !accountKey.startsWith("QT_DEMO:") ||
+        accountKey!=prefs.getString("accountKey",null) ||
+        newPair.isBlank() || newPair=="NEIDENTIFICAT") return false
+    val losses=prefs.getInt("losses",-1)
+    if(losses !in 1 until STOP_AFTER_LOSSES) return false
+    val expected=LADDER[losses]
+    if(prefs.getLong("pendingStake",-1L)!=0L ||
+        prefs.getLong("confirmedStake",-1L)!=expected ||
+        brokerStakeCents!=expected) return false
+    val spent=(0 until losses).sumOf { LADDER[it] }
+    if(spent+expected>PLANNED_BUDGET_CENTS ||
+        expected>EDITOR_MAX_STAKE_CENTS)return false
+    if(prefs.getString("pair",null)==newPair)return true
+    return prefs.edit()
+      .putString("pair",newPair)
+      .putString("status","MG MIZĂ CONFIRMATĂ • PERECHE " + newPair.take(18))
+      .commit()
+  }
+
+  /**
+   * 583: Read-only explanation of an order rejected by the 565 plan.
+   * Never binds a currency, confirms a stake, changes MG levels, or
+   * grants an order. The existing permitsFreshDemoOrder is authoritative.
+   */
+  @Synchronized
+  fun preflightReason583(accountKey:String?,pair:String,stakeCents:Long?):String {
+    if(isRiskStopped()) return "STOP RISC DEMO"
+    if(!isEnabled()) return "PLAN MIZĂ AUTO OFF"
+    if(accountKey==null || !accountKey.startsWith("QT_DEMO:"))
+      return "CONT QT DEMO NECITIT"
+    if(accountKey!=prefs.getString("accountKey",null))
+      return "CONT DIFERIT DE PLAN"
+    if(pair.isBlank() || pair=="NEIDENTIFICAT")
+      return "PERECHE NECITITĂ"
+    if(pair!=prefs.getString("pair",null))
+      return "PERECHE PLAN DIFERITĂ"
+    val pending=prefs.getLong("pendingStake",-1L)
+    if(pending>0L) return "MIZĂ ÎN AȘTEPTARE • RECITIRE"
+    if(pending!=0L) return "STARE MIZĂ NECUNOSCUTĂ"
+    if(stakeCents==null || stakeCents<=0L)
+      return "SUMĂ BROKER NECITITĂ"
+    if(stakeCents!=prefs.getLong("confirmedStake",-1L))
+      return "SUMĂ BROKER DIFERITĂ"
+    val losses=prefs.getInt("losses",-1)
+    if(losses !in 0 until STOP_AFTER_LOSSES)
+      return "TREAPTĂ MG INVALIDĂ"
+    val spent=(0 until losses).sumOf { LADDER[it] }
+    if(stakeCents!=LADDER[losses] || spent+stakeCents>PLANNED_BUDGET_CENTS)
+      return "MIZĂ / BUGET NECORESPUNZĂTOR"
+    return "PLAN NECONFIRMAT • VERIFIC"
+  }
+
+  @Synchronized
+  fun permitsFreshDemoOrder(
+    accountKey:String,pair:String,stakeCents:Long
+  ):Boolean {
+    if(!isEnabled() || isRiskStopped() ||
+        prefs.getLong("pendingStake",-1L)!=0L ||
+        accountKey!=prefs.getString("accountKey",null) ||
+        pair!=prefs.getString("pair",null) ||
+        stakeCents!=prefs.getLong("confirmedStake",-1L))
+      return false
+    val losses=prefs.getInt("losses",0)
+    return losses in 0 until STOP_AFTER_LOSSES &&
+      (0 until losses).sumOf { LADDER[it] } + stakeCents <= PLANNED_BUDGET_CENTS &&
+      stakeCents==LADDER[losses]
+  }
+
+  @Synchronized
+  fun status():String=prefs.getString("status","MIZĂ AUTO OFF")
+    ?: "MIZĂ AUTO OFF"
+}
