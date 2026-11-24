@@ -2121,6 +2121,22 @@ class TouchTestService : AccessibilityService() {
       )
     }
 
+    // 625: Read the exact Quick Trading label from the foreground Demo
+    // menu if the floating panel or OCR obscures it. Never guess coordinates
+    // or select the generic Social/Trading footer. Navigation only.
+    fun tapExactDemoQuickAccessibility625(expectedBrokerPackage: String): Boolean {
+      if (realFxAccountVisible() || !demoFxAccountInForeground()) return false
+      val (svc,root,labels)=activeDemoHistoryNodes(false, foregroundOnly=true)
+        ?: return false
+      if (root.packageName?.toString()!=expectedBrokerPackage ||
+          svc.rootInActiveWindow?.packageName?.toString()!=expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage)) return false
+      val name=Regex("""(?i)^(?:Tranzac[țt]ionare\s+rapid[ăa]|Quick\s+Trading|Quick\s+Trade)$""")
+      return clickExactDemoNavigationLabel(
+        svc,root,labels,name,0.07f,0.93f,0.20f,0.90f
+      )
+    }
+
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
       cachedDemoVerifiedOnChart: Boolean = false,
       ocrVerifiedEmptyOpenTab: Boolean = false
