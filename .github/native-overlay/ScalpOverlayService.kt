@@ -385,6 +385,7 @@ class ScalpOverlayService : Service() {
   // It requires two independent OCR reads of the selected Demo history tab.
   private var lastMoreAccessFallback596 = 0L
   private var quickAccessMenuAttempt625 = 0L
+  private var quickMenuUncoveredFor626 = 0L
   private var lastHistoryNavigationDiag596 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
@@ -2455,6 +2456,26 @@ class ScalpOverlayService : Service() {
           },400L)
           return dispatched
         }
+        // 626: The compact More menu is directly beneath the user's pinned
+        // overlay on G24. A 400ms gesture hide is too short for two OCR
+        // samples. Uncover the menu once per observed navigation attempt
+        // for at most 3 seconds; the independent watchdog restores the
+        // same panel, without restarting capture or clearing an order.
+        if (navPkg595 != null && nonChartSafety595 &&
+            moreNavAttemptAt595 > 0L &&
+            recoveryNow595 - moreNavAttemptAt595 in 0L..20_000L &&
+            quickMenuUncoveredFor626 != moreNavAttemptAt595 &&
+            quickEntrySamples595 < 2) {
+          val menuPanel626 = overlayView
+          if (menuPanel626 != null && menuPanel626.visibility == View.VISIBLE) {
+            quickMenuUncoveredFor626 = moreNavAttemptAt595
+            menuPanel626.visibility = View.INVISIBLE
+            boundHistoryPanelHide623(menuPanel626, 3_000L)
+            touchProbeStatus?.text = "626 • CITESC MENIUL 3S • FĂRĂ ORDIN"
+            mainHandler.postDelayed(this, 900L)
+            return
+          }
+        }
         if(navPkg595 != null && nonChartSafety595 &&
            quickEntrySamples595 >= 2 &&
            quickEntryPkg595 == navPkg595 &&
@@ -2488,6 +2509,7 @@ class ScalpOverlayService : Service() {
         if (navPkg595 != null && nonChartSafety595 &&
             moreNavAttemptAt595 > 0L &&
             recoveryNow595 - moreNavAttemptAt595 in 1_500L..20_000L &&
+            quickMenuUncoveredFor626 == moreNavAttemptAt595 &&
             quickAccessMenuAttempt625 != moreNavAttemptAt595 &&
             (quickNavAttemptAt595 == 0L || quickNavAttemptAt595 < moreNavAttemptAt595)) {
           val quickAccess625 = navGesture595 {
