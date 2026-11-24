@@ -50,6 +50,7 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
       .putBoolean("enabled",true)
       .putString("accountKey",accountKey)
       .putString("pair",pair)
+      .putInt("losses",losses) // 622: persist the already validated level, including the initial zero
       .putLong("pendingStake",expected)
       .putString("status","MIZĂ QT DEMO ${expected/100}.${(expected%100).toString().padStart(2,'0')} USD • AȘTEAPTĂ CONFIRMARE")
       .commit()
@@ -185,6 +186,14 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
       .commit()
   }
 
+  // 622: Older enableFromVerifiedDemo stored the pending base but not the
+  // initial zero level. Recognize ONLY an unused legacy base plan. A missing
+  // level after any recorded settlement or cumulative loss remains invalid.
+  private fun legacyUnusedBase622():Boolean =
+    !prefs.contains("losses") &&
+      prefs.getLong("cumulativeLoss",0L)==0L &&
+      prefs.getStringSet("seenClosedIds",emptySet()).orEmpty().isEmpty()
+
   /**
    * 577: Allow rotation among independently verified QT Demo FX pairs
    * ONLY while the base $1.09 has been broker-confirmed and no loss
@@ -200,7 +209,7 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
         !accountKey.startsWith("QT_DEMO:") ||
         accountKey != prefs.getString("accountKey",null) ||
         newPair.isBlank() || newPair == "NEIDENTIFICAT" ||
-        prefs.getInt("losses",-1) != 0)
+        (prefs.getInt("losses",-1) != 0 && !legacyUnusedBase622()))
       return false
     // Either the first $1.09 is still pending confirmation, or exactly
     // $1.09 was previously confirmed. Never rebind a recovery stake.
@@ -209,11 +218,13 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
       prefs.getLong("confirmedStake",-1L) == 109L
     if (!pendingBase && !confirmedBase)
       return false
-    if (newPair == prefs.getString("pair",null)) return true
-    return prefs.edit()
+    val migrateUnusedBase622 = legacyUnusedBase622()
+    if (newPair == prefs.getString("pair",null) && !migrateUnusedBase622) return true
+    val edit622 = prefs.edit()
       .putString("pair",newPair)
       .putString("status","MIZĂ QT DEMO 1,09 USD • PERECHE CONFIRMATĂ")
-      .commit()
+    if (migrateUnusedBase622) edit622.putInt("losses",0)
+    return edit622.commit()
   }
 
   /**
