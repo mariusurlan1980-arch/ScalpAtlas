@@ -2635,11 +2635,31 @@ class ScalpOverlayService : Service() {
           !realAccountSafetyStop517 &&
           TouchTestService.demoFxAccountInForeground() &&
           lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT")
+        // 624: A genuine expired persisted Demo attempt may request the
+        // bounded history review without another MG button press. Require
+        // fresh two-frame chart proof and the exact stored broker package.
+        // This is navigation-only, never settlement or permission to order.
+        val expiredDemoPackage624 = TouchTestService.activeDemoExecutorPackageForReview()
+        val verifiedExpiredReview624 = afterExpiry592 &&
+          expiredDemoPackage624 != null &&
+          expiredDemoPackage624 == attemptPrefs592.getString("expectedPackage429", null) &&
+          !attemptPrefs592.getString("expectedPair429", null).isNullOrBlank() &&
+          attemptPrefs592.getLong("expectedStakeCents429", -1L) > 0L &&
+          attemptPrefs592.getInt("expectedPayout429", -1) == 92 &&
+          chartProofSamples595 >= 2 &&
+          System.currentTimeMillis() - chartProofAt595 in 0L..5_000L &&
+          !nonChartSafety595 && !fxRotationNavigating &&
+          !closedHistoryInspectionInProgress && !realAccountSafetyStop517 &&
+          diagnostic.contains("QT DEMO IDENTIFICAT") &&
+          TouchTestService.demoFxAccountInForeground() &&
+          !TouchTestService.realFxAccountVisible() &&
+          !TouchTestService.fxListVisible(false) &&
+          TouchTestService.priorDemoGestureCooldownComplete()
         val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&
           // 610: only an explicit, short-lived MG ON request can bootstrap
           // the FIRST read-only history visit. Normal 604 chart protection
           // stays intact without it. History/navigation cannot submit trades.
-          (historyFresh592 || brokerChartReturnProven604 || userReview610) &&
+          (historyFresh592 || brokerChartReturnProven604 || userReview610 || verifiedExpiredReview624) &&
           !shuttingDown && !realAccountSafetyStop517 &&
           mediaProjection != null && TouchTestService.ready() &&
           // 592: no history visit while the 5-minute DEMO trade is active;
@@ -7157,7 +7177,7 @@ class ScalpOverlayService : Service() {
       .find(content)?.groupValues?.getOrNull(1) ?: return
     val side437 = if (directionLabel437.uppercase().startsWith("VINDE") ||
         directionLabel437.uppercase() == "SELL") "SELL" else "BUY"
-    val netRaw = Regex("""(?i)\bProfit\s*:\s*([+-]\s*\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
+    val netRaw = Regex("""(?i)\bProfit\s*:\s*([+-]?\s*\$?\s*\d{1,5}(?:[.,]\d{1,2})?)(?![\d.,])""")
       .find(content)?.groupValues?.getOrNull(1)
     val paidRaw = Regex("""(?i)\bPlat[ăa]\s*:\s*(\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
       .find(content)?.groupValues?.getOrNull(1)
@@ -7182,6 +7202,10 @@ class ScalpOverlayService : Service() {
         netRaw == null || paidRaw == null) return
     val paid = exactMoneyCents437(paidRaw) ?: return
     val net = exactMoneyCents437(netRaw) ?: return
+    // 624: a broker-labelled unsigned zero can represent DRAW. Nonzero
+    // P/L still requires an explicit sign; all receipt guards remain.
+    if (net != 0L && !netRaw.trim().startsWith("+") &&
+        !netRaw.trim().startsWith("-")) return
     // Pocket Option displays "$1", "$1.92", "+$0.92" together on a
     // detail header. Only the independently labelled payout MINUS the
     // signed profit can identify which visible amount was the stake.
