@@ -9,7 +9,7 @@ const chartExit=service.split('private fun returnToChartAfterReview458(')[1].spl
 
 test('610 chart-first default, with explicit short-lived user-authorized history exception',()=>{
   assert.match(monitor,/val userReview610 = historyReviewRequestedAt610 > 0L &&/);
-  assert.match(monitor,/val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&[\s\S]*?\(historyFresh592 \|\| brokerChartReturnProven604 \|\| userReview610\) &&/);
+  assert.match(monitor,/val pendingAutoHistory589 = CHART_ONLY_DEMO_462 &&[\s\S]*?\(historyFresh592 \|\| brokerChartReturnProven604 \|\| userReview610 \|\| verifiedExpiredReview624\) &&/);
   assert.match(monitor,/nowElapsed592 - historyReviewRequestedAt610 in 0L\.\.90_000L/);
   assert.match(monitor,/pendingStakeOptIn571 &&/);
   assert.match(monitor,/if \(CHART_ONLY_DEMO_462 && !pendingAutoHistory589\) \{/);
@@ -37,4 +37,14 @@ test('604 distinct signed Motorola APK',()=>{
   assert.match(workflow,/versionCode'\]=612/);
   assert.match(workflow,/ScalpAtlas-612-OVERLAY-QT-DEMO-G24\.apk/);
   assert.match(workflow,/test_604_protect_chart_from_history\.mjs/);
+});
+
+test('624 autonomous history request only follows an exact expired Demo attempt and fresh verified chart',()=>{
+ const gate=monitor.split('val verifiedExpiredReview624 =')[1].split('val pendingAutoHistory589 =')[0];
+ for(const x of ['afterExpiry592','expiredDemoPackage624 == attemptPrefs592.getString("expectedPackage429", null)','expectedPair429','expectedStakeCents429','expectedPayout429','chartProofSamples595 >= 2','!nonChartSafety595','!fxRotationNavigating','!realAccountSafetyStop517','TouchTestService.demoFxAccountInForeground()','!TouchTestService.realFxAccountVisible()','!TouchTestService.fxListVisible(false)','TouchTestService.priorDemoGestureCooldownComplete()']) assert.ok(gate.includes(x),x);
+ assert.doesNotMatch(gate,/putBoolean|dispatchGesture|performAction/);
+});
+test('624 unsigned broker profit is accepted only for exact zero with other receipt proofs intact',()=>{
+ const detail=service.split('private fun recordClosedDetailOcr437(')[1].split('private fun recordClosedListRowOcr438(')[0];
+ for(const x of ['net != 0L && !netRaw.trim().startsWith("+")','!netRaw.trim().startsWith("-")','val stake = paid - net','paid != stake + net','ids.size != 1','candidate == firstClosedDetail437']) assert.ok(detail.includes(x),x);
 });
