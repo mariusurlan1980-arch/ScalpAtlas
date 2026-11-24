@@ -5079,7 +5079,7 @@ class ScalpOverlayService : Service() {
             pendingHistoryRetryScheduled590 = true
             after(3_000L) {
               pendingHistoryRetryScheduled590 = false
-              if (!shuttingDown && running) pauseForTrade516()
+              if (!shuttingDown && running) seekChart() // 630: resume the scanner through its normal account/chart guards
             }
           }
           return true
@@ -5212,6 +5212,7 @@ class ScalpOverlayService : Service() {
       }
 
       fun stop(message: String) {
+        pendingHistoryRetryScheduled590 = false // 630: a cancelled retry cannot keep the next LIVE session paused
         running = false
         fxRotationNavigating = false
         fxRotationTradePaused516 = false
@@ -5317,6 +5318,7 @@ class ScalpOverlayService : Service() {
         lastChartPair = null
         forward = true
         running = true
+        pendingHistoryRetryScheduled590 = false
         fxRotationTradePaused516 = false
         tradePauseStart516 = 0L
         tradeBadgePositiveReads516 = 0
@@ -9910,7 +9912,7 @@ class ScalpOverlayService : Service() {
       val persistentRobotStatus513 = if (!robotArmedContinuously513 ||
           mediaProjection == null || shuttingDown) null else when {
         realAccountIdentified -> "🤖 OPRIT • QT REAL • ORDINE BLOCATE"
-        realAccountSafetyStop517 -> "🤖 OPRIT • PORNEȘTE LIVE PE QT DEMO"
+        realAccountSafetyStop517 -> "🤖 OPRIT • PROTECȚIE CONT • RESTART LIVE DEMO"
         accountRecheckPending || ambiguousAccountHold629 -> "🤖 CONT ÎN VERIFICARE • ORDINE ÎN PAUZĂ"
         !TouchTestService.ready() -> "🤖 AȘTEPT ACCESIBILITATEA"
         // 574: show the live opt-in blocker, not a stale generic "MIZĂ OFF"
@@ -10094,7 +10096,8 @@ class ScalpOverlayService : Service() {
           else -> lastTrendReject549.take(13)
         }
         val reason546 = when {
-          realAccountIdentified || realAccountSafetyStop517 -> "QT REAL: ORDINE BLOCATE"
+          realAccountIdentified -> "QT REAL: ORDINE BLOCATE"
+          realAccountSafetyStop517 -> "STOP PROTECȚIE ANTERIOR • FĂRĂ ORDIN"
           !demoAccountIdentified -> "CONT DEMO NECONFIRMAT"
           manualDemoDiagnosticActive552 ->
             "TEST MANUAL ÎN PAUZĂ • AȘTEPT VERIFICAREA ÎNCHIDERII"
