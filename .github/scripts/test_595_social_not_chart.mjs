@@ -120,3 +120,11 @@ test('597 CLOSED detail retries are bounded and never bypass broker settlement',
  assert.match(proof,/brokerOpenTimeMatchesAttempt437/);
  assert.match(proof,/closed.positionId/);
 });
+
+test('625 exact Quick Trading fallback uses only the foreground Demo menu and preserves chart proof',()=>{
+ const fn=touch.split('fun tapExactDemoQuickAccessibility625(')[1].split('fun inspectExplicitEmptyOpenDemoTabReadOnly(')[0];
+ for(const x of ['realFxAccountVisible()','demoFxAccountInForeground()','foregroundOnly=true','BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage)','clickExactDemoNavigationLabel(']) assert.ok(fn.includes(x),x);
+ assert.doesNotMatch(fn,/GLOBAL_ACTION_BACK|pressVerifiedDemoStakeOnce429|onVerifiedClosed/);
+ for(const x of ['quickAccessMenuAttempt625 != moreNavAttemptAt595','recoveryNow595 - moreNavAttemptAt595 in 1_500L..20_000L','TouchTestService.tapExactDemoQuickAccessibility625(navPkg595)','quickAccessMenuAttempt625 = moreNavAttemptAt595','moreNavAttemptAt595 < historyPageFirstSeenAt603']) assert.ok(monitor.includes(x),x);
+ assert.match(ocr,/chartProofSamples595>=2/);
+});
