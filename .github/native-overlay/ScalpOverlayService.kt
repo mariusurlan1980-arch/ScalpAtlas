@@ -3968,7 +3968,7 @@ class ScalpOverlayService : Service() {
         scannedEligiblePairs.add(pair)
         // 503: restore the requested 30-second interval for EVERY pair.
         // This is a rotation timer, NOT a relaxation of SHOCK rules.
-        dwell(pair, android.os.SystemClock.elapsedRealtime() + 20_000L, 12)
+        dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
@@ -7287,6 +7287,8 @@ class ScalpOverlayService : Service() {
             when {
               CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
+              CHART_ONLY_DEMO_462 && stake429 != 109L ->
+                "RECUPERARE 553 • MIZĂ DEMO DE BAZĂ 1,09 USD NECESARĂ"
               CHART_ONLY_DEMO_462 &&
                 !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
                 "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"
