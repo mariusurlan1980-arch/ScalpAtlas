@@ -386,6 +386,10 @@ class ScalpOverlayService : Service() {
   private var lastMoreAccessFallback596 = 0L
   private var quickAccessMenuAttempt625 = 0L
   private var quickMenuUncoveredFor626 = 0L
+  private var historyBackVisit627 = 0L
+  private var historyBackCount627 = 0
+  private var historyBackAt627 = 0L
+  private var historyBackWall627 = 0L
   private var lastHistoryNavigationDiag596 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
@@ -1592,6 +1596,36 @@ class ScalpOverlayService : Service() {
       ?: return "595 • QT DEMO NECONFIRMAT"
     if (TouchTestService.realFxAccountVisible())
       return "595 • QT REAL DETECTAT • FĂRĂ ATINGERE"
+    // 627: The actual G24 More menu contains history/express items,
+    // not Quick Trading. Prefer Android Back from verified Demo history.
+    // At most two actions per visit (the first may close an open menu).
+    // Each retry needs fresh history evidence captured AFTER the prior Back.
+    val now627 = android.os.SystemClock.elapsedRealtime()
+    if (historyPageFirstSeenAt603 > 0L &&
+        now627 - historyPageFirstSeenAt603 >= 3_000L) {
+      if (historyBackVisit627 != historyPageFirstSeenAt603) {
+        historyBackVisit627 = historyPageFirstSeenAt603
+        historyBackCount627 = 0
+        historyBackAt627 = 0L
+        historyBackWall627 = 0L
+      }
+      if (historyBackCount627 >= 2)
+        return "627 • REVENIRE NECONFIRMATĂ • FĂRĂ ORDIN"
+      if (historyBackCount627 > 0 &&
+          (now627 - historyBackAt627 < 1_500L ||
+           historyPageLastSeen433 <= historyBackWall627))
+        return "627 • VERIFIC DUPĂ ÎNAPOI • FĂRĂ ORDIN"
+      if (TouchTestService.backFromVerifiedDemoHistory627(pkg595)) {
+        historyBackCount627++
+        historyBackAt627 = now627
+        historyBackWall627 = System.currentTimeMillis()
+        nonChartSafety595 = true
+        chartProofSamples595 = 0
+        quickNavAttemptAt595 = now627
+        historyReturnPauseUntil457 = now627 + 20_000L
+        return "627 • ÎNAPOI TRIMIS • VERIFIC GRAFIC M5"
+      }
+    }
     if (moreFooterSamples595 < 2 ||
         moreFooterPkg595 != pkg595 ||
         System.currentTimeMillis() - moreFooterAt595 !in 0L..5_000L)
@@ -2462,6 +2496,7 @@ class ScalpOverlayService : Service() {
         // for at most 3 seconds; the independent watchdog restores the
         // same panel, without restarting capture or clearing an order.
         if (navPkg595 != null && nonChartSafety595 &&
+            !(historyBackVisit627 == historyPageFirstSeenAt603 && historyBackCount627 > 0) &&
             moreNavAttemptAt595 > 0L &&
             recoveryNow595 - moreNavAttemptAt595 in 0L..20_000L &&
             quickMenuUncoveredFor626 != moreNavAttemptAt595 &&
@@ -2548,7 +2583,8 @@ class ScalpOverlayService : Service() {
           lastAutoDemoHistoryNavStatus = "600 • REVENIRE GRAFIC • " + chartExit600
           lastAutoDemoHistoryNavStatusAt = recoveryNow595
           touchProbeStatus?.text = lastAutoDemoHistoryNavStatus.take(110)
-          if (chartExit600.contains("MAI MULTE DESCHIS") ||
+          if (chartExit600.startsWith("627 •") ||
+              chartExit600.contains("MAI MULTE DESCHIS") ||
               chartExit600.contains("AȘTEPT MENIUL")) {
             mainHandler.postDelayed(this, 2_500L)
             return
