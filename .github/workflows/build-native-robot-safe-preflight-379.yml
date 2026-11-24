@@ -66,7 +66,12 @@ jobs:
           assert 'groupedUsd615' in t and 'balanceFormat497.matchEntire(normalized615)' in t
           assert 'balanceValues497.size != 1' in t
           assert 'balanceValues497.single() < verifiedStakeCents' in t
-          assert 'MG • CALCUL OFF' in s
+          assert 'MG • AȘTEPT MIZĂ DEMO VERIFICATĂ' in s
+          init=s.split('private fun maybeInitializeDemoCalculation616()',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
+          for guard in ['TouchTestService.demoFxAccountInForeground()', 'TouchTestService.realFxAccountVisible()', 'TradePositionGate.State.READY', 'getBoolean("attempted",false)', 'readBrokerDemoOrder476(pair) != (109L to 92)']:
+              assert guard in init, guard
+          assert 'setVerifiedDemoRecoveryStakeOnBroker(' not in init
+          assert 'dispatchGesture(' not in init
           PY614
 
       - name: Reuse existing overlay source without conflicting legacy patch
