@@ -338,6 +338,10 @@ class ScalpOverlayService : Service() {
   private val demoRecoveryLedger by lazy {
     DemoRecoveryLedger(getSharedPreferences("scalp_atlas_demo_recovery_421", Context.MODE_PRIVATE))
   }
+  // 614: Separate recovery-plan store. Do not inherit an old enabled ladder.
+  private val mgRecovery614 by lazy {
+    DemoAutoStakePlan565(getSharedPreferences("scalp_atlas_mg_recovery_614", Context.MODE_PRIVATE))
+  }
   private var autoDemoLastPreflightAt = 0L
   // Read-only reason shown even while the advanced diagnostics are hidden.
   private var lastShockOrderStatus: String? = null
@@ -1221,6 +1225,18 @@ class ScalpOverlayService : Service() {
         )
     if (!ledgerUpdated) return "463 • REGISTRU DEMO NU ACCEPTĂ DOVADA • BLOCAT"
 
+    // 614: A plan can only consume the matching fully verified broker receipt.
+    // This stage records the proposal, not an automatic amount edit or order.
+    if (mgRecovery614.isEnabled()) {
+      val status = mgRecovery614.onVerifiedClosed(
+        ledgerKey, closed.pair, closed.positionId, closed.stakeCents,
+        closed.payoutPercent, closed.netProfitCents, true)
+      val durable = status.startsWith("LOSS CONFIRMAT") ||
+        status.startsWith("WIN CONFIRMAT") || status.startsWith("DRAW CONFIRMAT") ||
+        status.startsWith("DUPLICAT CLOSED") ||
+        (status.startsWith("STOP") && mgRecovery614.isRiskStopped())
+      if (!durable) return "614 • REZULTAT MG NESALVAT • FĂRĂ ORDIN"
+    }
     // Exact proof and ledger are durable before clearing the gesture flag.
     val cleared = prefs.edit().putBoolean("attempted", false)
       .remove("expectedPair429").remove("expectedPackage429")
@@ -1241,7 +1257,7 @@ class ScalpOverlayService : Service() {
     verifiedClosedDetailAt437 = 0L
     // A verified LOSS changes the ledger, but CHART-ONLY must never run a
     // Martingale progression or submit an untested larger stake automatically.
-    val canRearmBase = gateReady && (manualStake || (!demoRecoveryLedger.isRecovering429() &&
+    val canRearmBase = gateReady && !mgRecovery614.isEnabled() && !mgRecovery614.isRiskStopped() && (manualStake || (!demoRecoveryLedger.isRecovering429() &&
       demoRecoveryLedger.quote(payout).stakeCents == 100L))
     autoDemoSessionRequested = canRearmBase
     autoDemoSessionConsumed = !canRearmBase
@@ -1272,6 +1288,8 @@ class ScalpOverlayService : Service() {
   ): String? {
     val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
     if (!autoDemoSessionConsumed) return null
+    if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())
+      return "614 • MG DEMO • AȘTEPT REZULTAT VERIFICAT"
     if (getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE)
         .getBoolean("attempted", false))
       return "464 • TEST SELL VECHI NECONFIRMAT"
@@ -1482,6 +1500,8 @@ class ScalpOverlayService : Service() {
             maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
           else null
           val effectiveStatus464 = passiveStatus463 ?: pilotStatus464
+          if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())
+            martingaleStatusText?.text = mgRecovery614.status()
           demoOrderVerificationReason = effectiveStatus464.takeIf { autoDemoSessionConsumed }
           if (effectiveStatus464 != null) {
             lastAutoDemoHistoryNavStatus = effectiveStatus464
@@ -4675,6 +4695,33 @@ class ScalpOverlayService : Service() {
       setTextColor(Color.rgb(75, 100, 121))
       setPadding(dp(3), dp(1), dp(3), dp(1))
       contentDescription = "Martingale demo: miză calculată, niciodată ordin confirmat"
+      if (CHART_ONLY_DEMO_462) {
+        text = if (mgRecovery614.isEnabled()) mgRecovery614.status() else "MG DEMO • CALCUL OFF"
+        setOnClickListener {
+          if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped()) {
+            text = mgRecovery614.status()
+            return@setOnClickListener
+          }
+          val now = System.currentTimeMillis()
+          val pair = currentPair(now)
+          val pkg = TouchTestService.activeDemoExecutorPackageForReview()
+          if (mediaProjection == null || !TouchTestService.ready() ||
+              realAccountSafetyStop517 || TouchTestService.realFxAccountVisible() ||
+              !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
+              !pairReady(now) || fxRotationNavigating || historyPageVisible433 ||
+              tradePositionGate.state() != TradePositionGate.State.READY ||
+              getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) ||
+              getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) ||
+              pkg == null || TouchTestService.readBrokerDemoOrder476(pair) != (109L to 92)) {
+            text = "MG • NECESITĂ QT DEMO / MIZĂ 1,09 / FĂRĂ ORDIN"
+            return@setOnClickListener
+          }
+          val key = "QT_DEMO:" + pkg
+          val ok = mgRecovery614.enableFromVerifiedDemo(key,pair) &&
+            mgRecovery614.confirmEdited(key,pair,109L,true)
+          text = if (ok) "MG DEMO • CALCUL ON" else "MG • PLAN NECONFIRMAT"
+        }
+      }
     }
     martingaleStatusText?.let { root.addView(it) }
     // 430: The manual "TEST SELL DEMO 1$" control has been removed from
@@ -4702,7 +4749,7 @@ class ScalpOverlayService : Service() {
         dp(if (minimized) 4 else 8)
       )
       martingaleStatusText?.visibility =
-        if (minimized || CHART_ONLY_DEMO_462) View.GONE else View.VISIBLE
+        if (CHART_ONLY_DEMO_462 || !minimized) View.VISIBLE else View.GONE
       probeStatus.maxLines = if (minimized) 3 else 3
       probeStatus.setPadding(dp(2), dp(1), dp(2), dp(1))
       val rotationParams499 = fxButton.layoutParams
@@ -7287,6 +7334,12 @@ class ScalpOverlayService : Service() {
             when {
               CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
+              CHART_ONLY_DEMO_462 && mgRecovery614.isRiskStopped() ->
+                "BLOCAT: STOP MG DEMO"
+              CHART_ONLY_DEMO_462 && mgRecovery614.isEnabled() &&
+                (package429 == null || stake429 == null ||
+                  !mgRecovery614.permitsFreshDemoOrder("QT_DEMO:" + package429, tradePair429, stake429)) ->
+                "BLOCAT: PROPUNERE MG DEMO • FĂRĂ EDITARE AUTOMATĂ"
               CHART_ONLY_DEMO_462 && stake429 != 109L ->
                 "RECUPERARE 553 • MIZĂ DEMO DE BAZĂ 1,09 USD NECESARĂ"
               CHART_ONLY_DEMO_462 &&
