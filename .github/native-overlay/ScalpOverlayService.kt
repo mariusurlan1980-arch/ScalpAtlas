@@ -384,6 +384,7 @@ class ScalpOverlayService : Service() {
   // 596: a page-specific, throttled Accessibility fallback for More.
   // It requires two independent OCR reads of the selected Demo history tab.
   private var lastMoreAccessFallback596 = 0L
+  private var quickAccessMenuAttempt625 = 0L
   private var lastHistoryNavigationDiag596 = 0L
   private var historyReturnPauseUntil457 = 0L
   @Volatile private var perspectiveOcrAt457 = 0L
@@ -2480,6 +2481,29 @@ class ScalpOverlayService : Service() {
           mainHandler.postDelayed(this,2500L)
           return
         }
+        // 625: More may open a compact menu underneath the pinned panel.
+        // Try the exact accessible Quick Trading label once per menu visit,
+        // only in the same foreground QT Demo broker. Never toggle More
+        // again merely because its label is still visible.
+        if (navPkg595 != null && nonChartSafety595 &&
+            moreNavAttemptAt595 > 0L &&
+            recoveryNow595 - moreNavAttemptAt595 in 1_500L..20_000L &&
+            quickAccessMenuAttempt625 != moreNavAttemptAt595 &&
+            (quickNavAttemptAt595 == 0L || quickNavAttemptAt595 < moreNavAttemptAt595)) {
+          val quickAccess625 = navGesture595 {
+            TouchTestService.tapExactDemoQuickAccessibility625(navPkg595)
+          }
+          if (quickAccess625) {
+            quickAccessMenuAttempt625 = moreNavAttemptAt595
+            quickNavAttemptAt595 = recoveryNow595
+            quickEntrySamples595 = 0
+            lastAutoDemoHistoryNavStatus = "625 • TRADING RAPID SELECTAT • VERIFIC M5"
+            lastAutoDemoHistoryNavStatusAt = recoveryNow595
+            touchProbeStatus?.text = lastAutoDemoHistoryNavStatus
+            mainHandler.postDelayed(this, 2_500L)
+            return
+          }
+        }
         // 600: The three-second inspection is over. Continue ONLY
         // verified chart-return navigation, not trade-history analysis.
         // A pending unknown order remains locked for both AUTO and MG.
@@ -2537,7 +2561,8 @@ class ScalpOverlayService : Service() {
            moreFooterSamples595 >= 2 &&
            moreFooterPkg595 == navPkg595 &&
            System.currentTimeMillis()-moreFooterAt595 in 0L..5_000L &&
-           recoveryNow595-moreNavAttemptAt595 !in 0L..10_000L) {
+           recoveryNow595-moreNavAttemptAt595 !in 0L..10_000L &&
+           (moreNavAttemptAt595 == 0L || moreNavAttemptAt595 < historyPageFirstSeenAt603)) {
           val clickMore595=navGesture595 {
             TouchTestService.tapVerifiedDemoMoreFooter595(
               navPkg595, moreFooterX595, moreFooterY595,
@@ -2569,6 +2594,7 @@ class ScalpOverlayService : Service() {
             closedTabVisualConsecutive >= 2 &&
             System.currentTimeMillis()-lastClosedTabVisualAt in 0L..5_000L))
         if (navPkg595 != null && historySelected596 &&
+            (moreNavAttemptAt595 == 0L || moreNavAttemptAt595 < historyPageFirstSeenAt603) &&
             moreFooterSamples595 < 2 &&
             recoveryNow595-lastMoreAccessFallback596 !in 0L..15_000L) {
           lastMoreAccessFallback596=recoveryNow595
