@@ -497,6 +497,8 @@ class ScalpOverlayService : Service() {
   @Volatile private var marketLabelAmbiguous = false
   @Volatile private var marketStableAt = 0L
   @Volatile private var marketEpoch = 0L
+  // 620: reject asynchronous pair OCR from before the verified chart switch.
+  @Volatile private var rotationPairCaptureAfter620 = 0L
   private var pendingMarket: String? = null
   private var pendingMarketCount = 0
   private var pendingMarketAt = 0L
@@ -660,6 +662,20 @@ class ScalpOverlayService : Service() {
     // They expire inside handleResult(), not from instrument switching.
     resetVisualBaseline()
     marketEpoch += 1L
+  }
+
+  // Invalidate only the pair evidence; never clear persisted position locks.
+  private fun invalidateRotationPairEvidence620(at: Long) {
+    rotationPairCaptureAfter620 = at
+    marketVerified = false
+    marketLabelAmbiguous = false
+    latestMarket = "NEIDENTIFICAT"
+    latestMarketAt = 0L
+    marketStableAt = 0L
+    pendingMarket = null
+    pendingMarketCount = 0
+    pendingMarketAt = 0L
+    pendingMarketSince = 0L
   }
 
   private fun currentPair(now: Long): String =
@@ -5166,6 +5182,8 @@ class ScalpOverlayService : Service() {
         autoDemoMarket = null
         autoDemoExpiry = 0L
         autoDemoLastPreflightAt = 0L
+        autoDemoLastPreflightReason = "ROTAȚIE • AȘTEPT PERECHE NOUĂ"
+        invalidateRotationPairEvidence620(System.currentTimeMillis())
         clearOnInstrumentChange()
       }
 
@@ -5312,6 +5330,13 @@ class ScalpOverlayService : Service() {
             lastConfirmedEarly554 = false
             lastConfirmedShockDurationMs = 0L
           }
+        }
+        if (fxRotationNavigating || lastChartPair != pair) {
+          // The selector and live chart have now agreed. Only frames captured
+          // AFTER this boundary can count toward the two-read OCR proof.
+          invalidateRotationPairEvidence620(System.currentTimeMillis())
+          autoDemoLastPreflightAt = 0L
+          autoDemoLastPreflightReason = "RECITESC " + pair + " • OCR 0/2"
         }
         lastChartPair = pair
         recoveryAttempts = 0
@@ -6834,7 +6859,9 @@ class ScalpOverlayService : Service() {
    */
   private fun recordVisiblePair(foundPair: String, observedAt: Long) {
     // 433: Never accept a CLOSED trade row as the active market.
-    if (historyPageVisible433) return
+    if (historyPageVisible433 || fxRotationNavigating ||
+        observedAt < rotationPairCaptureAfter620 ||
+        observedAt <= pendingMarketAt) return
     val sameBase = foundPair.removeSuffix(" OTC") == latestMarket.removeSuffix(" OTC")
     val ambiguousMode = marketVerified && sameBase && foundPair != latestMarket
     if (foundPair != latestMarket && marketVerified) {
@@ -6930,7 +6957,7 @@ class ScalpOverlayService : Service() {
             else -> null // conflict: still no signal or broker order
           }
           if (verifiedPair548 != null)
-            recordVisiblePair(verifiedPair548, System.currentTimeMillis())
+            recordVisiblePair(verifiedPair548, now)
         }
       }
       .addOnCompleteListener {
@@ -7841,7 +7868,8 @@ class ScalpOverlayService : Service() {
         // 433: On history, M5 and the active FX selector do not exist.
         // Continue the independent OPEN/CLOSED evidence checker above,
         // but NEVER parse past trade rows as live chart identity.
-        if (historyPageVisible433) return@addOnSuccessListener
+        if (historyPageVisible433 || fxRotationNavigating ||
+            now < rotationPairCaptureAfter620) return@addOnSuccessListener
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
         // OTC and ordinary charts using the same currency symbols must NOT
@@ -7887,7 +7915,7 @@ class ScalpOverlayService : Service() {
         // Reject conflicting instrument identities. If only the tiny header
         // was missed, try a 3x zoomed OCR of that same visible header.
         if (visiblePairs.size == 1) {
-          recordVisiblePair(visiblePairs[0], observedAt)
+          recordVisiblePair(visiblePairs[0], now)
         } else {
           // Retry the zoomed selector both when regular OCR sees no pair
           // and when it disagrees with the broker Accessibility OTC suffix.
@@ -7895,7 +7923,7 @@ class ScalpOverlayService : Service() {
           if ((pairs.isEmpty() && accessibilityPair == null) ||
               (pairs.size == 1 && accessibilityPair != null &&
                 pairs[0] != accessibilityPair))
-            schedulePairHeaderOcr(copy, observedAt)
+            schedulePairHeaderOcr(copy, now)
           if (marketVerified && observedAt - latestMarketAt > MARKET_STALE_MS) {
             marketVerified = false
             marketLabelAmbiguous = false
