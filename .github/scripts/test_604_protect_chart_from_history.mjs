@@ -48,3 +48,14 @@ test('624 unsigned broker profit is accepted only for exact zero with other rece
  const detail=service.split('private fun recordClosedDetailOcr437(')[1].split('private fun recordClosedListRowOcr438(')[0];
  for(const x of ['net != 0L && !netRaw.trim().startsWith("+")','!netRaw.trim().startsWith("-")','val stake = paid - net','paid != stake + net','ids.size != 1','candidate == firstClosedDetail437']) assert.ok(detail.includes(x),x);
 });
+
+test('631 chart-first observation precedes history fallback and cannot settle an order',()=>{
+ const observation=service.split('private fun observeChartResult631(')[1].split('private fun scheduleTimeframeOcr(')[0];
+ for(const x of ['chartResultAttempt631() ?: return','TouchTestService.demoFxAccountInForeground()','TouchTestService.realFxAccountVisible()','TouchTestService.readVisibleFxPair(false) != pair','statedStake.singleOrNull() != stake','blockPairs.singleOrNull() != pair','chartHintReads631']) assert.ok(observation.includes(x),x);
+ assert.doesNotMatch(observation,/onVerifiedClosed|putBoolean|pressVerifiedDemoStake|dispatchGesture|brokerConfirmedClosed/);
+ assert.ok(monitor.includes('(historyFresh592 || chartResultAttempt631() == null) &&'));
+ const scheduler=service.split('private fun scheduleTimeframeOcr(')[1].split('private fun startProjection(')[0];
+ assert.ok(scheduler.includes('chartResultAttempt631() != null) 900L'));
+ assert.ok(scheduler.includes('observeChartResult631(result, copy, observedAt)'));
+ assert.match(service,/val historyReviewWindow609 = 3_000L/);
+});
