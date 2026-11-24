@@ -73,3 +73,15 @@ test('627 bounded Back is allowed only from independently verified foreground QT
  assert.doesNotMatch(back,/onVerifiedClosed|putBoolean|pressVerifiedDemoStake/);
  assert.doesNotMatch(ret,/onVerifiedClosed|putBoolean\("attempted", false\)/);
 });
+
+test('629 ambiguous account evidence pauses actions; confirmed foreground Real remains latched',()=>{
+ const monitor=service.split('private fun startBrokerAccountMonitor()')[1].split('private fun startDemoClickMonitor()')[0];
+ const ambiguous=monitor.split('if (ambiguousReal629) {')[1].split('if (foregroundReal629) {')[0];
+ for(const x of ['ambiguousAccountHold629 = true','autoDemoArmed = false','CONT NECONFIRMAT','return']) assert.ok(ambiguous.includes(x),x);
+ assert.doesNotMatch(ambiguous,/realAccountSafetyStop517 = false|putBoolean|dispatchGesture/);
+ const recheck=monitor.split('if (ambiguousAccountHold629) {')[1].split('// 592: Wait')[0];
+ for(const x of ['QT DEMO IDENTIFICAT','!TouchTestService.demoFxAccountInForeground()','TouchTestService.realFxAccountVisible()','ambiguousAccountHold629 = false','autoDemoArmed = false','autoDemoLockedAt = lockedAt']) assert.ok(recheck.includes(x),x);
+ assert.doesNotMatch(recheck,/realAccountSafetyStop517 = false|putBoolean|autoDemoArmed = true/);
+ assert.match(monitor,/if \(foregroundReal629\) \{\s*realAccountSafetyStop517 = true/);
+ assert.match(service,/realAccountSafetyStop517 \|\| ambiguousAccountHold629 \|\| accountRecheckPending/);
+});
