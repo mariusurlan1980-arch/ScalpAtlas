@@ -1185,8 +1185,12 @@ jobs:
           set -euo pipefail
           grep -Fq 'private val pairCropOcrRecognizer' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'region.width * 3, region.height * 3' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'recordVisiblePair(verifiedPair548, System.currentTimeMillis())' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'schedulePairHeaderOcr(copy, observedAt)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'recordVisiblePair(verifiedPair548, now)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'schedulePairHeaderOcr(copy, now)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'recordVisiblePair(visiblePairs[0], now)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'observedAt < rotationPairCaptureAfter620' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'observedAt <= pendingMarketAt' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'invalidateRotationPairEvidence620(System.currentTimeMillis())' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'MARKET_OCR_CONFIRMATIONS = 2' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'PERECHE OCR NECITITĂ' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'realOrderAdapterAvailable = false' .github/native-overlay/BrokerAdapterRegistry.kt
