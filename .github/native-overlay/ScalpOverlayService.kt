@@ -2199,6 +2199,22 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  // 623: A history navigation may overlap another temporary panel hide.
+  // Only the operation which actually hid a VISIBLE panel may restore it.
+  // Independent watchdog bounds an INVISIBLE panel even if the navigation
+  // callback throws or returns early. Android Settings uses GONE, which
+  // must never be overridden; stopped/revoked LIVE is never restarted.
+  private var historyPanelHideToken623 = 0L
+  private fun boundHistoryPanelHide623(panel: View, maxHideMs: Long) {
+    val token = ++historyPanelHideToken623
+    mainHandler.postDelayed({
+      if (token == historyPanelHideToken623 && !shuttingDown &&
+          mediaProjection != null && overlayView === panel &&
+          panel.visibility == View.INVISIBLE)
+        panel.visibility = View.VISIBLE
+    }, maxHideMs)
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -2300,7 +2316,7 @@ class ScalpOverlayService : Service() {
           chartPrefs600.getString("completedAttempt", null) == attemptKey600 &&
           previousReviewWall602 > 0L &&
           System.currentTimeMillis() - previousReviewWall602 in 0L..historyReviewCooldown609
-        if (!attempted592) {
+        if (!attempted592 && !historyFresh592 && !nonChartSafety595) {
           historyPeekStartedAt592 = 0L
           historyPeekRetryAfter592 = 0L
         }
@@ -2342,8 +2358,10 @@ class ScalpOverlayService : Service() {
           val overlayDuringHistory593 = overlayView
           val oldVisibility593 = overlayDuringHistory593?.visibility ?: View.VISIBLE
           if (overlayDuringHistory593 != null &&
-              !shuttingDown && oldVisibility593 == View.VISIBLE)
+              !shuttingDown && oldVisibility593 == View.VISIBLE) {
             overlayDuringHistory593.visibility = View.INVISIBLE
+            boundHistoryPanelHide623(overlayDuringHistory593, 3_500L)
+          }
           mainHandler.postDelayed({
             val reviewNow592 = android.os.SystemClock.elapsedRealtime()
             // 602: one <=3-second history visit per ~5-minute cycle,
@@ -2376,7 +2394,9 @@ class ScalpOverlayService : Service() {
                 touchProbeStatus?.text = "🤖 " + result593.take(100)
               }
             } finally {
-              if (overlayView === overlayDuringHistory593 && !shuttingDown)
+              if (overlayView === overlayDuringHistory593 && !shuttingDown &&
+                  oldVisibility593 == View.VISIBLE &&
+                  overlayDuringHistory593?.visibility == View.INVISIBLE)
                 overlayDuringHistory593?.visibility = oldVisibility593
             }
           }, historyReviewWindow609)
@@ -2420,13 +2440,16 @@ class ScalpOverlayService : Service() {
         val overlayForNav595=overlayView
         fun navGesture595(action:()->Boolean):Boolean {
           val was595=overlayForNav595?.visibility ?: View.VISIBLE
-          if(overlayForNav595 != null && was595==View.VISIBLE)
+          if(overlayForNav595 != null && was595==View.VISIBLE) {
             overlayForNav595.visibility=View.INVISIBLE
+            boundHistoryPanelHide623(overlayForNav595, 800L)
+          }
           val dispatched=try { action() } catch (_:Exception){false}
           // The broker gesture takes ~75ms; do not put the overlay back
           // above the target before Android completes dispatch.
           mainHandler.postDelayed({
-            if(!shuttingDown && overlayView===overlayForNav595)
+            if(!shuttingDown && overlayView===overlayForNav595 &&
+                was595==View.VISIBLE && overlayForNav595?.visibility==View.INVISIBLE)
               overlayForNav595?.visibility=was595
           },400L)
           return dispatched
@@ -2466,11 +2489,14 @@ class ScalpOverlayService : Service() {
           lastChartReturnAttempt600 = recoveryNow595
           val navOverlay600 = overlayView
           val savedVisibility600 = navOverlay600?.visibility ?: View.VISIBLE
-          if (navOverlay600 != null && savedVisibility600 == View.VISIBLE)
+          if (navOverlay600 != null && savedVisibility600 == View.VISIBLE) {
             navOverlay600.visibility = View.INVISIBLE
+            boundHistoryPanelHide623(navOverlay600, 800L)
+          }
           val chartExit600 = returnToChartAfterReview458(true, true)
           mainHandler.postDelayed({
-            if (!shuttingDown && overlayView === navOverlay600)
+            if (!shuttingDown && overlayView === navOverlay600 &&
+                savedVisibility600 == View.VISIBLE && navOverlay600?.visibility == View.INVISIBLE)
               navOverlay600?.visibility = savedVisibility600
           }, 400L)
           lastAutoDemoHistoryNavStatus = "600 • REVENIRE GRAFIC • " + chartExit600
@@ -2495,8 +2521,10 @@ class ScalpOverlayService : Service() {
           val was595=overlayUncover595?.visibility ?: View.VISIBLE
           if(overlayUncover595 != null && was595==View.VISIBLE){
             overlayUncover595.visibility=View.INVISIBLE
+            boundHistoryPanelHide623(overlayUncover595, 4_500L)
             mainHandler.postDelayed({
-              if(!shuttingDown && overlayView===overlayUncover595)
+              if(!shuttingDown && overlayView===overlayUncover595 &&
+                  was595==View.VISIBLE && overlayUncover595.visibility==View.INVISIBLE)
                 overlayUncover595.visibility=was595
             },4_000L)
           }
