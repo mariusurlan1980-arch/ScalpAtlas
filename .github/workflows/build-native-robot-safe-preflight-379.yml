@@ -62,6 +62,11 @@ jobs:
           assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
           assert 'mgRecovery614.permitsFreshDemoOrder(' in s
           assert 'scalp_atlas_mg_recovery_614' in s
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          assert 'groupedUsd615' in t and 'balanceFormat497.matchEntire(normalized615)' in t
+          assert 'balanceValues497.size != 1' in t
+          assert 'balanceValues497.single() < verifiedStakeCents' in t
+          assert 'MG • CALCUL OFF' in s
           PY614
 
       - name: Reuse existing overlay source without conflicting legacy patch
@@ -106,10 +111,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.88'
+          expo['version']='3.2.89'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=614
+          expo['android']['versionCode']=615
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -372,7 +377,7 @@ jobs:
           assert 'if (undone552 && tradePositionGate.cancelBeforeDispatch())' in t
           assert 'autoDemoSessionConsumed = true' in t
           assert 'activeSignal' not in t and 'confirmedShock' not in t
-          assert 'tapTestRow552.visibility = View.VISIBLE' in src
+          assert 'tapTestRow552.visibility = if (minimized) View.GONE else View.VISIBLE' in src
           print('552 one-shot manual DEMO gesture and durable lock checks passed')
           PY552
 
@@ -2461,12 +2466,12 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-614-MG-TEST-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-615-MG-TEST-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-614-MG-TEST-DEMO-G24
-          path: ScalpAtlas-614-MG-TEST-DEMO-G24.apk
+          name: ScalpAtlas-615-MG-TEST-DEMO-G24
+          path: ScalpAtlas-615-MG-TEST-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -2476,12 +2481,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-614-MG-TEST-DEMO-G24.apk"
+          FILE="ScalpAtlas-615-MG-TEST-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-614-mg-test-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-615-mg-test-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 614 - test calcul MG QT Demo" \
+            --title "Scalp Atlas 615 - sold USD si chenar compact QT Demo" \
             --notes "Versiune de test pe baza 613, exclusiv QT Demo. Calcul MG după rezultat confirmat, fără editarea automată a mizei. Validarea pe dispozitiv rămâne necesară."
