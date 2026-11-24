@@ -1065,6 +1065,22 @@ class TouchTestService : AccessibilityService() {
     // it NEVER proves the broker opened the Transactions page. Check the
     // actual page title AND Open tab in the same verified QT Demo package.
     // This diagnostic cannot unlock a prior attempt or authorize BUY/SELL.
+    // 627: one Android Back only from a positively identified foreground
+    // QT Demo history screen. Back is navigation, never a trade or receipt.
+    // Do not repeat from an unknown page, account selector or Real account.
+    fun backFromVerifiedDemoHistory627(expectedBrokerPackage: String): Boolean {
+      if (!demoFxAccountInForeground() || realFxAccountVisible()) return false
+      val (svc, root, _) = activeDemoHistoryNodes(false, foregroundOnly = true)
+        ?: return false
+      if (root.packageName?.toString() != expectedBrokerPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage) ||
+          !confirmedDemoHistoryPageReadOnly431(false) ||
+          svc.rootInActiveWindow != root || realFxAccountVisible()) return false
+      return try {
+        svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+      } catch (_: Throwable) { false }
+    }
+
     fun confirmedDemoHistoryPageReadOnly431(
       cachedDemoVerifiedOnChart: Boolean
     ): Boolean {
