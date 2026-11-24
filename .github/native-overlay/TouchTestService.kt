@@ -2338,7 +2338,15 @@ class TouchTestService : AccessibilityService() {
       val balanceValues497 = accountLabels497.mapNotNull { label ->
         val text = label.value.replace(Regex("""\s+"""), " ").trim()
           .replace(Regex("""(?i)^QT\s*Demo\b"""), "").trim()
-        val match = balanceFormat497.matchEntire(text) ?: return@mapNotNull null
+        // 615: The USD tile can display grouped US currency (1,573.50).
+        // Accept grouping only when complete and canonical; do not strip
+        // separators from arbitrary chart values or ambiguous amounts.
+        val groupedUsd615 = Regex("""(?i)^(?:(?:USD|\$)\s*)?(\d{1,3}(?:,\d{3}){1,2})\.(\d{2})(?:\s*(?:USD|\$))?$""")
+          .matchEntire(text)
+        val normalized615 = if (groupedUsd615 != null)
+          groupedUsd615.groupValues[1].replace(",", "") + "." + groupedUsd615.groupValues[2]
+        else text
+        val match = balanceFormat497.matchEntire(normalized615) ?: return@mapNotNull null
         val whole = match.groupValues[1].toLongOrNull() ?: return@mapNotNull null
         val fraction = match.groupValues[2]
         val cents = when (fraction.length) {
