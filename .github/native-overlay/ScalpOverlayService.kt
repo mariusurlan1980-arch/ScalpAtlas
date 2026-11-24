@@ -4750,7 +4750,7 @@ class ScalpOverlayService : Service() {
       )
       martingaleStatusText?.visibility =
         if (CHART_ONLY_DEMO_462 || !minimized) View.VISIBLE else View.GONE
-      probeStatus.maxLines = if (minimized) 3 else 3
+      probeStatus.maxLines = if (minimized) 2 else 3
       probeStatus.setPadding(dp(2), dp(1), dp(2), dp(1))
       val rotationParams499 = fxButton.layoutParams
       rotationParams499.height = dp(if (minimized) 23 else 26)
@@ -4759,7 +4759,7 @@ class ScalpOverlayService : Service() {
       compactStatus.textSize = if (minimized) 12f else 13f
       // 552: one explicit, temporary diagnostic BUY control is visible.
       // Legacy SELL buttons remain hidden. It needs two deliberate taps.
-      tapTestRow552.visibility = View.VISIBLE
+      tapTestRow552.visibility = if (minimized) View.GONE else View.VISIBLE
       touchProbeToggle.visibility = View.GONE
       testBipControl.visibility = View.GONE
       brokerAutoRow.visibility = View.GONE // Session auto-arms after Android LIVE consent.
@@ -7601,7 +7601,11 @@ class ScalpOverlayService : Service() {
         val recoveryCents451 = recoveryQuote451.stakeCents
         val recoveryActive451 = demoRecoveryLedger.isRecovering429()
         mgText451.text = when {
-          CHART_ONLY_DEMO_462 -> "MIZĂ SETATĂ ÎN BROKER"
+          CHART_ONLY_DEMO_462 -> when {
+            mgRecovery614.isRiskStopped() -> "MG • STOP DEMO"
+            mgRecovery614.isEnabled() -> mgRecovery614.status()
+            else -> "MG • CALCUL OFF"
+          }
           !verifiedDemo451 -> "MG: DOAR QT DEMO"
           unresolvedOld451 || demoRecoveryLedger.verifiedOpenPositionId429() != null ->
             "MG BLOCAT • ORDIN NEVERIFICAT"
