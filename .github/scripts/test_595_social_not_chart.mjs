@@ -136,3 +136,9 @@ test('626 compact menu uncover is bounded and cannot authorize a new order',()=>
  assert.match(monitor,/quickMenuUncoveredFor626 == moreNavAttemptAt595/);
  assert.match(ocr,/chartProofSamples595>=2/);
 });
+
+test('628 scanner chart proof recognizes regular FX without relaxing exact payout or Real stop',()=>{
+ for(const x of ['chartPairCandidates628.singleOrNull()','TouchTestService.isPreferredFxPair517(candidate)','TouchTestService.readVisibleFxPair(false) == candidate','TouchTestService.demoFxAccountInForeground()','!TouchTestService.realFxAccountVisible()','!trueHistoryPage433 && !TouchTestService.fxListVisible(false)']) assert.ok(ocr.includes(x),x);
+ assert.match(service,/realAccountSafetyStop517 -> "🤖 OPRIT/);
+ assert.match(service,/TouchTestService.readVerifiedDemoPayoutForPair\(pair\)/);
+});
