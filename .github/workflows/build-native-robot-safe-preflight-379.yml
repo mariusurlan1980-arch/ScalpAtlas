@@ -185,7 +185,7 @@ jobs:
           grep -Fq 'fxButton.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'brainEclipse.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'probeStatus.setOnTouchListener(dragListener)' .github/native-overlay/ScalpOverlayService.kt
-          grep -Fq 'if (minimized || CHART_ONLY_DEMO_462) View.GONE' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'if (CHART_ONLY_DEMO_462 || !minimized) View.VISIBLE' .github/native-overlay/ScalpOverlayService.kt
           grep -Fq 'val next499 = when' .github/native-overlay/ScalpOverlayService.kt
           # 500: use true screen edges and remember the exact manual position.
           grep -Fq 'putBoolean("freePosition500", true)' .github/native-overlay/ScalpOverlayService.kt
