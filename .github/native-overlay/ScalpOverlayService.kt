@@ -2199,6 +2199,10 @@ class ScalpOverlayService : Service() {
     val gate578=tradePositionGate.state()
     val stakeStatus578=demoAutoStakePlan565.status()
     return when {
+      previousShock578 && chartResultAttempt631() != null && !historyPageVisible433 ->
+        if (chartHintKey631 == chartResultAttempt631() && chartHintReads631 >= 2)
+          "GRAFIC • INDICIU " + chartHintOutcome631 + " • REZULTAT NECONFIRMAT"
+        else "GRAFIC • CITESC REZULTAT • FĂRĂ ORDIN"
       !reason.isNullOrBlank() ->
         "ORDINE ÎN PAUZĂ · " + reason
           .replaceFirst(Regex("^\\d+ • "), "")
@@ -2772,6 +2776,7 @@ class ScalpOverlayService : Service() {
           // the FIRST read-only history visit. Normal 604 chart protection
           // stays intact without it. History/navigation cannot submit trades.
           (historyFresh592 || brokerChartReturnProven604 || userReview610 || verifiedExpiredReview624) &&
+          (historyFresh592 || chartResultAttempt631() == null) &&
           !shuttingDown && !realAccountSafetyStop517 &&
           mediaProjection != null && TouchTestService.ready() &&
           // 592: no history visit while the 5-minute DEMO trade is active;
@@ -8005,6 +8010,72 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  // 631: Observe the original chart through the five-minute expiry.
+  // This is a read-only candidate detector, not a verified broker receipt.
+  // Never infer a settlement from balance, candle colour or a missing badge.
+  private fun chartResultAttempt631(): String? {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    if (!prefs.getBoolean("attempted", false)) return null
+    val elapsed = prefs.getLong("attemptedAt429", -1L)
+    val wall = prefs.getLong("attemptedWallAt454", -1L)
+    if (elapsed <= 0L || wall <= 0L) return null
+    val age = android.os.SystemClock.elapsedRealtime() - elapsed
+    val wallAge = System.currentTimeMillis() - wall
+    if (age !in (DEMO_TEST_EXPIRY_MS_465 - 15_000L)..(DEMO_TEST_EXPIRY_MS_465 + 15_000L) ||
+        kotlin.math.abs(age - wallAge) > 5_000L ||
+        prefs.getInt("expectedPayout429", -1) != 92) return null
+    val pair = prefs.getString("expectedPair429", null) ?: return null
+    val pkg = prefs.getString("expectedPackage429", null) ?: return null
+    return "$pkg|$pair|$wall"
+  }
+
+  private var chartHintKey631: String? = null
+  private var chartHintOutcome631: String? = null
+  private var chartHintAt631 = 0L
+  private var chartHintReads631 = 0
+
+  private fun observeChartResult631(result: com.google.mlkit.vision.text.Text, frame: Bitmap, observedAt: Long) {
+    val key = chartResultAttempt631() ?: return
+    if (historyPageVisible433 || nonChartSafety595 || fxRotationNavigating ||
+        realAccountSafetyStop517 || ambiguousAccountHold629 ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.realFxAccountVisible() ||
+        TouchTestService.fxListVisible(false)) return
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val pair = prefs.getString("expectedPair429", null) ?: return
+    if (TouchTestService.activeDemoExecutorPackageForReview() !=
+        prefs.getString("expectedPackage429", null) ||
+        TouchTestService.readVisibleFxPair(false) != pair) return
+    val stake = prefs.getLong("expectedStakeCents429", -1L)
+    if (stake <= 0L) return
+    val outcomes = result.textBlocks.mapNotNull { block ->
+      val bounds = block.boundingBox ?: return@mapNotNull null
+      if (bounds.top.toFloat()/frame.height < .15f ||
+          bounds.bottom.toFloat()/frame.height > .69f) return@mapNotNull null
+      val text = block.text.replace(Regex("""\s+"""), " ").trim()
+      // Require an explicit result label, matching pair and amount in ONE
+      // broker text block. An isolated WIN/LOSS or dollar amount is not proof.
+      val label = Regex("""(?i)\b(?:Rezultat|Result)\s*:\s*(WIN|LOSS|DRAW)\b""")
+        .find(text)?.groupValues?.get(1)?.uppercase() ?: return@mapNotNull null
+      val blockPairs = Regex("""(?i)\b([A-Z]{3})\s*/\s*([A-Z]{3})(?:\s+(OTC))?\b""")
+        .findAll(text).map { it.groupValues[1].uppercase()+"/"+it.groupValues[2].uppercase()+
+          if (it.groupValues[3].isNotBlank()) " OTC" else "" }.distinct().toList()
+      if (blockPairs.singleOrNull() != pair) return@mapNotNull null
+      val statedStake = Regex("""(?i)\b(?:Miz[ăa]|Stake|Investment)\s*:\s*(\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
+        .findAll(text).mapNotNull { exactMoneyCents437(it.groupValues[1]) }.distinct().toList()
+      if (statedStake.singleOrNull() != stake) return@mapNotNull null
+      label
+    }.distinct()
+    val hint = outcomes.singleOrNull() ?: return
+    chartHintReads631 = if (key == chartHintKey631 && hint == chartHintOutcome631 &&
+        observedAt - chartHintAt631 in 750L..5_000L) (chartHintReads631 + 1).coerceAtMost(2) else 1
+    chartHintKey631 = key
+    chartHintOutcome631 = hint
+    chartHintAt631 = observedAt
+    // Diagnostic only: even a stable hint lacks independently verified
+    // broker order identity and settlement. Do not persist a guessed result.
+  }
+
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
     // 593: During the 3-second post-expiry QT Demo history visit,
     // 3s OCR frames cannot provide two independent samples in time.
@@ -8012,7 +8083,7 @@ class ScalpOverlayService : Service() {
     // 596: Also read More/Quick menus quickly after navigation,
     // without inferring a chart from the menu.
     val historyOcrPeriod593 = if (historyPageVisible433 ||
-        historyPeekStartedAt592 > 0L || nonChartSafety595) 900L
+        historyPeekStartedAt592 > 0L || nonChartSafety595 || chartResultAttempt631() != null) 900L
         else OCR_INTERVAL_MS
     if (ocrBusy || now - lastOcrAttemptAt < historyOcrPeriod593) return
     ocrBusy = true
@@ -8049,6 +8120,7 @@ class ScalpOverlayService : Service() {
         // separate fresh frames and selected OPEN tab. This runs even though
         // no candle/timeframe can be detected on the Transactions screen.
         recordExplicitEmptyOpenOcr(result, copy, observedAt)
+        observeChartResult631(result, copy, observedAt)
         // 437: read a uniquely identified CLOSED trade detail in two
         // independent frames. Does not itself rearm or submit an order.
         recordClosedDetailOcr437(result, copy, observedAt)
