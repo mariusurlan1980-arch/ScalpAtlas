@@ -1432,6 +1432,30 @@ class ScalpOverlayService : Service() {
       .take(84)
   }
 
+  // 616: The requested Demo calculator starts only from a fresh verified
+  // base quote and a clean order state. No broker amount edit or order here.
+  private fun maybeInitializeDemoCalculation616() {
+    if (!CHART_ONLY_DEMO_462 || mgRecovery614.isRiskStopped() ||
+        mgRecovery614.isEnabled() || !robotArmedContinuously513 ||
+        mediaProjection == null || shuttingDown ||
+        realAccountSafetyStop517 || accountRecheckPending ||
+        !TouchTestService.ready() || TouchTestService.realFxAccountVisible() ||
+        !lastBrokerAccountStatus.contains("QT DEMO IDENTIFICAT") ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        historyPageVisible433 || fxRotationNavigating ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false)) return
+    val now = System.currentTimeMillis()
+    val pair = currentPair(now)
+    if (!pairReady(now)) return
+    val pkg = TouchTestService.activeDemoExecutorPackageForReview() ?: return
+    if (TouchTestService.readBrokerDemoOrder476(pair) != (109L to 92)) return
+    val key = "QT_DEMO:" + pkg
+    if (mgRecovery614.enableFromVerifiedDemo(key,pair))
+      mgRecovery614.confirmEdited(key,pair,109L,true)
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -1493,6 +1517,7 @@ class ScalpOverlayService : Service() {
             verifiedDemoAccountAt > 0L &&
             proofNow463 - verifiedDemoAccountAt in 0L..90_000L &&
             !diagnostic.contains("QT REAL IDENTIFICAT")
+          maybeInitializeDemoCalculation616()
           val passiveStatus463 = inspectPassiveDemoProof463(
             proofNow463, proofPackage463, chartCache463
           )
@@ -7331,6 +7356,20 @@ class ScalpOverlayService : Service() {
           val quoteMatches429 = stake429 != null && payout429 != null &&
             demoRecoveryLedger.quote(payout429).stakeCents == stake429
           val latestPreflight = try {
+            // 616: Rebind only the confirmed base quote when rotation has
+            // selected a different independently verified Demo instrument.
+            // The separate preflight and persisted order gates still apply.
+            if (CHART_ONLY_DEMO_462 && mgRecovery614.isEnabled() &&
+                !mgRecovery614.isRiskStopped() && package429 != null &&
+                manualOrder == (109L to 92) &&
+                !realAccountSafetyStop517 && !accountRecheckPending &&
+                TouchTestService.demoFxAccountInForeground() &&
+                !TouchTestService.realFxAccountVisible() &&
+                tradePositionGate.state() == TradePositionGate.State.READY &&
+                !getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) &&
+                !getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false)) {
+              mgRecovery614.rebindVerifiedBasePair("QT_DEMO:" + package429, tradePair429)
+            }
             when {
               CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
@@ -7604,7 +7643,7 @@ class ScalpOverlayService : Service() {
           CHART_ONLY_DEMO_462 -> when {
             mgRecovery614.isRiskStopped() -> "MG • STOP DEMO"
             mgRecovery614.isEnabled() -> mgRecovery614.status()
-            else -> "MG • CALCUL OFF"
+            else -> "MG • AȘTEPT MIZĂ DEMO VERIFICATĂ"
           }
           !verifiedDemo451 -> "MG: DOAR QT DEMO"
           unresolvedOld451 || demoRecoveryLedger.verifiedOpenPositionId429() != null ->
