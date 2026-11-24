@@ -76,3 +76,11 @@ test('593 release maintains prior tests with distinct Motorola APK',()=>{
  assert.match(flow,/ScalpAtlas-612-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(flow,/apksigner/);
 });
+
+test('623 overlapping history panel hides cannot restore an invisible or settings-hidden state',()=>{
+ const monitor=service.split('private fun startBrokerAccountMonitor()')[1].split('private fun startDemoClickMonitor()')[0];
+ const helper=service.split('private fun boundHistoryPanelHide623(')[1].split('private fun startBrokerAccountMonitor()')[0];
+ for(const x of ['token == historyPanelHideToken623','!shuttingDown','mediaProjection != null','overlayView === panel','panel.visibility == View.INVISIBLE','panel.visibility = View.VISIBLE']) assert.ok(helper.includes(x),x);
+ for(const x of ['boundHistoryPanelHide623(overlayDuringHistory593, 3_500L)','oldVisibility593 == View.VISIBLE &&','boundHistoryPanelHide623(overlayForNav595, 800L)','was595==View.VISIBLE && overlayForNav595?.visibility==View.INVISIBLE','boundHistoryPanelHide623(navOverlay600, 800L)','savedVisibility600 == View.VISIBLE &&','boundHistoryPanelHide623(overlayUncover595, 4_500L)','if (!attempted592 && !historyFresh592 && !nonChartSafety595)']) assert.ok(monitor.includes(x),x);
+ assert.doesNotMatch(helper,/putBoolean|dispatchGesture|performAction|startProjection/);
+});
