@@ -128,3 +128,11 @@ test('625 exact Quick Trading fallback uses only the foreground Demo menu and pr
  for(const x of ['quickAccessMenuAttempt625 != moreNavAttemptAt595','recoveryNow595 - moreNavAttemptAt595 in 1_500L..20_000L','TouchTestService.tapExactDemoQuickAccessibility625(navPkg595)','quickAccessMenuAttempt625 = moreNavAttemptAt595','moreNavAttemptAt595 < historyPageFirstSeenAt603']) assert.ok(monitor.includes(x),x);
  assert.match(ocr,/chartProofSamples595>=2/);
 });
+
+test('626 compact menu uncover is bounded and cannot authorize a new order',()=>{
+ const menu=monitor.split('// 626: The compact More menu')[1].split('if(navPkg595 != null && nonChartSafety595 &&')[0];
+ for(const x of ['quickMenuUncoveredFor626 != moreNavAttemptAt595','quickEntrySamples595 < 2','menuPanel626.visibility == View.VISIBLE','boundHistoryPanelHide623(menuPanel626, 3_000L)','mainHandler.postDelayed(this, 900L)']) assert.ok(menu.includes(x),x);
+ assert.doesNotMatch(menu,/putBoolean|dispatchGesture|onVerifiedClosed|pressVerifiedDemoStake/);
+ assert.match(monitor,/quickMenuUncoveredFor626 == moreNavAttemptAt595/);
+ assert.match(ocr,/chartProofSamples595>=2/);
+});
