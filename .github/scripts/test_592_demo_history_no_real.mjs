@@ -64,3 +64,12 @@ test('592 new signed Motorola artifact and regression checks',()=>{
  assert.match(workflow,/ScalpAtlas-612-OVERLAY-QT-DEMO-G24\.apk/);
  assert.match(workflow,/apksigner/);
 });
+
+test('627 bounded Back is allowed only from independently verified foreground QT Demo history',()=>{
+ const back=touch.split('fun backFromVerifiedDemoHistory627(')[1].split('fun confirmedDemoHistoryPageReadOnly431(')[0];
+ for(const x of ['!demoFxAccountInForeground()','realFxAccountVisible()','foregroundOnly = true','BrokerAdapterRegistry.hasDemoExecutor(expectedBrokerPackage)','confirmedDemoHistoryPageReadOnly431(false)','svc.rootInActiveWindow != root','AccessibilityService.GLOBAL_ACTION_BACK']) assert.ok(back.includes(x),x);
+ const ret=service.split('private fun returnToChartAfterReview458(')[1].split('private fun navigateVerifiedDemoHistory431(')[0];
+ for(const x of ['now627 - historyPageFirstSeenAt603 >= 3_000L','historyBackCount627 >= 2','historyPageLastSeen433 <= historyBackWall627','TouchTestService.backFromVerifiedDemoHistory627(pkg595)','nonChartSafety595 = true','chartProofSamples595 = 0']) assert.ok(ret.includes(x),x);
+ assert.doesNotMatch(back,/onVerifiedClosed|putBoolean|pressVerifiedDemoStake/);
+ assert.doesNotMatch(ret,/onVerifiedClosed|putBoolean\("attempted", false\)/);
+});
