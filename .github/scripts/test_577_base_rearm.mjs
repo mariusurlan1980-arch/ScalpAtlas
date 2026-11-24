@@ -49,7 +49,18 @@ test('577 base pair switching is allowed ONLY on account-matched 1.09 and no los
  ])assert.ok(pairFn.includes(token),token);
  assert.ok(!pairFn.includes('.putLong("confirmedStake"'));
  assert.ok(!pairFn.includes('.putLong("pendingStake"'));
- assert.ok(!pairFn.includes('.putInt("losses"'));
+ // 622: only a missing initial level may be materialized; existing loss
+ // history cannot be reset by pair rebinding.
+ assert.equal(pairFn.split('.putInt("losses"').length-1,1);
+ assert.ok(pairFn.includes('if (migrateUnusedBase622) edit622.putInt("losses",0)'));
+ const migration=plan.slice(plan.indexOf('private fun legacyUnusedBase622('),plan.indexOf('fun rebindVerifiedBasePair('));
+ assert.ok(migration.includes('!prefs.contains("losses")'));
+ assert.ok(migration.includes('prefs.getLong("cumulativeLoss",0L)==0L'));
+ assert.ok(migration.includes('prefs.getStringSet("seenClosedIds",emptySet()).orEmpty().isEmpty()'));
+ assert.ok(pairFn.includes('if (!pendingBase && !confirmedBase)'));
+ assert.ok(pairFn.includes('prefs.getInt("losses",-1) != 0 && !legacyUnusedBase622()'));
+ const enable=plan.slice(plan.indexOf('fun enableFromVerifiedDemo('),plan.indexOf('private fun stopUnsafe('));
+ assert.ok(enable.includes('.putInt("losses",losses)'));
  assert.ok(!pairFn.includes('pressVerified'));
  const orderFn=plan.slice(plan.indexOf('fun permitsFreshDemoOrder('));
  assert.ok(orderFn.includes('pair!=prefs.getString("pair",null)'));
