@@ -106,10 +106,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.87'
+          expo['version']='3.2.88'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=613
+          expo['android']['versionCode']=614
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2461,27 +2461,27 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-613-RECOVERY-553-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-614-MG-TEST-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-613-RECOVERY-553-DEMO-G24
-          path: ScalpAtlas-613-RECOVERY-553-DEMO-G24.apk
+          name: ScalpAtlas-614-MG-TEST-DEMO-G24
+          path: ScalpAtlas-614-MG-TEST-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish direct Android APK (no ZIP)
-        if: github.ref == 'refs/heads/recovery/553-baseline-2026-11-24'
+        if: github.ref == 'refs/heads/recovery/613-mg-verified-settlement'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="ScalpAtlas-613-RECOVERY-553-DEMO-G24.apk"
+          FILE="ScalpAtlas-614-MG-TEST-DEMO-G24.apk"
           test -s "$FILE"
           # Unique tag per commit: never overwrite or confuse an older installed APK.
-          TAG="scalpatlas-613-recovery-553-${GITHUB_SHA:0:12}"
+          TAG="scalpatlas-614-mg-test-${GITHUB_SHA:0:12}"
           gh release create "$TAG" "$FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Scalp Atlas 613 - recuperare baza 553 QT Demo" \
-            --notes "Build de recuperare a bazei 553. Exclusiv QT Demo, rotație 30s, preflight automat la miză 1,09 USD, fără Martingale automat nou. Nu șterge datele ordinului anterior. Validarea pe dispozitiv rămâne necesară."
+            --title "Scalp Atlas 614 - test calcul MG QT Demo" \
+            --notes "Versiune de test pe baza 613, exclusiv QT Demo. Calcul MG după rezultat confirmat, fără editarea automată a mizei. Validarea pe dispozitiv rămâne necesară."
