@@ -1850,8 +1850,56 @@ class ScalpOverlayService : Service() {
     return candidates.singleOrNull()
   }
 
+  // 629: observed QT Demo receipt shape: black $0 pill with red check icon.
+  // This remains read-only evidence. A candle, bare zero, or button is not a result.
+  private fun parseRealLossBadge629(
+    result: com.google.mlkit.vision.text.Text, frame: Bitmap
+  ): String? {
+    val scale = frame.width / 720f
+    fun sample(x1: Float, y1: Float, x2: Float, y2: Float): Triple<Float,Float,Float>? {
+      val left = x1.toInt()
+      val top = y1.toInt()
+      val right = x2.toInt()
+      val bottom = y2.toInt()
+      if (left < 0 || top < 0 || right > frame.width || bottom > frame.height ||
+          right <= left || bottom <= top) return null
+      var red = 0
+      var white = 0
+      var dark = 0
+      var total = 0
+      for (y in top until bottom) for (x in left until right) {
+        val p = frame.getPixel(x,y)
+        val r = (p shr 16) and 255
+        val g = (p shr 8) and 255
+        val b = p and 255
+        if (r >= 140 && r >= g + 65 && r >= b + 65) red++
+        if (r > 175 && g > 175 && b > 175) white++
+        if (r < 55 && g < 55 && b < 55) dark++
+        total++
+      }
+      return Triple(red.toFloat()/total,white.toFloat()/total,dark.toFloat()/total)
+    }
+    val candidates = result.textBlocks.flatMap { it.lines }.filter { line ->
+      if (line.text.replace(Regex("""\s+"""), "") != "\$0") return@filter false
+      val box = line.boundingBox ?: return@filter false
+      val cx = box.centerX().toFloat()
+      val cy = box.centerY().toFloat()
+      if (cx / frame.width !in 0.12f..0.86f ||
+          cy / frame.height !in 0.23f..0.69f ||
+          box.width() / scale !in 12f..42f ||
+          box.height() / scale !in 10f..35f) return@filter false
+      val icon = sample(box.right + 8*scale,cy - 13*scale,
+        box.right + 42*scale,cy + 13*scale) ?: return@filter false
+      val background = sample(box.left - 12*scale,cy - 10*scale,
+        box.left - 2*scale,cy + 10*scale) ?: return@filter false
+      icon.first >= 0.40f && icon.second >= 0.035f &&
+        background.third >= 0.70f
+    }
+    return if (candidates.size == 1) "LOSS" else null
+  }
+
   private fun observeChartResult619(
-    result: com.google.mlkit.vision.text.Text, capturedAt: Long, observedAt: Long
+    result: com.google.mlkit.vision.text.Text, frame: Bitmap, capturedAt: Long, observedAt: Long
   ) {
     val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
     val pair = prefs.getString("expectedPair429", null)
@@ -1871,7 +1919,10 @@ class ScalpOverlayService : Service() {
       resetChartResult619()
       return
     }
-    val outcome = parseChartResult620(result.textBlocks.map { it.text }, pair, stake)
+    val explicitOutcome = parseChartResult620(result.textBlocks.map { it.text }, pair, stake)
+    val visualLoss = parseRealLossBadge629(result, frame)
+    val outcome = if (explicitOutcome != null && visualLoss != null &&
+        explicitOutcome != visualLoss) null else explicitOutcome ?: visualLoss
     if (outcome == null) {
       resetChartResult619()
       return
@@ -6622,7 +6673,7 @@ class ScalpOverlayService : Service() {
           resetChartResult619()
           return@addOnSuccessListener
         }
-        observeChartResult619(result, now, observedAt)
+        observeChartResult619(result, copy, now, observedAt)
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
         // OTC and ordinary charts using the same currency symbols must NOT
