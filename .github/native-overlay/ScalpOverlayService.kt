@@ -1472,8 +1472,8 @@ class ScalpOverlayService : Service() {
     }
     verifiedClosedDetail437 = null
     verifiedClosedDetailAt437 = 0L
-    // A verified LOSS changes the ledger, but CHART-ONLY must never run a
-    // Martingale progression or submit an untested larger stake automatically.
+    // A verified receipt changes the ledger only; the separate DEMO
+    // amount preparation and rearm stages must independently verify the stake.
     val canRearmBase = gateReady && !mgRecovery614.isEnabled() && !mgRecovery614.isRiskStopped() && (manualStake || (!demoRecoveryLedger.isRecovering429() &&
       demoRecoveryLedger.quote(payout).stakeCents == 100L))
     autoDemoSessionRequested = canRearmBase
@@ -1676,9 +1676,8 @@ class ScalpOverlayService : Service() {
       mgRecovery614.confirmEdited(key,pair,109L,true)
   }
 
-  // 618 candidate: rearm a settled MG cycle at the independently verified
-  // base amount only. No amount edit, no navigation and no gesture here.
-  // Higher recovery amounts remain disabled by CHART_ONLY_DEMO_462.
+  // 630: prepare the next independently verified DEMO MG amount.
+  // Rearm is separate from stake editing, settlement and order dispatch.
   // 626 isolated preparation stage: after a verified broker settlement,
   // write the next authorized amount and independently re-read it. Do not
   // grant a new order or enable recovery gestures in this stage.
@@ -1762,16 +1761,15 @@ class ScalpOverlayService : Service() {
     if (pkg != verifiedDemoAccountPackage ||
         nowElapsed - verifiedDemoAccountAt !in 0L..5_000L) return null
     val key = "QT_DEMO:" + pkg
-    if (TouchTestService.readBrokerDemoOrder476(pair) != (109L to 92)) return null
-    // A pending recovery stake is not a base stake and cannot pass rebind.
-    if (!mgRecovery614.rebindVerifiedBasePair(key,pair)) return null
-    // The base stake can already be durably confirmed (pending=0).
-    // Do not demand a second edit confirmation in that valid state.
-    if (!mgRecovery614.permitsFreshDemoOrder(key,pair,109L)) {
-      if (mgRecovery614.pending(key,pair).stakeCents != 109L ||
-          !mgRecovery614.confirmEdited(key,pair,109L,true)) return null
-    }
-    if (!mgRecovery614.permitsFreshDemoOrder(key,pair,109L)) return null
+    val verifiedOrder630 = TouchTestService.readBrokerDemoOrder476(pair) ?: return null
+    val stake630 = verifiedOrder630.first
+    if (verifiedOrder630.second != 92) return null
+    // Only a durable, independently re-read MG stake may rearm the next
+    // DEMO cycle. Never authorize a pending or manually substituted stake.
+    val bound630 = if (stake630 == 109L)
+      mgRecovery614.rebindVerifiedBasePair(key,pair)
+    else mgRecovery614.rebindConfirmedRecoveryPair584(key,pair,stake630)
+    if (!bound630 || !mgRecovery614.permitsFreshDemoOrder(key,pair,stake630)) return null
     autoDemoSessionRequested = true
     autoDemoSessionConsumed = false
     autoDemoArmed = false
@@ -1780,7 +1778,7 @@ class ScalpOverlayService : Service() {
     autoDemoLastPreflightAt = 0L
     autoDemoLockedAt = lockedAt
     autoDemoEntryCycleStartedAt = System.currentTimeMillis()
-    return "MG DEMO • BAZĂ 1,09 CONFIRMATĂ • AȘTEPT ȘOC NOU"
+    return "MG DEMO • MIZĂ CONFIRMATĂ • AȘTEPT ȘOC NOU"
   }
 
   // Chart-only observer: provisional evidence, not a settled broker receipt.
@@ -8050,26 +8048,31 @@ class ScalpOverlayService : Service() {
             // The separate preflight and persisted order gates still apply.
             if (CHART_ONLY_DEMO_462 && mgRecovery614.isEnabled() &&
                 !mgRecovery614.isRiskStopped() && package429 != null &&
-                manualOrder == (109L to 92) &&
+                manualOrder != null && manualOrder.second == 92 &&
                 !realAccountSafetyStop517 && !accountRecheckPending &&
                 TouchTestService.demoFxAccountInForeground() &&
                 !TouchTestService.realFxAccountVisible() &&
                 tradePositionGate.state() == TradePositionGate.State.READY &&
                 !getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) &&
                 !getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false)) {
-              mgRecovery614.rebindVerifiedBasePair("QT_DEMO:" + package429, tradePair429)
+              if (manualOrder.first == 109L)
+                mgRecovery614.rebindVerifiedBasePair("QT_DEMO:" + package429, tradePair429)
+              else
+                mgRecovery614.rebindConfirmedRecoveryPair584("QT_DEMO:" + package429, tradePair429, manualOrder.first)
             }
             when {
               CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null) ->
                 "BLOCAT: MIZĂ / PAYOUT / BROKER NECONFIRMATE"
+              CHART_ONLY_DEMO_462 && payout429 != 92 ->
+                "BLOCAT: PAYOUT DEMO NU ESTE EXACT 92%"
               CHART_ONLY_DEMO_462 && mgRecovery614.isRiskStopped() ->
                 "BLOCAT: STOP MG DEMO"
               CHART_ONLY_DEMO_462 && mgRecovery614.isEnabled() &&
                 (package429 == null || stake429 == null ||
                   !mgRecovery614.permitsFreshDemoOrder("QT_DEMO:" + package429, tradePair429, stake429)) ->
                 "BLOCAT: PROPUNERE MG DEMO • FĂRĂ EDITARE AUTOMATĂ"
-              CHART_ONLY_DEMO_462 && stake429 != 109L ->
-                "RECUPERARE 553 • MIZĂ DEMO DE BAZĂ 1,09 USD NECESARĂ"
+              CHART_ONLY_DEMO_462 && !mgRecovery614.isEnabled() && stake429 != 109L ->
+                "BLOCAT: MG OFF • MIZĂ DEMO DE BAZĂ 1,09 USD NECESARĂ"
               CHART_ONLY_DEMO_462 &&
                 !TouchTestService.confirmedFiveMinuteDemoExpiry465() ->
                 "BLOCAT: TIMP QT DEMO NU ESTE 00:05:00"

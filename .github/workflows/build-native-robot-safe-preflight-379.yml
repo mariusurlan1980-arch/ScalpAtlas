@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify staged MG remains receipt-only and cannot raise broker stake
+      - name: Verify receipt-only MG settlement and independently confirmed DEMO stake
         run: |
           python3 - <<'PY614'
           from pathlib import Path
@@ -59,8 +59,15 @@ jobs:
           passive=s.split('private fun inspectPassiveDemoProof463(',1)[1].split('private fun maybeRearmExpiredDemoPilot464(',1)[0]
           assert passive.index('mgRecovery614.onVerifiedClosed(')<passive.index('putBoolean("attempted", false)')
           assert 'if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())' in s
-          assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
+          assert 'CHART_ONLY_DEMO_462 && !mgRecovery614.isEnabled() && stake429 != 109L' in s
           assert 'mgRecovery614.permitsFreshDemoOrder(' in s
+          rearm=s.split('private fun maybeRearmConfirmedDemoBase618(',1)[1].split('// Chart-only observer',1)[0]
+          for guard in ('realFxAccountVisible()', 'TradePositionGate.State.READY', 'getBoolean("attempted",false)', 'verifiedOrder630.second != 92', 'rebindConfirmedRecoveryPair584(key,pair,stake630)', 'permitsFreshDemoOrder(key,pair,stake630)'):
+              assert guard in rearm, guard
+          assert rearm.index('permitsFreshDemoOrder(key,pair,stake630)') < rearm.index('autoDemoSessionConsumed = false')
+          assert 'confirmEdited(' not in rearm and 'dispatchGesture(' not in rearm
+          assert 'CHART_ONLY_DEMO_462 && payout429 != 92' in s
+          assert 'rebindConfirmedRecoveryPair584("QT_DEMO:" + package429, tradePair429, manualOrder.first)' in s
           assert 'scalp_atlas_mg_recovery_614' in s
           t=Path('.github/native-overlay/TouchTestService.kt').read_text()
           assert 'groupedUsd615' in t and 'balanceFormat497.matchEntire(normalized615)' in t
@@ -1919,7 +1926,7 @@ jobs:
           assert 'REZULTATE CONTRADICTORII' in h
           for forbidden in ('dispatchGesture(', 'onVerifiedClosed(', 'confirmEdited(', 'autoDemoSessionConsumed = false'):
               assert forbidden not in h
-          assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
+          assert 'CHART_ONLY_DEMO_462 && !mgRecovery614.isEnabled() && stake429 != 109L' in s
           PY
 
       - name: Verify isolated Martingale stake preparation
@@ -1940,7 +1947,7 @@ jobs:
           assert '.putString("lastVerifiedSettlement626",positionId)' in p
           assert 'after.balanceCents < stakeCents' in e
           assert 'plan.pendingVerifiedSettlement626(accountKey,pair).stakeCents == stakeCents' in t
-          assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
+          assert 'CHART_ONLY_DEMO_462 && !mgRecovery614.isEnabled() && stake429 != 109L' in s
           PY
 
       - name: Verify signal and submitted gesture coupling
@@ -1955,7 +1962,7 @@ jobs:
           assert h.index('result.contains("TRANSMIS • AȘTEPT ID OPEN")') < h.index('playBip(activeSignal)') < h.index('result.startsWith("PRECHECK_NO_GESTURE:")')
           a=s.split('private fun archiveOldDemoAttempt624(',1)[1].split('private fun inspectPassiveDemoProof463(',1)[0]
           assert a.index('brokerVerifiedEmptyDemoReview(true)') < a.index('autoDemoSessionRequested = true') < a.index('autoDemoSessionConsumed = false')
-          assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
+          assert 'CHART_ONLY_DEMO_462 && !mgRecovery614.isEnabled() && stake429 != 109L' in s
           print('PASS: source checks for new-pair preflight, gesture audio and verified migration')
           PY
 
