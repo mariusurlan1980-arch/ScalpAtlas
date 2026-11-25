@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 619 chart-only DEMO observation candidate
+name: Build Scalp Atlas 621 chart-only DEMO 60s rotation candidate
 
 on:
   push:
-    branches: [fix/demo-chart-only-mg-observer]
+    branches: [test/chart-result-observer-619]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -86,9 +86,9 @@ jobs:
               assert forbidden not in h, forbidden
           assert s.count('reviewExpiredDemoHistory615(') == 1
           assert 'val navigationReview615 = chartResultDiagnostic619()' in s
-          assert 'observeChartResult619(result, observedAt)' in s
+          assert 'observeChartResult619(result, now, observedAt)' in s
           observer=s.split('private fun observeChartResult619(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
-          for guard in ('readVisibleDemoPair() != pair', 'expectedPayout429', 'demoFxAccountInForeground()', 'realFxAccountVisible()', '295_000L..345_000L'):
+          for guard in ('readVisibleDemoPair() != pair', 'expectedPayout429', 'demoFxAccountInForeground()', 'realFxAccountVisible()', '300_000L..345_000L', 'observedAt - capturedAt !in 0L..2_500L', 'resetChartResult619()'):
               assert guard in observer, guard
           for forbidden in ('dispatchGesture(', 'performGlobalAction(', 'onVerifiedClosed(', 'confirmEdited(', 'putBoolean("attempted", false)'):
               assert forbidden not in observer, forbidden
@@ -137,10 +137,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.93'
+          expo['version']='3.2.95'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=619
+          expo['android']['versionCode']=621
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -225,7 +225,7 @@ jobs:
           grep -Fq 'putBoolean("freePosition500", false)' .github/native-overlay/ScalpOverlayService.kt
           # 503: use a strict 30s normal rotation, with no 501 adaptive
           # 5-minute observation. Keep independent order/receipt protections.
-          grep -Fq 'dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'dwell(pair, android.os.SystemClock.elapsedRealtime() + 60_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'mayObserveLonger501' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'extendedM5Dwell501' .github/native-overlay/ScalpOverlayService.kt
           # 504: stale internal HTML analyzer may reload only while fresh
@@ -2492,11 +2492,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-619-CHART-ONLY-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-621-CHART-60S-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-619-CHART-ONLY-DEMO-G24
-          path: ScalpAtlas-619-CHART-ONLY-DEMO-G24.apk
+          name: ScalpAtlas-621-CHART-60S-DEMO-G24
+          path: ScalpAtlas-621-CHART-60S-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
