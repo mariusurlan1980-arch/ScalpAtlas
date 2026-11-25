@@ -1212,9 +1212,7 @@ class ScalpOverlayService : Service() {
       }
       "DETALIU ÎNCHIS" -> {
         if (verifiedClosedDetail437 == null) "ISTORIC DEMO • AȘTEPT ID ȘI P/L 2/2"
-        else if (TouchTestService.returnFromVerifiedDemoClosedDetail438(pkg!!))
-          "ISTORIC DEMO • DETALIU CITIT • VERIFIC DESCHIS"
-        else "ISTORIC DEMO • DETALIU CITIT • DESCHIS NECONFIRMAT"
+        else attemptBrokerOpenTabWithVisualProof455(true, pkg, nowElapsed)
       }
       else -> "ISTORIC DEMO • PAGINĂ NECONFIRMATĂ"
     }
