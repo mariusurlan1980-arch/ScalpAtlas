@@ -1159,6 +1159,7 @@ class ScalpOverlayService : Service() {
   private fun reviewExpiredDemoHistory615(
     nowElapsed: Long, pkg: String?, demoProof: Boolean
   ): String? {
+    if (CHART_ONLY_DEMO_462) return null
     val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
     val pending = prefs.getBoolean("attempted", false)
     val freshHistory = historyPageVisible433 &&
@@ -2154,20 +2155,12 @@ class ScalpOverlayService : Service() {
           // No timer-based pilot rearm in chart-only MG mode.
           // A settlement not independently proven must keep the order locked.
           val pilotStatus464: String? = null
-          // 630: prefer the chart; if its transient result is missed, or
-          // the user has already opened history, use the existing bounded
-          // DEMO-only receipt review. Navigation never authorizes an order.
-          val chartStatus630 = chartResultDiagnostic619()
-          val pendingWall630 = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-            .getLong("attemptedWallAt454", -1L)
-          val reviewDue630 = pendingWall630 > 0L &&
-            (System.currentTimeMillis() - pendingWall630 > 345_000L ||
-              (historyPageVisible433 &&
-                System.currentTimeMillis() - pendingWall630 >= DEMO_TEST_EXPIRY_MS_465))
-          val navigationReview615 = if (settlementReviewStarted615 != 0L ||
-              (reviewDue630 && chartCache463))
-            reviewExpiredDemoHistory615(proofNow463, proofPackage463, chartCache463) ?: chartStatus630
-          else chartStatus630
+          // Chart-only is a hard user requirement. Never open the broker
+          // transaction history to resolve a missed result. An unknown
+          // outcome must remain locked; never invent a settlement.
+          settlementReviewStarted615 = 0L
+          closedHistoryInspectionInProgress = false
+          val navigationReview615 = chartResultDiagnostic619()
           // Keep the exact passive proof or navigation blocker visible.
           // A generic MG wait message must not replace actionable evidence.
           val preparedAmount626 = prepareVerifiedMartingaleAmount626(proofNow463)
