@@ -254,7 +254,9 @@ class ScalpOverlayService : Service() {
     val payoutPercent: Int,
     val netProfitCents: Long,
     val side: String,
-    val openedSecondsOfDay: Int
+    val openedSecondsOfDay: Int,
+    val closedSecondsOfDay: Int,
+    val historyDate623: String
   )
   private var firstClosedDetail437: ClosedDetail437? = null
   private var firstClosedDetailAt437 = 0L
@@ -778,6 +780,28 @@ class ScalpOverlayService : Service() {
    * another day's same-pair/order row a valid match. A device reboot
    * invalidates the elapsed-time proof, so the app fails closed.
    */
+  // Verify an old, dated receipt against the persisted wall timestamp,
+  // independent of Android uptime. No timestamp-only order release.
+  private fun brokerOpenTimeMatchesAttempt437Dated623(
+    date: String, opened: Int, closed: Int, attemptWall: Long, nowWall: Long
+  ): Boolean {
+    if (attemptWall <= 0L || nowWall - attemptWall !in 300_000L..604_800_000L ||
+        opened !in 0..86399 || closed !in 0..86399 ||
+        (closed - opened + 86400) % 86400 !in 240..960) return false
+    val tz = java.util.TimeZone.getTimeZone("GMT+03:00")
+    val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
+    fmt.timeZone = tz
+    fmt.isLenient = false
+    if (!Regex("""^20\d{2}-\d{2}-\d{2}$""").matches(date)) return false
+    val midnight = try { fmt.parse(date)?.time ?: return false }
+      catch (_: java.text.ParseException) { return false }
+    val openingWall = midnight + opened * 1000L -
+      (if (opened > closed) 86_400_000L else 0L)
+    val closingWall = midnight + closed * 1000L
+    return closingWall <= nowWall &&
+      kotlin.math.abs(openingWall - attemptWall) <= 150_000L
+  }
+
   private fun brokerOpenTimeMatchesAttempt437(
     openedSecondsOfDay: Int,
     attemptedElapsed: Long
@@ -1266,7 +1290,7 @@ class ScalpOverlayService : Service() {
     val attemptedAt = prefs.getLong("attemptedAt429", -1L)
     if (expectedPackage != reviewPackage || expectedPair.isNullOrBlank() ||
         stake <= 0L ||
-        payout !in 92..100 || attemptedAt <= 0L)
+        payout !in 92..100 || prefs.getLong("attemptedWallAt454", -1L) <= 0L)
       return "463 • DETALII ORDIN VECHI INCOMPLETE • BLOCAT"
 
     if (historyPageTab433 != "DESCHIS") {
@@ -1314,7 +1338,9 @@ class ScalpOverlayService : Service() {
         closed.payoutPercent != payout ||
         (prefs.getString("expectedSide437", null) != null &&
           prefs.getString("expectedSide437", null) != closed.side) ||
-        !brokerOpenTimeMatchesAttempt437(closed.openedSecondsOfDay, attemptedAt))
+        !brokerOpenTimeMatchesAttempt437Dated623(closed.historyDate623,
+          closed.openedSecondsOfDay, closed.closedSecondsOfDay,
+          prefs.getLong("attemptedWallAt454", -1L), System.currentTimeMillis()))
       return "463 • DOVADA ÎNCHIDERII NU SE POTRIVEȘTE • BLOCAT"
 
     val openId = demoRecoveryLedger.verifiedOpenPositionId429()
@@ -5937,8 +5963,14 @@ class ScalpOverlayService : Service() {
     }
     val elapsed = (endedSeconds - openingSeconds + 86400) % 86400
     if (elapsed !in 240..960) return // never mistake an old list row for an M5 close
+    val date623 = readable440.mapNotNull { line ->
+      val y = line.boundingBox?.centerY()?.toFloat()?.div(frame.height) ?: return@mapNotNull null
+      if (y !in 0.22f..latestRowY442 || !Regex("""^20\d{2}-\d{2}-\d{2}$""").matches(line.text.trim()))
+        return@mapNotNull null
+      y to line.text.trim()
+    }.maxByOrNull { it.first }?.second ?: return
     val candidate = ClosedDetail437(packageId, pair, ids.single(),
-      stake, payoutValues.single(), net, side437, openingSeconds)
+      stake, payoutValues.single(), net, side437, openingSeconds, endedSeconds, date623)
     // The broker's opened CLOSED-detail sheet is not a live price chart:
     // never turn its historical pair/candles into new SHOCK signals.
     historyPageVisible433 = true
