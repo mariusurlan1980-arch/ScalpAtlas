@@ -1823,33 +1823,6 @@ class ScalpOverlayService : Service() {
     chartResultReads619 = 0
   }
 
-  // Pure parser: one exact pair, one explicit result, one matching net P/L.
-  // A synthetic notification is only an indication until device validation.
-  private fun parseChartResult620(blocks: List<String>, pair: String, stake: Long): String? {
-    if (stake !in 1L..81950L) return null
-    val pairPattern = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\b(?:\s*\(?\s*OTC\s*\)?)?""")
-    fun canonical(value: String): String =
-      value.uppercase(java.util.Locale.ROOT).replace(Regex("""[\s()]"""), "")
-    val netPattern = Regex("""(?i)\b(?:Net Profit|P/L|Profit net|Rezultat)\s*:\s*([+-])\s*\$?\s*(\d{1,5})(?:[.,](\d{1,2}))?(?![\d.,])\s*(?:USD)?""")
-    val candidates = blocks.mapNotNull { raw ->
-      val label = raw.replace(Regex("""\s+"""), " ").trim()
-      val pairs = pairPattern.findAll(label).map { canonical(it.value) }.toList().distinct()
-      if (pairs != listOf(canonical(pair))) return@mapNotNull null
-      val win = Regex("""(?i)\bWIN\b""").containsMatchIn(label)
-      val loss = Regex("""(?i)\bLOSS\b""").containsMatchIn(label)
-      if (win == loss) return@mapNotNull null
-      val m = netPattern.findAll(label).toList().singleOrNull() ?: return@mapNotNull null
-      val whole = m.groupValues[2].toLongOrNull() ?: return@mapNotNull null
-      val cents = m.groupValues[3].padEnd(2,'0').toLongOrNull() ?: return@mapNotNull null
-      val amount = whole * 100L + cents
-      if (loss && m.groupValues[1] == "-" && amount == stake) "LOSS"
-      else if (win && m.groupValues[1] == "+" &&
-        amount in ((stake * 92L) / 100L)..((stake * 92L + 99L) / 100L)) "WIN"
-      else null
-    }
-    return candidates.singleOrNull()
-  }
-
   // 629: observed QT Demo receipt shape: black $0 pill with red check icon.
   // This remains read-only evidence. A candle, bare zero, or button is not a result.
   private fun parseRealLossBadge629(
@@ -1896,6 +1869,33 @@ class ScalpOverlayService : Service() {
         background.third >= 0.70f
     }
     return if (candidates.size == 1) "LOSS" else null
+  }
+
+  // Pure parser: one exact pair, one explicit result, one matching net P/L.
+  // A synthetic notification is only an indication until device validation.
+  private fun parseChartResult620(blocks: List<String>, pair: String, stake: Long): String? {
+    if (stake !in 1L..81950L) return null
+    val pairPattern = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\b(?:\s*\(?\s*OTC\s*\)?)?""")
+    fun canonical(value: String): String =
+      value.uppercase(java.util.Locale.ROOT).replace(Regex("""[\s()]"""), "")
+    val netPattern = Regex("""(?i)\b(?:Net Profit|P/L|Profit net|Rezultat)\s*:\s*([+-])\s*\$?\s*(\d{1,5})(?:[.,](\d{1,2}))?(?![\d.,])\s*(?:USD)?""")
+    val candidates = blocks.mapNotNull { raw ->
+      val label = raw.replace(Regex("""\s+"""), " ").trim()
+      val pairs = pairPattern.findAll(label).map { canonical(it.value) }.toList().distinct()
+      if (pairs != listOf(canonical(pair))) return@mapNotNull null
+      val win = Regex("""(?i)\bWIN\b""").containsMatchIn(label)
+      val loss = Regex("""(?i)\bLOSS\b""").containsMatchIn(label)
+      if (win == loss) return@mapNotNull null
+      val m = netPattern.findAll(label).toList().singleOrNull() ?: return@mapNotNull null
+      val whole = m.groupValues[2].toLongOrNull() ?: return@mapNotNull null
+      val cents = m.groupValues[3].padEnd(2,'0').toLongOrNull() ?: return@mapNotNull null
+      val amount = whole * 100L + cents
+      if (loss && m.groupValues[1] == "-" && amount == stake) "LOSS"
+      else if (win && m.groupValues[1] == "+" &&
+        amount in ((stake * 92L) / 100L)..((stake * 92L + 99L) / 100L)) "WIN"
+      else null
+    }
+    return candidates.singleOrNull()
   }
 
   private fun observeChartResult619(
