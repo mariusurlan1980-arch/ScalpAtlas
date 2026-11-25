@@ -1865,9 +1865,23 @@ class ScalpOverlayService : Service() {
     }
     val attemptKey627 = chartResultAttemptKey627(pkg,pair,wall,stake)
     val key = attemptKey627 + outcome
+    // Restore only evidence bound to this exact attempt. No inferred receipt.
+    if (prefs.getString("chartEvidenceAttempt628",null) == attemptKey627) {
+      val savedOutcome = prefs.getString("chartEvidenceOutcome628",null)
+      val savedAt = prefs.getLong("chartEvidenceAt628",-1L)
+      if (savedOutcome in listOf("WIN","LOSS") && savedAt - wall in 300_000L..345_000L) {
+        chartResultObservedKey627 = attemptKey627 + savedOutcome
+        chartResultObservedAt627 = savedAt
+        chartResultConflict627 = prefs.getBoolean("chartEvidenceConflict628",false)
+      }
+    }
     if (chartResultObservedKey627.startsWith(attemptKey627) &&
         chartResultObservedKey627 != key) {
       chartResultConflict627 = true
+      prefs.edit().putString("chartEvidenceAttempt628",attemptKey627)
+        .putString("chartEvidenceOutcome628",chartResultObservedKey627.substringAfterLast('|'))
+        .putLong("chartEvidenceAt628",chartResultObservedAt627)
+        .putBoolean("chartEvidenceConflict628",true).commit()
       resetChartResult619()
       return
     }
@@ -1890,6 +1904,10 @@ class ScalpOverlayService : Service() {
     if (chartResultReads619 >= 2 && !chartResultConflict627) {
       chartResultObservedKey627 = key
       chartResultObservedAt627 = capturedAt
+      prefs.edit().putString("chartEvidenceAttempt628",attemptKey627)
+        .putString("chartEvidenceOutcome628",outcome)
+        .putLong("chartEvidenceAt628",capturedAt)
+        .putBoolean("chartEvidenceConflict628",false).commit()
     }
   }
 
@@ -1909,6 +1927,15 @@ class ScalpOverlayService : Service() {
     val currentKey = chartResultAttemptKey627(
       prefs.getString("expectedPackage429", null).orEmpty(),pendingPair623,wall,
       prefs.getLong("expectedStakeCents429",-1L))
+    if (prefs.getString("chartEvidenceAttempt628",null) == currentKey) {
+      val savedOutcome = prefs.getString("chartEvidenceOutcome628",null)
+      val savedAt = prefs.getLong("chartEvidenceAt628",-1L)
+      if (savedOutcome in listOf("WIN","LOSS") && savedAt - wall in 300_000L..345_000L) {
+        if (prefs.getBoolean("chartEvidenceConflict628",false))
+          return "GRAFIC • REZULTATE CONTRADICTORII"
+        return "GRAFIC • " + savedOutcome + " 2/2 MEMORAT • FĂRĂ DECONTARE"
+      }
+    }
     if (chartResultObservedKey627.startsWith(currentKey) &&
         chartResultObservedAt627 - wall in 300_000L..345_000L &&
         now >= chartResultObservedAt627)
@@ -1916,7 +1943,7 @@ class ScalpOverlayService : Service() {
       else "GRAFIC • " + chartResultObservedKey627.substringAfterLast('|') +
         " 2/2 OBSERVAT • FĂRĂ DECONTARE"
     if (age !in 0L..345_000L)
-      return "ORDIN VECHI " + pendingPair623.take(20) + " • VERIFICARE PASIVĂ NECESARĂ"
+      return "REZULTAT RATAT " + pendingPair623.take(20) + " • FĂRĂ ORDIN NOU"
     if (chartResultReads619 > 0 && chartResultCandidate619.startsWith(currentKey) &&
         now - chartResultLastAt619 in 0L..5_000L)
       return "GRAFIC • INDICIU " + chartResultCandidate619.substringAfterLast('|') +
