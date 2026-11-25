@@ -1614,6 +1614,79 @@ class ScalpOverlayService : Service() {
     return "MG DEMO • BAZĂ 1,09 CONFIRMATĂ • AȘTEPT ȘOC NOU"
   }
 
+  // Chart-only observer: provisional evidence, not a settled broker receipt.
+  // Never use balance changes, candle color, expired time or a missing badge
+  // to trigger a recovery amount. No gestures or order state changes here.
+  private var chartResultCandidate619 = ""
+  private var chartResultFirstAt619 = 0L
+  private var chartResultLastAt619 = 0L
+  private var chartResultReads619 = 0
+  private fun observeChartResult619(
+    result: com.google.mlkit.vision.text.Text, observedAt: Long
+  ) {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val pair = prefs.getString("expectedPair429", null)
+    val pkg = prefs.getString("expectedPackage429", null)
+    val stake = prefs.getLong("expectedStakeCents429", -1L)
+    val wall = prefs.getLong("attemptedWallAt454", -1L)
+    if (!CHART_ONLY_DEMO_462 || !prefs.getBoolean("attempted", false) ||
+        pair.isNullOrBlank() || pkg == null || stake <= 0L ||
+        prefs.getInt("expectedPayout429", -1) != 92 || wall <= 0L ||
+        observedAt - wall !in 295_000L..345_000L ||
+        historyPageVisible433 || fxRotationNavigating || realAccountSafetyStop517 ||
+        TouchTestService.realFxAccountVisible() ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
+        TouchTestService.readVisibleDemoPair() != pair) {
+      chartResultCandidate619 = ""
+      chartResultReads619 = 0
+      return
+    }
+    // Deliberately strict provisional parser. The actual Motorola
+    // settlement notification layout still requires device validation.
+    val netPattern = Regex("""(?i)\b(?:Net Profit|P/L|Profit net|Rezultat)\s*:\s*([+-])\s*\$?\s*(\d{1,5})(?:[.,](\d{1,2}))?\s*(?:USD)?""")
+    val outcomes = result.textBlocks.mapNotNull { block ->
+      val label = block.text.replace(Regex("""\s+"""), " ").trim()
+      if (!label.contains(pair, ignoreCase = true)) return@mapNotNull null
+      val win = Regex("""(?i)\bWIN\b""").containsMatchIn(label)
+      val loss = Regex("""(?i)\bLOSS\b""").containsMatchIn(label)
+      if (win == loss) return@mapNotNull null
+      val m = netPattern.findAll(label).toList().singleOrNull() ?: return@mapNotNull null
+      val whole = m.groupValues[2].toLongOrNull() ?: return@mapNotNull null
+      val cents = m.groupValues[3].padEnd(2,'0').toLongOrNull() ?: return@mapNotNull null
+      val amount = whole * 100L + cents
+      if (loss && m.groupValues[1] == "-" && amount == stake) "LOSS"
+      else if (win && m.groupValues[1] == "+" &&
+        amount in ((stake * 92L) / 100L)..((stake * 92L + 99L) / 100L)) "WIN"
+      else null
+    }.distinct()
+    val outcome = outcomes.singleOrNull() ?: return
+    val key = "$pkg|$pair|$wall|$stake|$outcome"
+    if (chartResultCandidate619 != key ||
+        observedAt - chartResultFirstAt619 !in 0L..8_000L) {
+      chartResultCandidate619 = key
+      chartResultFirstAt619 = observedAt
+      chartResultReads619 = 1
+    } else if (observedAt - chartResultLastAt619 >= 1_000L) {
+      chartResultReads619 = 2
+    }
+    chartResultLastAt619 = observedAt
+  }
+
+  private fun chartResultDiagnostic619(): String? {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    if (!prefs.getBoolean("attempted", false)) return null
+    val wall = prefs.getLong("attemptedWallAt454", -1L)
+    val now = System.currentTimeMillis()
+    if (wall <= 0L) return "GRAFIC • TIMP ORDIN NECUNOSCUT"
+    val age = now - wall
+    if (age in 0L..294_999L) return "GRAFIC • AȘTEPT EXPIRAREA"
+    if (chartResultReads619 > 0 && now - chartResultLastAt619 in 0L..8_000L)
+      return "GRAFIC • INDICIU " + chartResultCandidate619.substringAfterLast('|') +
+        " " + chartResultReads619 + "/2 • NECONFIRMAT"
+    return "GRAFIC • REZULTAT NECITIT • FĂRĂ ORDIN NOU"
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -1697,12 +1770,9 @@ class ScalpOverlayService : Service() {
           val pilotStatus464 = if (passiveStatus463 == null && autoDemoSessionConsumed)
             maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
           else null
-          val navigationReview615 = try {
-            reviewExpiredDemoHistory615(proofNow463, proofPackage463, chartCache463)
-          } catch (error: Exception) {
-            android.util.Log.e("ScalpAtlas615", "DEMO history review blocked", error)
-            "ISTORIC DEMO • EROARE NAVIGARE • ORDIN BLOCAT"
-          }
+          // User requested chart-only operation: never open history or
+          // use a navigation gesture to discover a settlement.
+          val navigationReview615 = chartResultDiagnostic619()
           // Keep the exact passive proof or navigation blocker visible.
           // A generic MG wait message must not replace actionable evidence.
           val baseRearm618 = maybeRearmConfirmedDemoBase618(proofNow463)
@@ -3884,7 +3954,7 @@ class ScalpOverlayService : Service() {
         val attemptedAt = prefs.getLong("attemptedAt429", 0L)
         val pendingFiveMinuteOrder = prefs.getBoolean("attempted", false) &&
           attemptedAt > 0L &&
-          elapsed - attemptedAt in 0L..(DEMO_TEST_EXPIRY_MS_465 + 15_000L)
+          elapsed - attemptedAt in 0L..(DEMO_TEST_EXPIRY_MS_465 + 45_000L)
         val badge = readDemoBadgeForEffect512()
         if (badge != null && badge > 0) {
           tradeBadgePositiveReads516 = (tradeBadgePositiveReads516 + 1).coerceAtMost(3)
@@ -6229,6 +6299,7 @@ class ScalpOverlayService : Service() {
         // Continue the independent OPEN/CLOSED evidence checker above,
         // but NEVER parse past trade rows as live chart identity.
         if (historyPageVisible433) return@addOnSuccessListener
+        observeChartResult619(result, observedAt)
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
         // OTC and ordinary charts using the same currency symbols must NOT
