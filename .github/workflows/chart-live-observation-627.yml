@@ -63,3 +63,29 @@ jobs:
               assert forbidden not in h,forbidden
           print('PASS persistent observation source guards; no settlement or rearm authorization')
           PY
+
+      - name: Replay auxiliary balance comparison only
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          h=s.split('  private fun compareChartBalance628(',1)[1].split('  private fun chartResultCaptureInterval627(',1)[0]
+          Path('/tmp/BalanceEvidence628.kt').write_text('private fun compareChartBalance628('+h)
+          assert 'prefs.getLong("chartBalanceWall628",-1L) == wall' in s
+          assert 'if (comparison == outcome) "CONCORDANT" else "NECONFIRMAT"' in s
+          PY
+          cat >> /tmp/BalanceEvidence628.kt <<'KOTLIN'
+          fun main() {
+            check(compareChartBalance628(157241,157341,109)=="WIN")
+            check(compareChartBalance628(157241,157132,109)=="LOSS")
+            check(compareChartBalance628(157241,157241,109)=="DRAW")
+            check(compareChartBalance628(157241,157450,109)==null)
+            check(compareChartBalance628(-1,157341,109)==null)
+            check(compareChartBalance628(100,0,109)==null)
+            check(compareChartBalance628(157241,157451,228)=="WIN")
+            println("PASS 7 auxiliary balance cases; no settlement authorization")
+          }
+          KOTLIN
+          kotlinc /tmp/BalanceEvidence628.kt -include-runtime -d /tmp/balance-evidence628.jar
+          java -jar /tmp/balance-evidence628.jar
