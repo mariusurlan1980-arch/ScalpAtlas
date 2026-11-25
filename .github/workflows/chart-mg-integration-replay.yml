@@ -1,0 +1,128 @@
+name: Scalp Atlas chart parser + Martingale integration replay
+on:
+  push:
+    branches: [test/chart-result-observer-619]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Replay exact Kotlin chart parser and stake plan, strictly offline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mg-replay
+          cat > /tmp/mg-replay/SharedPreferences.kt <<'KOTLIN'
+          package android.content
+          interface SharedPreferences {
+            fun getBoolean(key:String, def:Boolean):Boolean
+            fun getInt(key:String, def:Int):Int
+            fun getLong(key:String, def:Long):Long
+            fun getString(key:String, def:String?):String?
+            fun getStringSet(key:String, def:Set<String>?):Set<String>?
+            fun contains(key:String):Boolean
+            fun edit():Editor
+            interface Editor {
+              fun putBoolean(key:String, value:Boolean):Editor
+              fun putInt(key:String, value:Int):Editor
+              fun putLong(key:String, value:Long):Editor
+              fun putString(key:String, value:String?):Editor
+              fun putStringSet(key:String, value:Set<String>?):Editor
+              fun commit():Boolean
+            }
+          }
+          KOTLIN
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          parser=s.split('  private fun parseChartResult620(',1)[1].split('  private fun observeChartResult619(',1)[0]
+          Path('/tmp/mg-replay/ChartParser.kt').write_text('package com.scalpatlas.app\ninternal fun parseChartResult620('+parser)
+          PY
+          cat > /tmp/mg-replay/Replay.kt <<'KOTLIN'
+          package com.scalpatlas.app
+          import android.content.SharedPreferences
+          private class MemoryPrefs : SharedPreferences {
+            private val values=mutableMapOf<String,Any?>()
+            override fun getBoolean(key:String,def:Boolean)=values[key] as? Boolean ?: def
+            override fun getInt(key:String,def:Int)=values[key] as? Int ?: def
+            override fun getLong(key:String,def:Long)=values[key] as? Long ?: def
+            override fun getString(key:String,def:String?)=values[key] as? String ?: def
+            @Suppress("UNCHECKED_CAST")
+            override fun getStringSet(key:String,def:Set<String>?)=(values[key] as? Set<String>)?.toSet() ?: def
+            override fun contains(key:String)=values.containsKey(key)
+            override fun edit():SharedPreferences.Editor=object:SharedPreferences.Editor {
+              private val changes=mutableMapOf<String,Any?>()
+              override fun putBoolean(key:String,value:Boolean)=apply{changes[key]=value}
+              override fun putInt(key:String,value:Int)=apply{changes[key]=value}
+              override fun putLong(key:String,value:Long)=apply{changes[key]=value}
+              override fun putString(key:String,value:String?)=apply{changes[key]=value}
+              override fun putStringSet(key:String,value:Set<String>?)=apply{changes[key]=value?.toSet()}
+              override fun commit():Boolean{values.putAll(changes);return true}
+            }
+          }
+          private const val ACCOUNT="QT_DEMO:virtual-replay"
+          private const val PAIR="EUR/USD OTC"
+          fun main(){
+            val prefs=MemoryPrefs()
+            var plan=DemoAutoStakePlan565(prefs)
+            check(plan.enableFromVerifiedDemo(ACCOUNT,PAIR))
+            val stakes=listOf(109L,228L,475L,109L,228L,109L)
+            val outcomes=listOf("LOSS","LOSS","WIN","LOSS","WIN","WIN")
+            for(i in stakes.indices){
+              val stake=stakes[i]
+              val result=outcomes[i]
+              check(plan.pending(ACCOUNT,PAIR).stakeCents==stake)
+              check(!plan.permitsFreshDemoOrder(ACCOUNT,PAIR,stake))
+              check(!plan.confirmEdited(ACCOUNT,PAIR,stake,false))
+              check(plan.confirmEdited(ACCOUNT,PAIR,stake,true))
+              check(plan.permitsFreshDemoOrder(ACCOUNT,PAIR,stake))
+              val profit=when(result){"LOSS"->-stake;"WIN"->(stake*92+50)/100;else->0L}
+              val notification="$PAIR $result P/L: " + (if(profit<0) "-" else "+") +
+                (kotlin.math.abs(profit)/100) + "." + (kotlin.math.abs(profit)%100).toString().padStart(2,'0')
+              check(parseChartResult620(listOf(notification),PAIR,stake)==result)
+              // Bad observations must never reach the plan in this replay.
+              check(parseChartResult620(listOf(notification,notification),PAIR,stake)==null)
+              check(parseChartResult620(listOf(notification),"GBP/USD OTC",stake)==null)
+              check(parseChartResult620(emptyList(),PAIR,stake)==null)
+              check(plan.permitsFreshDemoOrder(ACCOUNT,PAIR,stake))
+              val id="virtual-${i+1}"
+              val status=plan.onVerifiedClosed(ACCOUNT,PAIR,id,stake,92,profit,true)
+              check(status.startsWith(result+" CONFIRMAT")){status}
+              val next=plan.pending(ACCOUNT,PAIR).stakeCents
+              plan=DemoAutoStakePlan565(prefs)
+              check(plan.onVerifiedClosed(ACCOUNT,PAIR,id,stake,92,profit,true).startsWith("DUPLICAT"))
+              check(plan.pending(ACCOUNT,PAIR).stakeCents==next)
+              println("SIM ${i+1}: stake=$stake result=$result net=$profit next=$next")
+            }
+            check(plan.pending(ACCOUNT,PAIR).stakeCents==109L)
+            val stop=DemoAutoStakePlan565(MemoryPrefs())
+            check(stop.enableFromVerifiedDemo(ACCOUNT,PAIR))
+            var total=0L
+            repeat(10){i->
+              val stake=checkNotNull(stop.pending(ACCOUNT,PAIR).stakeCents)
+              check(stop.confirmEdited(ACCOUNT,PAIR,stake,true))
+              val notice="$PAIR LOSS P/L: -"+(stake/100)+"."+(stake%100).toString().padStart(2,'0')
+              check(parseChartResult620(listOf(notice),PAIR,stake)=="LOSS")
+              total+=stake
+              val status=stop.onVerifiedClosed(ACCOUNT,PAIR,"stop-$i",stake,92,-stake,true)
+              check(if(i==9)status.startsWith("STOP") else status.startsWith("LOSS CONFIRMAT"))
+            }
+            check(total==157244L && stop.isRiskStopped() && !stop.permitsFreshDemoOrder(ACCOUNT,PAIR,109L))
+            val invalid=DemoAutoStakePlan565(MemoryPrefs())
+            check(!invalid.enableFromVerifiedDemo("QT_REAL:virtual",PAIR))
+            check(invalid.enableFromVerifiedDemo(ACCOUNT,PAIR))
+            check(invalid.confirmEdited(ACCOUNT,PAIR,109L,true))
+            check(invalid.onVerifiedClosed(ACCOUNT,PAIR,"unverified",109L,92,-109L,false).startsWith("STOP"))
+            check(invalid.isRiskStopped())
+            println("PASS: six synthetic chart-to-plan transitions, rejected observations, duplicate replay, ten-loss stop, rejection of real/unverified receipts")
+          }
+          KOTLIN
+          kotlinc /tmp/mg-replay/SharedPreferences.kt /tmp/mg-replay/ChartParser.kt /tmp/mg-replay/Replay.kt .github/native-overlay/DemoAutoStakePlan565.kt -include-runtime -d /tmp/mg-replay/replay.jar
+          java -jar /tmp/mg-replay/replay.jar
