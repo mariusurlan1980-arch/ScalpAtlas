@@ -1767,9 +1767,9 @@ class ScalpOverlayService : Service() {
           val passiveStatus463 = inspectPassiveDemoProof463(
             proofNow463, proofPackage463, chartCache463
           )
-          val pilotStatus464 = if (passiveStatus463 == null && autoDemoSessionConsumed)
-            maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
-          else null
+          // No timer-based pilot rearm in chart-only MG mode.
+          // A settlement not independently proven must keep the order locked.
+          val pilotStatus464: String? = null
           // User requested chart-only operation: never open history or
           // use a navigation gesture to discover a settlement.
           val navigationReview615 = chartResultDiagnostic619()
