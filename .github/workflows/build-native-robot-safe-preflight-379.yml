@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 626 DEMO verified stake preparation
+name: Build Scalp Atlas 627 DEMO direct chart observation
 
 on:
   push:
-    branches: [test/626-demo-stake-preparation]
+    branches: [test/627-live-chart-result]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -137,10 +137,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.3.0'
+          expo['version']='3.3.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=626
+          expo['android']['versionCode']=627
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1904,6 +1904,22 @@ jobs:
           console.log('445 safe OPEN->CLOSED UUID correlation test passed');
           NODE
 
+      - name: Verify direct chart sampling remains read-only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          assert 'now - attemptWall in 285_000L..345_000L) 900L' in s
+          assert 'now - lastOcrAttemptAt < interval627' in s
+          h=s.split('private fun observeChartResult619(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
+          assert 'chartResultReads619 >= 2 && !chartResultConflict627' in h
+          assert 'chartResultObservedKey627 = key' in h
+          assert 'REZULTATE CONTRADICTORII' in h
+          for forbidden in ('dispatchGesture(', 'onVerifiedClosed(', 'confirmEdited(', 'autoDemoSessionConsumed = false'):
+              assert forbidden not in h
+          assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
+          PY
+
       - name: Verify isolated Martingale stake preparation
         run: |
           python3 - <<'PY'
@@ -2601,11 +2617,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-626-DEMO-STAKE-TEST-G24.apk
+          cp "$APK" ScalpAtlas-627-DEMO-CHART-TEST-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-626-DEMO-STAKE-TEST-G24
-          path: ScalpAtlas-626-DEMO-STAKE-TEST-G24.apk
+          name: ScalpAtlas-627-DEMO-CHART-TEST-G24
+          path: ScalpAtlas-627-DEMO-CHART-TEST-G24.apk
           if-no-files-found: error
           retention-days: 30
