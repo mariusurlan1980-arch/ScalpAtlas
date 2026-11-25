@@ -3927,7 +3927,7 @@ class ScalpOverlayService : Service() {
     // 1 USD, adequate demo balance, and a unique clickable trade button exist.
     // Verify account and exactly 1 USD without starting a transaction.
     // The current fail-closed error is shown verbatim to diagnose WebView nodes.
-    val fxButton = localButton("ROTAȚIE • 30 S", Color.rgb(71, 88, 118))
+    val fxButton = localButton("ROTAȚIE • 60 S", Color.rgb(71, 88, 118))
     fxRotationStatusButton513 = fxButton
     // 502: the robot is continuous; the large draggable status bar must NOT
     // silently turn FX rotation off on an accidental tap or tiny drag.
@@ -4282,9 +4282,9 @@ class ScalpOverlayService : Service() {
         lastTrendReject549 = "AȘTEAPTĂ DATE"
         visited.add(pair)
         scannedEligiblePairs.add(pair)
-        // 503: restore the requested 30-second interval for EVERY pair.
+        // 503: use the requested 60-second interval for EVERY pair.
         // This is a rotation timer, NOT a relaxation of SHOCK rules.
-        dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)
+        dwell(pair, android.os.SystemClock.elapsedRealtime() + 60_000L, 12)
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
@@ -4299,7 +4299,7 @@ class ScalpOverlayService : Service() {
           after(minOf(remaining, 1_000L)) { dwell(pair, deadline, retries) }
           return
         }
-        // 503: no extra five-minute observation after 30 seconds.
+        // 503: no extra five-minute observation after 60 seconds.
         // Allow a few seconds ONLY if an already confirmed fresh SHOCK or
         // candidate is being verified, to avoid aborting order preflight.
         val now = System.currentTimeMillis()
@@ -4308,7 +4308,7 @@ class ScalpOverlayService : Service() {
           now - candidateLastSeenAt in 0L..CANDIDATE_EVIDENCE_GRACE_MS &&
           now - candidateStartedAt in 0L..CANDIDATE_MAX_AGE_MS
         if ((recentSignal || liveCandidate) && remaining > -5_000L) {
-          fxButton.text = "$pair • CONFIRM ȘOC"
+          fxButton.text = "$pair • CONFIRM ȘOC • ${(5_000L + remaining + 999L) / 1000L} S"
           after(minOf(750L, 5_000L + remaining)) { dwell(pair, deadline, retries) }
           return
         }
