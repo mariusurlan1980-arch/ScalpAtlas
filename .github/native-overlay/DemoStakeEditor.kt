@@ -39,6 +39,24 @@ object DemoStakeEditor {
     return whole * 100 + two
   }
 
+  // Accept a complete broker balance, not a numeric substring after a
+  // grouping separator (e.g. 1,571.32 must never become 571.32).
+  internal fun parseDemoBalance626(raw: String): Long? {
+    val clean = raw.trim().replace(Regex("""(?i)^USD\s*|\s*USD$"""), "")
+      .trim().removePrefix("$").trim()
+    val plain = when {
+      Regex("""^\d{1,7}\.\d{2}$""").matches(clean) -> clean
+      Regex("""^\d{1,3}(,\d{3})+\.\d{2}$""").matches(clean) -> clean.replace(",", "")
+      Regex("""^\d{1,7},\d{2}$""").matches(clean) -> clean.replace(",", ".")
+      Regex("""^\d{1,3}(\.\d{3})+,\d{2}$""").matches(clean) -> clean.replace(".", "").replace(",", ".")
+      else -> return null
+    }
+    val parts = plain.split(".")
+    val whole = parts[0].toLongOrNull() ?: return null
+    val fraction = parts[1].toLongOrNull() ?: return null
+    return whole * 100L + fraction
+  }
+
   private data class Chart(
     val root: AccessibilityNodeInfo, val pkg: String, val w: Int, val h: Int,
     val labels: List<Item>
@@ -163,10 +181,7 @@ object DemoStakeEditor {
     val balance = labels.filter {
       it.rect.centerX() in (w * .48f).toInt()..(w * .86f).toInt() &&
       it.rect.centerY() < h * .17f
-    }.mapNotNull {
-      Regex("""(?<!\d)(\d{1,5}[.,]\d{2})(?!\d)""").find(it.value)
-        ?.groupValues?.getOrNull(1)?.let(::centsOf)
-    }.distinct()
+    }.mapNotNull { parseDemoBalance626(it.value) }.distinct()
     if (balance.size != 1)
       return null to "BLOCAT: SOLD QT DEMO NECONFIRMAT"
     if (svc.rootInActiveWindow?.packageName?.toString() != pkg)
