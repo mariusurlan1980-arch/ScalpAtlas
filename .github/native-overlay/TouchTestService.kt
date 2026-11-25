@@ -2745,10 +2745,11 @@ class TouchTestService : AccessibilityService() {
           (metrics.widthPixels * 0.48f).toInt()..(metrics.widthPixels * 0.86f).toInt() &&
         it.second.centerY() < metrics.heightPixels * 0.17f
       }.mapNotNull {
-        Regex("""(?<!\d)(\d{1,5}[.,]\d{2})(?!\d)""").find(it.first)
-          ?.groupValues?.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
+        DemoStakeEditor.parseDemoBalance626(it.first)
       }.distinct()
-      return values.singleOrNull()
+      if (svc.rootInActiveWindow?.packageName?.toString() != pkg ||
+          realFxAccountVisible()) return null
+      return values.singleOrNull()?.let { it / 100.0 }
     }
 
     /**
