@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 617 DEMO navigation safety candidate
+name: Build Scalp Atlas 619 chart-only DEMO observation candidate
 
 on:
   push:
-    branches: [fix/demo-navigation-safety-616]
+    branches: [fix/demo-chart-only-mg-observer]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -84,7 +84,14 @@ jobs:
               assert guard in h, guard
           for forbidden in ('pressVerifiedDemoStakeOnce429(', 'pressAutoOneDollarDemoOrderOnce(', 'setVerifiedDemoRecoveryStakeOnBroker(', 'beginAttempt(', 'putBoolean("attempted", false)', 'autoDemoSessionConsumed = false'):
               assert forbidden not in h, forbidden
-          assert 'reviewExpiredDemoHistory615(proofNow463, proofPackage463, chartCache463)' in s
+          assert s.count('reviewExpiredDemoHistory615(') == 1
+          assert 'val navigationReview615 = chartResultDiagnostic619()' in s
+          assert 'observeChartResult619(result, observedAt)' in s
+          observer=s.split('private fun observeChartResult619(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
+          for guard in ('readVisibleDemoPair() != pair', 'expectedPayout429', 'demoFxAccountInForeground()', 'realFxAccountVisible()', '295_000L..345_000L'):
+              assert guard in observer, guard
+          for forbidden in ('dispatchGesture(', 'performGlobalAction(', 'onVerifiedClosed(', 'confirmEdited(', 'putBoolean("attempted", false)'):
+              assert forbidden not in observer, forbidden
           print('DEMO history review: expiry, identity, evidence and order locks checked')
           PYREVIEW
 
@@ -130,10 +137,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.91'
+          expo['version']='3.2.93'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=617
+          expo['android']['versionCode']=619
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2338,7 +2345,7 @@ jobs:
           assert 'demoRecoveryLedger.quote(expectedPayout).stakeCents != 100L' in pilot
           assert 'TouchTestService.inspectBrokerDemoOrder488(' in pilot
           assert 'releaseUnknownGestureForExpiredDemoPilot464(' in pilot
-          assert 'maybeRearmExpiredDemoPilot464(' in monitor
+          assert 'maybeRearmExpiredDemoPilot464(' not in monitor
           assert 'if (CHART_ONLY_DEMO_462) {' in monitor
           assert 'CHART_ONLY_DEMO_462 && (manualOrder == null || package429 == null)' in s
           assert 'CHART_ONLY_DEMO_462 &&' in s
@@ -2485,11 +2492,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-617-DEMO-SAFETY-G24.apk
+          cp "$APK" ScalpAtlas-619-CHART-ONLY-DEMO-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-617-DEMO-SAFETY-G24
-          path: ScalpAtlas-617-DEMO-SAFETY-G24.apk
+          name: ScalpAtlas-619-CHART-ONLY-DEMO-G24
+          path: ScalpAtlas-619-CHART-ONLY-DEMO-G24.apk
           if-no-files-found: error
           retention-days: 30
