@@ -221,8 +221,26 @@ object DemoStakeEditor {
     svc: AccessibilityService,
     expectedPairMatches: () -> Boolean,
     stakeCents: Long
+  ): String = setExactDemoStakeBounded626(svc, expectedPairMatches, stakeCents, 3964L)
+
+  // Separate entry for the verified Demo-only Martingale plan. Authorization
+  // is rechecked before and after writing; the legacy editor limit is unchanged.
+  @Synchronized
+  internal fun setExactDemoMartingaleStake626(
+    svc: AccessibilityService,
+    stillAuthorized: () -> Boolean,
+    stakeCents: Long
+  ): String = setExactDemoStakeBounded626(
+    svc, stillAuthorized, stakeCents, DemoAutoStakePlan565.EDITOR_MAX_STAKE_CENTS
+  )
+
+  private fun setExactDemoStakeBounded626(
+    svc: AccessibilityService,
+    expectedPairMatches: () -> Boolean,
+    stakeCents: Long,
+    maxStake: Long
   ): String {
-    if (!expectedPairMatches() || stakeCents !in 100L..3964L)
+    if (!expectedPairMatches() || stakeCents !in 100L..maxStake)
       return "BLOCAT: PERECHE SAU MIZĂ NECONFIRMATĂ"
     val (before, reason) = inspect(svc)
     if (before == null) return reason
@@ -243,7 +261,7 @@ object DemoStakeEditor {
     val (after, postReason) = inspect(svc)
     if (after == null) return "SUMĂ NECONFIRMATĂ DUPĂ EDITARE • " + postReason
     if (!expectedPairMatches() || after.pkg != before.pkg ||
-        after.payout != before.payout ||
+        after.payout != before.payout || after.balanceCents < stakeCents ||
         centsOf(after.input.value) != stakeCents)
       return "SUMĂ NECONFIRMATĂ DUPĂ EDITARE • FĂRĂ ORDIN"
     return "SUMĂ QT DEMO CONFIRMATĂ " + formatted + " USD • FĂRĂ ORDIN"
