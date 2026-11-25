@@ -107,6 +107,7 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
         netProfitCents !in ((stakeCents*92L)/100L)..((stakeCents*92L+99L)/100L))
       return stopUnsafe("WIN/PAYOUT NECONFORM")
     val edit=prefs.edit().putStringSet("seenClosedIds",nextIds)
+      .putString("lastVerifiedSettlement626",positionId)
     if(netProfitCents<0L){
       val nextLosses=losses+1
       val cumLoss=(0 until nextLosses).sumOf{LADDER[it]}
@@ -164,6 +165,16 @@ internal class DemoAutoStakePlan565(private val prefs: SharedPreferences) {
         stake>EDITOR_MAX_STAKE_CENTS)
       return Proposal(null,null,"NIMIC DE EDITAT SAU MIZĂ BLOCATĂ")
     return Proposal(stake,pair,"AȘTEAPTĂ SET_TEXT ȘI RECITIRE BROKER")
+  }
+
+  // A new automatic edit must originate from a durable broker settlement,
+  // never merely from initial plan enablement, an unverified chart or timer.
+  @Synchronized
+  fun pendingVerifiedSettlement626(accountKey:String,pair:String):Proposal {
+    val id=prefs.getString("lastVerifiedSettlement626",null)
+    if(id.isNullOrBlank() || id !in prefs.getStringSet("seenClosedIds",emptySet()).orEmpty())
+      return Proposal(null,null,"AȘTEAPTĂ REZULTAT BROKER CONFIRMAT")
+    return pending(accountKey,pair)
   }
 
   @Synchronized
