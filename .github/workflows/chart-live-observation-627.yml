@@ -1,7 +1,7 @@
-name: 628 persistent chart observation replay
+name: 629 chart result observation replay
 on:
   push:
-    branches: [test/628-chart-evidence-persistence]
+    branches: [test/629-real-demo-loss-badge]
   workflow_dispatch:
 jobs:
   replay:
@@ -89,3 +89,63 @@ jobs:
           KOTLIN
           kotlinc /tmp/BalanceEvidence628.kt -include-runtime -d /tmp/balance-evidence628.jar
           java -jar /tmp/balance-evidence628.jar
+
+      - name: Replay red zero badge against synthetic image and rejection cases
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          a=s.split('  private fun parseRealLossBadge629(',1)[1].split('  // Pure parser:',1)[0]
+          a=a.replace('com.google.mlkit.vision.text.Text','FakeText')
+          stub='''
+          class Rect(val left:Int,val top:Int,val right:Int,val bottom:Int) {
+            fun centerX()=(left+right)/2
+            fun centerY()=(top+bottom)/2
+            fun width()=right-left
+            fun height()=bottom-top
+          }
+          class Line(val text:String,val boundingBox:Rect?)
+          class Block(val lines:List<Line>)
+          class FakeText(val textBlocks:List<Block>)
+          class Bitmap(val width:Int=720,val height:Int=1600) {
+            private val pixels=IntArray(width*height){0x101010}
+            fun getPixel(x:Int,y:Int)=pixels[y*width+x]
+            fun fill(x1:Int,y1:Int,x2:Int,y2:Int,color:Int){
+              for(y in y1 until y2) for(x in x1 until x2) pixels[y*width+x]=color
+            }
+          }
+          '''
+          Path('/tmp/Badge629.kt').write_text(stub+'\nprivate fun parseRealLossBadge629('+a)
+          h=s.split('private fun observeChartResult619(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
+          assert 'prefs.getString("chartConflictAttempt630",null) == attemptKey627' in h
+          assert 'prefs.getString("chartConflictAttempt630",null) == attemptKey' in h
+          assert 'prefs.getString("chartConflictAttempt630",null) == currentKey' in h
+          assert 'chartResultCandidate619 != key' in h
+          assert 'retryChartBalance629(prefs,pkg,pair,wall,stake,saved)' in h
+          for forbidden in ('onVerifiedClosed(', 'confirmEdited(', 'putBoolean("attempted",false)', 'dispatchGesture(', 'autoDemoSessionConsumed = false'):
+              assert forbidden not in h,forbidden
+          PY
+          cat >> /tmp/Badge629.kt <<'KOTLIN'
+          fun main() {
+            val box=Rect(300,700,326,722)
+            val line=Line("\$0",box)
+            fun t(vararg lines:Line)=FakeText(listOf(Block(lines.toList())))
+            val loss=Bitmap().apply{
+              fill(334,698,368,724,0xE63038)
+              fill(347,706,356,715,0xFFFFFF)
+            }
+            check(parseRealLossBadge629(t(line),loss)=="LOSS")
+            check(parseRealLossBadge629(t(line),Bitmap())==null)
+            check(parseRealLossBadge629(t(Line("\$1",box)),loss)==null)
+            check(parseRealLossBadge629(t(line,line),loss)==null)
+            check(parseRealLossBadge629(t(Line("\$0",Rect(300,120,326,142))),loss)==null)
+            val green=Bitmap().apply{fill(334,698,368,724,0x30CC60)}
+            check(parseRealLossBadge629(t(line),green)==null)
+            val red=Bitmap().apply{fill(334,698,368,724,0xE63038)}
+            check(parseRealLossBadge629(t(line),red)==null)
+            println("PASS seven synthetic visual badge cases; read-only evidence")
+          }
+          KOTLIN
+          kotlinc /tmp/Badge629.kt -include-runtime -d /tmp/badge629.jar
+          java -jar /tmp/badge629.jar
