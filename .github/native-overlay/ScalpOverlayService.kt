@@ -1790,6 +1790,19 @@ class ScalpOverlayService : Service() {
   private var chartResultFirstAt619 = 0L
   private var chartResultLastAt619 = 0L
   private var chartResultReads619 = 0
+  // Read-only evidence retained for the exact pending attempt, even
+  // when the short-lived broker notification disappears from the chart.
+  private var chartResultObservedKey627 = ""
+  private var chartResultObservedAt627 = 0L
+  private var chartResultConflict627 = false
+
+  private fun chartResultCaptureInterval627(now: Long, attemptWall: Long): Long =
+    if (attemptWall > 0L && now - attemptWall in 285_000L..345_000L) 900L
+    else OCR_INTERVAL_MS
+
+  private fun chartResultAttemptKey627(pkg: String, pair: String, wall: Long, stake: Long): String =
+    "$pkg|$pair|$wall|$stake|"
+
   private fun resetChartResult619() {
     chartResultCandidate619 = ""
     chartResultFirstAt619 = 0L
@@ -1850,7 +1863,19 @@ class ScalpOverlayService : Service() {
       resetChartResult619()
       return
     }
-    val key = "$pkg|$pair|$wall|$stake|$outcome"
+    val attemptKey627 = chartResultAttemptKey627(pkg,pair,wall,stake)
+    val key = attemptKey627 + outcome
+    if (chartResultObservedKey627.startsWith(attemptKey627) &&
+        chartResultObservedKey627 != key) {
+      chartResultConflict627 = true
+      resetChartResult619()
+      return
+    }
+    if (!chartResultObservedKey627.startsWith(attemptKey627)) {
+      chartResultObservedKey627 = ""
+      chartResultObservedAt627 = 0L
+      chartResultConflict627 = false
+    }
     if (chartResultCandidate619 != key ||
         capturedAt - chartResultFirstAt619 !in 0L..8_000L) {
       chartResultCandidate619 = key
@@ -1862,6 +1887,10 @@ class ScalpOverlayService : Service() {
       return // never count a duplicated or out-of-order frame
     }
     chartResultLastAt619 = capturedAt
+    if (chartResultReads619 >= 2 && !chartResultConflict627) {
+      chartResultObservedKey627 = key
+      chartResultObservedAt627 = capturedAt
+    }
   }
 
   private fun chartResultDiagnostic619(): String? {
@@ -1877,11 +1906,17 @@ class ScalpOverlayService : Service() {
       return "ORDIN VECHI • DATE INCOMPLETE"
     val age = now - wall
     if (age in 0L..294_999L) return "GRAFIC • AȘTEPT EXPIRAREA"
+    val currentKey = chartResultAttemptKey627(
+      prefs.getString("expectedPackage429", null).orEmpty(),pendingPair623,wall,
+      prefs.getLong("expectedStakeCents429",-1L))
+    if (chartResultObservedKey627.startsWith(currentKey) &&
+        chartResultObservedAt627 - wall in 300_000L..345_000L &&
+        now >= chartResultObservedAt627)
+      return if (chartResultConflict627) "GRAFIC • REZULTATE CONTRADICTORII"
+      else "GRAFIC • " + chartResultObservedKey627.substringAfterLast('|') +
+        " 2/2 OBSERVAT • FĂRĂ DECONTARE"
     if (age !in 0L..345_000L)
       return "ORDIN VECHI " + pendingPair623.take(20) + " • VERIFICARE PASIVĂ NECESARĂ"
-    val currentKey = prefs.getString("expectedPackage429", null) + "|" +
-      prefs.getString("expectedPair429", null) + "|" + wall + "|" +
-      prefs.getLong("expectedStakeCents429", -1L) + "|"
     if (chartResultReads619 > 0 && chartResultCandidate619.startsWith(currentKey) &&
         now - chartResultLastAt619 in 0L..5_000L)
       return "GRAFIC • INDICIU " + chartResultCandidate619.substringAfterLast('|') +
@@ -6480,7 +6515,11 @@ class ScalpOverlayService : Service() {
   }
 
   private fun scheduleTimeframeOcr(frame: Bitmap, now: Long) {
-    if (ocrBusy || now - lastOcrAttemptAt < OCR_INTERVAL_MS) return
+    val attempt627 = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val wall627 = if (attempt627.getBoolean("attempted",false))
+      attempt627.getLong("attemptedWallAt454",-1L) else -1L
+    val interval627 = chartResultCaptureInterval627(now,wall627)
+    if (ocrBusy || now - lastOcrAttemptAt < interval627) return
     ocrBusy = true
     lastOcrAttemptAt = now
 
