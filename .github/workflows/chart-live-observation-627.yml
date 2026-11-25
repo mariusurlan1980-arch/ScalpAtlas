@@ -72,7 +72,8 @@ jobs:
           s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
           h=s.split('  private fun compareChartBalance628(',1)[1].split('  private fun chartResultCaptureInterval627(',1)[0]
           Path('/tmp/BalanceEvidence628.kt').write_text('private fun compareChartBalance628('+h)
-          assert 'prefs.getLong("chartBalanceWall628",-1L) == wall' in s
+          assert 'prefs.getLong("chartBalanceWall628",-1L) != wall' in s
+          assert 'prefs.getString("chartEvidenceAttempt628",null) != attemptKey' in s
           assert 'if (comparison == outcome) "CONCORDANT" else "NECONFIRMAT"' in s
           PY
           cat >> /tmp/BalanceEvidence628.kt <<'KOTLIN'
