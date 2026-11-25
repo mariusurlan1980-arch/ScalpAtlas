@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 623 DEMO dated receipt and base rearm
+name: Build Scalp Atlas 624 verified fresh DEMO session
 
 on:
   push:
-    branches: [fix/demo-rearm-diagnostics-622]
+    branches: [fix/demo-fresh-session-623]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -79,7 +79,7 @@ jobs:
           python3 - <<'PYREVIEW'
           from pathlib import Path
           s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
-          h=s.split('private fun reviewExpiredDemoHistory615(',1)[1].split('private fun inspectPassiveDemoProof463(',1)[0]
+          h=s.split('private fun reviewExpiredDemoHistory615(',1)[1].split('private fun archiveOldDemoAttempt624(',1)[0]
           for guard in ('!TouchTestService.realFxAccountVisible()', 'expectedPkg != pkg', 'elapsedAge < DEMO_TEST_EXPIRY_MS_465', 'wallAge < DEMO_TEST_EXPIRY_MS_465', '55_000L', 'settlementReviewKey615 == key', 'closedRowSamples438 >= 2', 'emptyOpenOcrConsecutive >= 2'):
               assert guard in h, guard
           for forbidden in ('pressVerifiedDemoStakeOnce429(', 'pressAutoOneDollarDemoOrderOnce(', 'setVerifiedDemoRecoveryStakeOnBroker(', 'beginAttempt(', 'putBoolean("attempted", false)', 'autoDemoSessionConsumed = false'):
@@ -137,10 +137,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.97'
+          expo['version']='3.2.98'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=623
+          expo['android']['versionCode']=624
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1904,6 +1904,24 @@ jobs:
           console.log('445 safe OPEN->CLOSED UUID correlation test passed');
           NODE
 
+      - name: Verify one-time migration of old unidentified DEMO attempt
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          h=s.split('private fun archiveOldDemoAttempt624(',1)[1].split('private fun inspectPassiveDemoProof463(',1)[0]
+          passive=s.split('private fun inspectPassiveDemoProof463(',1)[1].split('private fun maybeRearmExpiredDemoPilot464(',1)[0]
+          for guard in ('freshSessionWall624 - wall < 345_000L','freshSessionRecovery624Used','stake != 109L','payout != 92','realFxAccountVisible()','verifiedOpenPositionId429() != null','mgRecovery614.isRiskStopped()','mgRecovery614.permitsFreshDemoOrder(key,pair,109L)','UNKNOWN_NOT_SETTLED','brokerVerifiedEmptyDemoReview(true)'):
+              assert guard in h, guard
+          for forbidden in ('onVerifiedClosed(', 'onVerifiedDemoClosed(', 'dispatchGesture(', 'pressVerifiedDemoStakeOnce429(', 'setVerifiedDemoRecoveryStakeOnBroker(', 'mgRecovery614.disable(', 'autoDemoSessionConsumed = false'):
+              assert forbidden not in h, forbidden
+          call=passive.index('return archiveOldDemoAttempt624(')
+          for guard in ('emptyOpenOcrConsecutive >= 2','openTabVisualConsecutive429 >= 2','inspectExplicitEmptyOpenDemoTabReadOnly(','nowElapsed - demoEmptyReviewFirstAt < 2_000L'):
+              assert passive.index(guard)<call, guard
+          assert h.index('UNKNOWN_NOT_SETTLED')<h.index('.putBoolean("attempted",false)')
+          print('PASS fresh session migration: verified empty positions, old base only, archive unknown, no MG change')
+          PY
+
       - name: Replay dated receipt matching after restart
         run: |
           set -euo pipefail
@@ -2546,11 +2564,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-623-DEMO-REARM-G24.apk
+          cp "$APK" ScalpAtlas-624-DEMO-FRESH-SESSION-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-623-DEMO-REARM-G24
-          path: ScalpAtlas-623-DEMO-REARM-G24.apk
+          name: ScalpAtlas-624-DEMO-FRESH-SESSION-G24
+          path: ScalpAtlas-624-DEMO-FRESH-SESSION-G24.apk
           if-no-files-found: error
           retention-days: 30
