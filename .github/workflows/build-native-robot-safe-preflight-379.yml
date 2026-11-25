@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 624 verified fresh DEMO session
+name: Build Scalp Atlas 625 simple DEMO signal execution
 
 on:
   push:
-    branches: [fix/demo-fresh-session-623]
+    branches: [fix/demo-simple-execution-624]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -137,10 +137,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.98'
+          expo['version']='3.2.99'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=624
+          expo['android']['versionCode']=625
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1904,6 +1904,22 @@ jobs:
           console.log('445 safe OPEN->CLOSED UUID correlation test passed');
           NODE
 
+      - name: Verify signal and submitted gesture coupling
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          assert 'if (!(CHART_ONLY_DEMO_462 && robotArmedContinuously513))' in s
+          assert 'pairReady(now) && currentPair(now) != autoDemoMarket' in s
+          assert 'val readyForDemo = !historyPageVisible433 && !fxRotationNavigating' in s
+          h=s.split('demoDiagLastGesture546 = result.take(95)',1)[1]
+          assert h.index('result.contains("TRANSMIS • AȘTEPT ID OPEN")') < h.index('playBip(activeSignal)') < h.index('result.startsWith("PRECHECK_NO_GESTURE:")')
+          a=s.split('private fun archiveOldDemoAttempt624(',1)[1].split('private fun inspectPassiveDemoProof463(',1)[0]
+          assert a.index('brokerVerifiedEmptyDemoReview(true)') < a.index('autoDemoSessionRequested = true') < a.index('autoDemoSessionConsumed = false')
+          assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
+          print('PASS: source checks for new-pair preflight, gesture audio and verified migration')
+          PY
+
       - name: Verify one-time migration of old unidentified DEMO attempt
         run: |
           python3 - <<'PY'
@@ -1913,7 +1929,7 @@ jobs:
           passive=s.split('private fun inspectPassiveDemoProof463(',1)[1].split('private fun maybeRearmExpiredDemoPilot464(',1)[0]
           for guard in ('freshSessionWall624 - wall < 345_000L','freshSessionRecovery624Used','stake != 109L','payout != 92','realFxAccountVisible()','verifiedOpenPositionId429() != null','mgRecovery614.isRiskStopped()','mgRecovery614.permitsFreshDemoOrder(key,pair,109L)','UNKNOWN_NOT_SETTLED','brokerVerifiedEmptyDemoReview(true)'):
               assert guard in h, guard
-          for forbidden in ('onVerifiedClosed(', 'onVerifiedDemoClosed(', 'dispatchGesture(', 'pressVerifiedDemoStakeOnce429(', 'setVerifiedDemoRecoveryStakeOnBroker(', 'mgRecovery614.disable(', 'autoDemoSessionConsumed = false'):
+          for forbidden in ('onVerifiedClosed(', 'onVerifiedDemoClosed(', 'dispatchGesture(', 'pressVerifiedDemoStakeOnce429(', 'setVerifiedDemoRecoveryStakeOnBroker(', 'mgRecovery614.disable('):
               assert forbidden not in h, forbidden
           call=passive.index('return archiveOldDemoAttempt624(')
           for guard in ('emptyOpenOcrConsecutive >= 2','openTabVisualConsecutive429 >= 2','inspectExplicitEmptyOpenDemoTabReadOnly(','nowElapsed - demoEmptyReviewFirstAt < 2_000L'):
@@ -2564,11 +2580,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-624-DEMO-FRESH-SESSION-G24.apk
+          cp "$APK" ScalpAtlas-625-DEMO-SIMPLE-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-624-DEMO-FRESH-SESSION-G24
-          path: ScalpAtlas-624-DEMO-FRESH-SESSION-G24.apk
+          name: ScalpAtlas-625-DEMO-SIMPLE-G24
+          path: ScalpAtlas-625-DEMO-SIMPLE-G24.apk
           if-no-files-found: error
           retention-days: 30
