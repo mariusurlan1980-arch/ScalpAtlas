@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 616 DEMO history review candidate
+name: Build Scalp Atlas 617 DEMO navigation safety candidate
 
 on:
   push:
-    branches: [fix/615-demo-settlement-review]
+    branches: [fix/demo-navigation-safety-616]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -130,10 +130,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.90'
+          expo['version']='3.2.91'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=616
+          expo['android']['versionCode']=617
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2485,11 +2485,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-616-HISTORY-REVIEW-DEMO-G24.apk
+          cp "$APK" ScalpAtlas-617-DEMO-SAFETY-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-616-HISTORY-REVIEW-DEMO-G24
-          path: ScalpAtlas-616-HISTORY-REVIEW-DEMO-G24.apk
+          name: ScalpAtlas-617-DEMO-SAFETY-G24
+          path: ScalpAtlas-617-DEMO-SAFETY-G24.apk
           if-no-files-found: error
           retention-days: 30
