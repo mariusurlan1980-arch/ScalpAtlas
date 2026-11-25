@@ -1621,33 +1621,25 @@ class ScalpOverlayService : Service() {
   private var chartResultFirstAt619 = 0L
   private var chartResultLastAt619 = 0L
   private var chartResultReads619 = 0
-  private fun observeChartResult619(
-    result: com.google.mlkit.vision.text.Text, observedAt: Long
-  ) {
-    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-    val pair = prefs.getString("expectedPair429", null)
-    val pkg = prefs.getString("expectedPackage429", null)
-    val stake = prefs.getLong("expectedStakeCents429", -1L)
-    val wall = prefs.getLong("attemptedWallAt454", -1L)
-    if (!CHART_ONLY_DEMO_462 || !prefs.getBoolean("attempted", false) ||
-        pair.isNullOrBlank() || pkg == null || stake <= 0L ||
-        prefs.getInt("expectedPayout429", -1) != 92 || wall <= 0L ||
-        observedAt - wall !in 295_000L..345_000L ||
-        historyPageVisible433 || fxRotationNavigating || realAccountSafetyStop517 ||
-        TouchTestService.realFxAccountVisible() ||
-        !TouchTestService.demoFxAccountInForeground() ||
-        TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
-        TouchTestService.readVisibleDemoPair() != pair) {
-      chartResultCandidate619 = ""
-      chartResultReads619 = 0
-      return
-    }
-    // Deliberately strict provisional parser. The actual Motorola
-    // settlement notification layout still requires device validation.
-    val netPattern = Regex("""(?i)\b(?:Net Profit|P/L|Profit net|Rezultat)\s*:\s*([+-])\s*\$?\s*(\d{1,5})(?:[.,](\d{1,2}))?\s*(?:USD)?""")
-    val outcomes = result.textBlocks.mapNotNull { block ->
-      val label = block.text.replace(Regex("""\s+"""), " ").trim()
-      if (!label.contains(pair, ignoreCase = true)) return@mapNotNull null
+  private fun resetChartResult619() {
+    chartResultCandidate619 = ""
+    chartResultFirstAt619 = 0L
+    chartResultLastAt619 = 0L
+    chartResultReads619 = 0
+  }
+
+  // Pure parser: one exact pair, one explicit result, one matching net P/L.
+  // A synthetic notification is only an indication until device validation.
+  private fun parseChartResult620(blocks: List<String>, pair: String, stake: Long): String? {
+    if (stake !in 1L..81950L) return null
+    val pairPattern = Regex("""(?i)\b[A-Z]{3}\s*/\s*[A-Z]{3}\b(?:\s*\(?\s*OTC\s*\)?)?""")
+    fun canonical(value: String): String =
+      value.uppercase(java.util.Locale.ROOT).replace(Regex("""[\s()]"""), "")
+    val netPattern = Regex("""(?i)\b(?:Net Profit|P/L|Profit net|Rezultat)\s*:\s*([+-])\s*\$?\s*(\d{1,5})(?:[.,](\d{1,2}))?(?![\d.,])\s*(?:USD)?""")
+    val candidates = blocks.mapNotNull { raw ->
+      val label = raw.replace(Regex("""\s+"""), " ").trim()
+      val pairs = pairPattern.findAll(label).map { canonical(it.value) }.toList().distinct()
+      if (pairs != listOf(canonical(pair))) return@mapNotNull null
       val win = Regex("""(?i)\bWIN\b""").containsMatchIn(label)
       val loss = Regex("""(?i)\bLOSS\b""").containsMatchIn(label)
       if (win == loss) return@mapNotNull null
@@ -1659,18 +1651,48 @@ class ScalpOverlayService : Service() {
       else if (win && m.groupValues[1] == "+" &&
         amount in ((stake * 92L) / 100L)..((stake * 92L + 99L) / 100L)) "WIN"
       else null
-    }.distinct()
-    val outcome = outcomes.singleOrNull() ?: return
+    }
+    return candidates.singleOrNull()
+  }
+
+  private fun observeChartResult619(
+    result: com.google.mlkit.vision.text.Text, capturedAt: Long, observedAt: Long
+  ) {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val pair = prefs.getString("expectedPair429", null)
+    val pkg = prefs.getString("expectedPackage429", null)
+    val stake = prefs.getLong("expectedStakeCents429", -1L)
+    val wall = prefs.getLong("attemptedWallAt454", -1L)
+    if (!CHART_ONLY_DEMO_462 || !prefs.getBoolean("attempted", false) ||
+        pair.isNullOrBlank() || pkg == null || stake <= 0L ||
+        prefs.getInt("expectedPayout429", -1) != 92 || wall <= 0L ||
+        capturedAt - wall !in 300_000L..345_000L ||
+        observedAt - capturedAt !in 0L..2_500L ||
+        historyPageVisible433 || fxRotationNavigating || realAccountSafetyStop517 ||
+        TouchTestService.realFxAccountVisible() ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
+        TouchTestService.readVisibleDemoPair() != pair) {
+      resetChartResult619()
+      return
+    }
+    val outcome = parseChartResult620(result.textBlocks.map { it.text }, pair, stake)
+    if (outcome == null) {
+      resetChartResult619()
+      return
+    }
     val key = "$pkg|$pair|$wall|$stake|$outcome"
     if (chartResultCandidate619 != key ||
-        observedAt - chartResultFirstAt619 !in 0L..8_000L) {
+        capturedAt - chartResultFirstAt619 !in 0L..8_000L) {
       chartResultCandidate619 = key
-      chartResultFirstAt619 = observedAt
+      chartResultFirstAt619 = capturedAt
       chartResultReads619 = 1
-    } else if (observedAt - chartResultLastAt619 >= 1_000L) {
+    } else if (capturedAt - chartResultLastAt619 >= 1_000L) {
       chartResultReads619 = 2
+    } else {
+      return // never count a duplicated or out-of-order frame
     }
-    chartResultLastAt619 = observedAt
+    chartResultLastAt619 = capturedAt
   }
 
   private fun chartResultDiagnostic619(): String? {
@@ -1681,7 +1703,11 @@ class ScalpOverlayService : Service() {
     if (wall <= 0L) return "GRAFIC • TIMP ORDIN NECUNOSCUT"
     val age = now - wall
     if (age in 0L..294_999L) return "GRAFIC • AȘTEPT EXPIRAREA"
-    if (chartResultReads619 > 0 && now - chartResultLastAt619 in 0L..8_000L)
+    val currentKey = prefs.getString("expectedPackage429", null) + "|" +
+      prefs.getString("expectedPair429", null) + "|" + wall + "|" +
+      prefs.getLong("expectedStakeCents429", -1L) + "|"
+    if (chartResultReads619 > 0 && chartResultCandidate619.startsWith(currentKey) &&
+        now - chartResultLastAt619 in 0L..5_000L)
       return "GRAFIC • INDICIU " + chartResultCandidate619.substringAfterLast('|') +
         " " + chartResultReads619 + "/2 • NECONFIRMAT"
     return "GRAFIC • REZULTAT NECITIT • FĂRĂ ORDIN NOU"
@@ -6298,8 +6324,11 @@ class ScalpOverlayService : Service() {
         // 433: On history, M5 and the active FX selector do not exist.
         // Continue the independent OPEN/CLOSED evidence checker above,
         // but NEVER parse past trade rows as live chart identity.
-        if (historyPageVisible433) return@addOnSuccessListener
-        observeChartResult619(result, observedAt)
+        if (historyPageVisible433) {
+          resetChartResult619()
+          return@addOnSuccessListener
+        }
+        observeChartResult619(result, now, observedAt)
         // Read an explicit FX pair only when visible on the captured broker screen.
         // If OCR cannot find one, never guess which asset was selected.
         // OTC and ordinary charts using the same currency symbols must NOT
