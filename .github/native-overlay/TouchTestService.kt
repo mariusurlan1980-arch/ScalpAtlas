@@ -417,7 +417,8 @@ class TouchTestService : AccessibilityService() {
           node.getChild(i)?.let(queue::addLast)
       }
       if (realAccount) {
-        if (!seenReal || seenDemo) return null
+        // A visible Real label is enough to STOP, including mixed account menus.
+        if (!seenReal) return null
       } else if (seenReal || (!seenDemo && !cachedDemoVerifiedOnChart)) return null
       return Triple(svc, root, result)
     }
@@ -1719,12 +1720,10 @@ class TouchTestService : AccessibilityService() {
       if (!isHistory && !historyPageIdentity454(labels, metrics.heightPixels) &&
           !ocrVerifiedHistoryPage)
         return "GRAFIC • VERIFICARE BROKER NECESARĂ"
-      val accepted = try {
-        svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
-      } catch (_: Throwable) { false }
-      return if (accepted)
-        "✅ LISTĂ GOALĂ 2/2 • REVIN LA GRAFIC • AȘTEPT ȘOC"
-      else "✅ LISTĂ GOALĂ 2/2 • REVINO LA GRAFIC"
+      // Do not send Android BACK from broker history. It can return to
+      // another account or screen. Only the separately verified footer
+      // navigation is allowed; otherwise leave the order locked.
+      return "GRAFIC NECONFIRMAT • FĂRĂ APĂSARE ÎNAPOI"
     }
 
     fun inspectExplicitEmptyOpenDemoTabReadOnly(
