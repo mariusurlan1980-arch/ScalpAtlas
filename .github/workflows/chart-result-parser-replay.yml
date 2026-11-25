@@ -1,0 +1,57 @@
+name: Chart result parser replay (no broker)
+on:
+  push:
+    branches: [test/chart-result-observer-619]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Test the exact parser extracted from overlay source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          parser=s.split('  private fun parseChartResult620(',1)[1].split('  private fun observeChartResult619(',1)[0]
+          Path('/tmp/ChartParser.kt').write_text('private fun parseChartResult620('+parser)
+          PY
+          cat >> /tmp/ChartParser.kt <<'KOTLIN'
+          fun main() {
+            val p="EUR/USD OTC"
+            val win="EUR/USD OTC WIN Net Profit: +1.00 USD"
+            val loss="EUR/USD OTC LOSS P/L: -1,09 USD"
+            val cases=listOf(
+              Triple(listOf(win),p,"WIN"),
+              Triple(listOf(loss),p,"LOSS"),
+              Triple(listOf("EUR / USD (OTC) WIN Rezultat: +1,01 USD"),p,"WIN"),
+              Triple(listOf("EUR/USD WIN P/L: +1.00"),p,null),
+              Triple(listOf("EUR/USD OTC LOSS P/L: -1.08"),p,null),
+              Triple(listOf("EUR/USD OTC WIN P/L: +1.02"),p,null),
+              Triple(listOf("EUR/USD OTC WIN LOSS P/L: -1.09"),p,null),
+              Triple(listOf(win,loss),p,null),
+              Triple(listOf(win,win),p,null),
+              Triple(listOf("EUR/USD OTC GBP/USD OTC WIN P/L: +1.00"),p,null),
+              Triple(listOf("EUR/USD OTC WIN P/L: +1.005"),p,null),
+              Triple(listOf("EUR/USD OTC WIN +1.00"),p,null),
+              Triple(listOf("EUR/USD OTC P/L: +1.00"),p,null),
+              Triple(emptyList<String>(),p,null)
+            )
+            cases.forEachIndexed { i,(blocks,pair,expected) ->
+              val actual=parseChartResult620(blocks,pair,109L)
+              check(actual==expected) {"Case ${i+1}: expected $expected got $actual"}
+              println("PASS ${i+1}: ${actual ?: "rejected"}")
+            }
+            println("PASS: ${cases.size} synthetic chart notification cases")
+          }
+          KOTLIN
+          kotlinc /tmp/ChartParser.kt -include-runtime -d /tmp/chart-parser.jar
+          java -jar /tmp/chart-parser.jar
