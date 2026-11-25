@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 625 simple DEMO signal execution
+name: Build Scalp Atlas 626 DEMO verified stake preparation
 
 on:
   push:
-    branches: [fix/demo-simple-execution-624]
+    branches: [test/626-demo-stake-preparation]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -137,10 +137,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.99'
+          expo['version']='3.3.0'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=625
+          expo['android']['versionCode']=626
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1904,6 +1904,27 @@ jobs:
           console.log('445 safe OPEN->CLOSED UUID correlation test passed');
           NODE
 
+      - name: Verify isolated Martingale stake preparation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path('.github/native-overlay')
+          p=(d/'DemoAutoStakePlan565.kt').read_text()
+          e=(d/'DemoStakeEditor.kt').read_text()
+          t=(d/'TouchTestService.kt').read_text()
+          s=(d/'ScalpOverlayService.kt').read_text()
+          h=s.split('private fun prepareVerifiedMartingaleAmount626(',1)[1].split('private fun maybeRearmConfirmedDemoBase618(',1)[0]
+          for guard in ('autoDemoSessionConsumed','TradePositionGate.State.READY','realFxAccountVisible()','pendingVerifiedSettlement626(key,pair)','verifiedOpenPositionId429() == null','getBoolean("attempted",false)','readBrokerDemoOrder476(pair) != (stake to 92)'):
+              assert guard in h, guard
+          assert h.index('prepareVerifiedMartingaleStake626(') < h.index('confirmEdited(key,pair,stake,true)')
+          for forbidden in ('pressVerifiedDemoStakeOnce429(', 'dispatchGesture(', 'beginAttempt(', 'autoDemoSessionConsumed = false'):
+              assert forbidden not in h
+          assert '.putString("lastVerifiedSettlement626",positionId)' in p
+          assert 'after.balanceCents < stakeCents' in e
+          assert 'plan.pendingVerifiedSettlement626(accountKey,pair).stakeCents == stakeCents' in t
+          assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
+          PY
+
       - name: Verify signal and submitted gesture coupling
         run: |
           python3 - <<'PY'
@@ -2580,11 +2601,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-625-DEMO-SIMPLE-G24.apk
+          cp "$APK" ScalpAtlas-626-DEMO-STAKE-TEST-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-625-DEMO-SIMPLE-G24
-          path: ScalpAtlas-625-DEMO-SIMPLE-G24.apk
+          name: ScalpAtlas-626-DEMO-STAKE-TEST-G24
+          path: ScalpAtlas-626-DEMO-STAKE-TEST-G24.apk
           if-no-files-found: error
           retention-days: 30
