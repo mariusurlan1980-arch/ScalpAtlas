@@ -1385,6 +1385,9 @@ class ScalpOverlayService : Service() {
       System.currentTimeMillis() else 0L
     return if (canRearmBase)
       "476 • ORDIN ÎNCHIS VERIFICAT • DEMO REACTIVAT"
+    else if (mgRecovery614.isRiskStopped()) "MG DEMO • STOP RISC"
+    else if (mgRecovery614.isEnabled())
+      "MG DEMO • REZULTAT VERIFICAT • " + mgRecovery614.status().take(48)
     else "463 • REZULTAT VERIFICAT • NOI ORDINE BLOCATE (FĂRĂ MG)"
   }
 
@@ -1600,9 +1603,13 @@ class ScalpOverlayService : Service() {
     if (TouchTestService.readBrokerDemoOrder476(pair) != (109L to 92)) return null
     // A pending recovery stake is not a base stake and cannot pass rebind.
     if (!mgRecovery614.rebindVerifiedBasePair(key,pair)) return null
-    if (mgRecovery614.pending(key,pair).stakeCents != 109L) return null
-    if (!mgRecovery614.confirmEdited(key,pair,109L,true) ||
-        !mgRecovery614.permitsFreshDemoOrder(key,pair,109L)) return null
+    // The base stake can already be durably confirmed (pending=0).
+    // Do not demand a second edit confirmation in that valid state.
+    if (!mgRecovery614.permitsFreshDemoOrder(key,pair,109L)) {
+      if (mgRecovery614.pending(key,pair).stakeCents != 109L ||
+          !mgRecovery614.confirmEdited(key,pair,109L,true)) return null
+    }
+    if (!mgRecovery614.permitsFreshDemoOrder(key,pair,109L)) return null
     autoDemoSessionRequested = true
     autoDemoSessionConsumed = false
     autoDemoArmed = false
@@ -1700,9 +1707,13 @@ class ScalpOverlayService : Service() {
     if (!prefs.getBoolean("attempted", false)) return null
     val wall = prefs.getLong("attemptedWallAt454", -1L)
     val now = System.currentTimeMillis()
-    if (wall <= 0L) return "GRAFIC • TIMP ORDIN NECUNOSCUT"
+    val pendingPair623 = prefs.getString("expectedPair429", null).orEmpty()
+    if (wall <= 0L || pendingPair623.isBlank())
+      return "ORDIN VECHI • DATE INCOMPLETE"
     val age = now - wall
     if (age in 0L..294_999L) return "GRAFIC • AȘTEPT EXPIRAREA"
+    if (age !in 0L..345_000L)
+      return "ORDIN VECHI " + pendingPair623.take(20) + " • VERIFICARE PASIVĂ NECESARĂ"
     val currentKey = prefs.getString("expectedPackage429", null) + "|" +
       prefs.getString("expectedPair429", null) + "|" + wall + "|" +
       prefs.getLong("expectedStakeCents429", -1L) + "|"
