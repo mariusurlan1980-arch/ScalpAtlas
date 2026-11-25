@@ -1572,6 +1572,48 @@ class ScalpOverlayService : Service() {
       mgRecovery614.confirmEdited(key,pair,109L,true)
   }
 
+  // 618 candidate: rearm a settled MG cycle at the independently verified
+  // base amount only. No amount edit, no navigation and no gesture here.
+  // Higher recovery amounts remain disabled by CHART_ONLY_DEMO_462.
+  private fun maybeRearmConfirmedDemoBase618(nowElapsed: Long): String? {
+    if (!CHART_ONLY_DEMO_462 || !mgRecovery614.isEnabled() ||
+        mgRecovery614.isRiskStopped() || !autoDemoSessionConsumed ||
+        !robotArmedContinuously513 || shuttingDown || mediaProjection == null ||
+        realAccountSafetyStop517 || accountRecheckPending ||
+        nowElapsed >= autoDemoSessionEndAt || !TouchTestService.ready() ||
+        !TouchTestService.demoFxAccountInForeground() || TouchTestService.realFxAccountVisible() ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
+        historyPageVisible433 || closedHistoryInspectionInProgress ||
+        fxRotationNavigating || fxRotationTradePaused516 ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+        getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false))
+      return null
+    val now = System.currentTimeMillis()
+    if (!pairReady(now)) return null
+    val pair = currentPair(now)
+    val pkg = TouchTestService.activeDemoExecutorPackageForReview() ?: return null
+    if (pkg != verifiedDemoAccountPackage ||
+        nowElapsed - verifiedDemoAccountAt !in 0L..5_000L) return null
+    val key = "QT_DEMO:" + pkg
+    if (TouchTestService.readBrokerDemoOrder476(pair) != (109L to 92)) return null
+    // A pending recovery stake is not a base stake and cannot pass rebind.
+    if (!mgRecovery614.rebindVerifiedBasePair(key,pair)) return null
+    if (mgRecovery614.pending(key,pair).stakeCents != 109L) return null
+    if (!mgRecovery614.confirmEdited(key,pair,109L,true) ||
+        !mgRecovery614.permitsFreshDemoOrder(key,pair,109L)) return null
+    autoDemoSessionRequested = true
+    autoDemoSessionConsumed = false
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoExpiry = 0L
+    autoDemoLastPreflightAt = 0L
+    autoDemoLockedAt = lockedAt
+    autoDemoEntryCycleStartedAt = System.currentTimeMillis()
+    return "MG DEMO • BAZĂ 1,09 CONFIRMATĂ • AȘTEPT ȘOC NOU"
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -1663,7 +1705,8 @@ class ScalpOverlayService : Service() {
           }
           // Keep the exact passive proof or navigation blocker visible.
           // A generic MG wait message must not replace actionable evidence.
-          val effectiveStatus464 = passiveStatus463 ?: navigationReview615 ?: pilotStatus464
+          val baseRearm618 = maybeRearmConfirmedDemoBase618(proofNow463)
+          val effectiveStatus464 = baseRearm618 ?: passiveStatus463 ?: navigationReview615 ?: pilotStatus464
           if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())
             martingaleStatusText?.text = mgRecovery614.status()
           demoOrderVerificationReason = effectiveStatus464.takeIf { autoDemoSessionConsumed }
@@ -1673,6 +1716,8 @@ class ScalpOverlayService : Service() {
           }
           if (autoDemoSessionConsumed) {
             touchProbeStatus?.text = demoOrderVerificationStatus()
+          } else if (baseRearm618 != null) {
+            touchProbeStatus?.text = baseRearm618
           } else if (pilotStatus464 != null) {
             touchProbeStatus?.text = "ARMAT"
           }
