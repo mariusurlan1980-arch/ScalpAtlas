@@ -1679,6 +1679,67 @@ class ScalpOverlayService : Service() {
   // 618 candidate: rearm a settled MG cycle at the independently verified
   // base amount only. No amount edit, no navigation and no gesture here.
   // Higher recovery amounts remain disabled by CHART_ONLY_DEMO_462.
+  // 626 isolated preparation stage: after a verified broker settlement,
+  // write the next authorized amount and independently re-read it. Do not
+  // grant a new order or enable recovery gestures in this stage.
+  private fun prepareVerifiedMartingaleAmount626(nowElapsed: Long): String? {
+    if (!CHART_ONLY_DEMO_462 || !mgRecovery614.isEnabled() ||
+        mgRecovery614.isRiskStopped() || !autoDemoSessionConsumed ||
+        !robotArmedContinuously513 || shuttingDown || mediaProjection == null ||
+        realAccountSafetyStop517 || accountRecheckPending ||
+        !TouchTestService.ready() || !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.realFxAccountVisible() ||
+        !lastBrokerAccountStatus.startsWith("QT DEMO IDENTIFICAT") ||
+        historyPageVisible433 || closedHistoryInspectionInProgress ||
+        fxRotationNavigating || fxRotationTradePaused516 ||
+        tradePositionGate.state() != TradePositionGate.State.READY ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+        getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false))
+      return null
+    val now = System.currentTimeMillis()
+    if (!pairReady(now)) return null
+    val pair = currentPair(now)
+    val pkg = TouchTestService.activeDemoExecutorPackageForReview() ?: return null
+    if (pkg != verifiedDemoAccountPackage ||
+        nowElapsed - verifiedDemoAccountAt !in 0L..5_000L) return null
+    val key = "QT_DEMO:" + pkg
+    val before = TouchTestService.readBrokerDemoOrder476(pair) ?: return null
+    if (before.second != 92) return null
+    if (!mgRecovery614.rebindVerifiedBasePair(key,pair) &&
+        !mgRecovery614.rebindPendingRecoveryPair581(key,pair)) return null
+    val stake = mgRecovery614.pendingVerifiedSettlement626(key,pair).stakeCents ?: return null
+    val safeToEdit = {
+      autoDemoSessionConsumed && !autoDemoArmed &&
+        robotArmedContinuously513 && !shuttingDown && mediaProjection != null &&
+        !realAccountSafetyStop517 && !accountRecheckPending &&
+        !historyPageVisible433 && !closedHistoryInspectionInProgress &&
+        !fxRotationNavigating && !fxRotationTradePaused516 &&
+        TouchTestService.demoFxAccountInForeground() &&
+        !TouchTestService.realFxAccountVisible() &&
+        TouchTestService.activeDemoExecutorPackageForReview() == pkg &&
+        tradePositionGate.state() == TradePositionGate.State.READY &&
+        demoRecoveryLedger.verifiedOpenPositionId429() == null &&
+        !getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) &&
+        !getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted",false) &&
+        !TouchTestService.inspectVisibleDemoOpenBadgeReadOnly().startsWith("QT DEMO • INDICATOR ") &&
+        mgRecovery614.pendingVerifiedSettlement626(key,pair).stakeCents == stake
+    }
+    if (!safeToEdit()) return null
+    if (before.first != stake) {
+      if (nowElapsed - lastAutoDemoStakeEditAt in 0L..7_000L) return "MG • AȘTEPT RECITIRE"
+      lastAutoDemoStakeEditAt = nowElapsed
+      val edited = TouchTestService.prepareVerifiedMartingaleStake626(
+        mgRecovery614,key,pair,stake,safeToEdit)
+      if (!edited.startsWith("SUMĂ QT DEMO CONFIRMATĂ")) return edited
+    }
+    if (!safeToEdit() || TouchTestService.readBrokerDemoOrder476(pair) != (stake to 92))
+      return "MG • MIZĂ NECONFIRMATĂ • FĂRĂ ORDIN"
+    if (!mgRecovery614.confirmEdited(key,pair,stake,true))
+      return "MG • CONFIRMARE NESALVATĂ • FĂRĂ ORDIN"
+    return "MG • MIZĂ DEMO RECITITĂ • FĂRĂ ORDIN"
+  }
+
   private fun maybeRearmConfirmedDemoBase618(nowElapsed: Long): String? {
     if (!CHART_ONLY_DEMO_462 || !mgRecovery614.isEnabled() ||
         mgRecovery614.isRiskStopped() || !autoDemoSessionConsumed ||
@@ -1916,8 +1977,9 @@ class ScalpOverlayService : Service() {
           val navigationReview615 = chartResultDiagnostic619()
           // Keep the exact passive proof or navigation blocker visible.
           // A generic MG wait message must not replace actionable evidence.
+          val preparedAmount626 = prepareVerifiedMartingaleAmount626(proofNow463)
           val baseRearm618 = maybeRearmConfirmedDemoBase618(proofNow463)
-          val effectiveStatus464 = baseRearm618 ?: passiveStatus463 ?: navigationReview615 ?: pilotStatus464
+          val effectiveStatus464 = baseRearm618 ?: preparedAmount626 ?: passiveStatus463 ?: navigationReview615 ?: pilotStatus464
           if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())
             martingaleStatusText?.text = mgRecovery614.status()
           demoOrderVerificationReason = effectiveStatus464.takeIf { autoDemoSessionConsumed }
