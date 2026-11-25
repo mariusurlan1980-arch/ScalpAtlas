@@ -1125,6 +1125,101 @@ class ScalpOverlayService : Service() {
    * Nothing about chart movement, time, a gesture or account balance settles
    * a trade. This is not a substitute for a broker-supported order-status API.
    */
+  // 615 review candidate: bounded navigation only, never changes a stake,
+  // clears an attempt, guesses a result or authorizes a new order.
+  private var settlementReviewKey615 = ""
+  private var settlementReviewStarted615 = 0L
+  private var settlementReviewAction615 = 0L
+  private fun reviewExpiredDemoHistory615(
+    nowElapsed: Long, pkg: String?, demoProof: Boolean
+  ): String? {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val pending = prefs.getBoolean("attempted", false)
+    val freshHistory = historyPageVisible433 &&
+      System.currentTimeMillis() - historyPageLastSeen433 in 0L..5_000L
+    val sameDemo = demoProof && pkg != null && pkg == verifiedDemoAccountPackage &&
+      TouchTestService.activeDemoExecutorPackageForReview() == pkg &&
+      !realAccountSafetyStop517 && !TouchTestService.realFxAccountVisible()
+    if (!sameDemo || !robotArmedContinuously513 || shuttingDown ||
+        mediaProjection == null || !TouchTestService.ready()) {
+      if (settlementReviewStarted615 != 0L) {
+        settlementReviewStarted615 = 0L
+        closedHistoryInspectionInProgress = false
+      }
+      return null
+    }
+    if (!pending || (settlementReviewStarted615 > 0L &&
+        nowElapsed - settlementReviewStarted615 >= 55_000L)) {
+      if (settlementReviewStarted615 == 0L) return null
+      settlementReviewStarted615 = 0L
+      closedHistoryInspectionInProgress = false
+      if (freshHistory) returnToChartAfterReview458(true, true)
+      return if (pending) "ISTORIC DEMO • DOVADĂ INCOMPLETĂ • ORDIN BLOCAT"
+        else "ISTORIC DEMO • VERIFICARE FINALIZATĂ"
+    }
+    val at = prefs.getLong("attemptedAt429", -1L)
+    val wall = prefs.getLong("attemptedWallAt454", -1L)
+    val expectedPkg = prefs.getString("expectedPackage429", null)
+    val pair = prefs.getString("expectedPair429", null)
+    val elapsedAge = nowElapsed - at
+    val wallAge = System.currentTimeMillis() - wall
+    if (at <= 0L || wall <= 0L || expectedPkg != pkg || pair.isNullOrBlank() ||
+        elapsedAge < DEMO_TEST_EXPIRY_MS_465 || wallAge < DEMO_TEST_EXPIRY_MS_465 ||
+        kotlin.math.abs(elapsedAge - wallAge) > 60_000L ||
+        !autoDemoSessionConsumed || autoDemoArmed ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted", false))
+      return null
+    val key = expectedPkg + "|" + pair + "|" + at
+    if (settlementReviewStarted615 == 0L) {
+      // One bounded navigation window per recorded attempt per LIVE session.
+      if (settlementReviewKey615 == key || fxRotationNavigating) return null
+      settlementReviewKey615 = key
+      settlementReviewStarted615 = nowElapsed
+      settlementReviewAction615 = 0L
+      closedHistoryInspectionInProgress = true
+    }
+    if (settlementReviewAction615 > 0L &&
+        nowElapsed - settlementReviewAction615 < 5_000L) return null
+    settlementReviewAction615 = nowElapsed
+    if (!freshHistory) return navigateVerifiedDemoHistory431(true, nowElapsed)
+    return when (historyPageTab433) {
+      "DESCHIS" -> {
+        val emptyVerified = lastEmptyOpenOcrPackage == pkg &&
+          emptyOpenOcrConsecutive >= 2 &&
+          System.currentTimeMillis() - lastEmptyOpenOcrAt in 0L..4_500L &&
+          lastOpenTabVisualPackage429 == pkg && openTabVisualConsecutive429 >= 2 &&
+          System.currentTimeMillis() - lastOpenTabVisualAt429 in 0L..5_000L &&
+          TouchTestService.inspectExplicitEmptyOpenDemoTabReadOnly(
+            cachedDemoVerifiedOnChart = true, ocrVerifiedEmptyOpenTab = true)
+        if (verifiedClosedDetail437 != null || !emptyVerified)
+          "ISTORIC DEMO • VERIFIC DESCHIS 2/2"
+        else TouchTestService.advanceDemoClosedHistoryNavigation(true)
+      }
+      "ÎNCHIS" -> {
+        if (verifiedClosedDetail437 != null)
+          attemptBrokerOpenTabWithVisualProof455(true, pkg, nowElapsed)
+        else if (closedRowSamples438 >= 2 &&
+            System.currentTimeMillis() - closedRowAt438 in 0L..6_000L &&
+            closedRowProbeKey458 != key) {
+          closedRowProbeKey458 = key
+          lastClosedRowTapAt438 = nowElapsed
+          val sent = TouchTestService.tapVerifiedDemoClosedRowOcr438(
+            pkg!!, closedRowX438, closedRowY438)
+          closedRowSamples438 = 0
+          if (sent) "ISTORIC DEMO • VERIFIC DETALIU ÎNCHIS"
+          else "ISTORIC DEMO • RÂND NECONFIRMAT"
+        } else "ISTORIC DEMO • AȘTEPT RÂND ÎNCHIS 2/2"
+      }
+      "DETALIU ÎNCHIS" -> {
+        if (verifiedClosedDetail437 == null) "ISTORIC DEMO • AȘTEPT ID ȘI P/L 2/2"
+        else if (TouchTestService.returnFromVerifiedDemoClosedDetail438(pkg!!))
+          "ISTORIC DEMO • DETALIU CITIT • VERIFIC DESCHIS"
+        else "ISTORIC DEMO • DETALIU CITIT • DESCHIS NECONFIRMAT"
+      }
+      else -> "ISTORIC DEMO • PAGINĂ NECONFIRMATĂ"
+    }
+  }
+
   private fun inspectPassiveDemoProof463(
     nowElapsed: Long,
     reviewPackage: String?,
@@ -1524,7 +1619,13 @@ class ScalpOverlayService : Service() {
           val pilotStatus464 = if (passiveStatus463 == null && autoDemoSessionConsumed)
             maybeRearmExpiredDemoPilot464(proofNow463, proofPackage463, chartCache463)
           else null
-          val effectiveStatus464 = passiveStatus463 ?: pilotStatus464
+          val navigationReview615 = try {
+            reviewExpiredDemoHistory615(proofNow463, proofPackage463, chartCache463)
+          } catch (error: Exception) {
+            android.util.Log.e("ScalpAtlas615", "DEMO history review blocked", error)
+            "ISTORIC DEMO • EROARE NAVIGARE • ORDIN BLOCAT"
+          }
+          val effectiveStatus464 = navigationReview615 ?: passiveStatus463 ?: pilotStatus464
           if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())
             martingaleStatusText?.text = mgRecovery614.status()
           demoOrderVerificationReason = effectiveStatus464.takeIf { autoDemoSessionConsumed }
