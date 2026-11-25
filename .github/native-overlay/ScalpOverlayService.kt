@@ -1796,6 +1796,19 @@ class ScalpOverlayService : Service() {
   private var chartResultObservedAt627 = 0L
   private var chartResultConflict627 = false
 
+  // A balance comparison is auxiliary evidence, never a receipt or a
+  // permission to rearm. Missing baseline or mismatched account is unknown.
+  private fun compareChartBalance628(before: Long, after: Long, stake: Long): String? {
+    if (before < stake || stake !in 109L..81950L || after < 0L) return null
+    val delta = after - before
+    return when {
+      delta == -stake -> "LOSS"
+      delta in (stake * 92L / 100L)..((stake * 92L + 99L) / 100L) -> "WIN"
+      delta == 0L -> "DRAW"
+      else -> null
+    }
+  }
+
   private fun chartResultCaptureInterval627(now: Long, attemptWall: Long): Long =
     if (attemptWall > 0L && now - attemptWall in 285_000L..345_000L) 900L
     else OCR_INTERVAL_MS
@@ -1908,6 +1921,22 @@ class ScalpOverlayService : Service() {
         .putString("chartEvidenceOutcome628",outcome)
         .putLong("chartEvidenceAt628",capturedAt)
         .putBoolean("chartEvidenceConflict628",false).commit()
+      if (prefs.getLong("chartBalanceWall628",-1L) == wall) {
+        val balanceAfter = try { TouchTestService.readVerifiedDemoBalance() }
+          catch (_: Throwable) { null }
+        if (balanceAfter != null && balanceAfter.isFinite() && balanceAfter >= 0.0 &&
+            TouchTestService.activeDemoExecutorPackageForReview() == pkg &&
+            TouchTestService.readVisibleDemoPair() == pair &&
+            !TouchTestService.realFxAccountVisible()) {
+          val comparison = compareChartBalance628(
+            prefs.getLong("chartBalanceBefore628",-1L),
+            kotlin.math.round(balanceAfter*100).toLong(),stake)
+          prefs.edit().putLong("chartBalanceComparedWall628",wall)
+            .putString("chartBalanceComparison628",
+              if (comparison == outcome) "CONCORDANT" else "NECONFIRMAT")
+            .commit()
+        }
+      }
     }
   }
 
@@ -7996,6 +8025,23 @@ class ScalpOverlayService : Service() {
                 // effect; an Android gesture alone cannot trigger it.
                 val badgeBefore512 = if (CHART_ONLY_DEMO_462)
                   readDemoBadgeForEffect512() else null
+                // Store a read-only baseline for the precise persisted attempt.
+                // A missing balance does not change existing execution behavior.
+                if (CHART_ONLY_DEMO_462) {
+                  val evidence628 = getSharedPreferences(autoShockAttemptPrefs,Context.MODE_PRIVATE)
+                  val baseline628 = try { TouchTestService.readVerifiedDemoBalance() }
+                    catch (_: Throwable) { null }
+                  val baselineWall628 = evidence628.getLong("attemptedWallAt454",-1L)
+                  if (baseline628 != null && baseline628.isFinite() && baseline628 >= 0.0 &&
+                      baselineWall628 > 0L &&
+                      TouchTestService.activeDemoExecutorPackageForReview() == package429 &&
+                      TouchTestService.readVisibleDemoPair() == tradePair429 &&
+                      !TouchTestService.realFxAccountVisible()) {
+                    evidence628.edit().putLong("chartBalanceWall628",baselineWall628)
+                      .putLong("chartBalanceBefore628",kotlin.math.round(baseline628*100).toLong())
+                      .commit()
+                  }
+                }
                 // This is a helper invocation count, not a broker-order count.
                 demoDiagGestureChecks546 += 1
                 demoDiagLastGesture546 = "VERIFICARE ANDROID ÎN CURS"
