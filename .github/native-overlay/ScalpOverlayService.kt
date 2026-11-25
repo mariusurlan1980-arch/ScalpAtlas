@@ -1923,11 +1923,22 @@ class ScalpOverlayService : Service() {
     val visualLoss = parseRealLossBadge629(result, frame)
     val outcome = if (explicitOutcome != null && visualLoss != null &&
         explicitOutcome != visualLoss) null else explicitOutcome ?: visualLoss
+    val attemptKey627 = chartResultAttemptKey627(pkg,pair,wall,stake)
     if (outcome == null) {
+      // An explicit contradiction is not a missing notification.
+      if (explicitOutcome != null && visualLoss != null && explicitOutcome != visualLoss) {
+        if (prefs.getString("chartEvidenceAttempt628",null) == attemptKey627)
+          prefs.edit().putBoolean("chartEvidenceConflict628",true).commit()
+        chartResultConflict627 = true
+      } else if (prefs.getString("chartEvidenceAttempt628",null) == attemptKey627 &&
+          prefs.getLong("chartEvidenceAt628",-1L) - wall in 300_000L..345_000L) {
+        val saved = prefs.getString("chartEvidenceOutcome628",null)
+        if (saved != null && saved in listOf("WIN","LOSS"))
+          retryChartBalance629(prefs,pkg,pair,wall,stake,saved)
+      }
       resetChartResult619()
       return
     }
-    val attemptKey627 = chartResultAttemptKey627(pkg,pair,wall,stake)
     val key = attemptKey627 + outcome
     // Restore only evidence bound to this exact attempt. No inferred receipt.
     if (prefs.getString("chartEvidenceAttempt628",null) == attemptKey627) {
@@ -1972,23 +1983,37 @@ class ScalpOverlayService : Service() {
         .putString("chartEvidenceOutcome628",outcome)
         .putLong("chartEvidenceAt628",capturedAt)
         .putBoolean("chartEvidenceConflict628",false).commit()
-      if (prefs.getLong("chartBalanceWall628",-1L) == wall) {
-        val balanceAfter = try { TouchTestService.readVerifiedDemoBalance() }
-          catch (_: Throwable) { null }
-        if (balanceAfter != null && balanceAfter.isFinite() && balanceAfter >= 0.0 &&
-            TouchTestService.activeDemoExecutorPackageForReview() == pkg &&
-            TouchTestService.readVisibleDemoPair() == pair &&
-            !TouchTestService.realFxAccountVisible()) {
-          val comparison = compareChartBalance628(
-            prefs.getLong("chartBalanceBefore628",-1L),
-            kotlin.math.round(balanceAfter*100).toLong(),stake)
-          prefs.edit().putLong("chartBalanceComparedWall628",wall)
-            .putString("chartBalanceComparison628",
-              if (comparison == outcome) "CONCORDANT" else "NECONFIRMAT")
-            .commit()
-        }
-      }
+      retryChartBalance629(prefs,pkg,pair,wall,stake,outcome)
     }
+  }
+
+  // Retry auxiliary balance reading after the transient badge has disappeared.
+  // The caller has verified the DEMO chart and capture age. Never authorize an order.
+  private fun retryChartBalance629(
+    prefs: android.content.SharedPreferences, pkg: String, pair: String,
+    wall: Long, stake: Long, outcome: String
+  ) {
+    val attemptKey = chartResultAttemptKey627(pkg,pair,wall,stake)
+    if (prefs.getString("chartEvidenceAttempt628",null) != attemptKey ||
+        prefs.getBoolean("chartEvidenceConflict628",false) ||
+        prefs.getString("chartEvidenceOutcome628",null) != outcome ||
+        prefs.getLong("chartBalanceWall628",-1L) != wall ||
+        System.currentTimeMillis() - wall !in 300_000L..345_000L) return
+    if (prefs.getLong("chartBalanceComparedWall628",-1L) == wall &&
+        prefs.getString("chartBalanceComparison628",null) == "CONCORDANT") return
+    val balanceAfter = try { TouchTestService.readVerifiedDemoBalance() }
+      catch (_: Throwable) { null }
+    if (balanceAfter == null || !balanceAfter.isFinite() || balanceAfter < 0.0 ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
+        TouchTestService.readVisibleDemoPair() != pair ||
+        TouchTestService.realFxAccountVisible()) return
+    val comparison = compareChartBalance628(
+      prefs.getLong("chartBalanceBefore628",-1L),
+      kotlin.math.round(balanceAfter*100).toLong(),stake)
+    prefs.edit().putLong("chartBalanceComparedWall628",wall)
+      .putString("chartBalanceComparison628",
+        if (comparison == outcome) "CONCORDANT" else "NECONFIRMAT").commit()
   }
 
   private fun chartResultDiagnostic619(): String? {
@@ -2013,7 +2038,10 @@ class ScalpOverlayService : Service() {
       if (savedOutcome in listOf("WIN","LOSS") && savedAt - wall in 300_000L..345_000L) {
         if (prefs.getBoolean("chartEvidenceConflict628",false))
           return "GRAFIC • REZULTATE CONTRADICTORII"
-        return "GRAFIC • " + savedOutcome + " 2/2 MEMORAT • FĂRĂ DECONTARE"
+        val balance = if (prefs.getLong("chartBalanceComparedWall628",-1L) == wall &&
+            prefs.getString("chartBalanceComparison628",null) == "CONCORDANT")
+          "SOLD OK" else "SOLD NECONFIRMAT"
+        return "GRAFIC • " + savedOutcome + " 2/2 • " + balance + " • FĂRĂ DECONTARE"
       }
     }
     if (chartResultObservedKey627.startsWith(currentKey) &&
