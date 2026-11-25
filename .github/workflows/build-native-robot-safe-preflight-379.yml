@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 627 DEMO direct chart observation
+name: Build Scalp Atlas 629 DEMO direct chart observation
 
 on:
   push:
-    branches: [test/627-live-chart-result]
+    branches: [test/629-real-demo-loss-badge]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -86,7 +86,7 @@ jobs:
               assert forbidden not in h, forbidden
           assert s.count('reviewExpiredDemoHistory615(') == 1
           assert 'val navigationReview615 = chartResultDiagnostic619()' in s
-          assert 'observeChartResult619(result, now, observedAt)' in s
+          assert 'observeChartResult619(result, copy, now, observedAt)' in s
           observer=s.split('private fun observeChartResult619(',1)[1].split('private fun startBrokerAccountMonitor()',1)[0]
           for guard in ('readVisibleDemoPair() != pair', 'expectedPayout429', 'demoFxAccountInForeground()', 'realFxAccountVisible()', '300_000L..345_000L', 'observedAt - capturedAt !in 0L..2_500L', 'resetChartResult619()'):
               assert guard in observer, guard
@@ -140,7 +140,7 @@ jobs:
           expo['version']='3.3.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=627
+          expo['android']['versionCode']=629
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2617,11 +2617,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-627-DEMO-CHART-TEST-G24.apk
+          cp "$APK" ScalpAtlas-629-DEMO-CHART-TEST-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-627-DEMO-CHART-TEST-G24
-          path: ScalpAtlas-627-DEMO-CHART-TEST-G24.apk
+          name: ScalpAtlas-629-DEMO-CHART-TEST-G24
+          path: ScalpAtlas-629-DEMO-CHART-TEST-G24.apk
           if-no-files-found: error
           retention-days: 30
