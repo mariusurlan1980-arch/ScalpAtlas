@@ -1322,13 +1322,16 @@ class ScalpOverlayService : Service() {
       autoDemoSessionRequested = false
       return "SESIUNE DEMO • STARE POZIȚIE NECONFIRMATĂ"
     }
-    // Remain disarmed on the Transactions page. The existing base rearm
-    // requires returning to the live chart and fresh broker amount/payout.
-    autoDemoSessionRequested = false
+    // The new session is authorized after the verified empty-tab proof.
+    // No gesture is possible on history: the execution path requires
+    // a fresh chart, confirmed pair, stake, payout and expiry.
+    autoDemoSessionRequested = true
+    autoDemoSessionConsumed = false
     autoDemoArmed = false
     autoDemoMarket = null
     autoDemoLockedAt = lockedAt
-    autoDemoEntryCycleStartedAt = 0L
+    autoDemoEntryCycleStartedAt = System.currentTimeMillis()
+    autoDemoLastPreflightAt = 0L
     return "ZERO DESCHISE 2/2 • SESIUNE NOUĂ • REVINO LA GRAFIC"
   }
 
@@ -7315,8 +7318,13 @@ class ScalpOverlayService : Service() {
     } catch (_: Throwable) {
       // The signal/audio can still work if file storage temporarily fails.
     }
-    try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
-    playBip(confirmedSignal)
+    // In auto DEMO, sound indicates an actual Android gesture submission,
+    // not an optical candidate or a blocked trade. Keep signal-only alerts
+    // for the separate non-auto mode.
+    if (!(CHART_ONLY_DEMO_462 && robotArmedContinuously513)) {
+      try { liveTest.onBeep(now, confirmedSignal, currentPair(now)) } catch (_: Throwable) {}
+      playBip(confirmedSignal)
+    }
     updateOverlay(
       confirmedSignal,
       "Scor orientativ " + score + " • Durată " + if (expiry > 0) expiry.toString() + " min" else "—",
@@ -7583,7 +7591,18 @@ class ScalpOverlayService : Service() {
         activeSignal != "NONE" && eligibleSignal547 &&
         lockedAt > autoDemoEntryCycleStartedAt && lockedAt != autoDemoLockedAt &&
         now - lockedAt in 0L..4_000L
+      // Rotation can leave a preflight arm bound to the previous pair.
+      // Invalidate it BEFORE evaluating the new pair's confirmed frame,
+      // so the current signal can be preflighted in this same callback.
+      if (CHART_ONLY_DEMO_462 && autoDemoArmed && !fxRotationNavigating &&
+          pairReady(now) && currentPair(now) != autoDemoMarket) {
+        autoDemoArmed = false
+        autoDemoMarket = null
+        autoDemoExpiry = 0L
+        autoDemoLastPreflightAt = 0L
+      }
       if (!manualDemoDiagnosticActive552 &&
+          !historyPageVisible433 &&
           !fxRotationNavigating && autoDemoSessionRequested && !autoDemoSessionConsumed && !autoDemoArmed &&
           tradePositionGate.state() == TradePositionGate.State.READY &&
           !closedHistoryInspectionInProgress) {
@@ -7685,7 +7704,7 @@ class ScalpOverlayService : Service() {
         val brokerOpenTradeHint516 =
           TouchTestService.inspectVisibleDemoOpenBadgeReadOnly()
             .startsWith("QT DEMO • INDICATOR ")
-        val readyForDemo = !fxRotationNavigating &&
+        val readyForDemo = !historyPageVisible433 && !fxRotationNavigating &&
           !realAccountSafetyStop517 && !accountRecheckPending &&
           expectedPair != null && TouchTestService.isPreferredFxPair517(expectedPair) &&
           !fxRotationTradePaused516 && !brokerOpenTradeHint516 && brokerConnected &&
@@ -7867,6 +7886,10 @@ class ScalpOverlayService : Service() {
                 if (CHART_ONLY_DEMO_462 &&
                     (result.contains("ACCEPTAT DE ANDROID") ||
                      result.contains("TRANSMIS • AȘTEPT ID OPEN"))) {
+                  // Exactly one sound per accepted gesture submission.
+                  // A submitted gesture is NOT confirmation of a broker trade.
+                  try { liveTest.onBeep(now, activeSignal, tradePair429) } catch (_: Throwable) {}
+                  playBip(activeSignal)
                   val attemptedWall512 = getSharedPreferences(
                     autoShockAttemptPrefs, Context.MODE_PRIVATE
                   ).getLong("attemptedWallAt454", -1L)
