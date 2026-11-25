@@ -1648,7 +1648,7 @@ class ScalpOverlayService : Service() {
           }
           // Keep the exact passive proof or navigation blocker visible.
           // A generic MG wait message must not replace actionable evidence.
-          val effectiveStatus464 = navigationReview615 ?: passiveStatus463 ?: pilotStatus464
+          val effectiveStatus464 = passiveStatus463 ?: navigationReview615 ?: pilotStatus464
           if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())
             martingaleStatusText?.text = mgRecovery614.status()
           demoOrderVerificationReason = effectiveStatus464.takeIf { autoDemoSessionConsumed }
@@ -3964,7 +3964,12 @@ class ScalpOverlayService : Service() {
           task = null
           if (!running || overlayView !== root || shuttingDown || mediaProjection == null)
             stop("ROTAȚIE OPRITĂ • LIVE INDISPONIBIL")
-          else try {
+          else if (!realAccount && closedHistoryInspectionInProgress) {
+            // The history verifier exclusively owns navigation during its
+            // bounded review. Do not let a queued FX selector action race it.
+            fxButton.text = "ROTAȚIE PAUZĂ • VERIFIC REZULTAT DEMO"
+            after(1_000L) { seekChart() }
+          } else try {
             work()
           } catch (_: Exception) {
             recoverNavigation(lastChartPair, "SELECTOR NECONFIRMAT")
@@ -3980,6 +3985,11 @@ class ScalpOverlayService : Service() {
       // may be navigated. An old/active order still blocks ALL new trades.
       fun seekChart() {
         if (!running || stopOnReal517()) return
+        if (!realAccount && closedHistoryInspectionInProgress) {
+          fxButton.text = "ROTAȚIE PAUZĂ • VERIFIC REZULTAT DEMO"
+          after(1_000L) { seekChart() }
+          return
+        }
         if (!TouchTestService.ready()) {
           fxButton.text = "ROTAȚIE • AȘTEPT ACCESIBILITATE"
           after(3_000L) { seekChart() }
