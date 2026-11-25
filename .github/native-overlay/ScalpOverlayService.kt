@@ -5758,6 +5758,20 @@ class ScalpOverlayService : Service() {
     return if (m.groupValues[1] == "-") -cents else cents
   }
 
+  // Convert the broker's displayed profit to economic net P/L.
+  // Only accept consistent full loss, draw, or a 92% full win.
+  private fun normalizeClosedProfit622(stake: Long, paid: Long, shown: Long): Long? {
+    if (stake !in 1L..81950L || paid < 0L) return null
+    val net = paid - stake
+    return when {
+      paid == 0L && (shown == 0L || shown == -stake) -> -stake
+      paid == stake && shown == 0L -> 0L
+      net > 0L && shown == net &&
+        net in ((stake * 92L) / 100L)..((stake * 92L + 99L) / 100L) -> net
+      else -> null
+    }
+  }
+
   private fun recordClosedDetailOcr437(
     result: com.google.mlkit.vision.text.Text,
     frame: Bitmap,
@@ -5845,37 +5859,39 @@ class ScalpOverlayService : Service() {
       .find(content)?.groupValues?.getOrNull(1) ?: return
     val side437 = if (directionLabel437.uppercase().startsWith("VINDE") ||
         directionLabel437.uppercase() == "SELL") "SELL" else "BUY"
-    val netRaw = Regex("""(?i)\bProfit\s*:\s*([+-]\s*\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
-      .find(content)?.groupValues?.getOrNull(1)
-    val paidRaw = Regex("""(?i)\bPlat[ăa]\s*:\s*(\$?\s*\d{1,5}(?:[.,]\d{1,2})?)""")
-      .find(content)?.groupValues?.getOrNull(1)
-    val stakeSources = lines.filter {
-      Regex("""^\$[0-9]{1,5}(?:[.,][0-9]{1,2})?$""").matches(it)
-    }.mapNotNull(::exactMoneyCents437).distinct()
-    // 440: ML Kit can return "↘ $1" on the broker's CLOSED summary line,
-    // rather than the exact isolated "$1". This is a READ-ONLY witness
-    // restricted to the upper-left stake row, never payout/profit labels.
-    val stakeRow440 = readable440.filter { line ->
+    // 622: Pocket Option shows Profit:$0 and Plată:$0 for a lost
+    // trade. Read the stake independently from the matching summary row;
+    // never infer a stake from a zero-valued profit field.
+    val detailText622 = readable440.filter { line ->
+      val rect = line.boundingBox
+      rect != null && rect.centerY().toFloat() / frame.height > latestRowY442 + 0.035f &&
+        rect.centerY().toFloat() / frame.height < idY442
+    }.joinToString(" ") { it.text.trim() }.replace(Regex("""\s+"""), " ")
+    val netRaw = Regex("""(?i)\bProfit\s*:\s*([+-]?\s*\$?\s*\d{1,5}(?:[.,]\d{1,2})?)(?![\d.,])""")
+      .findAll(detailText622).toList().singleOrNull()?.groupValues?.getOrNull(1)
+    val paidRaw = Regex("""(?i)\bPlat[ăa]\s*:\s*(\$?\s*\d{1,5}(?:[.,]\d{1,2})?)(?![\d.,])""")
+      .findAll(detailText622).toList().singleOrNull()?.groupValues?.getOrNull(1)
+    val pending622 = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    if (!pending622.getBoolean("attempted", false) ||
+        pending622.getString("expectedPackage429", null) != packageId ||
+        pending622.getString("expectedPair429", null) != pairs.single()) return
+    val expectedStake622 = pending622.getLong("expectedStakeCents429", -1L)
+    val stakeRow622 = readable440.filter { line ->
       val rect = line.boundingBox
       rect != null && rect.centerX().toFloat() / frame.width in 0.015f..0.43f &&
-        rect.centerY().toFloat() / frame.height in 0.25f..0.38f
+        rect.centerY().toFloat() / frame.height in (latestRowY442 + 0.008f)..(latestRowY442 + 0.045f)
     }.flatMap { line ->
-      Regex("""(?:^|[^A-Za-z0-9])\$\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)(?![0-9])""")
-        .findAll(line.text).mapNotNull { hit ->
-          exactMoneyCents437(hit.groupValues[1])
-        }.toList()
+      Regex("""(?:^|[^A-Za-z0-9])\$\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)(?![\d.,])""")
+        .findAll(line.text).mapNotNull { exactMoneyCents437(it.groupValues[1]) }.toList()
     }.distinct()
     if (ids.size != 1 || pairs.size != 1 ||
         openLabel == null || closeLabel == null ||
-        netRaw == null || paidRaw == null) return
+        netRaw == null || paidRaw == null ||
+        expectedStake622 <= 0L || stakeRow622.singleOrNull() != expectedStake622) return
+    val stake = expectedStake622
     val paid = exactMoneyCents437(paidRaw) ?: return
-    val net = exactMoneyCents437(netRaw) ?: return
-    // Pocket Option displays "$1", "$1.92", "+$0.92" together on a
-    // detail header. Only the independently labelled payout MINUS the
-    // signed profit can identify which visible amount was the stake.
-    val stake = paid - net
-    if (stakeSources.count { it == stake } != 1 &&
-        !(stakeRow440.size == 1 && stakeRow440.single() == stake)) return
+    val shownProfit622 = exactMoneyCents437(netRaw) ?: return
+    val net = normalizeClosedProfit622(stake, paid, shownProfit622) ?: return
     val pair = pairs.single()
     // 446: Read the payout from the SAME instrument row. The instrument
     // and '+92%' may be separate ML Kit lines and spaces around '/' vary.
