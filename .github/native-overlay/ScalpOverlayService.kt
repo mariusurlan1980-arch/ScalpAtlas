@@ -1283,6 +1283,7 @@ class ScalpOverlayService : Service() {
         !TouchTestService.ready() || TouchTestService.realFxAccountVisible() ||
         TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
         !prefs.getBoolean("attempted", false) ||
+        prefs.getBoolean("freshSessionRecovery624Used", false) ||
         prefs.getString("expectedPackage429", null) != pkg ||
         freshSessionWall624 <= 0L || wall <= 0L ||
         freshSessionWall624 - wall < 345_000L || now < freshSessionWall624 ||
@@ -1310,6 +1311,7 @@ class ScalpOverlayService : Service() {
       .putLong(archive + "attemptedWall",wall)
       .putLong(archive + "verifiedEmptyAt",now)
       .putString(archive + "result","UNKNOWN_NOT_SETTLED")
+      .putBoolean("freshSessionRecovery624Used",true)
       .putBoolean("attempted",false)
       .remove("expectedPair429").remove("expectedPackage429")
       .remove("expectedStakeCents429").remove("expectedPayout429")
@@ -1800,7 +1802,10 @@ class ScalpOverlayService : Service() {
 
   private fun chartResultDiagnostic619(): String? {
     val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
-    if (!prefs.getBoolean("attempted", false)) return null
+    if (!prefs.getBoolean("attempted", false)) {
+      return if (autoDemoSessionConsumed && prefs.getBoolean("freshSessionRecovery624Used",false))
+        "SESIUNE NOUĂ • AȘTEPT GRAFIC QT DEMO" else null
+    }
     val wall = prefs.getLong("attemptedWallAt454", -1L)
     val now = System.currentTimeMillis()
     val pendingPair623 = prefs.getString("expectedPair429", null).orEmpty()
