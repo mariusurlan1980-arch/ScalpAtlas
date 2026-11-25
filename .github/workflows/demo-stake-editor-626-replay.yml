@@ -1,0 +1,36 @@
+name: DEMO stake editor 626 offline balance replay
+on:
+  push:
+    branches: [test/626-demo-stake-preparation]
+  workflow_dispatch:
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test actual stake editor balance parser
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/DemoStakeEditor.kt').read_text()
+          f=s.split('  internal fun parseDemoBalance626(',1)[1].split('  private data class Chart(',1)[0]
+          Path('/tmp/Balance626.kt').write_text('fun parseDemoBalance626('+f)
+          PY
+          cat >> /tmp/Balance626.kt <<'KOTLIN'
+          fun main() {
+            check(parseDemoBalance626("1,571.32")==157132L)
+            check(parseDemoBalance626("1,572.41 USD")==157241L)
+            check(parseDemoBalance626("1.571,32")==157132L)
+            check(parseDemoBalance626("1571.32")==157132L)
+            check(parseDemoBalance626("1571,32")==157132L)
+            check(parseDemoBalance626("0.00")==0L)
+            check(parseDemoBalance626("QT Demo 1,571.32")==null)
+            check(parseDemoBalance626("1,57.32")==null)
+            check(parseDemoBalance626("1,571.32 1.09")==null)
+            check(parseDemoBalance626("-1.09")==null)
+            println("PASS 10 offline grouped-balance cases")
+          }
+          KOTLIN
+          kotlinc /tmp/Balance626.kt -include-runtime -d /tmp/balance626.jar
+          java -jar /tmp/balance626.jar
