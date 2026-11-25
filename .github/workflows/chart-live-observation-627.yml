@@ -1,0 +1,48 @@
+name: 627 live chart observation replay
+on:
+  push:
+    branches: [test/627-live-chart-result]
+  workflow_dispatch:
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replay actual Kotlin parser and capture cadence
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          a=s.split('  private fun parseChartResult620(',1)[1].split('  private fun observeChartResult619(',1)[0]
+          b=s.split('  private fun chartResultCaptureInterval627(',1)[1].split('  private fun chartResultAttemptKey627(',1)[0]
+          Path('/tmp/Chart627.kt').write_text('private const val OCR_INTERVAL_MS=3000L\nprivate fun parseChartResult620('+a+'\nprivate fun chartResultCaptureInterval627('+b)
+          h=s.split('private fun observeChartResult619(',1)[1].split('private fun chartResultDiagnostic619(',1)[0]
+          for guard in ('capturedAt - wall !in 300_000L..345_000L','observedAt - capturedAt !in 0L..2_500L','TouchTestService.realFxAccountVisible()','TouchTestService.readVisibleDemoPair() != pair','capturedAt - chartResultLastAt619 >= 1_000L','chartResultConflict627'):
+              assert guard in h,guard
+          for forbidden in ('onVerifiedClosed(', 'confirmEdited(', 'putBoolean("attempted",false)', 'dispatchGesture(', 'autoDemoSessionConsumed = false'):
+              assert forbidden not in h,forbidden
+          PY
+          cat >> /tmp/Chart627.kt <<'KOTLIN'
+          fun main() {
+            val p="AED/CNY OTC"
+            check(parseChartResult620(listOf("AED/CNY OTC WIN P/L: +1.00 USD"),p,109)=="WIN")
+            check(parseChartResult620(listOf("AED/CNY OTC LOSS P/L: -1.09 USD"),p,109)=="LOSS")
+            check(parseChartResult620(listOf("AED/CNY OTC WIN P/L: +2.09 USD"),p,109)==null)
+            check(parseChartResult620(listOf("AED/CNY OTC LOSS P/L: -2.28 USD"),p,109)==null)
+            check(parseChartResult620(listOf("AED/CNY WIN P/L: +1.00 USD"),p,109)==null)
+            check(parseChartResult620(listOf("AED/CNY OTC WIN LOSS P/L: +1.00 USD"),p,109)==null)
+            check(parseChartResult620(listOf("AED/CNY OTC WIN"),p,109)==null)
+            check(parseChartResult620(listOf("AED/CNY OTC WIN P/L: +1.00 USD","AED/CNY OTC LOSS P/L: -1.09 USD"),p,109)==null)
+            val t=1000000L
+            check(chartResultCaptureInterval627(t+284999,t)==3000L)
+            check(chartResultCaptureInterval627(t+285000,t)==900L)
+            check(chartResultCaptureInterval627(t+300000,t)==900L)
+            check(chartResultCaptureInterval627(t+345000,t)==900L)
+            check(chartResultCaptureInterval627(t+345001,t)==3000L)
+            check(chartResultCaptureInterval627(t,-1)==3000L)
+            println("PASS 14 offline chart-result and sampling cases")
+          }
+          KOTLIN
+          kotlinc /tmp/Chart627.kt -include-runtime -d /tmp/chart627.jar
+          java -jar /tmp/chart627.jar
