@@ -34,3 +34,27 @@ jobs:
           KOTLIN
           kotlinc /tmp/Balance626.kt -include-runtime -d /tmp/balance626.jar
           java -jar /tmp/balance626.jar
+
+      - name: Check verified settlement to editor integration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path('.github/native-overlay')
+          p=(d/'DemoAutoStakePlan565.kt').read_text()
+          e=(d/'DemoStakeEditor.kt').read_text()
+          t=(d/'TouchTestService.kt').read_text()
+          s=(d/'ScalpOverlayService.kt').read_text()
+          h=s.split('private fun prepareVerifiedMartingaleAmount626(',1)[1].split('private fun maybeRearmConfirmedDemoBase618(',1)[0]
+          for guard in ('autoDemoSessionConsumed','TradePositionGate.State.READY','realFxAccountVisible()','pendingVerifiedSettlement626(key,pair)','verifiedOpenPositionId429() == null','getBoolean("attempted",false)','readBrokerDemoOrder476(pair) != (stake to 92)'):
+              assert guard in h, guard
+          assert h.index('prepareVerifiedMartingaleStake626(') < h.index('confirmEdited(key,pair,stake,true)')
+          for forbidden in ('pressVerifiedDemoStakeOnce429(', 'dispatchGesture(', 'beginAttempt(', 'autoDemoSessionConsumed = false'):
+              assert forbidden not in h
+          assert '.putString("lastVerifiedSettlement626",positionId)' in p
+          assert 'id !in prefs.getStringSet("seenClosedIds",emptySet()).orEmpty()' in p
+          assert '3964L)' in e and 'DemoAutoStakePlan565.EDITOR_MAX_STAKE_CENTS' in e
+          assert 'after.balanceCents < stakeCents' in e
+          assert 'plan.pendingVerifiedSettlement626(accountKey,pair).stakeCents == stakeCents' in t
+          assert 'CHART_ONLY_DEMO_462 && stake429 != 109L' in s
+          print('PASS source integration checks; no new order path enabled')
+          PY
