@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 622 DEMO zero-profit receipt correction
+name: Build Scalp Atlas 623 DEMO dated receipt and base rearm
 
 on:
   push:
-    branches: [fix/demo-closed-zero-profit-621]
+    branches: [fix/demo-rearm-diagnostics-622]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -137,10 +137,10 @@ jobs:
           expo=cfg['expo']
           expo['name']='SCALP ATLAS LIVE'
           expo['slug']='scalp-atlas-live'
-          expo['version']='3.2.96'
+          expo['version']='3.2.97'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=622
+          expo['android']['versionCode']=623
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -1904,6 +1904,34 @@ jobs:
           console.log('445 safe OPEN->CLOSED UUID correlation test passed');
           NODE
 
+      - name: Replay dated receipt matching after restart
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          f=s.split('  private fun brokerOpenTimeMatchesAttempt437Dated623(',1)[1].split('  private fun brokerOpenTimeMatchesAttempt437(',1)[0]
+          Path('/tmp/ReceiptDate623.kt').write_text('private fun brokerOpenTimeMatchesAttempt437Dated623('+f)
+          PY
+          cat >> /tmp/ReceiptDate623.kt <<'KOTLIN'
+          fun main() {
+            val t=java.time.Instant.parse("2026-11-24T18:25:33Z").toEpochMilli()
+            val now=t+26*3600000L
+            val opened=21*3600+25*60+33
+            check(brokerOpenTimeMatchesAttempt437Dated623("2026-11-24",opened,opened+300,t,now))
+            check(!brokerOpenTimeMatchesAttempt437Dated623("2026-11-25",opened,opened+300,t,now))
+            check(!brokerOpenTimeMatchesAttempt437Dated623("2026-11-24",opened+600,opened+900,t,now))
+            check(!brokerOpenTimeMatchesAttempt437Dated623("2026-11-24",opened,opened+300,t,t+1000L))
+            check(!brokerOpenTimeMatchesAttempt437Dated623("2026-11-24",opened,opened+300,t,t+8*86400000L))
+            check(!brokerOpenTimeMatchesAttempt437Dated623("2026-11-31",opened,opened+300,t,now))
+            val midnight=java.time.Instant.parse("2026-11-24T20:58:00Z").toEpochMilli()
+            check(brokerOpenTimeMatchesAttempt437Dated623("2026-11-25",23*3600+58*60,180,midnight,midnight+3600000L))
+            println("PASS 7 dated receipt checks including midnight and restart")
+          }
+          KOTLIN
+          kotlinc /tmp/ReceiptDate623.kt -include-runtime -d /tmp/receipt-date623.jar
+          java -jar /tmp/receipt-date623.jar
+
       - name: Test actual Kotlin zero-profit receipt normalization
         run: |
           set -euo pipefail
@@ -2518,11 +2546,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-622-DEMO-RECEIPT-G24.apk
+          cp "$APK" ScalpAtlas-623-DEMO-REARM-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-622-DEMO-RECEIPT-G24
-          path: ScalpAtlas-622-DEMO-RECEIPT-G24.apk
+          name: ScalpAtlas-623-DEMO-REARM-G24
+          path: ScalpAtlas-623-DEMO-REARM-G24.apk
           if-no-files-found: error
           retention-days: 30
