@@ -2452,6 +2452,30 @@ class TouchTestService : AccessibilityService() {
      * verified by a future history adapter and the ledger authorizes a quote.
      * Currently no unverified visual signal or timer can invoke this method.
      */
+    // Only a durable, matched Demo settlement may authorize this edit.
+    // No order gesture or Martingale level change is performed here.
+    internal fun prepareVerifiedMartingaleStake626(
+      plan: DemoAutoStakePlan565, accountKey: String, pair: String,
+      stakeCents: Long, safeToEdit: () -> Boolean
+    ): String {
+      val svc = connected ?: return "ACCESIBILITATE NECONECTATĂ"
+      val pkg = svc.rootInActiveWindow?.packageName?.toString()
+        ?: return "BROKER NECONFIRMAT"
+      val authorized = {
+        try {
+          connected === svc && safeToEdit() &&
+            accountKey == "QT_DEMO:" + pkg &&
+            svc.rootInActiveWindow?.packageName?.toString() == pkg &&
+            BrokerAdapterRegistry.hasDemoExecutor(pkg) &&
+            !realFxAccountVisible() && readVisibleDemoPair() == pair &&
+            confirmedFiveMinuteDemoExpiry465() &&
+            plan.pendingVerifiedSettlement626(accountKey,pair).stakeCents == stakeCents
+        } catch (_: Throwable) { false }
+      }
+      if (!authorized()) return "MIZĂ MG • DOVADĂ NECONFIRMATĂ"
+      return DemoStakeEditor.setExactDemoMartingaleStake626(svc,authorized,stakeCents)
+    }
+
     fun setVerifiedDemoRecoveryStakeOnBroker(
       expectedPair: String,
       stakeCents: Long
