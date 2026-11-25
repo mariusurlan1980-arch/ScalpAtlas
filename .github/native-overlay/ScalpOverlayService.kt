@@ -1146,11 +1146,22 @@ class ScalpOverlayService : Service() {
         settlementReviewStarted615 = 0L
         closedHistoryInspectionInProgress = false
       }
-      return null
+      if (!pending) return null
+      return when {
+        realAccountSafetyStop517 || TouchTestService.realFxAccountVisible() -> "ISTORIC • QT REAL BLOCAT"
+        !robotArmedContinuously513 || shuttingDown || mediaProjection == null -> "ISTORIC • LIVE INACTIV"
+        !TouchTestService.ready() -> "ISTORIC • ACCESIBILITATE OFF"
+        else -> "ISTORIC • IDENTITATE QT DEMO NECONFIRMATĂ"
+      }
     }
     if (!pending || (settlementReviewStarted615 > 0L &&
         nowElapsed - settlementReviewStarted615 >= 55_000L)) {
-      if (settlementReviewStarted615 == 0L) return null
+      if (settlementReviewStarted615 == 0L) {
+        if (mgRecovery614.isRiskStopped()) return "MG DEMO • STOP RISC"
+        if (mgRecovery614.isEnabled() && autoDemoSessionConsumed)
+          return "MG DEMO • FĂRĂ ORDIN PENDINTE • " + mgRecovery614.status().take(45)
+        return null
+      }
       settlementReviewStarted615 = 0L
       closedHistoryInspectionInProgress = false
       if (freshHistory) returnToChartAfterReview458(true, true)
@@ -1168,18 +1179,30 @@ class ScalpOverlayService : Service() {
         kotlin.math.abs(elapsedAge - wallAge) > 60_000L ||
         !autoDemoSessionConsumed || autoDemoArmed ||
         getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted", false))
-      return null
+      return when {
+        at <= 0L || wall <= 0L -> "ISTORIC • TIMP ORDIN LIPSĂ"
+        expectedPkg != pkg || pair.isNullOrBlank() -> "ISTORIC • CONT/PERECHE ORDIN NECONFIRMATĂ"
+        kotlin.math.abs(elapsedAge - wallAge) > 60_000L -> "ISTORIC • TIMP ORDIN INCOERENT"
+        elapsedAge < DEMO_TEST_EXPIRY_MS_465 || wallAge < DEMO_TEST_EXPIRY_MS_465 -> "ISTORIC • AȘTEPT EXPIRAREA"
+        !autoDemoSessionConsumed || autoDemoArmed -> "ISTORIC • SESIUNE ÎNCĂ ARMATĂ"
+        else -> "ISTORIC • TEST SELL ANTERIOR NEVERIFICAT"
+      }
     val key = expectedPkg + "|" + pair + "|" + at
     if (settlementReviewStarted615 == 0L) {
       // One bounded navigation window per recorded attempt per LIVE session.
-      if (settlementReviewKey615 == key || fxRotationNavigating) return null
+      if (settlementReviewKey615 == key || fxRotationNavigating)
+        return if (settlementReviewKey615 == key)
+          "ISTORIC • REVIZIE ÎNCHEIATĂ • DOVADĂ INCOMPLETĂ"
+        else "ISTORIC • AȘTEPT FINAL ROTAȚIE"
       settlementReviewKey615 = key
       settlementReviewStarted615 = nowElapsed
       settlementReviewAction615 = 0L
       closedHistoryInspectionInProgress = true
     }
     if (settlementReviewAction615 > 0L &&
-        nowElapsed - settlementReviewAction615 < 5_000L) return null
+        nowElapsed - settlementReviewAction615 < 5_000L)
+      return lastAutoDemoHistoryNavStatus.takeIf { it.isNotBlank() }
+        ?: "ISTORIC • AȘTEPT CITIRE 2/2"
     settlementReviewAction615 = nowElapsed
     if (!freshHistory) return navigateVerifiedDemoHistory431(true, nowElapsed)
     return when (historyPageTab433) {
@@ -1623,6 +1646,8 @@ class ScalpOverlayService : Service() {
             android.util.Log.e("ScalpAtlas615", "DEMO history review blocked", error)
             "ISTORIC DEMO • EROARE NAVIGARE • ORDIN BLOCAT"
           }
+          // Keep the exact passive proof or navigation blocker visible.
+          // A generic MG wait message must not replace actionable evidence.
           val effectiveStatus464 = navigationReview615 ?: passiveStatus463 ?: pilotStatus464
           if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())
             martingaleStatusText?.text = mgRecovery614.status()
