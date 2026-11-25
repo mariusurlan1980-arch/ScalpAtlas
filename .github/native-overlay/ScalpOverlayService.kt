@@ -1924,9 +1924,14 @@ class ScalpOverlayService : Service() {
     val outcome = if (explicitOutcome != null && visualLoss != null &&
         explicitOutcome != visualLoss) null else explicitOutcome ?: visualLoss
     val attemptKey627 = chartResultAttemptKey627(pkg,pair,wall,stake)
+    if (prefs.getString("chartConflictAttempt630",null) == attemptKey627) {
+      resetChartResult619()
+      return
+    }
     if (outcome == null) {
       // An explicit contradiction is not a missing notification.
       if (explicitOutcome != null && visualLoss != null && explicitOutcome != visualLoss) {
+        prefs.edit().putString("chartConflictAttempt630",attemptKey627).commit()
         if (prefs.getString("chartEvidenceAttempt628",null) == attemptKey627)
           prefs.edit().putBoolean("chartEvidenceConflict628",true).commit()
         chartResultConflict627 = true
@@ -1940,6 +1945,12 @@ class ScalpOverlayService : Service() {
       return
     }
     val key = attemptKey627 + outcome
+    if (chartResultCandidate619.startsWith(attemptKey627) &&
+        chartResultCandidate619 != key) {
+      prefs.edit().putString("chartConflictAttempt630",attemptKey627).commit()
+      resetChartResult619()
+      return
+    }
     // Restore only evidence bound to this exact attempt. No inferred receipt.
     if (prefs.getString("chartEvidenceAttempt628",null) == attemptKey627) {
       val savedOutcome = prefs.getString("chartEvidenceOutcome628",null)
@@ -1995,6 +2006,7 @@ class ScalpOverlayService : Service() {
   ) {
     val attemptKey = chartResultAttemptKey627(pkg,pair,wall,stake)
     if (prefs.getString("chartEvidenceAttempt628",null) != attemptKey ||
+        prefs.getString("chartConflictAttempt630",null) == attemptKey ||
         prefs.getBoolean("chartEvidenceConflict628",false) ||
         prefs.getString("chartEvidenceOutcome628",null) != outcome ||
         prefs.getLong("chartBalanceWall628",-1L) != wall ||
@@ -2032,6 +2044,8 @@ class ScalpOverlayService : Service() {
     val currentKey = chartResultAttemptKey627(
       prefs.getString("expectedPackage429", null).orEmpty(),pendingPair623,wall,
       prefs.getLong("expectedStakeCents429",-1L))
+    if (prefs.getString("chartConflictAttempt630",null) == currentKey)
+      return "GRAFIC • REZULTATE CONTRADICTORII"
     if (prefs.getString("chartEvidenceAttempt628",null) == currentKey) {
       val savedOutcome = prefs.getString("chartEvidenceOutcome628",null)
       val savedAt = prefs.getLong("chartEvidenceAt628",-1L)
