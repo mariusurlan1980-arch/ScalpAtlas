@@ -168,6 +168,7 @@ class ScalpOverlayService : Service() {
   private var robotArmedContinuously513 = false
   private var autoDemoSessionRequested = false
   private var autoDemoSessionConsumed = false
+  private var freshSessionWall624 = 0L
   private var demoOrderVerificationReason: String? = null
   private var autoDemoSessionEndAt = 0L
   // 546: read-only, session-scoped diagnostics. These never authorize orders.
@@ -580,6 +581,7 @@ class ScalpOverlayService : Service() {
           // cannot yet be read reliably. Unknown order state blocks all repeats.
           // A service restart must never bypass an unconfirmed previous
           // broker trade. This guard survives process death and app updates.
+          freshSessionWall624 = System.currentTimeMillis()
           val priorAutoShockAttempt = getSharedPreferences(
             autoShockAttemptPrefs, Context.MODE_PRIVATE
           ).getBoolean("attempted", false)
@@ -1265,6 +1267,69 @@ class ScalpOverlayService : Service() {
     }
   }
 
+  // This is a fresh-session reconciliation of an unidentified DEMO attempt,
+  // not settlement of a trade. The caller has just independently read the
+  // selected empty OPEN tab twice. No balance, badge, timer or history alone
+  // is accepted; no result is fabricated and no Martingale level is changed.
+  private fun archiveOldDemoAttempt624(
+    prefs: android.content.SharedPreferences, pkg: String, pair: String,
+    stake: Long, payout: Int
+  ): String {
+    val wall = prefs.getLong("attemptedWallAt454", -1L)
+    val now = System.currentTimeMillis()
+    if (!CHART_ONLY_DEMO_462 || !robotArmedContinuously513 ||
+        !autoDemoSessionConsumed || mediaProjection == null || shuttingDown ||
+        realAccountSafetyStop517 || accountRecheckPending ||
+        !TouchTestService.ready() || TouchTestService.realFxAccountVisible() ||
+        TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
+        !prefs.getBoolean("attempted", false) ||
+        prefs.getString("expectedPackage429", null) != pkg ||
+        freshSessionWall624 <= 0L || wall <= 0L ||
+        freshSessionWall624 - wall < 345_000L || now < freshSessionWall624 ||
+        stake != 109L || payout != 92 ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+        demoRecoveryLedger.isRecovering429() || demoRecoveryLedger.needsBaseStakeReset() ||
+        tradePositionGate.state() !in listOf(TradePositionGate.State.UNKNOWN, TradePositionGate.State.READY) ||
+        mgRecovery614.isRiskStopped() ||
+        getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted", false))
+      return "SESIUNE DEMO • ORDIN ANTERIOR NECONFIRMAT"
+    // A previously confirmed base plan may be reused. Do not reset a
+    // recovery sequence, a risk stop or an unconfirmed amount.
+    val key = "QT_DEMO:" + pkg
+    if (!mgRecovery614.isEnabled() ||
+        !mgRecovery614.rebindVerifiedBasePair(key,pair) ||
+        !mgRecovery614.permitsFreshDemoOrder(key,pair,109L))
+      return "SESIUNE DEMO • PLAN DE BAZĂ NECONFIRMAT"
+    val archive = "unresolved624." + wall + "."
+    val saved = prefs.edit()
+      .putString(archive + "package",pkg)
+      .putString(archive + "pair",pair)
+      .putLong(archive + "stake",stake)
+      .putInt(archive + "payout",payout)
+      .putString(archive + "side",prefs.getString("expectedSide437",null))
+      .putLong(archive + "attemptedWall",wall)
+      .putLong(archive + "verifiedEmptyAt",now)
+      .putString(archive + "result","UNKNOWN_NOT_SETTLED")
+      .putBoolean("attempted",false)
+      .remove("expectedPair429").remove("expectedPackage429")
+      .remove("expectedStakeCents429").remove("expectedPayout429")
+      .remove("brokerStake476").remove("expectedSide437").remove("attemptedAt429")
+      .remove("attemptedWallAt454").commit()
+    if (!saved) return "SESIUNE DEMO • EROARE SALVARE • BLOCAT"
+    if (!tradePositionGate.brokerVerifiedEmptyDemoReview(true)) {
+      autoDemoSessionRequested = false
+      return "SESIUNE DEMO • STARE POZIȚIE NECONFIRMATĂ"
+    }
+    // Remain disarmed on the Transactions page. The existing base rearm
+    // requires returning to the live chart and fresh broker amount/payout.
+    autoDemoSessionRequested = false
+    autoDemoArmed = false
+    autoDemoMarket = null
+    autoDemoLockedAt = lockedAt
+    autoDemoEntryCycleStartedAt = 0L
+    return "ZERO DESCHISE 2/2 • SESIUNE NOUĂ • REVINO LA GRAFIC"
+  }
+
   private fun inspectPassiveDemoProof463(
     nowElapsed: Long,
     reviewPackage: String?,
@@ -1330,7 +1395,12 @@ class ScalpOverlayService : Service() {
 
     // Two empty-Open reads alone must NEVER clear a previous gesture.
     val closed = verifiedClosedDetail437
-      ?: return "463 • ZERO DESCHISE 2/2 • LIPSEȘTE ID ÎNCHIS"
+    if (closed == null) {
+      // At a NEW user-authorized session, a broker-verified empty OPEN tab
+      // can retire an old unidentified DEMO attempt without booking P/L.
+      // Never use this for an order attempted in this same live session.
+      return archiveOldDemoAttempt624(prefs, reviewPackage, expectedPair, stake, payout)
+    }
     if (System.currentTimeMillis() - verifiedClosedDetailAt437 !in 0L..90_000L ||
         closed.brokerPackage != expectedPackage ||
         closed.pair != expectedPair ||
