@@ -1615,6 +1615,21 @@ class ScalpOverlayService : Service() {
           // Restore the <=90-second chart DEMO identity proof which v462
           // accidentally skipped before its early return. We may then read
           // a manually displayed broker receipt, WITHOUT touching the UI.
+          if (realAccountSafetyStop517 ||
+              diagnostic.contains("QT REAL IDENTIFICAT") ||
+              TouchTestService.realFxAccountVisible()) {
+            realAccountSafetyStop517 = true
+            autoDemoArmed = false
+            autoDemoSessionRequested = false
+            autoDemoSessionConsumed = true
+            verifiedDemoAccountAt = 0L
+            verifiedDemoAccountPackage = null
+            closedHistoryInspectionInProgress = false
+            demoOrderVerificationReason = "QT REAL • FĂRĂ APĂSĂRI"
+            touchProbeStatus?.text = "ROBOT OPRIT • QT REAL"
+            mainHandler.postDelayed(this, 2500L)
+            return
+          }
           val proofNow463 = android.os.SystemClock.elapsedRealtime()
           val proofPackage463 =
             TouchTestService.activeDemoExecutorPackageForReview()
@@ -3886,37 +3901,18 @@ class ScalpOverlayService : Service() {
           stop("ROBOT OPRIT • VERIFICĂ QT DEMO")
           return true
         }
+        if (realVisible || TouchTestService.realFxAccountVisible() ||
+            TouchTestService.realFxAccountInForeground()) {
+          realAccountSafetyStop517 = true
+          autoDemoArmed = false
+          autoDemoSessionRequested = false
+          autoDemoSessionConsumed = true
+          accountRecheckPending = false
+          stop("ROBOT OPRIT • QT REAL • FĂRĂ APĂSĂRI")
+          return true
+        }
         if (accountRecheckPending) return true
-        if (!realVisible && !TouchTestService.realFxAccountInForeground()) return false
-
-        val projection = mediaProjection ?: return true
-        accountRecheckPending = true
-        autoDemoArmed = false
-        stop("CONT ÎN VERIFICARE • ROTAȚIE ÎN PAUZĂ")
-        mainHandler.postDelayed(object : Runnable {
-          override fun run() {
-            if (overlayView !== root || shuttingDown || mediaProjection !== projection) {
-              accountRecheckPending = false
-              return
-            }
-            if (TouchTestService.realFxAccountInForeground()) {
-              realAccountSafetyStop517 = true
-              autoDemoSessionRequested = false
-              autoDemoSessionConsumed = true
-              accountRecheckPending = false
-              stop("ROBOT OPRIT • VERIFICĂ QT DEMO")
-              retryDemoRotationAfterLiveRestart?.invoke()
-            } else if (TouchTestService.demoFxAccountInForeground() &&
-                !TouchTestService.realFxAccountVisible()) {
-              accountRecheckPending = false
-              autoDemoLockedAt = lockedAt
-              start()
-            } else {
-              mainHandler.postDelayed(this, 1_000L)
-            }
-          }
-        }, 1_000L)
-        return true
+        return false
       }
 
       fun restoreOverlay() {
