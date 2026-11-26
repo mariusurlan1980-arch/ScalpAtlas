@@ -1294,7 +1294,17 @@ class ScalpOverlayService : Service() {
         tradePositionGate.state() !in listOf(TradePositionGate.State.UNKNOWN, TradePositionGate.State.READY) ||
         mgRecovery614.isRiskStopped() ||
         getSharedPreferences(sell404TestPrefs, Context.MODE_PRIVATE).getBoolean("attempted", false))
-      return "SESIUNE DEMO • ORDIN ANTERIOR NECONFIRMAT"
+      return when {
+        freshSessionWall624 <= 0L || wall <= 0L || freshSessionWall624 - wall < 345_000L ->
+          "DEMO • ORDIN NU ESTE DINTR-O SESIUNE VECHE"
+        prefs.getBoolean("freshSessionRecovery624Used",false) ->
+          "DEMO • RECUPERARE VECHE DEJA UTILIZATĂ"
+        demoRecoveryLedger.verifiedOpenPositionId429() != null ->
+          "DEMO • ID OPEN MEMORAT • BLOCAT"
+        mgRecovery614.isRiskStopped() ->
+          "DEMO • LIMITĂ RISC • OPRIT"
+        else -> "DEMO • CONDIȚII RECUPERARE NECONFIRMATE"
+      }
     // A previously confirmed base plan may be reused. Do not reset a
     // recovery sequence, a risk stop or an unconfirmed amount.
     val key = "QT_DEMO:" + pkg
@@ -1391,6 +1401,21 @@ class ScalpOverlayService : Service() {
       )
     } catch (_: Throwable) { false }
     if (!emptyRead) return "463 • ZERO POZIȚII NECONFIRMAT"
+    // 635: the screen already passed two independent fresh OCR frames,
+    // two selected-OPEN visual frames, AND a fresh accessibility check.
+    // For an OLD unidentified attempt only, do not require a redundant
+    // second monitor tick which can lose the short-lived OCR window.
+    // The existing archive method still enforces age, fresh session,
+    // DEMO identity, base plan, no known OPEN ID and no risk stop.
+    if (verifiedClosedDetail437 == null &&
+        freshSessionWall624 > 0L &&
+        freshSessionWall624 - prefs.getLong("attemptedWallAt454",-1L) >= 345_000L &&
+        prefs.getLong("attemptedWallAt454",-1L) > 0L) {
+      demoEmptyReviewReads = 0
+      demoEmptyReviewFirstAt = 0L
+      return archiveOldDemoAttempt624(prefs, reviewPackage, expectedPair, stake, payout,
+        "OPEN_TAB_OCR_2_PLUS_ACCESSIBILITY")
+    }
     if (demoEmptyReviewReads == 0 ||
         nowElapsed - demoEmptyReviewFirstAt !in 0L..20_000L) {
       demoEmptyReviewReads = 1
@@ -6819,7 +6844,8 @@ class ScalpOverlayService : Service() {
     val attempt627 = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
     val wall627 = if (attempt627.getBoolean("attempted",false))
       attempt627.getLong("attemptedWallAt454",-1L) else -1L
-    val interval627 = chartResultCaptureInterval627(now,wall627)
+    val interval627 = if (wall627 > 0L && historyPageVisible433) 1_200L
+      else chartResultCaptureInterval627(now,wall627)
     if (ocrBusy || now - lastOcrAttemptAt < interval627) return
     ocrBusy = true
     lastOcrAttemptAt = now
