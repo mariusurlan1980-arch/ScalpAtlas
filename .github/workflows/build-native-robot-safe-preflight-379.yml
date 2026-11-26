@@ -2564,7 +2564,7 @@ jobs:
           observer=(d/'LivePageObserver637.kt').read_text()
           preview=(d/'LiveMartingalePreview637.kt').read_text()
           assert 'createVirtualDisplay' in observer and 'openCount==0' in observer and 'openCount==1' in observer
-          assert 'bal-before==result.net' in observer and 'MG PROPUS' in observer
+          assert 'bal-before==verified.net' in observer and 'MG PROPUS' in observer
           for forbidden in ('dispatchGesture','performAction','ACTION_SET_TEXT','pressVerifiedDemoStakeOnce429','advanceDemoHistory','getSharedPreferences'):
               assert forbidden not in observer and forbidden not in preview, forbidden
           print('PASS independent local reader and calculation-only MG; no stake edits or order paths')

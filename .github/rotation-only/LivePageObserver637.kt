@@ -34,6 +34,7 @@ internal class LivePageObserver637(
   private var attempt:Attempt?=null
   private var candidate:LiveMartingalePreview637.Result?=null
   private var candidateAt=0L
+  private var confirmedResult=false
   private var zeroAt=0L
   private var reported:String?=null
 
@@ -97,7 +98,7 @@ internal class LivePageObserver637(
         if(previous!=null && previous.pkg==snap.pkg && previous.pair==pair && previous.stake==stake &&
             now-baselineAt in 1_000L..45_000L && previous.balance-bal==stake){
           attempt=Attempt(previous,now)
-          candidate=null;candidateAt=0;zeroAt=0;reported=null
+          candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;reported=null
         }
         baseline=null
       }else if(snap.openCount!=0)baseline=null
@@ -119,20 +120,24 @@ internal class LivePageObserver637(
         attempt=null;baseline=null;candidate=null;reported="MG • DATE CONTRADICTORII"
         render(reported!!);return
       }
-      if(candidate==null){candidate=result;candidateAt=now}
-      else if(now-candidateAt>=1_000L){
-        val before=pending.baseline.balance
-        if(snap.openCount==0 && bal!=null && bal-before==result.net){
-          if(zeroAt==0L)zeroAt=now
-          else if(now-zeroAt>=1_000L){
-            val next=LiveMartingalePreview637.next(pending.baseline.stake,result)
-            reported=(if(result.win)"WIN" else "LOSS")+" • "+
-              (next?.let{"MG PROPUS "+fmt(it)}?:"MG STOP • 10 LOSS")
-            attempt=null;baseline=null;candidate=null;zeroAt=0
-            render(reported!!);return
-          }
-        }else zeroAt=0
-      }
+      if(candidate==null){candidate=result;candidateAt=captured}
+      else if(captured-candidateAt>=1_000L) confirmedResult=true
+    }
+    // Retain two matching receipt samples while reading two independent
+    // zero-open balances. Missing OCR never counts as a receipt.
+    val verified=candidate
+    if(confirmedResult && verified!=null){
+      val before=pending.baseline.balance
+      if(snap.openCount==0 && bal!=null && bal-before==verified.net){
+        if(zeroAt==0L)zeroAt=captured
+        else if(captured-zeroAt>=1_000L){
+          val next=LiveMartingalePreview637.next(pending.baseline.stake,verified)
+          reported=(if(verified.win)"WIN" else "LOSS")+" • "+
+            (next?.let{"MG PROPUS "+fmt(it)}?:"MG STOP • 10 LOSS")
+          attempt=null;baseline=null;candidate=null;zeroAt=0
+          render(reported!!);return
+        }
+      }else zeroAt=0
     }
     render("LIVE • AȘTEPT DOVADĂ WIN/LOSS")
   }
