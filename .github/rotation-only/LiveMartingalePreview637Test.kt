@@ -62,8 +62,9 @@ fun main(){
   check(m.remaining(303500)!=null && m.isLocked())
   val blue=0xff0e6aa9.toInt()
   val dark=0xff212435.toInt()
-  fun badgePixel(x:Int,y:Int):Int=if((x-148)*(x-148)+(y-1368)*(y-1368)<=13*13 &&
-    !(x in 146..149 && y in 1363..1374))blue else dark
+  fun badgePixel(x:Int,y:Int):Int=if((x-148)*(x-148)+(y-1368)*(y-1368)<=13*13){
+    if(x in 147..148 && y in 1364..1371)0xffeeeeee.toInt() else blue
+  }else dark
   check(p.bluePositionBadge(686,1536,::badgePixel))
   check(!p.bluePositionBadge(686,1536){_,_->dark})
   check(!p.bluePositionBadge(686,1536){_,y->if(y in 1366..1370)blue else dark})
@@ -129,5 +130,13 @@ fun main(){
   check(p.entryDebit(109,156569,156460,2000,true))
   noOrder.observe(2000,p.confirmedVisualBadge(false,null,null)!=null,true)
   check(noOrder.remaining(2000)==null)
-  println("PASS: independent order evidence, no debit-only lock, frozen balance and stake ladder")
+  check(p.shouldPauseForBadge(true))
+  check(!p.shouldPauseForBadge(false))
+  check(!p.bluePositionBadge(686,1536){x,y->
+    if((x-148)*(x-148)+(y-1368)*(y-1368)<=13*13)blue else dark})
+  val activeOrder=TradePause637()
+  activeOrder.observe(2000,p.shouldPauseForBadge(true))
+  check(activeOrder.remaining(2000)==300000L)
+  check(activeOrder.remaining(32000)==270000L)
+  println("PASS: calibrated badge pause independent of OCR, no debit-only lock, frozen balance and stake ladder")
 }

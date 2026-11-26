@@ -89,7 +89,15 @@ internal class LivePageObserver637(
       busy=true
       val visualBadge=try{LiveMartingalePreview637.bluePositionBadge(bitmap.width,bitmap.height,bitmap::getPixel)}
         catch(_:Throwable){false}
-      // Color alone is not an order. Corroborate on the OCR frame.
+      // A geometry-and-digit matched broker badge pauses immediately; no
+      // OCR amount or debit is required for this navigation-only protection.
+      if(LiveMartingalePreview637.shouldPauseForBadge(visualBadge))main.post{
+        if(!closed && SystemClock.elapsedRealtime()-captured in 0L..2_500L &&
+          TouchTestService.demoFxAccountInForeground() && !TouchTestService.realFxAccountVisible()){
+          freezeEntry(captured)
+          position(captured,true,false)
+        }
+      }
       try{
         recognizer.process(InputImage.fromBitmap(bitmap,0))
           .addOnSuccessListener{ result ->
@@ -129,7 +137,7 @@ internal class LivePageObserver637(
     val snap=TouchTestService.readLiveSnapshot637()
     val pair=TouchTestService.readVisibleFxPair(false)
     if(snap==null || pair==null){
-      if(badge==null)position(captured,false,false)
+      if(badge==null && !visualBadge)position(captured,false,false)
       zeroAt=0L;zeroLastAt=0L;zeroResult=null
       if(captured-idleCandidateAt>15_000L){idleCandidate=null;idleCandidateAt=0L}
       health(1,captured,if(badge!=null)"Trade activ • selector deschis" else "Grafic QT Demo sau payout 92% neconfirmat")
@@ -149,7 +157,7 @@ internal class LivePageObserver637(
     // Reject conflicting sources. OCR alone is a display reading, not an editable field.
     val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
     val freshChart=chartText && displayedStake!=null && bal!=null
-    val positive=(snap.openCount ?: 0)>0 || badge!=null
+    val positive=(snap.openCount ?: 0)>0 || badge!=null || (demoFrame && visualBadge)
     if(positive)freezeEntry(captured)
     val visualQuiet=chartText && (hint.tabSeen || snap.tradesFooterSeen) && badge==null && !visualBadge && (snap.openCount==null || snap.openCount==0)
     position(captured,positive,visualQuiet || (snap.openCount==0 && !positive))

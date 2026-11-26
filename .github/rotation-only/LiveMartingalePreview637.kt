@@ -111,8 +111,9 @@ internal object LiveMartingalePreview637 {
       val r=(c shr 16) and 255;val g=(c shr 8) and 255;val b=c and 255
       return r<=55 && g in 65..160 && b in 125..230 && b-g>=28 && g-r>=35
     }
-    for(y in (height*.845f).toInt()..(height*.945f).toInt() step step){
-      for(x in (width*.16f).toInt()..(width*.27f).toInt() step step){
+    // Exact bottom-left broker badge zone, calibrated against G24 captures.
+    for(y in (height*.87f).toInt()..(height*.91f).toInt() step step){
+      for(x in (width*.19f).toInt()..(width*.245f).toInt() step step){
         if(!blue(x-radius,y) || !blue(x+radius,y) ||
            !blue(x,y-radius) || !blue(x,y+radius))continue
         // Require a compact blue disk, not a horizontal price line or a large panel.
@@ -121,15 +122,25 @@ internal object LiveMartingalePreview637 {
         var count=0
         for(dx in listOf(-radius/2,0,radius/2))for(dy in listOf(-radius/2,0,radius/2))
           if(blue(x+dx,y+dy))count++
-        if(count>=5)return true
+        // Require light digit pixels inside the compact disk as well.
+        var light=0
+        for(dx in -radius/2..radius/2)for(dy in -radius..radius){
+          val c=pixel(x+dx,y+dy)
+          val r=(c shr 16) and 255;val g=(c shr 8) and 255;val b=c and 255
+          if(minOf(r,g,b)>=130 && maxOf(r,g,b)-minOf(r,g,b)<65)light++
+        }
+        if(count>=5 && light>=maxOf(2, radius*radius/40))return true
       }
     }
     return false
   }
 
-  // A color or balance change alone cannot declare an active position.
+  // A matched disk with a light digit in the broker's exact badge region
+  // can pause rotation. It cannot authorize a stake edit; entry debit and
+  // settlement are independently checked. Unknown badge count is not one.
   fun confirmedVisualBadge(blue:Boolean,footerCount:Int?,chartMarker:Long?):Int? =
     if(!blue) null else footerCount?.takeIf{it>0} ?: chartMarker?.takeIf{it in ladder}?.let{1}
+  fun shouldPauseForBadge(blue:Boolean):Boolean=blue
 
   // Active order amount printed beside the chart marker, not the input field.
   fun readActiveStake(labels:List<VisualLabel>):Long? {

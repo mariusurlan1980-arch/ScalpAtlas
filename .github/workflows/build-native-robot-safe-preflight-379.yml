@@ -2587,7 +2587,7 @@ jobs:
           assert 'bluePositionBadge' in observer and 'bluePositionBadge' in preview
           assert 'confirmedVisualBadge' in observer and 'confirmedVisualBadge' in preview
           assert 'if(positive || unmatchedActive)' in observer and 'if(positive || debit' not in observer
-          assert 'if(visualBadge)main.post' not in observer
+          assert 'shouldPauseForBadge(visualBadge)' in observer and 'shouldPauseForBadge' in preview
           assert observer.index('if(demoFrame && badge!=null') < observer.index('val snap=TouchTestService.readLiveSnapshot637()')
           assert 'latestPositionFrame' in s
           assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer
