@@ -1,7 +1,7 @@
 name: Scalp Atlas chart parser + Martingale integration replay
 on:
   push:
-    branches: [test/chart-result-observer-619]
+    branches: [test/chart-result-transient-ocr]
   workflow_dispatch:
 permissions:
   contents: read
@@ -70,6 +70,7 @@ jobs:
           private const val ACCOUNT="QT_DEMO:virtual-replay"
           private const val PAIR="EUR/USD OTC"
           fun main(){
+            val gate=TradePositionGate()
             val prefs=MemoryPrefs()
             var plan=DemoAutoStakePlan565(prefs)
             check(plan.enableFromVerifiedDemo(ACCOUNT,PAIR))
@@ -93,6 +94,16 @@ jobs:
               check(parseChartResult620(emptyList(),PAIR,stake)==null)
               check(plan.permitsFreshDemoOrder(ACCOUNT,PAIR,stake))
               val id="virtual-${i+1}"
+              check(gate.beginAttempt())
+              check(!gate.beginAttempt())
+              check(gate.accepted(id))
+              check(!gate.brokerConfirmedClosed("wrong-"+id,true))
+              check(!gate.brokerConfirmedClosed(id,false))
+              check(!gate.brokerVerifiedEmptyDemoReview(true))
+              check(!gate.beginAttempt())
+              // Synthetic independent broker closure evidence, never live chart proof.
+              check(gate.brokerConfirmedClosed(id,true))
+              check(gate.state()==TradePositionGate.State.READY)
               val status=plan.onVerifiedClosed(ACCOUNT,PAIR,id,stake,92,profit,true)
               check(status.startsWith(result+" CONFIRMAT")){status}
               val next=plan.pending(ACCOUNT,PAIR).stakeCents
@@ -102,6 +113,14 @@ jobs:
               println("SIM ${i+1}: stake=$stake result=$result net=$profit next=$next")
             }
             check(plan.pending(ACCOUNT,PAIR).stakeCents==109L)
+            val unknown=TradePositionGate()
+            check(unknown.beginAttempt())
+            check(!unknown.accepted(null))
+            check(unknown.state()==TradePositionGate.State.UNKNOWN)
+            check(!unknown.beginAttempt())
+            check(!unknown.brokerVerifiedEmptyDemoReview(false))
+            check(unknown.brokerVerifiedEmptyDemoReview(true))
+            check(unknown.state()==TradePositionGate.State.READY)
             val stop=DemoAutoStakePlan565(MemoryPrefs())
             check(stop.enableFromVerifiedDemo(ACCOUNT,PAIR))
             var total=0L
@@ -124,5 +143,5 @@ jobs:
             println("PASS: six synthetic chart-to-plan transitions, rejected observations, duplicate replay, ten-loss stop, rejection of real/unverified receipts")
           }
           KOTLIN
-          kotlinc /tmp/mg-replay/SharedPreferences.kt /tmp/mg-replay/ChartParser.kt /tmp/mg-replay/Replay.kt .github/native-overlay/DemoAutoStakePlan565.kt -include-runtime -d /tmp/mg-replay/replay.jar
+          kotlinc /tmp/mg-replay/SharedPreferences.kt /tmp/mg-replay/ChartParser.kt /tmp/mg-replay/Replay.kt .github/native-overlay/DemoAutoStakePlan565.kt .github/native-overlay/TradePositionGate.kt -include-runtime -d /tmp/mg-replay/replay.jar
           java -jar /tmp/mg-replay/replay.jar
