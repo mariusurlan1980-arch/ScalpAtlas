@@ -33,5 +33,5 @@ internal object LiveMartingalePreview637 {
     if(result.win) return ladder.first()
     return ladder.getOrNull(index+1)
   }
-  fun format(cents:Long):String = "${cents/100},${(cents%100).toString().padStart(2,'0) }"
+  fun format(cents:Long):String = String.format(java.util.Locale.ROOT, "%d,%02d", cents/100L, cents%100L)
 }

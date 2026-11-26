@@ -10,5 +10,7 @@ fun main(){
   check(p.parse(listOf("AED/CNY OTC LOSS"),pair,109)==null)
   check(p.next(81950,LiveMartingalePreview637.Result(pair,-81950,false))==null)
   check(p.ladder.sum()==157244L)
-  println("PASS: 8 synthetic preview cases")
+  check(p.format(109)=="1,09")
+  check(p.format(228)=="2,28")
+  println("PASS: 10 synthetic preview cases")
 }
