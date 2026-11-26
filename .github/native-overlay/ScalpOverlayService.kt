@@ -160,6 +160,9 @@ class ScalpOverlayService : Service() {
   // 517: after QT REAL is ever observed, halt automatic navigation and
   // order dispatch for this LIVE session. Only the user may return to DEMO.
   private var realAccountSafetyStop517 = false
+  // Ambiguous/background account evidence blocks every gesture but is not a confirmed REAL session.
+  private var temporaryAccountStop635 = false
+  private var accountRetryToken635: Any? = null
   @Volatile private var accountRecheckPending = false
   // 513: the user's LIVE authorization keeps the ROBOT ARMED in scan mode
   // through FX rotation, pending receipts and temporary accessibility gaps.
@@ -581,6 +584,7 @@ class ScalpOverlayService : Service() {
           // cannot yet be read reliably. Unknown order state blocks all repeats.
           // A service restart must never bypass an unconfirmed previous
           // broker trade. This guard survives process death and app updates.
+          accountRetryToken635 = null
           freshSessionWall624 = System.currentTimeMillis()
           val priorAutoShockAttempt = getSharedPreferences(
             autoShockAttemptPrefs, Context.MODE_PRIVATE
@@ -2288,18 +2292,28 @@ class ScalpOverlayService : Service() {
           // Restore the <=90-second chart DEMO identity proof which v462
           // accidentally skipped before its early return. We may then read
           // a manually displayed broker receipt, WITHOUT touching the UI.
-          if (realAccountSafetyStop517 ||
-              diagnostic.contains("QT REAL IDENTIFICAT") ||
-              TouchTestService.realFxAccountVisible()) {
+          val realWarning635 = diagnostic.contains("QT REAL IDENTIFICAT") ||
+            TouchTestService.realFxAccountVisible() || TouchTestService.realFxAccountInForeground()
+          if (realAccountSafetyStop517 || realWarning635) {
+            val confirmedReal635 = diagnostic.contains("QT REAL IDENTIFICAT") &&
+              TouchTestService.realFxAccountInForeground()
+            if (!realAccountSafetyStop517) temporaryAccountStop635 = !confirmedReal635
+            if (confirmedReal635) temporaryAccountStop635 = false
             realAccountSafetyStop517 = true
             autoDemoArmed = false
-            autoDemoSessionRequested = false
-            autoDemoSessionConsumed = true
+            autoDemoLockedAt = lockedAt
+            if (!temporaryAccountStop635) {
+              autoDemoSessionRequested = false
+              autoDemoSessionConsumed = true
+            }
             verifiedDemoAccountAt = 0L
             verifiedDemoAccountPackage = null
             closedHistoryInspectionInProgress = false
-            demoOrderVerificationReason = "QT REAL • FĂRĂ APĂSĂRI"
-            touchProbeStatus?.text = "ROBOT OPRIT • QT REAL"
+            demoOrderVerificationReason = if (temporaryAccountStop635)
+              "CONT NECONFIRMAT • FĂRĂ APĂSĂRI" else "QT REAL • FĂRĂ APĂSĂRI"
+            touchProbeStatus?.text = if (temporaryAccountStop635)
+              "REVERIFIC QT DEMO • ORDINE ÎN PAUZĂ" else "ROBOT OPRIT • QT REAL"
+            if (temporaryAccountStop635) retryDemoRotationAfterLiveRestart?.invoke()
             mainHandler.postDelayed(this, 2500L)
             return
           }
@@ -4577,17 +4591,27 @@ class ScalpOverlayService : Service() {
 
       fun stopOnReal517(realVisible: Boolean = false): Boolean {
         if (realAccountSafetyStop517) {
-          stop("ROBOT OPRIT • VERIFICĂ QT DEMO")
+          stop(if (temporaryAccountStop635) "REVERIFIC QT DEMO • ORDINE ÎN PAUZĂ"
+            else "ROBOT OPRIT • VERIFICĂ QT DEMO")
+          if (temporaryAccountStop635) retryDemoRotationAfterLiveRestart?.invoke()
           return true
         }
         if (realVisible || TouchTestService.realFxAccountVisible() ||
             TouchTestService.realFxAccountInForeground()) {
+          val confirmedReal635 = TouchTestService.realFxAccountInForeground() &&
+            TouchTestService.inspectBrokerAccountReadOnly().contains("QT REAL IDENTIFICAT")
+          temporaryAccountStop635 = !confirmedReal635
           realAccountSafetyStop517 = true
           autoDemoArmed = false
-          autoDemoSessionRequested = false
-          autoDemoSessionConsumed = true
+          autoDemoLockedAt = lockedAt
+          if (confirmedReal635) {
+            autoDemoSessionRequested = false
+            autoDemoSessionConsumed = true
+          }
           accountRecheckPending = false
-          stop("ROBOT OPRIT • QT REAL • FĂRĂ APĂSĂRI")
+          stop(if (temporaryAccountStop635) "REVERIFIC QT DEMO • ORDINE ÎN PAUZĂ"
+            else "ROBOT OPRIT • QT REAL • FĂRĂ APĂSĂRI")
+          if (temporaryAccountStop635) retryDemoRotationAfterLiveRestart?.invoke()
           return true
         }
         if (accountRecheckPending) return true
@@ -5190,6 +5214,7 @@ class ScalpOverlayService : Service() {
         manualDemoTapStatus552 = null
         if (realAccountSafetyStop517 && mediaProjection != null &&
             TouchTestService.demoFxAccountInForeground()) {
+          temporaryAccountStop635 = false
           realAccountSafetyStop517 = false
         }
         try { fxRotation.start() }
@@ -5757,22 +5782,39 @@ class ScalpOverlayService : Service() {
     startNeonEdge434()
     retryDemoRotationAfterLiveRestart = retry@{
       val projection = mediaProjection ?: return@retry
-      if (!realAccountSafetyStop517) return@retry
+      if (!realAccountSafetyStop517 || accountRetryToken635 != null) return@retry
+      val automatic635 = temporaryAccountStop635
+      val token635 = Any()
+      accountRetryToken635 = token635
 
       mainHandler.post(object : Runnable {
-
+        var previousPair635: String? = null
         override fun run() {
+          if (accountRetryToken635 !== token635) return
           if (overlayView !== root || shuttingDown || mediaProjection !== projection ||
-              !realAccountSafetyStop517 || fxRotation.running) return
-          // The app or Android's capture dialog can still own foreground focus
-          // when LIVE is started. Give the user time to return to the demo chart.
-          if (!TouchTestService.demoFxAccountInForeground() ||
-              TouchTestService.realFxAccountVisible() ||
-              TouchTestService.readVisibleFxPair(false) == null) {
+              !realAccountSafetyStop517 || fxRotation.running ||
+              (automatic635 && !temporaryAccountStop635)) {
+            accountRetryToken635 = null
+            return
+          }
+          // Two separate clean foreground QT DEMO chart reads are required.
+          // Mixed/REAL evidence remains blocked, and no order ledger is changed.
+          val pair635 = if (TouchTestService.demoFxAccountInForeground() &&
+              !TouchTestService.realFxAccountVisible() &&
+              !TouchTestService.realFxAccountInForeground() &&
+              TouchTestService.inspectBrokerAccountReadOnly().contains("QT DEMO IDENTIFICAT"))
+            TouchTestService.readVisibleFxPair(false) else null
+          if (pair635 == null || pair635 != previousPair635) {
+            previousPair635 = pair635
             mainHandler.postDelayed(this, 3_000L)
             return
           }
+          accountRetryToken635 = null
+          temporaryAccountStop635 = false
           realAccountSafetyStop517 = false
+          autoDemoArmed = false
+          autoDemoLockedAt = lockedAt
+          autoDemoLastPreflightAt = 0L
           try { fxRotation.start() }
           catch (_: Exception) { fxRotation.stop("ROTAȚIE • VERIFICĂ ACCESIBILITATE") }
         }
@@ -8553,6 +8595,7 @@ class ScalpOverlayService : Service() {
       // Account safety has priority over rotation and order status.
       val persistentRobotStatus513 = if (!robotArmedContinuously513 ||
           mediaProjection == null || shuttingDown) null else when {
+        temporaryAccountStop635 && realAccountSafetyStop517 -> "🤖 REVERIFIC QT DEMO • ORDINE ÎN PAUZĂ"
         realAccountIdentified -> "🤖 OPRIT • QT REAL • ORDINE BLOCATE"
         realAccountSafetyStop517 -> "🤖 OPRIT • PORNEȘTE LIVE PE QT DEMO"
         accountRecheckPending -> "🤖 CONT ÎN VERIFICARE • ORDINE ÎN PAUZĂ"
