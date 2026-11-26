@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 635 simplified stale DEMO recovery
+name: Build Scalp Atlas 636 - rotation only
 
 on:
   push:
@@ -148,7 +148,7 @@ jobs:
           expo['version']='3.3.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=635
+          expo['android']['versionCode']=636
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2517,6 +2517,53 @@ jobs:
           p.write_text('\n'.join(lines)+'\n')
           PY
 
+      - name: Replace packaged application with rotation-only sources
+        run: |
+          set -euo pipefail
+          JAVA_DIR="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts"
+          for file in ScalpOverlayService.kt ScalpOverlayModule.kt TouchTestService.kt RotationPayoutReader.kt; do
+            cp ".github/rotation-only/$file" "$JAVA_DIR/$file"
+            sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$file"
+          done
+          rm -f "$JAVA_DIR"/{SignalJournal,LiveTestMonitor,TouchTestActivity,TradePositionGate,DemoRecoveryLedger,DemoStakeEditor,DemoAutoStakePlan565}.kt
+          cp .github/rotation-only/App.tsx scalp-atlas-new/App.tsx
+          rm -f scalp-atlas-new/android/app/src/main/assets/analysis_engine.html
+          rm -f scalp-atlas-new/android/app/src/main/res/raw/scalp_{buy,sell}_bip.wav
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          p=Path('scalp-atlas-new/android/app/src/main/AndroidManifest.xml')
+          ns='{http://schemas.android.com/apk/res/android}'
+          ET.register_namespace('android','http://schemas.android.com/apk/res/android')
+          ET.register_namespace('tools','http://schemas.android.com/tools')
+          tree=ET.parse(p); app=tree.getroot().find('application')
+          for node in list(app):
+              if node.get(ns+'name')=='.TouchTestActivity' or node.get(ns+'authorities')=='${applicationId}.journalfiles':
+                  app.remove(node)
+              if node.get(ns+'name')=='.TouchTestService':
+                  node.set(ns+'label','Scalp Atlas Rotație')
+          tree.write(p,encoding='utf-8',xml_declaration=True)
+          q=Path('scalp-atlas-new/android/app/src/main/res/values/scalp_touch_test_strings.xml')
+          q.write_text('<?xml version="1.0" encoding="utf-8"?><resources><string name="touch_test_accessibility_description">Schimbă doar perechile valutare QT Demo, cu payout 92%, fără ordine sau modificarea mizei.</string></resources>',encoding='utf-8')
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path('scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts')
+          s=(d/'ScalpOverlayService.kt').read_text()
+          t=(d/'TouchTestService.kt').read_text()
+          a=Path('scalp-atlas-new/App.tsx').read_text()
+          assert 'DWELL_MS = 30_000L' in s and 'payout==92' in s
+          assert 'demoFxAccountInForeground()' in s and 'realFxAccountVisible()' in s
+          assert 'navigateOpenFxList' in s and 'tapVerifiedDemoFxSelector515' in s
+          for forbidden in ('pressVerifiedDemoStakeOnce429','pressAutoOneDollarDemoOrderOnce','onVerifiedClosed','DemoAutoStakePlan565','getSharedPreferences','recordClosedDetail','playBip','createVirtualDisplay','reviewExpiredDemoHistory'):
+              assert forbidden not in s and forbidden not in t, forbidden
+          for forbidden in ('openTouchTest','BUY','SELL','ȘOC','Martingale'):
+              assert forbidden not in a, forbidden
+          for filename in ('DemoAutoStakePlan565.kt','DemoRecoveryLedger.kt','TradePositionGate.kt','DemoStakeEditor.kt','TouchTestActivity.kt'):
+              assert not (d/filename).exists(), filename
+          print('PASS rotation-only source isolation; no order or stake entry points')
+          PY
+
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
         env:
@@ -2543,82 +2590,18 @@ jobs:
             sleep 20
           done
 
-      - name: Verify APK, analyzer, signature, and app identity
+      - name: Verify rotation-only APK and signature
         run: |
-          set -ex
+          set -euo pipefail
           APK="scalp-atlas-new/android/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           unzip -l "$APK" | grep -E "assets/(index\\.android\\.bundle|.*\\.bundle)"
-          unzip -l "$APK" | grep -F "assets/analysis_engine.html"
-          grep -q 'package com.scalpatlas.livealerts' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt
-          # Fail the build if the native overlay still exposes legacy controls.
+          if unzip -Z1 "$APK" | grep -q 'assets/analysis_engine.html'; then
+            echo "Unexpected analysis engine" >&2; exit 1
+          fi
           SERVICE="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayService.kt"
-          ! grep -q 'text = "Scalp Atlas 3.2.7"' "$SERVICE"
-          grep -Fq 'dp(144)' "$SERVICE"
-          grep -Fq 'fun applyCompactMode()' "$SERVICE"
-          grep -Fq 'compactStatusText?.text' "$SERVICE"
-          grep -q 'override fun onTaskRemoved' "$SERVICE"
-          grep -q 'stopSelf()' "$SERVICE"
-          grep -q 'PendingIntent.getService' "$SERVICE"
+          grep -Fq 'DWELL_MS = 30_000L' "$SERVICE"
           grep -Fq 'setOnClickListener { stopSelf() }' "$SERVICE"
-          grep -q 'reactContext.stopService(intent)' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
-          grep -Fq 'fun getBuildInfo' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
-          grep -q 'class ShockCandleView' "$SERVICE"
-          grep -q 'scalp_atlas_live_diagnostics' "$SERVICE"
-          grep -q 'fun getLiveDiagnostics' scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts/ScalpOverlayModule.kt
-          grep -q 'signalRing' "$SERVICE"
-          grep -q 'ValueAnimator.ofFloat(0.35f, 1f, 0.35f)' "$SERVICE"
-          grep -q 'duration = 1000L' "$SERVICE"
-          grep -q 'if (!safe) stopPulseRing()' "$SERVICE"
-          grep -q 'shockBodyPercent > SHOCK_MIN_DEPTH' "$SERVICE"
-          grep -q 'observedTrendStrengthPercent > SHOCK_MIN_TREND' "$SERVICE"
-          grep -q 'PANTĂ ≤25%' "$SERVICE"
-          grep -Fq 'val confirmedStrategy = when {' "$SERVICE"
-          grep -Fq 'confirmedSimple553 -> "SIMPLE_TREND"' "$SERVICE"
-          grep -q 'val confirmedShock = sameCandleColors && rawStrategy == "SHOCK"' "$SERVICE"
-          grep -q 'candidateStrategy != confirmedStrategy' "$SERVICE"
-          grep -q 'activeStrategy == "SCALP_TREND"' "$SERVICE"
-          grep -q 'Never clear lockedDir/lockedUntil' "$SERVICE"
-          grep -Fq 'lastConfirmedShockPercent = if (confirmedShock) shockBodyPercent else 0' "$SERVICE"
-          grep -q 'setLiveCameraDotActive(scanStatus == "LIVE")' "$SERVICE"
-          grep -q 'duration = 1500L' "$SERVICE"
-          grep -q 'setSignalBlink(activeSignal)' "$SERVICE"
-          grep -q 'shockDropDurationMs in 300L..SHOCK_MAX_DROP_MS' "$SERVICE"
-          grep -q 'wickText?.text' "$SERVICE"
-          grep -q 'shockReasonText?.text' "$SERVICE"
-          grep -q 'shockDurationText?.text' "$SERVICE"
-          grep -Fq 'val sameShockDirection = sameOpticalDirection' "$SERVICE"
-          grep -q 'candleGraphic?.updateObserved' "$SERVICE"
-          grep -q 'trendMiniView?.showData' "$SERVICE"
-          grep -q 'trendContradicted = trendFresh && candleFresh' "$SERVICE"
-          grep -q 'trendDir = if (trendAgrees)' "$SERVICE"
-          grep -q 'trendContradicted -> "CONTRA TREND"' "$SERVICE"
-          grep -q 'playTestBip()' "$SERVICE"
-          grep -q 'text = "TEST BIP"' "$SERVICE"
-          grep -q 'signalRing?.addView(signalText)' "$SERVICE"
-          grep -q 'signalRing?.addView(shockDurationText)' "$SERVICE"
-          grep -q 'Color.rgb(141, 73, 214)' "$SERVICE"
-          grep -q 'liveCameraDot?.scaleX = size' "$SERVICE"
-          grep -q 'trendPercentLabel?.text' "$SERVICE"
-          grep -q 'trendVisualPoints' "scalp-atlas-new/shockNativeEngine.ts"
-          grep -q 'PANTĂ TREND' "$SERVICE"
-          ! grep -q 'signalRing?.addView(wickText)' "$SERVICE"
-          ! grep -q 'signalRing?.addView(shockReasonText)' "$SERVICE"
-          grep -q '"AȘTEAPTĂ"' "$SERVICE"
-          grep -q 'shockBlocker = result.optString' "$SERVICE"
-          grep -q 'liveStatusRow.addView(liveCameraDot' "$SERVICE"
-          grep -q 'if (!streamFresh) stopLiveCameraDot()' "$SERVICE"
-          ! grep -q 'CALITATE DETECȚIE' "$SERVICE"
-          grep -q 'ȘOC = RETRAGERE LUMÂNARE' "$SERVICE"
-          grep -q 'lastShockQuality = quality' "$SERVICE"
-          ! grep -q 'GRAFIC 2/3' "$SERVICE"
-          ! grep -q 'TF AUTO ▸' "$SERVICE"
-          grep -q 'shockOpticalVerified' "$SERVICE"
-          grep -q 'shockSameCandle' "$SERVICE"
-          grep -Fq 'brokerPair' "$SERVICE"
-          grep -Fq 'ANDROID_SCREEN_CAPTURE' "$SERVICE"
-          grep -Fq 'JSONObject.quote(pairAtCapture)' "$SERVICE"
-          unzip -p "$APK" assets/analysis_engine.html | grep -q 'shockRecovered'
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           "$APKSIGNER" verify --print-certs "$APK" | tee signing.txt
           if unzip -Z1 "$APK" | grep -E '^lib/(x86|x86_64|armeabi-v7a)/'; then
@@ -2627,11 +2610,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-635-DEMO-CHART-TEST-G24.apk
+          cp "$APK" ScalpAtlas-636-ROTATIE-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-635-DEMO-CHART-TEST-G24
-          path: ScalpAtlas-635-DEMO-CHART-TEST-G24.apk
+          name: ScalpAtlas-636-ROTATIE-G24
+          path: ScalpAtlas-636-ROTATIE-G24.apk
           if-no-files-found: error
           retention-days: 30
