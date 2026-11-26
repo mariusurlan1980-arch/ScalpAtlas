@@ -35,6 +35,9 @@ internal class LivePageObserver637(
   private data class Attempt(val baseline:Sample,val opened:Long)
   private var baseline:Sample?=null
   private var baselineAt=0L
+  private var idleCandidate:Sample?=null
+  private var idleCandidateAt=0L
+  private var unmatchedActive=false
   private var attempt:Attempt?=null
   private var candidate:LiveMartingalePreview637.Result?=null
   private var candidateAt=0L
@@ -114,6 +117,7 @@ internal class LivePageObserver637(
     if(snap==null || pair==null){
       if(badge==null)position(captured,false,false)
       zeroAt=0L;zeroLastAt=0L;zeroResult=null
+      idleCandidate=null;idleCandidateAt=0L
       health(1,captured,if(badge!=null)"Trade activ • selector deschis" else "Grafic QT Demo sau payout 92% neconfirmat")
       render(if(badge!=null)"LIVE • TRADE ACTIV • ÎNCHIDE LISTA" else reported ?: "LIVE • AȘTEPT GRAFICUL")
       return
@@ -144,27 +148,46 @@ internal class LivePageObserver637(
     val pending=attempt
     if(pending==null){
       val previous=baseline
-      // A debit is precautionary evidence for pausing rotation, not permission to edit.
-      val debit=previous!=null && displayedStake!=null && bal!=null &&
-        previous.pkg==snap.pkg && previous.pair==pair && previous.stake==displayedStake &&
-        now-baselineAt in 1L..45_000L && previous.balance-bal==displayedStake
+      val debit=chartText && previous!=null &&
+        LiveMartingalePreview637.entryDebit(displayedStake,previous.balance,bal,
+          captured-baselineAt,previous.pkg==snap.pkg && previous.stake==displayedStake)
+      // Never overwrite the last idle balance with the just-debited balance.
+      // A confirmed entry can happen immediately after rotating to another pair.
       if(debit)position(captured,true,false)
       if(positive || debit){
+        idleCandidate=null;idleCandidateAt=0L
+        unmatchedActive=true
         if(debit && previous!=null && (snap.openCount==1 || badge==1)){
-          attempt=Attempt(previous,now)
+          val actual=Sample(pair,snap.pkg,previous.stake,previous.balance)
+          attempt=Attempt(actual,captured)
+          unmatchedActive=false
           candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;zeroLastAt=0;zeroResult=null;reported=null
           baseline=null
         }
-      }else if((snap.openCount==0 || visualQuiet) && displayedStake!=null && bal!=null &&
-          displayedStake in LiveMartingalePreview637.ladder){
-        baseline=Sample(pair,snap.pkg,displayedStake,bal);baselineAt=captured
-      }else baseline=null
+      }else if(!unmatchedActive && chartText && (snap.openCount==0 || visualQuiet) &&
+          displayedStake!=null && bal!=null && displayedStake in LiveMartingalePreview637.ladder){
+        val current=Sample(pair,snap.pkg,displayedStake,bal)
+        val idle=idleCandidate
+        if(idle!=null && idle.pkg==current.pkg && idle.stake==current.stake &&
+            idle.balance==current.balance && captured-idleCandidateAt in 1_000L..5_000L){
+          baseline=current;baselineAt=captured
+        }
+        idleCandidate=current;idleCandidateAt=captured
+      }else {
+        idleCandidate=null;idleCandidateAt=0L
+        // Preserve a recent known balance across brief selector transitions,
+        // but not across a detected active trade of unknown origin.
+      }
       val detail="LIVE • MIZĂ "+(displayedStake?.let(fmt)?:"?")+" • SOLD "+(bal?.let(fmt)?:"?")
-      render(if(attempt!=null || positive || debit) "LIVE • TRADE OBSERVAT • "+(bal?.let(fmt)?:"?") else reported ?: detail)
+      render(when {
+        attempt!=null -> "MG • TRADE MEMORAT • "+(bal?.let(fmt)?:"?")
+        unmatchedActive -> "MG • SOLD INIȚIAL NECONFIRMAT"
+        else -> reported ?: detail
+      })
       return
     }
     if(pending.baseline.pkg!=snap.pkg || pair!=pending.baseline.pair || snap.openCount?.let{it>1}==true || badge?.let{it>1}==true || now-pending.opened>420_000L){
-      attempt=null;baseline=null;candidate=null;zeroAt=0
+      attempt=null;baseline=null;candidate=null;zeroAt=0;unmatchedActive=true
       reported="MG • REZULTAT NECONFIRMAT"
       render(reported!!);return
     }
@@ -174,7 +197,7 @@ internal class LivePageObserver637(
     val result=LiveMartingalePreview637.parse(blocks,pending.baseline.pair,pending.baseline.stake)
     if(result!=null){
       if(candidate!=null && candidate!=result){
-        attempt=null;baseline=null;candidate=null;reported="MG • DATE CONTRADICTORII"
+        attempt=null;baseline=null;candidate=null;unmatchedActive=true;reported="MG • DATE CONTRADICTORII"
         render(reported!!);return
       }
       if(candidate==null){candidate=result;candidateAt=captured}
@@ -198,6 +221,7 @@ internal class LivePageObserver637(
         // Consume this trade once. The overlay performs one edit only after
         // releasing the existing five-minute protection.
         attempt=null;baseline=null;candidate=null;zeroAt=0;zeroLastAt=0;zeroResult=null;confirmedResult=false
+        unmatchedActive=false;idleCandidate=null;idleCandidateAt=0L
         val editStatus=if(verified.draw) "MG • MIZĂ PĂSTRATĂ"
           else if(next==null) "MG STOP • LIMITĂ 10"
           else if(!LiveMartingalePreview637.permitsEdit(old,next,displayedStake,bal,0,before+verified.net))

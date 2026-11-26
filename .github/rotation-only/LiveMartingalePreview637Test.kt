@@ -77,5 +77,17 @@ fun main(){
   check(p.settledBalance(pair,109,157014,156905,299999,true)==null)
   check(p.settledBalance(pair,109,157014,156905,300000,false)==null)
   check(p.settledBalance(pair,109,157014,156904,300000,true)==null)
-  println("PASS: reader, MG, strict pause, blue badge and exact settlement balances")
+  // Replay the reported account-wide entry, even after a pair change.
+  check(p.entryDebit(109,156905,156796,2000,true))
+  check(!p.entryDebit(109,156905,156795,2000,true))
+  check(!p.entryDebit(109,156905,156796,46000,true))
+  check(!p.entryDebit(109,156905,156796,2000,false))
+  check(!p.entryDebit(109,null,156796,2000,true))
+  val replay=p.settledBalance("AUD/CAD OTC",109,156905,156796,305000,true)
+  check(replay?.net==-109L && p.next(109,replay)==228L)
+  for(i in 0 until p.ladder.lastIndex){
+    val stake=p.ladder[i]
+    check(p.next(stake,LiveMartingalePreview637.Result(pair,-stake,false))==p.ladder[i+1])
+  }
+  println("PASS: exact entry debit, loss replay, ten stake ladder, pause and reader")
 }

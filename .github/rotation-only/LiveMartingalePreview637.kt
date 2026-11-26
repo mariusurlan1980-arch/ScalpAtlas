@@ -29,6 +29,12 @@ internal object LiveMartingalePreview637 {
     }.distinct()
     return candidates.singleOrNull()
   }
+  // Balance is account-wide, not pair-wide. The actual order is bound to
+  // the confirmed chart at entry, never to the last idle rotation chart.
+  fun entryDebit(stake:Long?,before:Long?,after:Long?,age:Long,sameAccount:Boolean):Boolean =
+    sameAccount && stake!=null && stake in ladder && before!=null && after!=null &&
+      age in 0L..45_000L && before>=stake && before-after==stake
+
   // Requires an observed single entry debit, an unchanged account/pair and
   // independently repeated empty chart readings AFTER the full expiry.
   fun settledBalance(pair:String,stake:Long,before:Long,after:Long,age:Long,quiet:Boolean):Result? {
