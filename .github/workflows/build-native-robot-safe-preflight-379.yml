@@ -2576,6 +2576,10 @@ jobs:
           preview=(d/'LiveMartingalePreview637.kt').read_text()
           assert 'createVirtualDisplay' in observer and 'openCount==0' in observer and 'openCount==1' in observer
           assert 'tradePause.remaining(now)' in s and 'TRADE ACTIV' in s
+          pause=(d/'TradePause637.kt').read_text()
+          assert 'age>=300_000L && quiet && settled' in pause and 'age>=420_000L' not in pause
+          assert 'queuedMg=QueuedMg' in s and 'if(!tradePause.isLocked() &&' in s
+          assert s.index('tradePause.remaining(now)') < s.index('TouchTestService.applyVerifiedMg637(request.pkg')
           assert s.index('tradePause.remaining(now)') < s.index('val result=TouchTestService.navigateOpenFxList')
           assert 'position(captured,true,false)' in observer and 'settlement()' in observer
           assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer

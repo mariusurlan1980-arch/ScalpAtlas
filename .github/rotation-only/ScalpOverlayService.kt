@@ -63,6 +63,12 @@ class ScalpOverlayService : Service() {
   }
   private val tradePause=TradePause637()
   private var wasTradePaused=false
+  private data class QueuedMg(val pkg:String,val pair:String,val old:Long,val target:Long,val balance:Long)
+  private var queuedMg:QueuedMg?=null
+  private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
+    if(positive)queuedMg=null
+    tradePause.observe(at,positive,quiet)
+  }
   private var stopped = false
   private var pair: String? = null
   private var deadline = 0L
@@ -134,12 +140,16 @@ class ScalpOverlayService : Service() {
             }
           }},
           position={at,positive,quiet -> handler.post{
-            if(!stopped && projection===p)tradePause.observe(at,positive,quiet)
+            if(!stopped && projection===p)observeTrade(at,positive,quiet)
           }},
           settlement={handler.post{if(!stopped && projection===p)tradePause.settle()}},
           applyStake={pkg,pair,old,target,balance ->
             if(stopped || projection!==p) "MG • LIVE OPRIT"
-            else TouchTestService.applyVerifiedMg637(pkg,pair,old,target,balance)
+            else if(Looper.myLooper()!=handler.looper || !tradePause.isLocked()) "MG • FĂRĂ AUTORIZARE"
+            else {
+              queuedMg=QueuedMg(pkg,pair,old,target,balance)
+              "MG • AȘTEPT DEBLOCAREA"
+            }
           }).also{it.start(p)}
       }catch(_:Throwable){liveReader?.close();liveReader=null;liveStatus?.text="LIVE INDISPONIBIL";eyeFailed=true;refreshEye()}
       handler.post(loop)
@@ -264,18 +274,31 @@ class ScalpOverlayService : Service() {
     }
     val now=SystemClock.elapsedRealtime()
     // Check on every rotation tick, before any selector action.
-    if(TouchTestService.positiveOpenBadge637()!=null)tradePause.observe(now,true)
+    val openSnapshot=TouchTestService.readLiveSnapshot637()
+    if(TouchTestService.positiveOpenBadge637()!=null || (openSnapshot?.openCount ?: 0)>0)
+      observeTrade(now,true)
     val protection=tradePause.remaining(now)
     if(protection!=null){
       wasTradePaused=true
       val sec=(protection+999L)/1000L
       say(if(sec>0L) "TRADE ACTIV • "+String.format(java.util.Locale.ROOT,"%02d:%02d",sec/60L,sec%60L)
-        else "TRADE • VERIFIC ÎNCHIDEREA")
+        else "AȘTEPT ÎNCHIDEREA CONFIRMATĂ")
       return 500L
     }
     if(wasTradePaused){
       wasTradePaused=false;deadline=0L;pendingPair=null;pendingChartReads=0;pendingPhysicalRetry=false
-      if(tradePause.releasedUnverified)say("REZULTAT NECITIT • FĂRĂ MG")
+      val request=queuedMg;queuedMg=null
+      // The guard has released only after verified closure. Recheck open count
+      // and the current graph independently immediately before a single edit.
+      if(request!=null){
+        val result=if(!tradePause.isLocked() &&
+          TouchTestService.positiveOpenBadge637()==null &&
+          TouchTestService.readLiveSnapshot637()?.openCount==0)
+          TouchTestService.applyVerifiedMg637(request.pkg,request.pair,request.old,request.target,request.balance)
+        else "MG • EDITARE BLOCATĂ"
+        liveStatus?.text=result
+      }
+      say("ÎNCHIDERE CONFIRMATĂ • REIAU ROTAȚIA")
       return 500L
     }
     if (TouchTestService.fxListVisible(false)) {

@@ -94,6 +94,7 @@ internal class LivePageObserver637(
     val snap=TouchTestService.readLiveSnapshot637()
     val pair=TouchTestService.readVisibleFxPair(false)
     if(snap==null || pair==null){
+      position(captured,false,false)
       health(1,captured,"Grafic QT Demo sau payout 92% neconfirmat")
       render(reported ?: "LIVE • AȘTEPT GRAFICUL")
       return
