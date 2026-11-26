@@ -1,8 +1,8 @@
-name: Build Scalp Atlas 631 DEMO chart-only diagnostics
+name: Build Scalp Atlas 634 DEMO chart-only recovery test
 
 on:
   push:
-    branches: [test/629-real-demo-loss-badge]
+    branches: [test/chart-result-transient-ocr]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -148,7 +148,7 @@ jobs:
           expo['version']='3.3.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=631
+          expo['android']['versionCode']=634
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2625,11 +2625,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-631-DEMO-CHART-TEST-G24.apk
+          cp "$APK" ScalpAtlas-634-DEMO-CHART-TEST-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-631-DEMO-CHART-TEST-G24
-          path: ScalpAtlas-631-DEMO-CHART-TEST-G24.apk
+          name: ScalpAtlas-634-DEMO-CHART-TEST-G24
+          path: ScalpAtlas-634-DEMO-CHART-TEST-G24.apk
           if-no-files-found: error
           retention-days: 30
