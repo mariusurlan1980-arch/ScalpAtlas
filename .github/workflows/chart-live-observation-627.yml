@@ -212,3 +212,39 @@ jobs:
           KOTLIN
           kotlinc /tmp/Debit632.kt -include-runtime -d /tmp/debit632.jar
           java -jar /tmp/debit632.jar
+
+      - name: Replay explicit chart zero-open recovery guards
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('.github/native-overlay/TouchTestService.kt').read_text()
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          p=t.split('    internal fun parseExplicitOpenCount634(',1)[1].split('    fun inspectExplicitZeroOpenOnDemoChart634(',1)[0]
+          Path('/tmp/OpenCount634.kt').write_text('internal fun parseExplicitOpenCount634('+p)
+          h=t.split('    fun inspectExplicitZeroOpenOnDemoChart634(',1)[1].split('    fun inspectVisibleDemoOpenBadgeReadOnly(',1)[0]
+          for guard in ('parseExplicitOpenCount634(labels) != 0','realFxAccountVisible()','readFxChartPayout(expectedPair,false) != 92','queue.isNotEmpty()','inspectVisibleDemoOpenBadgeReadOnly()'):
+              assert guard in h, guard
+          a=s.split('  private fun recoverOldUnknownOnChart634(',1)[1].split('  private fun startBrokerAccountMonitor(',1)[0]
+          for guard in ('freshSessionWall624 - wall < 345_000L','verifiedOpenPositionId429() != null','freshSessionRecovery624Used','stake != 109L','chartEvidenceAttempt628','chartConflictAttempt630','inspectExplicitZeroOpenOnDemoChart634(pkg,pair)','nowElapsed - chartEmptyFirstAt634 < 2_000L','archiveOldDemoAttempt624(prefs,pkg,oldPair,stake,payout,"CHART_EXPLICIT_ZERO")'):
+              assert guard in a, guard
+          for forbidden in ('dispatchGesture(', 'onVerifiedClosed(', 'confirmEdited(', 'putBoolean("attempted",false)'):
+              assert forbidden not in a, forbidden
+          PY
+          cat >> /tmp/OpenCount634.kt <<'KOTLIN'
+          fun main() {
+            check(parseExplicitOpenCount634(listOf("Open positions: 0"))==0)
+            check(parseExplicitOpenCount634(listOf("0 open trades"))==0)
+            check(parseExplicitOpenCount634(listOf("Poziții deschise: 0"))==0)
+            check(parseExplicitOpenCount634(listOf("0 tranzacții deschise"))==0)
+            check(parseExplicitOpenCount634(listOf("Open positions: 1"))==1)
+            check(parseExplicitOpenCount634(listOf("Open positions: 0","Open positions: 1"))==null)
+            check(parseExplicitOpenCount634(listOf("Tranzacții","0","$"+"0"))==null)
+            check(parseExplicitOpenCount634(listOf("Closed trades: 0"))==null)
+            check(parseExplicitOpenCount634(emptyList())==null)
+            check(parseExplicitOpenCount634(listOf("Open positions: 0","0 open trades"))==0)
+            println("PASS 10 explicit open count parser cases")
+          }
+          KOTLIN
+          kotlinc /tmp/OpenCount634.kt -include-runtime -d /tmp/open-count634.jar
+          java -jar /tmp/open-count634.jar
