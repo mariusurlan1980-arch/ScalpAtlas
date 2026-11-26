@@ -1276,6 +1276,13 @@ class ScalpOverlayService : Service() {
   // settlement. Caller must have independently read explicit zero OPEN
   // positions twice, either on the chart or on the selected OPEN tab.
   // No balance, missing badge or timer is accepted as closure proof.
+  // Recovery is one-shot per explicitly started LIVE session and per
+  // archived attempt, not a permanent installation-wide latch.
+  private fun oldAttemptAlreadyArchived635(
+    prefs: android.content.SharedPreferences, wall: Long
+  ): Boolean = prefs.contains("unresolved624." + wall + ".result") ||
+    prefs.getLong("freshSessionRecovery624UsedAt635",-1L) == freshSessionWall624
+
   private fun archiveOldDemoAttempt624(
     prefs: android.content.SharedPreferences, pkg: String, pair: String,
     stake: Long, payout: Int, proofSource634: String = "OPEN_TAB"
@@ -1288,7 +1295,7 @@ class ScalpOverlayService : Service() {
         !TouchTestService.ready() || TouchTestService.realFxAccountVisible() ||
         TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
         !prefs.getBoolean("attempted", false) ||
-        prefs.getBoolean("freshSessionRecovery624Used", false) ||
+        oldAttemptAlreadyArchived635(prefs,wall) ||
         prefs.getString("expectedPackage429", null) != pkg ||
         freshSessionWall624 <= 0L || wall <= 0L ||
         freshSessionWall624 - wall < 345_000L || now < freshSessionWall624 ||
@@ -1301,8 +1308,8 @@ class ScalpOverlayService : Service() {
       return when {
         freshSessionWall624 <= 0L || wall <= 0L || freshSessionWall624 - wall < 345_000L ->
           "DEMO • ORDIN NU ESTE DINTR-O SESIUNE VECHE"
-        prefs.getBoolean("freshSessionRecovery624Used",false) ->
-          "DEMO • RECUPERARE VECHE DEJA UTILIZATĂ"
+        oldAttemptAlreadyArchived635(prefs,wall) ->
+          "DEMO • RECUPERARE DEJA UTILIZATĂ ÎN SESIUNE"
         demoRecoveryLedger.verifiedOpenPositionId429() != null ->
           "DEMO • ID OPEN MEMORAT • BLOCAT"
         mgRecovery614.isRiskStopped() ->
@@ -1328,6 +1335,7 @@ class ScalpOverlayService : Service() {
       .putString(archive + "proofSource",proofSource634)
       .putString(archive + "result","UNKNOWN_NOT_SETTLED")
       .putBoolean("freshSessionRecovery624Used",true)
+      .putLong("freshSessionRecovery624UsedAt635",freshSessionWall624)
       .putBoolean("attempted",false)
       .remove("expectedPair429").remove("expectedPackage429")
       .remove("expectedStakeCents429").remove("expectedPayout429")
@@ -2215,7 +2223,7 @@ class ScalpOverlayService : Service() {
     val payout = prefs.getInt("expectedPayout429",-1)
     val now = System.currentTimeMillis()
     if (!CHART_ONLY_DEMO_462 || !prefs.getBoolean("attempted",false) ||
-        prefs.getBoolean("freshSessionRecovery624Used",false) ||
+        oldAttemptAlreadyArchived635(prefs,wall) ||
         wall <= 0L || freshSessionWall624 - wall < 345_000L ||
         pkg.isNullOrBlank() || oldPair.isNullOrBlank() || stake != 109L || payout != 92 ||
         demoRecoveryLedger.verifiedOpenPositionId429() != null ||
@@ -6718,9 +6726,13 @@ class ScalpOverlayService : Service() {
       box != null && box.centerY().toFloat() / frame.height in 0.22f..0.89f
     }.joinToString(" ") { it.text }
       .replace(Regex("""\s+"""), " ").trim()
+    // OCR may drop individual Romanian diacritics independently. Normalize
+    // them before matching the full explicit empty-position phrase.
+    val normalizedEmptyBody635 = java.text.Normalizer.normalize(body,java.text.Normalizer.Form.NFD)
+      .replace(Regex("""\p{M}+"""),"")
     val emptyMessage = Regex(
-      """(?i)(?:Nu există tranzacții (?:plasate|deschise|active)|Nu exista tranzactii (?:plasate|deschise|active)|Nu sunt tranzacții deschise|Nu sunt tranzactii deschise|Nicio tranzacție (?:deschisă|activă)|Nicio tranzactie (?:deschisa|activa)|No trades placed|No open trades|No open positions)"""
-    ).containsMatchIn(body)
+      """(?i)\b(?:Nu exista tranzactii (?:plasate|deschise|active)|Nu sunt tranzactii deschise|Nicio tranzactie (?:deschisa|activa)|No trades placed|No open trades|No open positions)\b"""
+    ).containsMatchIn(normalizedEmptyBody635)
     val pkg = TouchTestService.activeDemoExecutorPackageForReview()
     // 433: Page identity must come from actual history TITLE and both tabs,
     // not the chart footer "Tranzacții" or any historical FX row.
@@ -6835,11 +6847,15 @@ class ScalpOverlayService : Service() {
     val selectedOpen429 = historyIdentity454 && openTab && closedTab &&
       selectedOpenTabVerifiedOnScreen(frame) && pkg != null
     if (selectedOpen429) {
-      if (lastOpenTabVisualPackage429 == pkg &&
-          observedAt - lastOpenTabVisualAt429 in 1000L..12000L)
+      val delta635 = observedAt - lastOpenTabVisualAt429
+      if (lastOpenTabVisualPackage429 != pkg || delta635 !in 0L..12_000L) {
+        openTabVisualConsecutive429 = 1
+        lastOpenTabVisualAt429 = observedAt
+      } else if (delta635 >= 1_000L) {
         openTabVisualConsecutive429 = (openTabVisualConsecutive429 + 1).coerceAtMost(3)
-      else openTabVisualConsecutive429 = 1
-      lastOpenTabVisualAt429 = observedAt
+        lastOpenTabVisualAt429 = observedAt
+      }
+      // A too-early valid frame neither counts nor destroys prior evidence.
       lastOpenTabVisualPackage429 = pkg
     } else {
       lastOpenTabVisualAt429 = 0L
@@ -6867,13 +6883,14 @@ class ScalpOverlayService : Service() {
       closedTabVisualConsecutive = 0
     }
     if (qualified) {
-      if (lastEmptyOpenOcrPackage == pkg &&
-          observedAt - lastEmptyOpenOcrAt in 1000L..12000L) {
-        emptyOpenOcrConsecutive = (emptyOpenOcrConsecutive + 1).coerceAtMost(3)
-      } else {
+      val delta635 = observedAt - lastEmptyOpenOcrAt
+      if (lastEmptyOpenOcrPackage != pkg || delta635 !in 0L..12_000L) {
         emptyOpenOcrConsecutive = 1
+        lastEmptyOpenOcrAt = observedAt
+      } else if (delta635 >= 1_000L) {
+        emptyOpenOcrConsecutive = (emptyOpenOcrConsecutive + 1).coerceAtMost(3)
+        lastEmptyOpenOcrAt = observedAt
       }
-      lastEmptyOpenOcrAt = observedAt
       lastEmptyOpenOcrPackage = pkg
     } else {
       emptyOpenOcrConsecutive = 0
