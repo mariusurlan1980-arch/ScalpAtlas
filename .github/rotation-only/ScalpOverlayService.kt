@@ -72,7 +72,10 @@ class ScalpOverlayService : Service() {
   private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
     if(positive){
       queuedMg=null
-      if(verifyingMg!=null){verifyingMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"}
+      if(verifyingMg!=null){
+        verifyingMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"
+        liveReader?.suspendMg(mgEditBlocked!!)
+      }
     }
     if(at<latestPositionFrame && !positive)return
     latestPositionFrame=maxOf(at,latestPositionFrame)
@@ -168,6 +171,7 @@ class ScalpOverlayService : Service() {
           },
           applyStake={pkg,pair,old,target,balance ->
             if(stopped || projection!==p) "MG • LIVE OPRIT"
+            else if(mgEditBlocked!=null) "MG • OPRIT ÎN ACEASTĂ SESIUNE"
             else if(Looper.myLooper()!=handler.looper || !tradePause.isLocked()) "MG • FĂRĂ AUTORIZARE"
             else {
               queuedMg=QueuedMg(pkg,pair,old,target,balance)
@@ -311,7 +315,14 @@ class ScalpOverlayService : Service() {
     if(wasTradePaused){
       wasTradePaused=false;deadline=0L;pendingPair=null;pendingChartReads=0;pendingPhysicalRetry=false
       val request=queuedMg;queuedMg=null
-      // The guard has released only after verified closure. Recheck open count
+      if(tradePause.releasedWithoutResult){
+        verifyingMg=null
+        mgEditBlocked="MG OPRIT • REZULTAT NECONFIRMAT"
+        liveReader?.suspendMg(mgEditBlocked!!)
+        say("REIAU ROTAȚIA • FĂRĂ MG")
+        return 500L
+      }
+      // Only a verified settlement may reach the editor. Recheck open count
       // and the current graph independently immediately before a single edit.
       if(request!=null){
         val freshQuiet=latestQuietFrame>0L && now-latestQuietFrame in 0L..3_000L
@@ -325,6 +336,7 @@ class ScalpOverlayService : Service() {
           verifyingMg=request to LiveMartingalePreview637.EditReadback(request.target,now)
         }else{
           mgEditBlocked=result+" • ȚINTĂ "+LiveMartingalePreview637.format(request.target)
+          liveReader?.suspendMg(mgEditBlocked!!)
         }
         liveStatus?.text=mgEditBlocked ?: result
         liveReader?.reportEdit(mgEditBlocked ?: result)
@@ -337,13 +349,12 @@ class ScalpOverlayService : Service() {
       if(verification.second.expired(now)){
         verifyingMg=null
         mgEditBlocked="MG • MIZĂ NEVERIFICATĂ • ȚINTĂ "+LiveMartingalePreview637.format(verification.first.target)
-        liveReader?.reportEdit(mgEditBlocked!!)
+        liveReader?.suspendMg(mgEditBlocked!!)
       }
       say("MG • VERIFIC MIZA");return 500L
     }
-    if(mgEditBlocked!=null){
-      say("MG • MIZĂ NECONFIRMATĂ");liveStatus?.text=mgEditBlocked;return 1_000L
-    }
+    // A failed MG edit disables further edits, not the navigation motor.
+    if(mgEditBlocked!=null){liveStatus?.text=mgEditBlocked}
     // No new selector actions while LIVE has not supplied a recent position frame.
     if(latestPositionFrame==0L || now-latestPositionFrame>3_500L){
       say("AȘTEPT VERIFICAREA TRADE");return 500L

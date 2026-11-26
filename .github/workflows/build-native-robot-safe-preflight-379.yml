@@ -2580,6 +2580,9 @@ jobs:
           assert 'tradePause.remaining(now)' in s and 'TRADE ACTIV' in s
           pause=(d/'TradePause637.kt').read_text()
           assert 'age>=300_000L && quiet && settled' in pause and 'age>=420_000L' not in pause
+          assert 'sustainedQuiet && !settled' in pause and 'releasedWithoutResult' in pause
+          assert s.index('if(tradePause.releasedWithoutResult)') < s.index('TouchTestService.applyVerifiedMg637(request.pkg')
+          assert 'suspendMg' in observer and 'suspendMg' in s and 'clearChart' in observer
           assert 'queuedMg=QueuedMg' in s and 'if(!tradePause.isLocked() &&' in s and 'freshQuiet' in s
           assert s.index('tradePause.remaining(now)') < s.index('TouchTestService.applyVerifiedMg637(request.pkg')
           assert s.index('tradePause.remaining(now)') < s.index('val result=TouchTestService.navigateOpenFxList')

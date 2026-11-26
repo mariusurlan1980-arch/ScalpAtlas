@@ -49,10 +49,11 @@ internal class LivePageObserver637(
   private var zeroLastAt=0L
   private var zeroResult:LiveMartingalePreview637.Result?=null
   private var reported:String?=null
+  private var mgSuspended:String?=null
 
   // Runs on the main handler, before reading any post-tap chart fields.
   private fun freezeEntry(at:Long) {
-    if(attempt!=null || unmatchedActive)return
+    if(mgSuspended!=null || attempt!=null || unmatchedActive)return
     unmatchedActive=true
     val saved=baseline
     if(saved!=null && at-baselineAt in 0L..45_000L){
@@ -162,8 +163,12 @@ internal class LivePageObserver637(
     val positive=(snap.openCount ?: 0)>0 || badge!=null || (demoFrame && visualBadge)
     if(positive)freezeEntry(captured)
     val visualQuiet=chartText && (hint.tabSeen || snap.tradesFooterSeen) && badge==null && !visualBadge && (snap.openCount==null || snap.openCount==0)
-    position(captured,positive,visualQuiet || (snap.openCount==0 && !positive))
-    stakeReadback(snap.pkg,pair,displayedStake,bal,captured,chartText && !positive && (snap.openCount==0 || visualQuiet))
+    // A fresh readable chart, footer and absent marker are needed for a
+    // navigation-only release when the outcome has not been verified.
+    val clearChart=chartText && !positive && !visualBadge && marker==null &&
+      (snap.openCount==0 || visualQuiet) && bal!=null && displayedStake!=null
+    position(captured,positive,clearChart)
+    stakeReadback(snap.pkg,pair,displayedStake,bal,captured,clearChart)
     val stakeDetail=when {
       displayedStake==null -> "necunoscută"
       stake==null -> "OCR (doar citire)"
@@ -174,6 +179,7 @@ internal class LivePageObserver637(
         " • sold: "+(if(bal!=null)"citit" else "necunoscut")+
         " • poziții: "+(snap.openCount?.toString() ?: if(visualQuiet)"liber vizual" else "necunoscute")+
         " • MG: "+(if(baseline!=null)"sold memorat" else "aștept sold stabil"))
+    mgSuspended?.let{render(it);return}
     val fmt=LiveMartingalePreview637::format
     val now=SystemClock.elapsedRealtime()
     val pending=attempt
@@ -300,6 +306,13 @@ internal class LivePageObserver637(
   }
 
   fun reportEdit(value:String){reported=value;render(value)}
+  fun suspendMg(reason:String){
+    mgSuspended=reason
+    attempt=null;baseline=null;entryLatch=null;unmatchedActive=false
+    idleCandidate=null;idleCandidateAt=0L;candidate=null;zeroResult=null
+    zeroAt=0L;zeroLastAt=0L;reported=reason
+    render(reason)
+  }
 
   fun close(){
     closed=true
