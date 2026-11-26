@@ -2039,6 +2039,56 @@ class ScalpOverlayService : Service() {
         if (comparison == outcome) "CONCORDANT" else "NECONFIRMAT").commit()
   }
 
+  // 632: verify the actual stake debit on two independent chart reads.
+  // This records local evidence only, not a broker position ID or settlement.
+  private var chartDebitKey632 = ""
+  private var chartDebitFirstAt632 = 0L
+  private fun exactChartDebit632(before: Long, current: Long, stake: Long): Boolean =
+    stake in 109L..81950L && before >= stake && current >= 0L &&
+      before - current == stake
+
+  private fun observeChartDebit632() {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val wall = prefs.getLong("attemptedWallAt454",-1L)
+    val now = System.currentTimeMillis()
+    val pkg = prefs.getString("expectedPackage429",null)
+    val pair = prefs.getString("expectedPair429",null)
+    val stake = prefs.getLong("expectedStakeCents429",-1L)
+    if (!CHART_ONLY_DEMO_462 || !prefs.getBoolean("attempted",false) ||
+        pkg.isNullOrBlank() || pair.isNullOrBlank() ||
+        prefs.getInt("expectedPayout429",-1) != 92 ||
+        wall <= 0L || now - wall !in 1_000L..30_000L ||
+        prefs.getLong("chartBalanceWall628",-1L) != wall ||
+        historyPageVisible433 || fxRotationNavigating || realAccountSafetyStop517 ||
+        !TouchTestService.demoFxAccountInForeground() ||
+        TouchTestService.realFxAccountVisible() ||
+        TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
+        TouchTestService.readVisibleDemoPair() != pair) {
+      chartDebitKey632 = ""
+      chartDebitFirstAt632 = 0L
+      return
+    }
+    val key = chartResultAttemptKey627(pkg,pair,wall,stake)
+    if (prefs.getString("chartDebitAttempt632",null) == key) return
+    val current = try { TouchTestService.readVerifiedDemoBalance() }
+      catch (_: Throwable) { null }
+    if (current == null || !current.isFinite() ||
+        !exactChartDebit632(prefs.getLong("chartBalanceBefore628",-1L),
+          kotlin.math.round(current*100).toLong(),stake)) {
+      chartDebitKey632 = ""
+      chartDebitFirstAt632 = 0L
+      return
+    }
+    if (chartDebitKey632 != key || now - chartDebitFirstAt632 !in 0L..8_000L) {
+      chartDebitKey632 = key
+      chartDebitFirstAt632 = now
+      return
+    }
+    if (now - chartDebitFirstAt632 < 1_000L) return
+    prefs.edit().putString("chartDebitAttempt632",key)
+      .putLong("chartDebitAt632",now).commit()
+  }
+
   private fun chartResultDiagnostic619(): String? {
     val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
     if (!prefs.getBoolean("attempted", false)) {
@@ -2051,10 +2101,13 @@ class ScalpOverlayService : Service() {
     if (wall <= 0L || pendingPair623.isBlank())
       return "ORDIN VECHI • DATE INCOMPLETE"
     val age = now - wall
-    if (age in 0L..294_999L) return "GRAFIC • AȘTEPT EXPIRAREA"
     val currentKey = chartResultAttemptKey627(
       prefs.getString("expectedPackage429", null).orEmpty(),pendingPair623,wall,
       prefs.getLong("expectedStakeCents429",-1L))
+    if (age in 0L..294_999L)
+      return if (prefs.getString("chartDebitAttempt632",null) == currentKey)
+        "GRAFIC • DEBIT MIZĂ 2/2 • AȘTEPT EXPIRAREA"
+      else "GRAFIC • AȘTEPT EXPIRAREA • DEBIT NECONFIRMAT"
     if (prefs.getString("chartConflictAttempt630",null) == currentKey)
       return "GRAFIC • REZULTATE CONTRADICTORII"
     if (prefs.getString("chartEvidenceAttempt628",null) == currentKey) {
@@ -2075,8 +2128,12 @@ class ScalpOverlayService : Service() {
       return if (chartResultConflict627) "GRAFIC • REZULTATE CONTRADICTORII"
       else "GRAFIC • " + chartResultObservedKey627.substringAfterLast('|') +
         " 2/2 OBSERVAT • FĂRĂ DECONTARE"
-    if (age !in 0L..345_000L)
-      return "REZULTAT RATAT " + pendingPair623.take(20) + " • FĂRĂ ORDIN NOU"
+    if (age !in 0L..345_000L) {
+      val attemptTime = java.text.SimpleDateFormat("dd/MM HH:mm",java.util.Locale.ROOT)
+        .format(java.util.Date(wall))
+      return "REZULTAT RATAT " + pendingPair623.take(20) + " • " + attemptTime +
+        " • FĂRĂ ORDIN NOU"
+    }
     if (chartResultReads619 > 0 && chartResultCandidate619.startsWith(currentKey) &&
         now - chartResultLastAt619 in 0L..5_000L)
       return "GRAFIC • INDICIU " + chartResultCandidate619.substringAfterLast('|') +
@@ -2161,6 +2218,7 @@ class ScalpOverlayService : Service() {
             proofNow463 - verifiedDemoAccountAt in 0L..90_000L &&
             !diagnostic.contains("QT REAL IDENTIFICAT")
           maybeInitializeDemoCalculation616()
+          observeChartDebit632()
           val passiveStatus463 = inspectPassiveDemoProof463(
             proofNow463, proofPackage463, chartCache463
           )
