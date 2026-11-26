@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 636 - rotation only
+name: Build Scalp Atlas 637 - rotation and live reader preview
 
 on:
   push:
@@ -148,7 +148,7 @@ jobs:
           expo['version']='3.3.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=636
+          expo['android']['versionCode']=637
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -2521,7 +2521,7 @@ jobs:
         run: |
           set -euo pipefail
           JAVA_DIR="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts"
-          for file in ScalpOverlayService.kt ScalpOverlayModule.kt TouchTestService.kt RotationPayoutReader.kt; do
+          for file in ScalpOverlayService.kt ScalpOverlayModule.kt TouchTestService.kt RotationPayoutReader.kt LivePageObserver637.kt LiveMartingalePreview637.kt; do
             cp ".github/rotation-only/$file" "$JAVA_DIR/$file"
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$file"
           done
@@ -2561,8 +2561,19 @@ jobs:
               assert forbidden not in a, forbidden
           for filename in ('DemoAutoStakePlan565.kt','DemoRecoveryLedger.kt','TradePositionGate.kt','DemoStakeEditor.kt','TouchTestActivity.kt'):
               assert not (d/filename).exists(), filename
-          print('PASS rotation-only source isolation; no order or stake entry points')
+          observer=(d/'LivePageObserver637.kt').read_text()
+          preview=(d/'LiveMartingalePreview637.kt').read_text()
+          assert 'createVirtualDisplay' in observer and 'openCount==0' in observer and 'openCount==1' in observer
+          assert 'bal-before==result.net' in observer and 'MG PROPUS' in observer
+          for forbidden in ('dispatchGesture','performAction','ACTION_SET_TEXT','pressVerifiedDemoStakeOnce429','advanceDemoHistory','getSharedPreferences'):
+              assert forbidden not in observer and forbidden not in preview, forbidden
+          print('PASS independent local reader and calculation-only MG; no stake edits or order paths')
           PY
+
+      - name: Test read-only MG preview
+        run: |
+          kotlinc .github/rotation-only/LiveMartingalePreview637.kt .github/rotation-only/LiveMartingalePreview637Test.kt -include-runtime -d /tmp/preview637.jar
+          java -jar /tmp/preview637.jar
 
       - name: Build standalone release APK
         working-directory: scalp-atlas-new/android
@@ -2610,11 +2621,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-636-ROTATIE-G24.apk
+          cp "$APK" ScalpAtlas-637-ROTATIE-LIVE-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-636-ROTATIE-G24
-          path: ScalpAtlas-636-ROTATIE-G24.apk
+          name: ScalpAtlas-637-ROTATIE-LIVE-G24
+          path: ScalpAtlas-637-ROTATIE-LIVE-G24.apk
           if-no-files-found: error
           retention-days: 30

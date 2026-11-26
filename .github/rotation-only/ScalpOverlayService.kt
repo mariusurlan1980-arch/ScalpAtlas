@@ -16,7 +16,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 
-/** Rotation only. No screen analysis, order submission, stake editing or receipt storage. */
+/** Independent rotation and read-only live preview. No orders or automatic stake edits. */
 class ScalpOverlayService : Service() {
   companion object {
     const val ACTION_START = "com.scalpatlas.app.START_OVERLAY"
@@ -33,6 +33,8 @@ class ScalpOverlayService : Service() {
   private var projection: MediaProjection? = null
   private var panel: LinearLayout? = null
   private var status: TextView? = null
+  private var liveStatus: TextView? = null
+  private var liveReader: LivePageObserver637? = null
   private var stopped = false
   private var pair: String? = null
   private var deadline = 0L
@@ -82,8 +84,7 @@ class ScalpOverlayService : Service() {
       else intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
     if (code == 0 || data == null) { stopSelf(); return START_NOT_STICKY }
     try {
-      // Preserve the existing Android LIVE consent flow, but do not create
-      // a virtual display or read any image. Rotation uses accessibility only.
+      // Explicit Android consent is used for the independent local reader.
       val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
       val p = manager.getMediaProjection(code,data) ?: run { stopSelf(); return START_NOT_STICKY }
       projection = p
@@ -91,6 +92,12 @@ class ScalpOverlayService : Service() {
         override fun onStop() { stopSelf() }
       },handler)
       createPanel()
+      // Failure of the independent reader never stops the rotation loop.
+      try {
+        liveReader=LivePageObserver637(this,handler){ value ->
+          handler.post{ if(!stopped)liveStatus?.text=value }
+        }.also{it.start(p)}
+      }catch(_:Throwable){liveReader?.close();liveReader=null;liveStatus?.text="LIVE INDISPONIBIL"}
       handler.post(loop)
     } catch (_: Throwable) { stopSelf() }
     return START_NOT_STICKY
@@ -132,6 +139,12 @@ class ScalpOverlayService : Service() {
       background = GradientDrawable().apply { setColor(Color.rgb(67,85,115)); cornerRadius=dp(9).toFloat() }
     }
     root.addView(label,LinearLayout.LayoutParams(-1,-2))
+    val liveLabel=TextView(this).apply {
+      text="LIVE • VERIFIC";textSize=10f
+      setTextColor(Color.rgb(35,46,69));gravity=Gravity.CENTER
+    }
+    root.addView(liveLabel,LinearLayout.LayoutParams(-1,-2))
+    liveStatus=liveLabel
     val params = WindowManager.LayoutParams(dp(180),-2,
       WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
@@ -260,6 +273,7 @@ class ScalpOverlayService : Service() {
   override fun onDestroy() {
     stopped=true; handler.removeCallbacksAndMessages(null)
     try { panel?.let { wm.removeView(it) } } catch (_: Throwable) {}
+    liveReader?.close();liveReader=null;liveStatus=null
     panel=null; status=null
     try { projection?.stop() } catch (_: Throwable) {}
     projection=null

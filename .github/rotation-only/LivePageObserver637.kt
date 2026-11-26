@@ -1,0 +1,148 @@
+package com.scalpatlas.app
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
+import android.media.ImageReader
+import android.media.projection.MediaProjection
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.SystemClock
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+
+/** Read-only screen observer. The rotation controller never waits on it. */
+internal class LivePageObserver637(
+  private val context:Context,
+  private val main:Handler,
+  private val render:(String)->Unit
+) {
+  private val worker=HandlerThread("ScalpLiveRead637")
+  private var reader:ImageReader?=null
+  private var display:VirtualDisplay?=null
+  private val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+  @Volatile private var closed=false
+  private var busy=false
+  private var lastFrame=0L
+  private data class Sample(val pair:String,val pkg:String,val stake:Long,val balance:Long)
+  private data class Attempt(val baseline:Sample,val opened:Long)
+  private var baseline:Sample?=null
+  private var baselineAt=0L
+  private var attempt:Attempt?=null
+  private var candidate:LiveMartingalePreview637.Result?=null
+  private var candidateAt=0L
+  private var zeroAt=0L
+  private var reported:String?=null
+
+  fun start(projection:MediaProjection) {
+    val m=context.resources.displayMetrics
+    worker.start()
+    val handler=Handler(worker.looper)
+    val images=ImageReader.newInstance(m.widthPixels,m.heightPixels,PixelFormat.RGBA_8888,2)
+    reader=images
+    display=projection.createVirtualDisplay("ScalpAtlasLiveReader",m.widthPixels,m.heightPixels,m.densityDpi,
+      DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,images.surface,null,handler)
+    images.setOnImageAvailableListener({ source ->
+      val image=try{source.acquireLatestImage()}catch(_:Throwable){null} ?: return@setOnImageAvailableListener
+      if(closed || busy || SystemClock.elapsedRealtime()-lastFrame<1_200L){
+        image.close();return@setOnImageAvailableListener
+      }
+      lastFrame=SystemClock.elapsedRealtime()
+      val captured=lastFrame
+      val bitmap=try{
+        val plane=image.planes[0]
+        val padded=plane.rowStride/plane.pixelStride
+        val raw=Bitmap.createBitmap(padded,image.height,Bitmap.Config.ARGB_8888)
+        raw.copyPixelsFromBuffer(plane.buffer)
+        val crop=Bitmap.createBitmap(raw,0,0,image.width,image.height)
+        if(crop!==raw)raw.recycle()
+        crop
+      }catch(_:Throwable){null}finally{image.close()}
+      if(bitmap==null)return@setOnImageAvailableListener
+      busy=true
+      try{
+        recognizer.process(InputImage.fromBitmap(bitmap,0))
+          .addOnSuccessListener{ result ->
+            if(!closed) inspect(result.textBlocks.map{it.text},captured)
+          }
+          .addOnCompleteListener{
+            bitmap.recycle(); handler.post{busy=false}
+          }
+      }catch(_:Throwable){bitmap.recycle();busy=false}
+    },handler)
+  }
+
+  private fun inspect(blocks:List<String>, captured:Long) {
+    if(closed || SystemClock.elapsedRealtime()-captured !in 0L..2_500L)return
+    val snap=TouchTestService.readLiveSnapshot637()
+    val pair=TouchTestService.readVisibleFxPair(false)
+    if(snap==null || pair==null){
+      render(reported ?: "LIVE • AȘTEPT GRAFICUL")
+      return
+    }
+    val stake=snap.stake
+    val bal=snap.balance
+    val fmt=LiveMartingalePreview637::format
+    val now=SystemClock.elapsedRealtime()
+    val pending=attempt
+    if(pending==null){
+      if(snap.openCount==0 && stake!=null && bal!=null && stake in LiveMartingalePreview637.ladder){
+        val current=Sample(pair,snap.pkg,stake,bal)
+        if(baseline!=current){baseline=current;baselineAt=now}
+      }else if(snap.openCount==1 && stake!=null && bal!=null){
+        val previous=baseline
+        if(previous!=null && previous.pkg==snap.pkg && previous.pair==pair && previous.stake==stake &&
+            now-baselineAt in 1_000L..45_000L && previous.balance-bal==stake){
+          attempt=Attempt(previous,now)
+          candidate=null;candidateAt=0;zeroAt=0;reported=null
+        }
+        baseline=null
+      }else if(snap.openCount!=0)baseline=null
+      val detail="LIVE • MIZĂ "+(stake?.let(fmt)?:"?")+" • SOLD "+(bal?.let(fmt)?:"?")
+      render(reported ?: if(attempt!=null) "LIVE • TRADE OBSERVAT" else detail)
+      return
+    }
+    if(pending.baseline.pkg!=snap.pkg || snap.openCount?.let{it>1}==true || now-pending.opened>420_000L){
+      attempt=null;baseline=null;candidate=null;zeroAt=0
+      reported="MG • REZULTAT NECONFIRMAT"
+      render(reported!!);return
+    }
+    if(now-pending.opened !in 240_000L..360_000L){
+      render("LIVE • AȘTEPT REZULTAT");return
+    }
+    val result=LiveMartingalePreview637.parse(blocks,pending.baseline.pair,pending.baseline.stake)
+    if(result!=null){
+      if(candidate!=null && candidate!=result){
+        attempt=null;baseline=null;candidate=null;reported="MG • DATE CONTRADICTORII"
+        render(reported!!);return
+      }
+      if(candidate==null){candidate=result;candidateAt=now}
+      else if(now-candidateAt>=1_000L){
+        val before=pending.baseline.balance
+        if(snap.openCount==0 && bal!=null && bal-before==result.net){
+          if(zeroAt==0L)zeroAt=now
+          else if(now-zeroAt>=1_000L){
+            val next=LiveMartingalePreview637.next(pending.baseline.stake,result)
+            reported=(if(result.win)"WIN" else "LOSS")+" • "+
+              (next?.let{"MG PROPUS "+fmt(it)}?:"MG STOP • 10 LOSS")
+            attempt=null;baseline=null;candidate=null;zeroAt=0
+            render(reported!!);return
+          }
+        }else zeroAt=0
+      }
+    }
+    render("LIVE • AȘTEPT DOVADĂ WIN/LOSS")
+  }
+
+  fun close(){
+    closed=true
+    try{reader?.setOnImageAvailableListener(null,null)}catch(_:Throwable){}
+    try{display?.release()}catch(_:Throwable){}
+    try{reader?.close()}catch(_:Throwable){}
+    try{recognizer.close()}catch(_:Throwable){}
+    try{worker.quitSafely()}catch(_:Throwable){}
+  }
+}
