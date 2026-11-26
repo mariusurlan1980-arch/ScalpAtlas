@@ -65,6 +65,33 @@ internal object LiveMartingalePreview637 {
     return candidates.singleOrNull()
   }
 
+  // Pause-only signal, never evidence of a closed trade or authorization to edit.
+  // Blue circular transaction badge beside the bottom-left Trades tab.
+  fun bluePositionBadge(width:Int,height:Int,pixel:(Int,Int)->Int):Boolean {
+    if(width<300 || height<600)return false
+    val step=(width/350).coerceAtLeast(1)
+    val radius=(width*.013f).toInt().coerceAtLeast(4)
+    fun blue(x:Int,y:Int):Boolean {
+      val c=pixel(x,y)
+      val r=(c shr 16) and 255;val g=(c shr 8) and 255;val b=c and 255
+      return r<=55 && g in 65..160 && b in 125..230 && b-g>=28 && g-r>=35
+    }
+    for(y in (height*.845f).toInt()..(height*.945f).toInt() step step){
+      for(x in (width*.16f).toInt()..(width*.27f).toInt() step step){
+        if(!blue(x-radius,y) || !blue(x+radius,y) ||
+           !blue(x,y-radius) || !blue(x,y+radius))continue
+        // Require a compact blue disk, not a horizontal price line or a large panel.
+        if(blue(x-2*radius,y) || blue(x+2*radius,y) ||
+           blue(x,y-2*radius) || blue(x,y+2*radius))continue
+        var count=0
+        for(dx in listOf(-radius/2,0,radius/2))for(dy in listOf(-radius/2,0,radius/2))
+          if(blue(x+dx,y+dy))count++
+        if(count>=5)return true
+      }
+    }
+    return false
+  }
+
   data class PositionHint(val tabSeen:Boolean,val positive:Int?)
   fun readPositionHint(labels:List<VisualLabel>):PositionHint {
     val tabs=labels.filter {

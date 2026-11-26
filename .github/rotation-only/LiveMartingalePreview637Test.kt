@@ -60,5 +60,13 @@ fun main(){
   m.observe(1000,true);m.observe(300000,false,true);m.settle()
   m.observe(300100,true);m.observe(301000,false,true);m.observe(303500,false,true)
   check(m.remaining(303500)!=null && m.isLocked())
-  println("PASS: 37 synthetic reader, MG and strict rotation protection cases")
+  val blue=0xff0e6aa9.toInt()
+  val dark=0xff212435.toInt()
+  fun badgePixel(x:Int,y:Int):Int=if((x-148)*(x-148)+(y-1368)*(y-1368)<=13*13 &&
+    !(x in 146..149 && y in 1363..1374))blue else dark
+  check(p.bluePositionBadge(686,1536,::badgePixel))
+  check(!p.bluePositionBadge(686,1536){_,_->dark})
+  check(!p.bluePositionBadge(686,1536){_,y->if(y in 1366..1370)blue else dark})
+  check(!p.bluePositionBadge(686,1536){_,_->blue})
+  println("PASS: reader, MG, strict pause and blue position badge cases")
 }

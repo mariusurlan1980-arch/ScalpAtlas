@@ -63,10 +63,13 @@ class ScalpOverlayService : Service() {
   }
   private val tradePause=TradePause637()
   private var wasTradePaused=false
+  private var latestPositionFrame=0L
   private data class QueuedMg(val pkg:String,val pair:String,val old:Long,val target:Long,val balance:Long)
   private var queuedMg:QueuedMg?=null
   private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
     if(positive)queuedMg=null
+    if(at<latestPositionFrame && !positive)return
+    latestPositionFrame=maxOf(at,latestPositionFrame)
     tradePause.observe(at,positive,quiet)
   }
   private var stopped = false
@@ -139,9 +142,11 @@ class ScalpOverlayService : Service() {
               eyeHealth=state;eyeFrameAt=at;eyeMessage=detail;refreshEye()
             }
           }},
-          position={at,positive,quiet -> handler.post{
-            if(!stopped && projection===p)observeTrade(at,positive,quiet)
-          }},
+          position={at,positive,quiet ->
+            if(Looper.myLooper()==handler.looper){
+              if(!stopped && projection===p)observeTrade(at,positive,quiet)
+            }else handler.post{if(!stopped && projection===p)observeTrade(at,positive,quiet)}
+          },
           settlement={handler.post{if(!stopped && projection===p)tradePause.settle()}},
           applyStake={pkg,pair,old,target,balance ->
             if(stopped || projection!==p) "MG • LIVE OPRIT"
@@ -300,6 +305,10 @@ class ScalpOverlayService : Service() {
       }
       say("ÎNCHIDERE CONFIRMATĂ • REIAU ROTAȚIA")
       return 500L
+    }
+    // No new selector actions while LIVE has not supplied a recent position frame.
+    if(latestPositionFrame==0L || now-latestPositionFrame>3_500L){
+      say("AȘTEPT VERIFICAREA TRADE");return 500L
     }
     if (TouchTestService.fxListVisible(false)) {
       val requested=pendingPair

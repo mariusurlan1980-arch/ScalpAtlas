@@ -68,6 +68,13 @@ internal class LivePageObserver637(
       }catch(_:Throwable){null}finally{image.close()}
       if(bitmap==null)return@setOnImageAvailableListener
       busy=true
+      val visualBadge=try{LiveMartingalePreview637.bluePositionBadge(bitmap.width,bitmap.height,bitmap::getPixel)}
+        catch(_:Throwable){false}
+      // Immediate positive signal even if OCR is slow or the selector is open.
+      if(visualBadge)main.post{
+        if(!closed && TouchTestService.demoFxAccountInForeground() &&
+           !TouchTestService.realFxAccountVisible())position(captured,true,false)
+      }
       try{
         recognizer.process(InputImage.fromBitmap(bitmap,0))
           .addOnSuccessListener{ result ->
@@ -79,7 +86,7 @@ internal class LivePageObserver637(
                     rect.left.toFloat()/bitmap.width,rect.top.toFloat()/bitmap.height,
                     rect.right.toFloat()/bitmap.width,rect.bottom.toFloat()/bitmap.height)
                 }
-              inspect(result.textBlocks.map{it.text},labels,captured)
+              inspect(result.textBlocks.map{it.text},labels,captured,visualBadge)
             }
           }
           .addOnCompleteListener{
@@ -89,32 +96,36 @@ internal class LivePageObserver637(
     },handler)
   }
 
-  private fun inspect(blocks:List<String>, labels:List<LiveMartingalePreview637.VisualLabel>, captured:Long) {
+  private fun inspect(blocks:List<String>, labels:List<LiveMartingalePreview637.VisualLabel>, captured:Long,visualBadge:Boolean) {
     if(closed || SystemClock.elapsedRealtime()-captured !in 0L..2_500L)return
+    val screenText=blocks.joinToString(" ").uppercase(java.util.Locale.ROOT)
+    val compact=screenText.replace(Regex("""[\s()]"""),"")
+    val hint=LiveMartingalePreview637.readPositionHint(labels)
+    val demoFrame=compact.contains("QTDEMO") && !compact.contains("QTREAL")
+    val badge=if(demoFrame) TouchTestService.positiveOpenBadge637() ?: hint.positive
+      ?: if(visualBadge)1 else null else null
+    // Positive badge must be processed BEFORE requiring a chart snapshot.
+    if(demoFrame && badge!=null && TouchTestService.demoFxAccountInForeground() &&
+       !TouchTestService.realFxAccountVisible())position(captured,true,false)
     val snap=TouchTestService.readLiveSnapshot637()
     val pair=TouchTestService.readVisibleFxPair(false)
     if(snap==null || pair==null){
-      position(captured,false,false)
-      health(1,captured,"Grafic QT Demo sau payout 92% neconfirmat")
-      render(reported ?: "LIVE • AȘTEPT GRAFICUL")
+      if(badge==null)position(captured,false,false)
+      health(1,captured,if(badge!=null)"Trade activ • selector deschis" else "Grafic QT Demo sau payout 92% neconfirmat")
+      render(if(badge!=null)"LIVE • TRADE ACTIV • ÎNCHIDE LISTA" else reported ?: "LIVE • AȘTEPT GRAFICUL")
       return
     }
     val stake=snap.stake
     val bal=snap.balance
     // Eye state is diagnostic only: it cannot grant stake or rotation permission.
-    val screenText=blocks.joinToString(" ").uppercase(java.util.Locale.ROOT)
-    val compact=screenText.replace(Regex("""[\s()]"""),"")
     val pairText=pair.uppercase(java.util.Locale.ROOT).replace(Regex("""[\s()]"""),"")
     val chartText=compact.contains("QTDEMO") && compact.contains(pairText)
     val visualStake=if(chartText) LiveMartingalePreview637.readDisplayedStake(labels) else null
     // Reject conflicting sources. OCR alone is a display reading, not an editable field.
     val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
     val freshChart=chartText && displayedStake!=null && bal!=null
-    val hint=if(chartText) LiveMartingalePreview637.readPositionHint(labels)
-      else LiveMartingalePreview637.PositionHint(false,null)
-    val badge=TouchTestService.positiveOpenBadge637() ?: hint.positive
-    val positive=(snap.openCount ?: 0)>0 || badge!=null
-    val visualQuiet=hint.tabSeen && badge==null && (snap.openCount==null || snap.openCount==0)
+    val positive=(snap.openCount ?: 0)>0 || badge!=null || visualBadge
+    val visualQuiet=chartText && hint.tabSeen && badge==null && !visualBadge && (snap.openCount==null || snap.openCount==0)
     position(captured,positive,visualQuiet || (snap.openCount==0 && !positive))
     val stakeDetail=when {
       displayedStake==null -> "necunoscută"

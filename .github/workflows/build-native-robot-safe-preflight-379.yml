@@ -2582,6 +2582,9 @@ jobs:
           assert s.index('tradePause.remaining(now)') < s.index('TouchTestService.applyVerifiedMg637(request.pkg')
           assert s.index('tradePause.remaining(now)') < s.index('val result=TouchTestService.navigateOpenFxList')
           assert 'position(captured,true,false)' in observer and 'settlement()' in observer
+          assert 'bluePositionBadge' in observer and 'bluePositionBadge' in preview
+          assert observer.index('if(demoFrame && badge!=null') < observer.index('val snap=TouchTestService.readLiveSnapshot637()')
+          assert 'latestPositionFrame' in s
           assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer
           assert 'readDisplayedStake(labels)' in observer and 'displayedStake?.let(fmt)' in observer
           assert 'permitsEdit(pending.baseline.stake,next,' in observer and 'stake,bal,snap.openCount' in observer
