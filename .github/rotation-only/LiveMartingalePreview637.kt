@@ -110,19 +110,28 @@ internal object LiveMartingalePreview637 {
     return false
   }
 
+  fun isTradesFooter(text:String):Boolean {
+    val folded=java.text.Normalizer.normalize(text.trim().lowercase(java.util.Locale.ROOT),
+      java.text.Normalizer.Form.NFD).replace(Regex("""\p{M}"""),"")
+    return Regex("""^(?:tranzactii|transactions|trades)(?:\s*[:·]?\s*[0-9]{1,3})?$""").matches(folded)
+  }
   data class PositionHint(val tabSeen:Boolean,val positive:Int?)
   fun readPositionHint(labels:List<VisualLabel>):PositionHint {
     val tabs=labels.filter {
       it.left in .01f.. .27f && it.top in .84f.. .96f && it.right<=.36f &&
-      Regex("""(?i)^(?:tranzac[țţt]ii|transactions|trades)$""").matches(it.text.trim())
+      isTradesFooter(it.text)
     }
-    val tab=tabs.singleOrNull() ?: return PositionHint(false,null)
+    val tab=tabs.firstOrNull() ?: return PositionHint(false,null)
+    if(tabs.any{kotlin.math.abs(it.top-tab.top)>.025f || kotlin.math.abs(it.left-tab.left)>.05f})
+      return PositionHint(false,null)
     val digits=labels.filter {
       it.left>=tab.left-.015f && it.right<=tab.right+.14f &&
       it.top>=tab.top-.065f && it.bottom<=tab.top+.012f &&
       it.right-it.left<=.06f && it.bottom-it.top<=.045f
     }.mapNotNull { it.text.trim().takeIf { s->s.matches(Regex("""[1-9]""")) }?.toIntOrNull() }.distinct()
-    return PositionHint(true,digits.singleOrNull())
+    val attached=tabs.mapNotNull{Regex("""[1-9][0-9]{0,2}$""").find(it.text.trim())?.value?.toIntOrNull()}
+    val positive=(digits+attached).distinct()
+    return PositionHint(true,if(positive.isEmpty())null else positive.maxOrNull())
   }
   fun format(cents:Long):String = String.format(java.util.Locale.ROOT, "%d,%02d", cents/100L, cents%100L)
 }

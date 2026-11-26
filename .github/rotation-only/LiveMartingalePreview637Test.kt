@@ -89,5 +89,12 @@ fun main(){
     val stake=p.ladder[i]
     check(p.next(stake,LiveMartingalePreview637.Result(pair,-stake,false))==p.ladder[i+1])
   }
-  println("PASS: exact entry debit, loss replay, ten stake ladder, pause and reader")
+  check(p.isTradesFooter("Tranzacții"))
+  check(p.isTradesFooter("Tranzactii"))
+  check(p.isTradesFooter("Tranzacții 1"))
+  check(!p.isTradesFooter("Tranzacții finalizate"))
+  check(p.readPositionHint(listOf(label("Tranzacții 1",.075f,.916f))).positive==1)
+  val actual=p.settledBalance("AUD/CAD OTC",109,156796,156687,300000,true)
+  check(actual?.net==-109L && p.next(109,actual)==228L)
+  println("PASS: entry debit, ten stake ladder, footer detection and loss replay")
 }

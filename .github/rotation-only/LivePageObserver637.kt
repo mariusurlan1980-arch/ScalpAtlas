@@ -132,7 +132,7 @@ internal class LivePageObserver637(
     val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
     val freshChart=chartText && displayedStake!=null && bal!=null
     val positive=(snap.openCount ?: 0)>0 || badge!=null || visualBadge
-    val visualQuiet=chartText && hint.tabSeen && badge==null && !visualBadge && (snap.openCount==null || snap.openCount==0)
+    val visualQuiet=chartText && (hint.tabSeen || snap.tradesFooterSeen) && badge==null && !visualBadge && (snap.openCount==null || snap.openCount==0)
     position(captured,positive,visualQuiet || (snap.openCount==0 && !positive))
     val stakeDetail=when {
       displayedStake==null -> "necunoscută"
@@ -179,10 +179,19 @@ internal class LivePageObserver637(
         // but not across a detected active trade of unknown origin.
       }
       val detail="LIVE • MIZĂ "+(displayedStake?.let(fmt)?:"?")+" • SOLD "+(bal?.let(fmt)?:"?")
+      val armed=baseline?.let{
+        !positive && !unmatchedActive && chartText && (snap.openCount==0 || visualQuiet) &&
+          it.pkg==snap.pkg && it.balance==bal && it.stake==displayedStake &&
+          captured-baselineAt in 0L..5_000L
+      }==true
       render(when {
         attempt!=null -> "MG • TRADE MEMORAT • "+(bal?.let(fmt)?:"?")
         unmatchedActive -> "MG • SOLD INIȚIAL NECONFIRMAT"
-        else -> reported ?: detail
+        armed -> "MG ARMAT • "+fmt(baseline!!.balance)+" • "+fmt(baseline!!.stake)
+        !chartText -> "MG • VERIFIC GRAFICUL"
+        displayedStake==null || bal==null -> "MG • VERIFIC MIZĂ/SOLD"
+        !(snap.openCount==0 || visualQuiet) -> "MG • VERIFIC POZIȚIILE"
+        else -> "MG • AȘTEPT SOLD STABIL"
       })
       return
     }

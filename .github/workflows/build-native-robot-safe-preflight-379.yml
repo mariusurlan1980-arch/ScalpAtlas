@@ -2592,6 +2592,7 @@ jobs:
           assert 'settledBalance' in observer and 'captured-zeroAt>=3_000L' in observer
           assert 'entryDebit' in observer and 'Sample(pair,snap.pkg,previous.stake,previous.balance)' in observer
           assert 'MG • TRADE MEMORAT' in observer and 'MG • SOLD INIȚIAL NECONFIRMAT' in observer
+          assert 'MG ARMAT' in observer and 'snap.tradesFooterSeen' in observer
           assert 'permitsEdit(old,next,displayedStake,bal,0,' in observer
           assert 'applyVerifiedMg637' in s and 'editVerifiedStake637' in t
           editor=(d/'RotationPayoutReader.kt').read_text()

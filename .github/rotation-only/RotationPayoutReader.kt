@@ -95,7 +95,7 @@ object RotationPayoutReader {
     return payout.takeIf { svc.rootInActiveWindow == chart.root }
   }
 
-  internal data class LiveSnapshot(val pkg:String,val stake:Long?,val balance:Long?,val openCount:Int?)
+  internal data class LiveSnapshot(val pkg:String,val stake:Long?,val balance:Long?,val openCount:Int?,val tradesFooterSeen:Boolean=false)
 
   private fun exactCents637(raw:String):Long? {
     val clean=raw.trim().replace(Regex("""(?i)^USD\s*|\s*USD$"""),"").trim().removePrefix("$").trim()
@@ -134,7 +134,16 @@ object RotationPayoutReader {
       countPattern.matchEntire(it.value.trim())?.groupValues?.get(1)?.toIntOrNull()
     }.distinct()
     if(svc.rootInActiveWindow!=chart.root) return null
-    return LiveSnapshot(pkg,stakes.singleOrNull(),balances.singleOrNull(),counts.singleOrNull())
+    val footer=labels.any{
+      it.rect.centerX()<w*.36f && it.rect.centerY()>h*.83f &&
+        LiveMartingalePreview637.isTradesFooter(it.value)
+    }
+    val footerCounts=labels.filter{
+      it.rect.centerX()<w*.36f && it.rect.centerY()>h*.83f &&
+        LiveMartingalePreview637.isTradesFooter(it.value)
+    }.mapNotNull{Regex("[1-9][0-9]{0,2}$").find(it.value.trim())?.value?.toIntOrNull()}
+    val open=(counts+footerCounts).filter{it>0}.maxOrNull() ?: counts.singleOrNull()
+    return LiveSnapshot(pkg,stakes.singleOrNull(),balances.singleOrNull(),open,footer)
   }
 
 
