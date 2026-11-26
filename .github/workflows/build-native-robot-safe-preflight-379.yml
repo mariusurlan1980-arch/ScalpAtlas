@@ -2554,6 +2554,11 @@ jobs:
           t=(d/'TouchTestService.kt').read_text()
           a=Path('scalp-atlas-new/App.tsx').read_text()
           assert 'DWELL_MS = 30_000L' in s and 'payout==92' in s
+          assert 'onlyPair=requested,realAccount=false' in s
+          assert 'if (pendingChartReads<2)' in s
+          assert 'if (selectedConfirmed || current != pair || deadline==0L)' in s
+          assert 'visited.add(current); deadline=now+DWELL_MS' in s
+          assert s.index('if (eligiblePair && remaining>0L)') < s.index('val opened=when(selectorAttempts++ % 3)')
           assert 'demoFxAccountInForeground()' in s and 'realFxAccountVisible()' in s
           assert 'navigateOpenFxList' in s and 'tapVerifiedDemoFxSelector515' in s
           for forbidden in ('pressVerifiedDemoStakeOnce429','pressAutoOneDollarDemoOrderOnce','onVerifiedClosed','DemoAutoStakePlan565','getSharedPreferences','recordClosedDetail','playBip','createVirtualDisplay','reviewExpiredDemoHistory'):

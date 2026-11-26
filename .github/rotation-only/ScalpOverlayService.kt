@@ -40,6 +40,8 @@ class ScalpOverlayService : Service() {
   private var deadline = 0L
   private var pendingPair: String? = null
   private var pendingUntil = 0L
+  private var pendingPhysicalRetry = false
+  private var pendingChartReads = 0
   private var selectorAttempts = 0
   private var forward = true
   private var reversed = false
@@ -208,8 +210,24 @@ class ScalpOverlayService : Service() {
     }
     val now=SystemClock.elapsedRealtime()
     if (TouchTestService.fxListVisible(false)) {
-      if (pendingPair != null && now < pendingUntil) return 750L
-      pendingPair=null
+      val requested=pendingPair
+      if (requested != null) {
+        if (now < pendingUntil) return 750L
+        // ACTION_CLICK may report success while the currency selector remains open.
+        // Retry the SAME verified 92% row once via the guarded row gesture.
+        if (!pendingPhysicalRetry) {
+          pendingPhysicalRetry=true
+          val retry=TouchTestService.navigateOpenFxList(emptySet(),false,forward,bounds(),
+            onlyPair=requested,realAccount=false)
+          if (retry.pair==requested) {
+            pendingUntil=now+8_000L
+            say("RECONFIRM "+requested)
+            return 1_250L
+          }
+        }
+        rejected.add(requested)
+        pendingPair=null; pendingPhysicalRetry=false; pendingChartReads=0
+      }
       if (visited.size >= 10) {
         val previous=pair
         visited.clear(); rejected.clear(); eligible.clear(); views.clear(); scrollHistory.clear()
@@ -218,7 +236,8 @@ class ScalpOverlayService : Service() {
       val result=TouchTestService.navigateOpenFxList(visited+rejected,true,forward,bounds(),
         scrollHistory=scrollHistory,observedEligible=eligible,observedViewports=views,realAccount=false)
       if (result.pair != null) {
-        pendingPair=result.pair; pendingUntil=now+5_000L
+        pendingPair=result.pair; pendingUntil=now+8_000L
+        pendingPhysicalRetry=false; pendingChartReads=0
         say("VERIFIC "+result.pair); return 1_250L
       }
       if (result.rejectedPair != null) {
@@ -240,16 +259,34 @@ class ScalpOverlayService : Service() {
     val current=TouchTestService.readVisibleFxPair(false)
     if (current == null) { say("AȘTEPT GRAFICUL QT DEMO"); return 2_000L }
     val payout=TouchTestService.readFxChartPayout(current,false)
-    if (payout == null) { say("PAYOUT NECITIT"); return 2_000L }
-    if (pendingPair != null) {
-      if (current != pendingPair && now < pendingUntil) return 750L
-      if (current != pendingPair) rejected.add(pendingPair!!)
-      pendingPair=null; selectorAttempts=0
+    if (payout == null) {
+      // A temporarily missing quote is not a signal to reopen the selector.
+      pendingChartReads=0
+      say("PAYOUT NECITIT"); return 2_000L
     }
     val eligiblePair=TouchTestService.isPreferredFxPair517(current) && payout==92
-    if (current != pair || deadline==0L) {
+    var selectedConfirmed=false
+    val requested=pendingPair
+    if (requested != null) {
+      if (current==requested && eligiblePair) {
+        pendingChartReads++
+        if (pendingChartReads<2) {
+          say("CONFIRM GRAFIC "+current); return 1_000L
+        }
+        selectedConfirmed=true
+      } else {
+        pendingChartReads=0
+        if (now < pendingUntil) {
+          say("AȘTEPT GRAFIC "+requested); return 750L
+        }
+        rejected.add(requested)
+      }
+      pendingPair=null; pendingPhysicalRetry=false; pendingChartReads=0; selectorAttempts=0
+    }
+    if (selectedConfirmed || current != pair || deadline==0L) {
       pair=current
       if (eligiblePair) {
+        // The complete 30 seconds begin ONLY after the selected chart is confirmed.
         visited.add(current); deadline=now+DWELL_MS
       } else deadline=now
       selectorAttempts=0
