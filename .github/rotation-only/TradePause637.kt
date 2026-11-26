@@ -33,7 +33,7 @@ internal class TradePause637 {
     // Navigation alone may resume after sustained, fresh clear-chart evidence.
     // This path must discard any queued edit and disable MG for this session.
     val sustainedQuiet=quiet && quietSince?.let{now-it>=10_000L}==true
-    if(age>=300_000L && sustainedQuiet && !settled){
+    if(age>=315_000L && sustainedQuiet && !settled){
       releasedWithoutResult=true
       started=null;quietSince=null;settled=false
       return null
