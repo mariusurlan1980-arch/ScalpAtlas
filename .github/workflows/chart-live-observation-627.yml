@@ -182,3 +182,33 @@ jobs:
           KOTLIN
           kotlinc /tmp/Retention631.kt -include-runtime -d /tmp/retention631.jar
           java -jar /tmp/retention631.jar
+
+      - name: Replay exact stake debit evidence
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          p=s.split('  private fun exactChartDebit632(',1)[1].split('  private fun observeChartDebit632(',1)[0]
+          Path('/tmp/Debit632.kt').write_text('private fun exactChartDebit632('+p)
+          h=s.split('  private fun observeChartDebit632(',1)[1].split('  private fun chartResultDiagnostic619(',1)[0]
+          for guard in ('now - wall !in 1_000L..30_000L','chartBalanceWall628','readVisibleDemoPair() != pair','realFxAccountVisible()','now - chartDebitFirstAt632 < 1_000L','chartDebitAttempt632'):
+              assert guard in h, guard
+          for forbidden in ('onVerifiedClosed(', 'confirmEdited(', 'dispatchGesture(', 'putBoolean("attempted",false)'):
+              assert forbidden not in h, forbidden
+          PY
+          cat >> /tmp/Debit632.kt <<'KOTLIN'
+          fun main() {
+            check(exactChartDebit632(157241,157132,109))
+            check(exactChartDebit632(157241,157013,228))
+            check(!exactChartDebit632(157241,157241,109))
+            check(!exactChartDebit632(157241,157131,109))
+            check(!exactChartDebit632(157241,157242,109))
+            check(!exactChartDebit632(-1,0,109))
+            check(!exactChartDebit632(100,0,109))
+            check(!exactChartDebit632(157241,157240,1))
+            println("PASS 8 exact stake debit cases; observation only")
+          }
+          KOTLIN
+          kotlinc /tmp/Debit632.kt -include-runtime -d /tmp/debit632.jar
+          java -jar /tmp/debit632.jar
