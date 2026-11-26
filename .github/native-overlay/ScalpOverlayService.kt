@@ -1815,6 +1815,11 @@ class ScalpOverlayService : Service() {
   private fun chartResultAttemptKey627(pkg: String, pair: String, wall: Long, stake: Long): String =
     "$pkg|$pair|$wall|$stake|"
 
+  // Preserve only a previously valid sample of this attempt, never a missing frame.
+  private fun retainChartSample631(candidate: String, attempt: String, last: Long, now: Long): Boolean =
+    attempt.isNotBlank() && candidate.startsWith(attempt) && last > 0L &&
+      now - last in 0L..4_000L
+
   private fun resetChartResult619() {
     chartResultCandidate619 = ""
     chartResultFirstAt619 = 0L
@@ -1945,9 +1950,8 @@ class ScalpOverlayService : Service() {
       // A single unreadable OCR frame must not erase the first valid
       // sample of a short-lived receipt. Retain it only on the same verified
       // DEMO attempt, for at most four seconds. A missing frame never counts.
-      if (!chartResultCandidate619.startsWith(attemptKey627) ||
-          capturedAt - chartResultLastAt619 !in 0L..4_000L)
-        resetChartResult619()
+      if (!retainChartSample631(chartResultCandidate619,attemptKey627,
+          chartResultLastAt619,capturedAt)) resetChartResult619()
       return
     }
     val key = attemptKey627 + outcome
