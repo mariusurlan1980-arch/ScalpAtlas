@@ -1268,13 +1268,13 @@ class ScalpOverlayService : Service() {
     }
   }
 
-  // This is a fresh-session reconciliation of an unidentified DEMO attempt,
-  // not settlement of a trade. The caller has just independently read the
-  // selected empty OPEN tab twice. No balance, badge, timer or history alone
-  // is accepted; no result is fabricated and no Martingale level is changed.
+  // Fresh-session reconciliation of an unidentified DEMO attempt, not
+  // settlement. Caller must have independently read explicit zero OPEN
+  // positions twice, either on the chart or on the selected OPEN tab.
+  // No balance, missing badge or timer is accepted as closure proof.
   private fun archiveOldDemoAttempt624(
     prefs: android.content.SharedPreferences, pkg: String, pair: String,
-    stake: Long, payout: Int
+    stake: Long, payout: Int, proofSource634: String = "OPEN_TAB"
   ): String {
     val wall = prefs.getLong("attemptedWallAt454", -1L)
     val now = System.currentTimeMillis()
@@ -1311,6 +1311,7 @@ class ScalpOverlayService : Service() {
       .putString(archive + "side",prefs.getString("expectedSide437",null))
       .putLong(archive + "attemptedWall",wall)
       .putLong(archive + "verifiedEmptyAt",now)
+      .putString(archive + "proofSource",proofSource634)
       .putString(archive + "result","UNKNOWN_NOT_SETTLED")
       .putBoolean("freshSessionRecovery624Used",true)
       .putBoolean("attempted",false)
@@ -1333,7 +1334,9 @@ class ScalpOverlayService : Service() {
     autoDemoLockedAt = lockedAt
     autoDemoEntryCycleStartedAt = System.currentTimeMillis()
     autoDemoLastPreflightAt = 0L
-    return "ZERO DESCHISE 2/2 • SESIUNE NOUĂ • REVINO LA GRAFIC"
+    return if (proofSource634 == "CHART_EXPLICIT_ZERO")
+      "ZERO DESCHISE 2/2 • SESIUNE DEMO NOUĂ"
+    else "ZERO DESCHISE 2/2 • SESIUNE NOUĂ • REVINO LA GRAFIC"
   }
 
   private fun inspectPassiveDemoProof463(
@@ -2169,6 +2172,54 @@ class ScalpOverlayService : Service() {
     return "GRAFIC • REZULTAT NECITIT • FĂRĂ ORDIN NOU"
   }
 
+  // Chart-only recovery of a missed OLD unidentified attempt. Never use
+  // an absent badge as zero, never guess P/L, never reset a known OPEN ID,
+  // and never archive an attempt from the current capture session.
+  private var chartEmptyKey634 = ""
+  private var chartEmptyFirstAt634 = 0L
+  private fun recoverOldUnknownOnChart634(nowElapsed: Long): String? {
+    val prefs = getSharedPreferences(autoShockAttemptPrefs, Context.MODE_PRIVATE)
+    val wall = prefs.getLong("attemptedWallAt454",-1L)
+    val pkg = prefs.getString("expectedPackage429",null)
+    val oldPair = prefs.getString("expectedPair429",null)
+    val stake = prefs.getLong("expectedStakeCents429",-1L)
+    val payout = prefs.getInt("expectedPayout429",-1)
+    val now = System.currentTimeMillis()
+    if (!CHART_ONLY_DEMO_462 || !prefs.getBoolean("attempted",false) ||
+        prefs.getBoolean("freshSessionRecovery624Used",false) ||
+        wall <= 0L || freshSessionWall624 - wall < 345_000L ||
+        pkg.isNullOrBlank() || oldPair.isNullOrBlank() || stake != 109L || payout != 92 ||
+        demoRecoveryLedger.verifiedOpenPositionId429() != null ||
+        historyPageVisible433 || fxRotationNavigating || fxRotationTradePaused516 ||
+        !pairReady(now) || verifiedDemoAccountPackage != pkg ||
+        nowElapsed - verifiedDemoAccountAt !in 0L..5_000L ||
+        realAccountSafetyStop517 || accountRecheckPending) {
+      chartEmptyKey634 = ""
+      chartEmptyFirstAt634 = 0L
+      return null
+    }
+    val oldKey = chartResultAttemptKey627(pkg,oldPair,wall,stake)
+    if (prefs.getString("chartEvidenceAttempt628",null) == oldKey ||
+        prefs.getString("chartConflictAttempt630",null) == oldKey) return null
+    val pair = currentPair(now)
+    if (TouchTestService.readBrokerDemoOrder476(pair) != (109L to 92) ||
+        !TouchTestService.inspectExplicitZeroOpenOnDemoChart634(pkg,pair)) {
+      chartEmptyKey634 = ""
+      chartEmptyFirstAt634 = 0L
+      return null
+    }
+    val key = oldKey + pair
+    if (key != chartEmptyKey634 || nowElapsed - chartEmptyFirstAt634 !in 0L..8_000L) {
+      chartEmptyKey634 = key
+      chartEmptyFirstAt634 = nowElapsed
+      return "GRAFIC • ZERO DESCHISE 1/2"
+    }
+    if (nowElapsed - chartEmptyFirstAt634 < 2_000L) return null
+    chartEmptyKey634 = ""
+    chartEmptyFirstAt634 = 0L
+    return archiveOldDemoAttempt624(prefs,pkg,oldPair,stake,payout,"CHART_EXPLICIT_ZERO")
+  }
+
   private fun startBrokerAccountMonitor() {
     if (brokerAccountMonitorRunning) return
     brokerAccountMonitorRunning = true
@@ -2250,6 +2301,7 @@ class ScalpOverlayService : Service() {
           val passiveStatus463 = inspectPassiveDemoProof463(
             proofNow463, proofPackage463, chartCache463
           )
+          val chartRecovery634 = recoverOldUnknownOnChart634(proofNow463)
           // No timer-based pilot rearm in chart-only MG mode.
           // A settlement not independently proven must keep the order locked.
           val pilotStatus464: String? = null
@@ -2263,7 +2315,7 @@ class ScalpOverlayService : Service() {
           // A generic MG wait message must not replace actionable evidence.
           val preparedAmount626 = prepareVerifiedMartingaleAmount626(proofNow463)
           val baseRearm618 = maybeRearmConfirmedDemoBase618(proofNow463)
-          val effectiveStatus464 = baseRearm618 ?: preparedAmount626 ?: passiveStatus463 ?: navigationReview615 ?: pilotStatus464
+          val effectiveStatus464 = baseRearm618 ?: preparedAmount626 ?: passiveStatus463 ?: chartRecovery634 ?: navigationReview615 ?: pilotStatus464
           if (mgRecovery614.isEnabled() || mgRecovery614.isRiskStopped())
             martingaleStatusText?.text = mgRecovery614.status()
           demoOrderVerificationReason = effectiveStatus464.takeIf { autoDemoSessionConsumed }
