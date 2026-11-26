@@ -69,7 +69,16 @@ internal class LivePageObserver637(
       try{
         recognizer.process(InputImage.fromBitmap(bitmap,0))
           .addOnSuccessListener{ result ->
-            if(!closed) inspect(result.textBlocks.map{it.text},captured)
+            if(!closed) {
+              val labels=result.textBlocks.flatMap{block->block.lines.flatMap{line->line.elements}}
+                .mapNotNull{element ->
+                  val rect=element.boundingBox ?: return@mapNotNull null
+                  LiveMartingalePreview637.VisualLabel(element.text,
+                    rect.left.toFloat()/bitmap.width,rect.top.toFloat()/bitmap.height,
+                    rect.right.toFloat()/bitmap.width,rect.bottom.toFloat()/bitmap.height)
+                }
+              inspect(result.textBlocks.map{it.text},labels,captured)
+            }
           }
           .addOnCompleteListener{
             bitmap.recycle(); handler.post{busy=false}
@@ -78,7 +87,7 @@ internal class LivePageObserver637(
     },handler)
   }
 
-  private fun inspect(blocks:List<String>, captured:Long) {
+  private fun inspect(blocks:List<String>, labels:List<LiveMartingalePreview637.VisualLabel>, captured:Long) {
     if(closed || SystemClock.elapsedRealtime()-captured !in 0L..2_500L)return
     val snap=TouchTestService.readLiveSnapshot637()
     val pair=TouchTestService.readVisibleFxPair(false)
@@ -94,9 +103,17 @@ internal class LivePageObserver637(
     val compact=screenText.replace(Regex("""[\s()]"""),"")
     val pairText=pair.uppercase(java.util.Locale.ROOT).replace(Regex("""[\s()]"""),"")
     val chartText=compact.contains("QTDEMO") && compact.contains(pairText)
-    val freshChart=chartText && stake!=null && bal!=null
+    val visualStake=if(chartText) LiveMartingalePreview637.readDisplayedStake(labels) else null
+    // Reject conflicting sources. OCR alone is a display reading, not an editable field.
+    val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
+    val freshChart=chartText && displayedStake!=null && bal!=null
+    val stakeDetail=when {
+      displayedStake==null -> "necunoscută"
+      stake==null -> "OCR (doar citire)"
+      else -> "accesibilitate"
+    }
     health(if(freshChart)2 else 1,captured,
-      "Pereche: "+pair+" • sumă: "+(if(stake!=null)"citită" else "necunoscută")+
+      "Pereche: "+pair+" • sumă: "+stakeDetail+
         " • sold: "+(if(bal!=null)"citit" else "necunoscut")+
         " • poziții: "+(snap.openCount?.toString()?:"necunoscute"))
     val fmt=LiveMartingalePreview637::format
@@ -115,7 +132,7 @@ internal class LivePageObserver637(
         }
         baseline=null
       }else if(snap.openCount!=0)baseline=null
-      val detail="LIVE • MIZĂ "+(stake?.let(fmt)?:"?")+" • SOLD "+(bal?.let(fmt)?:"?")
+      val detail="LIVE • MIZĂ "+(displayedStake?.let(fmt)?:"?")+" • SOLD "+(bal?.let(fmt)?:"?")
       render(reported ?: if(attempt!=null) "LIVE • TRADE OBSERVAT" else detail)
       return
     }

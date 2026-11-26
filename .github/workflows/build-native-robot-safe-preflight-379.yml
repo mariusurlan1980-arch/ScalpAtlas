@@ -2576,6 +2576,8 @@ jobs:
           preview=(d/'LiveMartingalePreview637.kt').read_text()
           assert 'createVirtualDisplay' in observer and 'openCount==0' in observer and 'openCount==1' in observer
           assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer
+          assert 'readDisplayedStake(labels)' in observer and 'displayedStake?.let(fmt)' in observer
+          assert 'permitsEdit(pending.baseline.stake,next,' in observer and 'stake,bal,snap.openCount' in observer
           assert 'applyVerifiedMg637' in s and 'editVerifiedStake637' in t
           editor=(d/'RotationPayoutReader.kt').read_text()
           assert 'ACTION_SET_TEXT' in editor and 'permitsEdit' in editor and 'after.stake!=target' in editor

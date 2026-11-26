@@ -37,5 +37,29 @@ internal object LiveMartingalePreview637 {
     previous in ladder && target != null && target in ladder &&
       current == previous && balance != null && balance == expectedBalance &&
       balance >= target && open == 0
+
+  // Read-only OCR evidence. Deliberately separate from stake-edit authorization.
+  data class VisualLabel(val text:String,val left:Float,val top:Float,val right:Float,val bottom:Float)
+  fun readDisplayedStake(labels:List<VisualLabel>):Long? {
+    val anchors=labels.filter {
+      it.left in .43f.. .82f && it.top in .60f.. .83f &&
+        it.right<=.95f && it.bottom-it.top<=.055f &&
+        Regex("""(?i)^sum[ăa]\s*:?$""").matches(it.text.trim())
+    }
+    val anchor=anchors.singleOrNull() ?: return null
+    val candidates=labels.filter {
+      it.left in (anchor.left-.045f)..(anchor.left+.15f) &&
+        it.top>=anchor.bottom-.005f && it.top<=anchor.bottom+.055f &&
+        it.bottom<=anchor.bottom+.09f && it.right<=.93f &&
+        it.bottom-it.top<=.05f
+    }.mapNotNull {
+      val m=Regex("""^\$?\s*(\d{1,5})[.,](\d{2})\s*(?:USD)?$""",RegexOption.IGNORE_CASE)
+        .matchEntire(it.text.trim()) ?: return@mapNotNull null
+      val cents=(m.groupValues[1].toLongOrNull() ?: return@mapNotNull null)*100+
+        (m.groupValues[2].toLongOrNull() ?: return@mapNotNull null)
+      cents.takeIf { it in 1L..10_000_000L }
+    }.distinct()
+    return candidates.singleOrNull()
+  }
   fun format(cents:Long):String = String.format(java.util.Locale.ROOT, "%d,%02d", cents/100L, cents%100L)
 }
