@@ -4645,9 +4645,9 @@ class ScalpOverlayService : Service() {
         lastTrendReject549 = "AȘTEAPTĂ DATE"
         visited.add(pair)
         scannedEligiblePairs.add(pair)
-        // 503: use the requested 60-second interval for EVERY pair.
+        // 503: use the requested 30-second interval for EVERY pair.
         // This is a rotation timer, NOT a relaxation of SHOCK rules.
-        dwell(pair, android.os.SystemClock.elapsedRealtime() + 60_000L, 12)
+        dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)
       }
 
       fun dwell(pair: String, deadline: Long, retries: Int) {
@@ -4662,7 +4662,7 @@ class ScalpOverlayService : Service() {
           after(minOf(remaining, 1_000L)) { dwell(pair, deadline, retries) }
           return
         }
-        // 503: no extra five-minute observation after 60 seconds.
+        // 503: no extra five-minute observation after 30 seconds.
         // Allow a few seconds ONLY if an already confirmed fresh SHOCK or
         // candidate is being verified, to avoid aborting order preflight.
         val now = System.currentTimeMillis()
