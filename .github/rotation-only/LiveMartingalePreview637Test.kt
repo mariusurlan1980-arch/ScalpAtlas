@@ -48,9 +48,11 @@ fun main(){
   val h=TradePause637()
   h.observe(1000,true);h.observe(301000,false,true)
   check(h.remaining(304000)!=null)
-  check(h.remaining(422000)==null && h.releasedUnverified)
+  check(h.remaining(422000)!=null)
+  h.observe(422000,false,true);h.observe(424500,false,true)
+  check(h.remaining(424500)==null && h.releasedUnverified)
   val k=TradePause637()
   k.observe(1000,true);k.observe(420000,true)
   check(k.remaining(422000)!=null)
-  println("PASS: 34 synthetic reader, MG and rotation protection cases")
+  println("PASS: 35 synthetic reader, MG and rotation protection cases")
 }
