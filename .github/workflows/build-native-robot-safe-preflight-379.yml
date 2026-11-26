@@ -2522,7 +2522,7 @@ jobs:
         run: |
           set -euo pipefail
           JAVA_DIR="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts"
-          for file in ScalpOverlayService.kt ScalpOverlayModule.kt TouchTestService.kt RotationPayoutReader.kt LivePageObserver637.kt LiveMartingalePreview637.kt; do
+          for file in ScalpOverlayService.kt ScalpOverlayModule.kt TouchTestService.kt RotationPayoutReader.kt LivePageObserver637.kt LiveMartingalePreview637.kt LiveWatchEye637.kt; do
             cp ".github/rotation-only/$file" "$JAVA_DIR/$file"
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$file"
           done
@@ -2554,6 +2554,11 @@ jobs:
           t=(d/'TouchTestService.kt').read_text()
           a=Path('scalp-atlas-new/App.tsx').read_text()
           assert 'DWELL_MS = 30_000L' in s and 'payout==92' in s
+          assert 'eyeWatchdog' in s and 'age>5_000L' in s and 'detail.visibility=if' in s
+          eye=(d/'LiveWatchEye637.kt').read_text()
+          assert 'postInvalidateDelayed' in eye and 'state==2' in eye
+          for forbidden in ('TouchTestService','performAction','dispatchGesture','applyStake'):
+              assert forbidden not in eye, forbidden
           assert 'onlyPair=requested,realAccount=false' in s
           assert 'if (pendingChartReads<2)' in s
           assert 'if (selectedConfirmed || current != pair || deadline==0L)' in s

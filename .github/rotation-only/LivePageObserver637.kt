@@ -19,6 +19,7 @@ internal class LivePageObserver637(
   private val context:Context,
   private val main:Handler,
   private val render:(String)->Unit,
+  private val health:(Int,Long,String)->Unit,
   private val applyStake:(String,String,Long,Long,Long)->String
 ) {
   private val worker=HandlerThread("ScalpLiveRead637")
@@ -82,11 +83,22 @@ internal class LivePageObserver637(
     val snap=TouchTestService.readLiveSnapshot637()
     val pair=TouchTestService.readVisibleFxPair(false)
     if(snap==null || pair==null){
+      health(1,captured,"Grafic QT Demo sau payout 92% neconfirmat")
       render(reported ?: "LIVE • AȘTEPT GRAFICUL")
       return
     }
     val stake=snap.stake
     val bal=snap.balance
+    // Eye state is diagnostic only: it cannot grant stake or rotation permission.
+    val screenText=blocks.joinToString(" ").uppercase(java.util.Locale.ROOT)
+    val compact=screenText.replace(Regex("""[\s()]"""),"")
+    val pairText=pair.uppercase(java.util.Locale.ROOT).replace(Regex("""[\s()]"""),"")
+    val chartText=compact.contains("QTDEMO") && compact.contains(pairText)
+    val freshChart=chartText && stake!=null && bal!=null
+    health(if(freshChart)2 else 1,captured,
+      "Pereche: "+pair+" • sumă: "+(if(stake!=null)"citită" else "necunoscută")+
+        " • sold: "+(if(bal!=null)"citit" else "necunoscut")+
+        " • poziții: "+(snap.openCount?.toString()?:"necunoscute"))
     val fmt=LiveMartingalePreview637::format
     val now=SystemClock.elapsedRealtime()
     val pending=attempt

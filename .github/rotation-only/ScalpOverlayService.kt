@@ -35,6 +35,32 @@ class ScalpOverlayService : Service() {
   private var status: TextView? = null
   private var liveStatus: TextView? = null
   private var liveReader: LivePageObserver637? = null
+  private var liveEye: LiveWatchEye637? = null
+  private var eyeDetail: TextView? = null
+  private var eyeHealth = 1
+  private var eyeFrameAt = 0L
+  private var eyeStartedAt = 0L
+  private var eyeMessage = "Aștept prima citire LIVE"
+  private var eyeFailed = false
+  private val eyeWatchdog = object: Runnable {
+    override fun run() {
+      if(stopped || panel==null)return
+      refreshEye()
+      handler.postDelayed(this,500L)
+    }
+  }
+  private fun refreshEye() {
+    val now=SystemClock.elapsedRealtime()
+    val age=if(eyeFrameAt>0L) (now-eyeFrameAt).coerceAtLeast(0L) else -1L
+    val stale=if(eyeFrameAt>0L) age>5_000L else now-eyeStartedAt>5_000L
+    val state=if(eyeFailed || stale) 0 else eyeHealth
+    liveEye?.setReadingState(state)
+    if(eyeDetail?.visibility==View.VISIBLE){
+      val name=when(state){2->"LIVE ACTIV";1->"VERIFICARE";else->"LIVE INDISPONIBIL"}
+      val detail=if(eyeFailed)"Cititorul nu a pornit" else if(stale)"Nu există citiri recente" else eyeMessage
+      eyeDetail?.text=name+" • "+(if(age>=0L) "ultima citire "+age/1000+" s" else "fără cadru")+"\n"+detail
+    }
+  }
   private var stopped = false
   private var pair: String? = null
   private var deadline = 0L
@@ -94,15 +120,22 @@ class ScalpOverlayService : Service() {
         override fun onStop() { stopSelf() }
       },handler)
       createPanel()
+      eyeStartedAt=SystemClock.elapsedRealtime()
+      handler.post(eyeWatchdog)
       // Failure of the independent reader never stops the rotation loop.
       try {
         liveReader=LivePageObserver637(this,handler,
           render={value -> handler.post{ if(!stopped)liveStatus?.text=value }},
+          health={state,at,detail -> handler.post{
+            if(!stopped && projection===p && at>=eyeFrameAt){
+              eyeHealth=state;eyeFrameAt=at;eyeMessage=detail;refreshEye()
+            }
+          }},
           applyStake={pkg,pair,old,target,balance ->
             if(stopped || projection!==p) "MG • LIVE OPRIT"
             else TouchTestService.applyVerifiedMg637(pkg,pair,old,target,balance)
           }).also{it.start(p)}
-      }catch(_:Throwable){liveReader?.close();liveReader=null;liveStatus?.text="LIVE INDISPONIBIL"}
+      }catch(_:Throwable){liveReader?.close();liveReader=null;liveStatus?.text="LIVE INDISPONIBIL";eyeFailed=true;refreshEye()}
       handler.post(loop)
     } catch (_: Throwable) { stopSelf() }
     return START_NOT_STICKY
@@ -148,8 +181,23 @@ class ScalpOverlayService : Service() {
       text="LIVE • VERIFIC";textSize=10f
       setTextColor(Color.rgb(35,46,69));gravity=Gravity.CENTER
     }
-    root.addView(liveLabel,LinearLayout.LayoutParams(-1,-2))
-    liveStatus=liveLabel
+    val liveRow=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL }
+    val detail=TextView(this).apply {
+      textSize=10f;setTextColor(Color.rgb(35,46,69));visibility=View.GONE
+    }
+    val eye=LiveWatchEye637(this).apply {
+      isClickable=true
+      isFocusable=true
+      setOnClickListener {
+        detail.visibility=if(detail.visibility==View.VISIBLE) View.GONE else View.VISIBLE
+        refreshEye()
+      }
+    }
+    liveRow.addView(eye,LinearLayout.LayoutParams(dp(32),dp(26)))
+    liveRow.addView(liveLabel,LinearLayout.LayoutParams(0,-2,1f))
+    root.addView(liveRow,LinearLayout.LayoutParams(-1,-2))
+    root.addView(detail,LinearLayout.LayoutParams(-1,-2))
+    liveStatus=liveLabel;liveEye=eye;eyeDetail=detail
     val params = WindowManager.LayoutParams(dp(180),-2,
       WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
@@ -314,6 +362,7 @@ class ScalpOverlayService : Service() {
     stopped=true; handler.removeCallbacksAndMessages(null)
     try { panel?.let { wm.removeView(it) } } catch (_: Throwable) {}
     liveReader?.close();liveReader=null;liveStatus=null
+    liveEye=null;eyeDetail=null
     panel=null; status=null
     try { projection?.stop() } catch (_: Throwable) {}
     projection=null
