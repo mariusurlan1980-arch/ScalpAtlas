@@ -61,6 +61,8 @@ class ScalpOverlayService : Service() {
       eyeDetail?.text=name+" • "+(if(age>=0L) "ultima citire "+age/1000+" s" else "fără cadru")+"\n"+detail
     }
   }
+  private val tradePause=TradePause637()
+  private var wasTradePaused=false
   private var stopped = false
   private var pair: String? = null
   private var deadline = 0L
@@ -131,6 +133,10 @@ class ScalpOverlayService : Service() {
               eyeHealth=state;eyeFrameAt=at;eyeMessage=detail;refreshEye()
             }
           }},
+          position={at,positive,quiet -> handler.post{
+            if(!stopped && projection===p)tradePause.observe(at,positive,quiet)
+          }},
+          settlement={handler.post{if(!stopped && projection===p)tradePause.settle()}},
           applyStake={pkg,pair,old,target,balance ->
             if(stopped || projection!==p) "MG • LIVE OPRIT"
             else TouchTestService.applyVerifiedMg637(pkg,pair,old,target,balance)
@@ -257,6 +263,21 @@ class ScalpOverlayService : Service() {
       cleanAccountReads++; say("VERIFIC QT DEMO"); return 1_000L
     }
     val now=SystemClock.elapsedRealtime()
+    // Check on every rotation tick, before any selector action.
+    if(TouchTestService.positiveOpenBadge637()!=null)tradePause.observe(now,true)
+    val protection=tradePause.remaining(now)
+    if(protection!=null){
+      wasTradePaused=true
+      val sec=(protection+999L)/1000L
+      say(if(sec>0L) "TRADE ACTIV • "+String.format(java.util.Locale.ROOT,"%02d:%02d",sec/60L,sec%60L)
+        else "TRADE • VERIFIC ÎNCHIDEREA")
+      return 500L
+    }
+    if(wasTradePaused){
+      wasTradePaused=false;deadline=0L;pendingPair=null;pendingChartReads=0;pendingPhysicalRetry=false
+      if(tradePause.releasedUnverified)say("REZULTAT NECITIT • FĂRĂ MG")
+      return 500L
+    }
     if (TouchTestService.fxListVisible(false)) {
       val requested=pendingPair
       if (requested != null) {

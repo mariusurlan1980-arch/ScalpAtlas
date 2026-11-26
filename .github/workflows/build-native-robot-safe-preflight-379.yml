@@ -2522,7 +2522,7 @@ jobs:
         run: |
           set -euo pipefail
           JAVA_DIR="scalp-atlas-new/android/app/src/main/java/com/scalpatlas/livealerts"
-          for file in ScalpOverlayService.kt ScalpOverlayModule.kt TouchTestService.kt RotationPayoutReader.kt LivePageObserver637.kt LiveMartingalePreview637.kt LiveWatchEye637.kt; do
+          for file in ScalpOverlayService.kt ScalpOverlayModule.kt TouchTestService.kt RotationPayoutReader.kt LivePageObserver637.kt LiveMartingalePreview637.kt LiveWatchEye637.kt TradePause637.kt; do
             cp ".github/rotation-only/$file" "$JAVA_DIR/$file"
             sed -i 's/^package com.scalpatlas.app$/package com.scalpatlas.livealerts/' "$JAVA_DIR/$file"
           done
@@ -2575,6 +2575,9 @@ jobs:
           observer=(d/'LivePageObserver637.kt').read_text()
           preview=(d/'LiveMartingalePreview637.kt').read_text()
           assert 'createVirtualDisplay' in observer and 'openCount==0' in observer and 'openCount==1' in observer
+          assert 'tradePause.remaining(now)' in s and 'TRADE ACTIV' in s
+          assert s.index('tradePause.remaining(now)') < s.index('val result=TouchTestService.navigateOpenFxList')
+          assert 'position(captured,true,false)' in observer and 'settlement()' in observer
           assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer
           assert 'readDisplayedStake(labels)' in observer and 'displayedStake?.let(fmt)' in observer
           assert 'permitsEdit(pending.baseline.stake,next,' in observer and 'stake,bal,snap.openCount' in observer
@@ -2591,7 +2594,7 @@ jobs:
 
       - name: Test MG calculation and exact stake authorization
         run: |
-          kotlinc .github/rotation-only/LiveMartingalePreview637.kt .github/rotation-only/LiveMartingalePreview637Test.kt -include-runtime -d /tmp/preview637.jar
+          kotlinc .github/rotation-only/TradePause637.kt .github/rotation-only/LiveMartingalePreview637.kt .github/rotation-only/LiveMartingalePreview637Test.kt -include-runtime -d /tmp/preview637.jar
           java -jar /tmp/preview637.jar
 
       - name: Build standalone release APK

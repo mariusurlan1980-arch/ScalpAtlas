@@ -403,6 +403,12 @@ class TouchTestService : AccessibilityService() {
     fun demoFxAccountInForeground(): Boolean =
       activeRotationNodes(false, foregroundOnly = true) != null
 
+    internal fun positiveOpenBadge637():Int? {
+      val svc=connected ?: return null
+      if(!demoFxAccountInForeground() || realFxAccountVisible() || fxListVisible(false))return null
+      return RotationPayoutReader.positiveOpenBadge637(svc)
+    }
+
     internal fun readLiveSnapshot637(): RotationPayoutReader.LiveSnapshot? {
       val svc=connected ?: return null
       if (!demoFxAccountInForeground() || realFxAccountVisible() || fxListVisible(false)) return null

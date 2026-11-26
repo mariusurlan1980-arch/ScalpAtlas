@@ -20,6 +20,8 @@ internal class LivePageObserver637(
   private val main:Handler,
   private val render:(String)->Unit,
   private val health:(Int,Long,String)->Unit,
+  private val position:(Long,Boolean,Boolean)->Unit,
+  private val settlement:()->Unit,
   private val applyStake:(String,String,Long,Long,Long)->String
 ) {
   private val worker=HandlerThread("ScalpLiveRead637")
@@ -107,6 +109,12 @@ internal class LivePageObserver637(
     // Reject conflicting sources. OCR alone is a display reading, not an editable field.
     val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
     val freshChart=chartText && displayedStake!=null && bal!=null
+    val hint=if(chartText) LiveMartingalePreview637.readPositionHint(labels)
+      else LiveMartingalePreview637.PositionHint(false,null)
+    val badge=TouchTestService.positiveOpenBadge637() ?: hint.positive
+    val positive=(snap.openCount ?: 0)>0 || badge!=null
+    val visualQuiet=hint.tabSeen && badge==null && (snap.openCount==null || snap.openCount==0)
+    position(captured,positive,visualQuiet || (snap.openCount==0 && !positive))
     val stakeDetail=when {
       displayedStake==null -> "necunoscută"
       stake==null -> "OCR (doar citire)"
@@ -120,28 +128,32 @@ internal class LivePageObserver637(
     val now=SystemClock.elapsedRealtime()
     val pending=attempt
     if(pending==null){
-      if(snap.openCount==0 && stake!=null && bal!=null && stake in LiveMartingalePreview637.ladder){
-        val current=Sample(pair,snap.pkg,stake,bal)
-        baseline=current;baselineAt=captured
-      }else if(snap.openCount==1 && stake!=null && bal!=null){
-        val previous=baseline
-        if(previous!=null && previous.pkg==snap.pkg && previous.pair==pair && previous.stake==stake &&
-            now-baselineAt in 1L..45_000L && previous.balance-bal==stake){
+      val previous=baseline
+      // A debit is precautionary evidence for pausing rotation, not permission to edit.
+      val debit=previous!=null && displayedStake!=null && bal!=null &&
+        previous.pkg==snap.pkg && previous.pair==pair && previous.stake==displayedStake &&
+        now-baselineAt in 1L..45_000L && previous.balance-bal==displayedStake
+      if(debit)position(captured,true,false)
+      if(positive || debit){
+        if(debit && previous!=null && (snap.openCount==1 || badge==1)){
           attempt=Attempt(previous,now)
           candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;reported=null
+          baseline=null
         }
-        baseline=null
-      }else if(snap.openCount!=0)baseline=null
+      }else if((snap.openCount==0 || visualQuiet) && displayedStake!=null && bal!=null &&
+          displayedStake in LiveMartingalePreview637.ladder){
+        baseline=Sample(pair,snap.pkg,displayedStake,bal);baselineAt=captured
+      }else baseline=null
       val detail="LIVE • MIZĂ "+(displayedStake?.let(fmt)?:"?")+" • SOLD "+(bal?.let(fmt)?:"?")
-      render(reported ?: if(attempt!=null) "LIVE • TRADE OBSERVAT" else detail)
+      render(if(attempt!=null || positive || debit) "LIVE • TRADE OBSERVAT • "+(bal?.let(fmt)?:"?") else reported ?: detail)
       return
     }
-    if(pending.baseline.pkg!=snap.pkg || snap.openCount?.let{it>1}==true || now-pending.opened>420_000L){
+    if(pending.baseline.pkg!=snap.pkg || pair!=pending.baseline.pair || snap.openCount?.let{it>1}==true || badge?.let{it>1}==true || now-pending.opened>420_000L){
       attempt=null;baseline=null;candidate=null;zeroAt=0
       reported="MG • REZULTAT NECONFIRMAT"
       render(reported!!);return
     }
-    if(now-pending.opened !in 240_000L..360_000L){
+    if(now-pending.opened !in 285_000L..420_000L){
       render("LIVE • AȘTEPT REZULTAT");return
     }
     val result=LiveMartingalePreview637.parse(blocks,pending.baseline.pair,pending.baseline.stake)
@@ -158,18 +170,20 @@ internal class LivePageObserver637(
     val verified=candidate
     if(confirmedResult && verified!=null){
       val before=pending.baseline.balance
-      if(snap.openCount==0 && bal!=null && bal-before==verified.net){
+      if(!positive && (snap.openCount==0 || visualQuiet) && bal!=null && bal-before==verified.net){
         if(zeroAt==0L)zeroAt=captured
         else if(captured-zeroAt>=1_000L){
           val next=LiveMartingalePreview637.next(pending.baseline.stake,verified)
           // Consume this observation before the single edit. No delayed retry.
           attempt=null;baseline=null;candidate=null;zeroAt=0;confirmedResult=false
-          val editStatus=if(next==null) "MG STOP • LIMITĂ 10"
+          val editStatus=if(verified.draw) "MG • MIZĂ PĂSTRATĂ"
+            else if(next==null) "MG STOP • LIMITĂ 10"
             else if(!LiveMartingalePreview637.permitsEdit(pending.baseline.stake,next,
               stake,bal,snap.openCount,before+verified.net)) "MG • MIZĂ NESCHIMBATĂ"
             else try { applyStake(snap.pkg,pair,pending.baseline.stake,next,bal) }
               catch(_:Throwable) { "MG • EDITARE NEVERIFICATĂ" }
-          reported=(if(verified.win)"WIN" else "LOSS")+" • "+editStatus
+          settlement()
+          reported=(if(verified.draw)"DRAW" else if(verified.win)"WIN" else "LOSS")+" • "+editStatus
           render(reported!!);return
         }
       }else zeroAt=0

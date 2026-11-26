@@ -185,4 +185,25 @@ object RotationPayoutReader {
     return "MG CONFIRMAT "+LiveMartingalePreview637.format(target)
   }
 
+
+  // Positive badge only. Its absence cannot authorize a stake edit.
+  internal fun positiveOpenBadge637(svc:AccessibilityService):Int? {
+    val chart=readChart(svc,false).first ?: return null
+    val (_,_,w,h,labels)=chart
+    val tabs=labels.filter {
+      it.rect.centerX()<w*.36f && it.rect.centerY()>h*.83f &&
+      Regex("""(?i)^(?:Tranzac[țţt]ii|Transactions|Trades)$""").matches(it.value.trim())
+    }
+    val positives=labels.filter { item ->
+      item.value.matches(Regex("""[1-9]""")) &&
+      item.rect.width()<=w*.08f && item.rect.height()<=h*.045f &&
+      tabs.any { tab ->
+        kotlin.math.abs(item.rect.centerX()-tab.rect.centerX())<w*.15f &&
+        item.rect.centerY()>=tab.rect.centerY()-h*.065f &&
+        item.rect.centerY()<=tab.rect.centerY()+h*.015f
+      }
+    }.mapNotNull{it.value.toIntOrNull()}.distinct()
+    return positives.singleOrNull().takeIf{svc.rootInActiveWindow==chart.root}
+  }
+
 }
