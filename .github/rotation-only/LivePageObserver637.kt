@@ -89,14 +89,7 @@ internal class LivePageObserver637(
       busy=true
       val visualBadge=try{LiveMartingalePreview637.bluePositionBadge(bitmap.width,bitmap.height,bitmap::getPixel)}
         catch(_:Throwable){false}
-      // Immediate positive signal even if OCR is slow or the selector is open.
-      if(visualBadge)main.post{
-        if(!closed && TouchTestService.demoFxAccountInForeground() &&
-           !TouchTestService.realFxAccountVisible()){
-          freezeEntry(captured)
-          position(captured,true,false)
-        }
-      }
+      // Color alone is not an order. Corroborate on the OCR frame.
       try{
         recognizer.process(InputImage.fromBitmap(bitmap,0))
           .addOnSuccessListener{ result ->
@@ -124,8 +117,9 @@ internal class LivePageObserver637(
     val compact=screenText.replace(Regex("""[\s()]"""),"")
     val hint=LiveMartingalePreview637.readPositionHint(labels)
     val demoFrame=compact.contains("QTDEMO") && !compact.contains("QTREAL")
-    val badge=if(demoFrame) TouchTestService.positiveOpenBadge637() ?: hint.positive
-      ?: if(visualBadge)1 else null else null
+    val marker=if(demoFrame)LiveMartingalePreview637.readActiveStake(labels) else null
+    val visualCount=LiveMartingalePreview637.confirmedVisualBadge(visualBadge,hint.positive,marker)
+    val badge=if(demoFrame) TouchTestService.positiveOpenBadge637() ?: visualCount else null
     // Positive badge must be processed BEFORE requiring a chart snapshot.
     if(demoFrame && badge!=null && TouchTestService.demoFxAccountInForeground() &&
        !TouchTestService.realFxAccountVisible()){
@@ -155,7 +149,7 @@ internal class LivePageObserver637(
     // Reject conflicting sources. OCR alone is a display reading, not an editable field.
     val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
     val freshChart=chartText && displayedStake!=null && bal!=null
-    val positive=(snap.openCount ?: 0)>0 || badge!=null || visualBadge
+    val positive=(snap.openCount ?: 0)>0 || badge!=null
     if(positive)freezeEntry(captured)
     val visualQuiet=chartText && (hint.tabSeen || snap.tradesFooterSeen) && badge==null && !visualBadge && (snap.openCount==null || snap.openCount==0)
     position(captured,positive,visualQuiet || (snap.openCount==0 && !positive))
@@ -177,17 +171,15 @@ internal class LivePageObserver637(
       val debit=chartText && previous!=null &&
         LiveMartingalePreview637.entryDebit(displayedStake,previous.balance,bal,
           captured-baselineAt,previous.pkg==snap.pkg && previous.stake==displayedStake)
-      if(debit){
-        freezeEntry(captured)
-        position(captured,true,false)
-      }
-      if(positive || debit || unmatchedActive){
+      // An exact debit supports entry verification only; it cannot start the
+      // five-minute lock. Preserve the earlier idle sample until an order appears.
+      if(positive || unmatchedActive){
         val frozen=entryLatch
-        val marker=if(chartText && positive)LiveMartingalePreview637.readActiveStake(labels) else null
+        val activeMarker=marker.takeIf{chartText && positive}
         val observedStake=when{
-          displayedStake!=null && marker!=null && displayedStake!=marker -> null
+          displayedStake!=null && activeMarker!=null && displayedStake!=activeMarker -> null
           displayedStake!=null -> displayedStake
-          else -> marker
+          else -> activeMarker
         }
         val single=(snap.openCount==1 || badge==1) &&
           (snap.openCount ?: 1)<=1 && (badge ?: 1)<=1
@@ -208,6 +200,9 @@ internal class LivePageObserver637(
             else -> "CONFIRM DEBITUL"
           }
         }
+      }else if(debit){
+        idleCandidate=null;idleCandidateAt=0L
+        // Wait for an independently confirmed order; do not replace the baseline.
       }else if(!unmatchedActive && chartText && (snap.openCount==0 || visualQuiet) &&
           displayedStake!=null && bal!=null && displayedStake in LiveMartingalePreview637.ladder){
         val current=Sample(pair,snap.pkg,displayedStake,bal)
@@ -234,6 +229,7 @@ internal class LivePageObserver637(
         attempt!=null -> "MG • TRADE MEMORAT • "+(bal?.let(fmt)?:"?")
         unmatchedActive -> "MG • "+entryFailure.ifEmpty{"SOLD INIȚIAL NECONFIRMAT"}
         armed -> "MG ARMAT • "+fmt(baseline!!.balance)+" • "+fmt(baseline!!.stake)
+        debit -> "MG • VERIFIC SOLDUL"
         !chartText -> "MG • VERIFIC GRAFICUL"
         displayedStake==null || bal==null -> "MG • VERIFIC MIZĂ/SOLD"
         !(snap.openCount==0 || visualQuiet) -> "MG • VERIFIC POZIȚIILE"

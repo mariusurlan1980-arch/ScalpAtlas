@@ -118,5 +118,16 @@ fun main(){
   check(p.readActiveStake(listOf(marker,amount))==109L)
   check(p.readActiveStake(listOf(amount))==null)
   check(p.readActiveStake(listOf(marker,marker))==null)
-  println("PASS: frozen armed balance, two entry readings, exact debit and ten stake ladder")
+  check(p.confirmedVisualBadge(false,null,null)==null)
+  check(p.confirmedVisualBadge(true,null,null)==null)
+  check(p.confirmedVisualBadge(false,1,109)==null)
+  check(p.confirmedVisualBadge(true,1,null)==1)
+  check(p.confirmedVisualBadge(true,null,109)==1)
+  check(p.confirmedVisualBadge(true,2,109)==2)
+  // A debit without a broker position must not start a trade pause.
+  val noOrder=TradePause637()
+  check(p.entryDebit(109,156569,156460,2000,true))
+  noOrder.observe(2000,p.confirmedVisualBadge(false,null,null)!=null,true)
+  check(noOrder.remaining(2000)==null)
+  println("PASS: independent order evidence, no debit-only lock, frozen balance and stake ladder")
 }

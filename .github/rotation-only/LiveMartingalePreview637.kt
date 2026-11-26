@@ -127,6 +127,10 @@ internal object LiveMartingalePreview637 {
     return false
   }
 
+  // A color or balance change alone cannot declare an active position.
+  fun confirmedVisualBadge(blue:Boolean,footerCount:Int?,chartMarker:Long?):Int? =
+    if(!blue) null else footerCount?.takeIf{it>0} ?: chartMarker?.takeIf{it in ladder}?.let{1}
+
   // Active order amount printed beside the chart marker, not the input field.
   fun readActiveStake(labels:List<VisualLabel>):Long? {
     val values=labels.filter{
