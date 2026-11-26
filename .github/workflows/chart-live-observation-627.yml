@@ -1,7 +1,7 @@
-name: 629 chart result observation replay
+name: Chart result OCR retention regression
 on:
   push:
-    branches: [test/629-real-demo-loss-badge]
+    branches: [test/chart-result-transient-ocr]
   workflow_dispatch:
 jobs:
   replay:
@@ -150,3 +150,35 @@ jobs:
           KOTLIN
           kotlinc /tmp/Badge629.kt -include-runtime -d /tmp/badge629.jar
           java -jar /tmp/badge629.jar
+
+      - name: Replay exact Kotlin sample retention predicate
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/native-overlay/ScalpOverlayService.kt').read_text()
+          p=s.split('  private fun retainChartSample631(',1)[1].split('  private fun resetChartResult619(',1)[0]
+          Path('/tmp/Retention631.kt').write_text('private fun retainChartSample631('+p)
+          h=s.split('private fun observeChartResult619(',1)[1].split('private fun retryChartBalance629(',1)[0]
+          assert 'retainChartSample631(chartResultCandidate619,attemptKey627,' in h
+          assert 'capturedAt - chartResultLastAt619 > 4_000L' in h
+          assert h.index('if (outcome == null)') < h.index('val key = attemptKey627 + outcome')
+          assert 'chartResultReads619 = 2' in h
+          PY
+          cat >> /tmp/Retention631.kt <<'KOTLIN'
+          fun main() {
+            val key = "demo|AED/CNY OTC|"
+            val sample = key + "LOSS"
+            check(retainChartSample631(sample,key,1000,1900))
+            check(retainChartSample631(sample,key,1000,5000))
+            check(!retainChartSample631(sample,key,1000,5001))
+            check(!retainChartSample631(sample,key,1000,999))
+            check(!retainChartSample631("",key,1000,1900))
+            check(!retainChartSample631(sample,"demo|EUR/USD OTC|",1000,1900))
+            check(!retainChartSample631(sample,"",1000,1900))
+            check(!retainChartSample631(sample,key,0,1900))
+            println("PASS 8 actual Kotlin OCR retention boundary cases")
+          }
+          KOTLIN
+          kotlinc /tmp/Retention631.kt -include-runtime -d /tmp/retention631.jar
+          java -jar /tmp/retention631.jar
