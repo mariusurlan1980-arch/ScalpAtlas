@@ -2011,6 +2011,10 @@ class ScalpOverlayService : Service() {
 
   // Retry auxiliary balance reading after the transient badge has disappeared.
   // The caller has verified the DEMO chart and capture age. Never authorize an order.
+  private var finalBalanceKey633 = ""
+  private var finalBalanceFirstAt633 = 0L
+  private var finalBalanceCents633 = -1L
+
   private fun retryChartBalance629(
     prefs: android.content.SharedPreferences, pkg: String, pair: String,
     wall: Long, stake: Long, outcome: String
@@ -2023,7 +2027,8 @@ class ScalpOverlayService : Service() {
         prefs.getLong("chartBalanceWall628",-1L) != wall ||
         System.currentTimeMillis() - wall !in 300_000L..345_000L) return
     if (prefs.getLong("chartBalanceComparedWall628",-1L) == wall &&
-        prefs.getString("chartBalanceComparison628",null) == "CONCORDANT") return
+        prefs.getString("chartBalanceComparison628",null) == "CONCORDANT" &&
+        prefs.getString("chartFinalBalanceAttempt633",null) == attemptKey) return
     val balanceAfter = try { TouchTestService.readVerifiedDemoBalance() }
       catch (_: Throwable) { null }
     if (balanceAfter == null || !balanceAfter.isFinite() || balanceAfter < 0.0 ||
@@ -2031,12 +2036,31 @@ class ScalpOverlayService : Service() {
         TouchTestService.activeDemoExecutorPackageForReview() != pkg ||
         TouchTestService.readVisibleDemoPair() != pair ||
         TouchTestService.realFxAccountVisible()) return
+    val cents = kotlin.math.round(balanceAfter*100).toLong()
     val comparison = compareChartBalance628(
-      prefs.getLong("chartBalanceBefore628",-1L),
-      kotlin.math.round(balanceAfter*100).toLong(),stake)
+      prefs.getLong("chartBalanceBefore628",-1L),cents,stake)
+    if (comparison != outcome) {
+      finalBalanceKey633 = ""
+      finalBalanceFirstAt633 = 0L
+      finalBalanceCents633 = -1L
+      return
+    }
+    val now = System.currentTimeMillis()
+    val sampleKey = attemptKey + outcome
+    if (finalBalanceKey633 != sampleKey || finalBalanceCents633 != cents ||
+        now - finalBalanceFirstAt633 !in 0L..8_000L) {
+      finalBalanceKey633 = sampleKey
+      finalBalanceCents633 = cents
+      finalBalanceFirstAt633 = now
+      return
+    }
+    if (now - finalBalanceFirstAt633 < 1_000L) return
     prefs.edit().putLong("chartBalanceComparedWall628",wall)
       .putString("chartBalanceComparison628",
-        if (comparison == outcome) "CONCORDANT" else "NECONFIRMAT").commit()
+        if (comparison == outcome) "CONCORDANT" else "NECONFIRMAT")
+      .putString("chartFinalBalanceAttempt633",attemptKey)
+      .putLong("chartFinalBalanceCents633",cents)
+      .putLong("chartFinalBalanceAt633",now).commit()
   }
 
   // 632: verify the actual stake debit on two independent chart reads.
@@ -2116,10 +2140,14 @@ class ScalpOverlayService : Service() {
       if (savedOutcome in listOf("WIN","LOSS") && savedAt - wall in 300_000L..345_000L) {
         if (prefs.getBoolean("chartEvidenceConflict628",false))
           return "GRAFIC • REZULTATE CONTRADICTORII"
-        val balance = if (prefs.getLong("chartBalanceComparedWall628",-1L) == wall &&
-            prefs.getString("chartBalanceComparison628",null) == "CONCORDANT")
-          "SOLD OK" else "SOLD NECONFIRMAT"
-        return "GRAFIC • " + savedOutcome + " 2/2 • " + balance + " • FĂRĂ DECONTARE"
+        val balance = prefs.getLong("chartBalanceComparedWall628",-1L) == wall &&
+            prefs.getString("chartBalanceComparison628",null) == "CONCORDANT" &&
+            prefs.getString("chartFinalBalanceAttempt633",null) == currentKey
+        val debit = prefs.getString("chartDebitAttempt632",null) == currentKey
+        return if (balance && debit)
+          "GRAFIC • " + savedOutcome + " • DEBIT/SOLD 2/2 • DOVADĂ LOCALĂ"
+        else "GRAFIC • " + savedOutcome + " 2/2 • " +
+          (if (balance) "DEBIT NECONFIRMAT" else "SOLD NECONFIRMAT") + " • FĂRĂ DECONTARE"
       }
     }
     if (chartResultObservedKey627.startsWith(currentKey) &&
