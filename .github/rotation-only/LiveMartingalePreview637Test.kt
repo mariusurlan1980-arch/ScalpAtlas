@@ -12,5 +12,12 @@ fun main(){
   check(p.ladder.sum()==157244L)
   check(p.format(109)=="1,09")
   check(p.format(228)=="2,28")
-  println("PASS: 10 synthetic preview cases")
+  check(p.permitsEdit(109,228,109,157232,0,157232))
+  check(!p.permitsEdit(109,228,109,157232,null,157232))
+  check(!p.permitsEdit(109,228,109,157232,1,157232))
+  check(!p.permitsEdit(109,228,109,157232,0,157231))
+  check(!p.permitsEdit(109,228,228,157232,0,157232))
+  check(!p.permitsEdit(109,228,109,200,0,200))
+  check(!p.permitsEdit(109,null,109,157232,0,157232))
+  println("PASS: 17 synthetic calculation and stake authorization cases")
 }

@@ -33,5 +33,9 @@ internal object LiveMartingalePreview637 {
     if(result.win) return ladder.first()
     return ladder.getOrNull(index+1)
   }
+  fun permitsEdit(previous:Long,target:Long?,current:Long?,balance:Long?,open:Int?,expectedBalance:Long):Boolean =
+    previous in ladder && target != null && target in ladder &&
+      current == previous && balance != null && balance == expectedBalance &&
+      balance >= target && open == 0
   fun format(cents:Long):String = String.format(java.util.Locale.ROOT, "%d,%02d", cents/100L, cents%100L)
 }

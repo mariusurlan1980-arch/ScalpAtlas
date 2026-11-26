@@ -22,7 +22,7 @@ export default function App(){
   }
   return <SafeAreaView style={s.page}><View style={s.inner}>
     <Text style={s.title}>SCALP ATLAS</Text><Text style={s.sub}>ROTAȚIE + CITIRE LIVE</Text>
-    <Text style={s.big}>30 s</Text><Text style={s.info}>QT Demo • payout 92% • MG propus</Text>
+    <Text style={s.big}>30 s</Text><Text style={s.info}>QT Demo • payout 92% • MG automat DEMO</Text>
     <Pressable disabled={busy} onPress={()=>run(true)} style={s.button}><Text style={s.btn}>PORNEȘTE ROTAȚIA</Text></Pressable>
     <Pressable disabled={busy} onPress={()=>run(false)} style={s.secondary}><Text style={s.white}>OPREȘTE ROTAȚIA</Text></Pressable>
     <Text style={s.info}>{message}</Text>

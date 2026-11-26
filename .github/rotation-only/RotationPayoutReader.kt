@@ -7,14 +7,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.content.Context
 import java.util.Locale
 
-/**
- * 423 - DEMO-only exact stake input editor. NO BUY, SELL, navigation, or
- * broker order gestures. Must be called ONLY after an independently verified
- * closed-trade receipt; currently the application does not have such a reader.
- *
- * Aborts on QT Real, unknown broker, uncertain amount, payout, pair or balance.
- * No coordinates are tapped: ACTION_SET_TEXT targets a verified editable node.
- */
+/** Strict QT Demo chart reads and one verified stake-field edit; no order gestures. */
 object RotationPayoutReader {
   private data class Item(val node: AccessibilityNodeInfo, val value: String, val rect: Rect)
   private data class Chart(
@@ -142,6 +135,54 @@ object RotationPayoutReader {
     }.distinct()
     if(svc.rootInActiveWindow!=chart.root) return null
     return LiveSnapshot(pkg,stakes.singleOrNull(),balances.singleOrNull(),counts.singleOrNull())
+  }
+
+
+  // One exact input edit, only after independently observed settlement.
+  internal fun editVerifiedStake637(
+    svc:AccessibilityService, expectedPackage:String, previous:Long, target:Long,
+    expectedBalance:Long, stillAuthorized:()->Boolean
+  ):String {
+    if(!stillAuthorized())return "MG • CONT NECONFIRMAT"
+    val chart=readChart(svc,false).first ?: return "MG • GRAFIC NECITIT"
+    if(chart.pkg!=expectedPackage || readChartPayout(chart).first!=92)
+      return "MG • CONT/PAYOUT NECONFIRMAT"
+    val snap=readLiveSnapshot637(svc) ?: return "MG • DATE NECITITE"
+    if(snap.pkg!=expectedPackage ||
+        !LiveMartingalePreview637.permitsEdit(previous,target,snap.stake,snap.balance,snap.openCount,expectedBalance))
+      return "MG • MIZĂ NESCHIMBATĂ"
+    val (_,_,w,h,labels)=chart
+    val anchors=labels.filter {
+      it.rect.centerX()>w*.46f && it.rect.centerY() in (h*.62f).toInt()..(h*.88f).toInt() &&
+      it.rect.width()<=w*.48f && Regex("""(?i)^Sum[ăa]\s*:?$""").matches(it.value)
+    }
+    val anchor=anchors.firstOrNull() ?: return "MG • ETICHETĂ SUMĂ NECITITĂ"
+    if(anchors.any { kotlin.math.abs(it.rect.centerY()-anchor.rect.centerY())>h*.035f ||
+      kotlin.math.abs(it.rect.centerX()-anchor.rect.centerX())>w*.15f })
+      return "MG • MAI MULTE CÂMPURI SUMĂ"
+    val inputs=labels.filter {
+      it.node.isEditable && it.node.isEnabled && it.node.isVisibleToUser &&
+      it.node.packageName?.toString()==expectedPackage &&
+      it.rect.centerX()>=anchor.rect.left-w*.04f && it.rect.centerX()<=anchor.rect.right+w*.18f &&
+      it.rect.centerY()>=anchor.rect.bottom-h*.015f && it.rect.centerY()<=anchor.rect.bottom+h*.065f &&
+      it.rect.height()<=h*.09f && exactCents637(it.value)==previous &&
+      it.node.actionList.any { a->a.id==AccessibilityNodeInfo.ACTION_SET_TEXT }
+    }.distinctBy { it.rect.toShortString() }
+    val input=inputs.singleOrNull() ?: return "MG • CÂMP SUMĂ NECONFIRMAT"
+    if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root)
+      return "MG • GRAFIC SCHIMBAT"
+    if(previous!=target){
+      val payload=Bundle()
+      payload.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+        String.format(Locale.ROOT,"%d.%02d",target/100L,target%100L))
+      val sent=try{input.node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,payload)}catch(_:Throwable){false}
+      if(!sent)return "MG • EDITARE REFUZATĂ"
+    }
+    val after=readLiveSnapshot637(svc)
+    if(!stillAuthorized() || after==null || after.pkg!=expectedPackage ||
+        after.stake!=target || after.balance!=expectedBalance || after.openCount!=0)
+      return "MG • EDITARE NEVERIFICATĂ"
+    return "MG CONFIRMAT "+LiveMartingalePreview637.format(target)
   }
 
 }

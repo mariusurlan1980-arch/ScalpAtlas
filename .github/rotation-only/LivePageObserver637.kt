@@ -14,11 +14,12 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
-/** Read-only screen observer. The rotation controller never waits on it. */
+/** Independent observer with one verified demo stake edit after settlement. */
 internal class LivePageObserver637(
   private val context:Context,
   private val main:Handler,
-  private val render:(String)->Unit
+  private val render:(String)->Unit,
+  private val applyStake:(String,String,Long,Long,Long)->String
 ) {
   private val worker=HandlerThread("ScalpLiveRead637")
   private var reader:ImageReader?=null
@@ -92,11 +93,11 @@ internal class LivePageObserver637(
     if(pending==null){
       if(snap.openCount==0 && stake!=null && bal!=null && stake in LiveMartingalePreview637.ladder){
         val current=Sample(pair,snap.pkg,stake,bal)
-        if(baseline!=current){baseline=current;baselineAt=now}
+        baseline=current;baselineAt=captured
       }else if(snap.openCount==1 && stake!=null && bal!=null){
         val previous=baseline
         if(previous!=null && previous.pkg==snap.pkg && previous.pair==pair && previous.stake==stake &&
-            now-baselineAt in 1_000L..45_000L && previous.balance-bal==stake){
+            now-baselineAt in 1L..45_000L && previous.balance-bal==stake){
           attempt=Attempt(previous,now)
           candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;reported=null
         }
@@ -132,9 +133,14 @@ internal class LivePageObserver637(
         if(zeroAt==0L)zeroAt=captured
         else if(captured-zeroAt>=1_000L){
           val next=LiveMartingalePreview637.next(pending.baseline.stake,verified)
-          reported=(if(verified.win)"WIN" else "LOSS")+" • "+
-            (next?.let{"MG PROPUS "+fmt(it)}?:"MG STOP • 10 LOSS")
-          attempt=null;baseline=null;candidate=null;zeroAt=0
+          // Consume this observation before the single edit. No delayed retry.
+          attempt=null;baseline=null;candidate=null;zeroAt=0;confirmedResult=false
+          val editStatus=if(next==null) "MG STOP • LIMITĂ 10"
+            else if(!LiveMartingalePreview637.permitsEdit(pending.baseline.stake,next,
+              stake,bal,snap.openCount,before+verified.net)) "MG • MIZĂ NESCHIMBATĂ"
+            else try { applyStake(snap.pkg,pair,pending.baseline.stake,next,bal) }
+              catch(_:Throwable) { "MG • EDITARE NEVERIFICATĂ" }
+          reported=(if(verified.win)"WIN" else "LOSS")+" • "+editStatus
           render(reported!!);return
         }
       }else zeroAt=0

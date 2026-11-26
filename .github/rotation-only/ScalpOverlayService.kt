@@ -16,7 +16,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 
-/** Independent rotation and read-only live preview. No orders or automatic stake edits. */
+/** Independent rotation, live reader and guarded QT Demo stake edit. No orders. */
 class ScalpOverlayService : Service() {
   companion object {
     const val ACTION_START = "com.scalpatlas.app.START_OVERLAY"
@@ -94,9 +94,12 @@ class ScalpOverlayService : Service() {
       createPanel()
       // Failure of the independent reader never stops the rotation loop.
       try {
-        liveReader=LivePageObserver637(this,handler){ value ->
-          handler.post{ if(!stopped)liveStatus?.text=value }
-        }.also{it.start(p)}
+        liveReader=LivePageObserver637(this,handler,
+          render={value -> handler.post{ if(!stopped)liveStatus?.text=value }},
+          applyStake={pkg,pair,old,target,balance ->
+            if(stopped || projection!==p) "MG • LIVE OPRIT"
+            else TouchTestService.applyVerifiedMg637(pkg,pair,old,target,balance)
+          }).also{it.start(p)}
       }catch(_:Throwable){liveReader?.close();liveReader=null;liveStatus?.text="LIVE INDISPONIBIL"}
       handler.post(loop)
     } catch (_: Throwable) { stopSelf() }

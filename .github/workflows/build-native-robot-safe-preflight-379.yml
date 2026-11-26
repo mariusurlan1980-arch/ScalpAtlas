@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 637 - rotation and live reader preview
+name: Build Scalp Atlas 637 - rotation live and demo MG
 
 on:
   push:
@@ -24,6 +24,7 @@ on:
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.native.tsx'
       - '.github/templates/ScalpAtlasAnalyzerBridgeV0416.web.tsx'
       - '.github/native-overlay/**'
+      - '.github/rotation-only/**'
       - '.github/scripts/patch_live_v327_closed_candles.py'
       - '.github/scripts/verify_live_v327_gate.py'
       - '.github/scripts/patch_live_v327_bell_toggle.py'
@@ -2544,7 +2545,7 @@ jobs:
                   node.set(ns+'label','Scalp Atlas Rotație')
           tree.write(p,encoding='utf-8',xml_declaration=True)
           q=Path('scalp-atlas-new/android/app/src/main/res/values/scalp_touch_test_strings.xml')
-          q.write_text('<?xml version="1.0" encoding="utf-8"?><resources><string name="touch_test_accessibility_description">Schimbă doar perechile valutare QT Demo, cu payout 92%, fără ordine sau modificarea mizei.</string></resources>',encoding='utf-8')
+          q.write_text('<?xml version="1.0" encoding="utf-8"?><resources><string name="touch_test_accessibility_description">Schimbă perechile QT Demo la payout 92% și editează suma numai după un rezultat LIVE verificat. Nu plasează ordine.</string></resources>',encoding='utf-8')
           PY
           python3 - <<'PY'
           from pathlib import Path
@@ -2564,13 +2565,19 @@ jobs:
           observer=(d/'LivePageObserver637.kt').read_text()
           preview=(d/'LiveMartingalePreview637.kt').read_text()
           assert 'createVirtualDisplay' in observer and 'openCount==0' in observer and 'openCount==1' in observer
-          assert 'bal-before==verified.net' in observer and 'MG PROPUS' in observer
+          assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer
+          assert 'applyVerifiedMg637' in s and 'editVerifiedStake637' in t
+          editor=(d/'RotationPayoutReader.kt').read_text()
+          assert 'ACTION_SET_TEXT' in editor and 'permitsEdit' in editor and 'after.stake!=target' in editor
+          assert 'if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root)' in editor
+          for forbidden in ('dispatchGesture','ACTION_CLICK','performGlobalAction','advanceDemoHistory'):
+              assert forbidden not in editor, forbidden
           for forbidden in ('dispatchGesture','performAction','ACTION_SET_TEXT','pressVerifiedDemoStakeOnce429','advanceDemoHistory','getSharedPreferences'):
               assert forbidden not in observer and forbidden not in preview, forbidden
-          print('PASS independent local reader and calculation-only MG; no stake edits or order paths')
+          print('PASS independent reader, guarded stake editor, no order paths')
           PY
 
-      - name: Test read-only MG preview
+      - name: Test MG calculation and exact stake authorization
         run: |
           kotlinc .github/rotation-only/LiveMartingalePreview637.kt .github/rotation-only/LiveMartingalePreview637Test.kt -include-runtime -d /tmp/preview637.jar
           java -jar /tmp/preview637.jar
