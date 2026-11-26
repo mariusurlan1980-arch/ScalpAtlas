@@ -22,6 +22,7 @@ internal class LivePageObserver637(
   private val health:(Int,Long,String)->Unit,
   private val position:(Long,Boolean,Boolean)->Unit,
   private val settlement:()->Unit,
+  private val stakeReadback:(String,String,Long?,Long?,Long,Boolean)->Unit,
   private val applyStake:(String,String,Long,Long,Long)->String
 ) {
   private val worker=HandlerThread("ScalpLiveRead637")
@@ -126,7 +127,8 @@ internal class LivePageObserver637(
     val hint=LiveMartingalePreview637.readPositionHint(labels)
     val demoFrame=compact.contains("QTDEMO") && !compact.contains("QTREAL")
     val marker=if(demoFrame)LiveMartingalePreview637.readActiveStake(labels) else null
-    val visualCount=LiveMartingalePreview637.confirmedVisualBadge(visualBadge,hint.positive,marker)
+    val visualCount=LiveMartingalePreview637.confirmedVisualBadge(visualBadge,
+      LiveMartingalePreview637.readBadgeCount(labels) ?: hint.positive,marker)
     val badge=if(demoFrame) TouchTestService.positiveOpenBadge637() ?: visualCount else null
     // Positive badge must be processed BEFORE requiring a chart snapshot.
     if(demoFrame && badge!=null && TouchTestService.demoFxAccountInForeground() &&
@@ -161,6 +163,7 @@ internal class LivePageObserver637(
     if(positive)freezeEntry(captured)
     val visualQuiet=chartText && (hint.tabSeen || snap.tradesFooterSeen) && badge==null && !visualBadge && (snap.openCount==null || snap.openCount==0)
     position(captured,positive,visualQuiet || (snap.openCount==0 && !positive))
+    stakeReadback(snap.pkg,pair,displayedStake,bal,captured,chartText && !positive && (snap.openCount==0 || visualQuiet))
     val stakeDetail=when {
       displayedStake==null -> "necunoscută"
       stake==null -> "OCR (doar citire)"
@@ -236,6 +239,7 @@ internal class LivePageObserver637(
       render(when {
         attempt!=null -> "MG • TRADE MEMORAT • "+(bal?.let(fmt)?:"?")
         unmatchedActive -> "MG • "+entryFailure.ifEmpty{"SOLD INIȚIAL NECONFIRMAT"}
+        reported!=null -> reported!!
         armed -> "MG ARMAT • "+fmt(baseline!!.balance)+" • "+fmt(baseline!!.stake)
         debit -> "MG • VERIFIC SOLDUL"
         !chartText -> "MG • VERIFIC GRAFICUL"

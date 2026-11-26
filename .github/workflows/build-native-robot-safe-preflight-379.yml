@@ -2601,7 +2601,9 @@ jobs:
           assert 'permitsEdit(old,next,displayedStake,bal,0,' in observer
           assert 'applyVerifiedMg637' in s and 'editVerifiedStake637' in t
           editor=(d/'RotationPayoutReader.kt').read_text()
-          assert 'ACTION_SET_TEXT' in editor and 'permitsEdit' in editor and 'after.stake!=target' in editor
+          assert 'ACTION_SET_TEXT' in editor and 'permitsEdit' in editor and 'MG • SET_TEXT TRIMIS' in editor
+          assert 'EditReadback' in preview and 'stakeReadback' in observer and 'verifyingMg' in s
+          assert 'mgEditBlocked' in s and 'readBadgeCount' in preview
           assert 'visualClosureVerified' in editor and 'positiveOpenBadge637(svc)==null' in editor
           assert 'if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)' in editor
           for forbidden in ('dispatchGesture','ACTION_CLICK','performGlobalAction','advanceDemoHistory'):

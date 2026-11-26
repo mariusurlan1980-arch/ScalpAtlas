@@ -141,6 +141,24 @@ internal object LiveMartingalePreview637 {
   fun confirmedVisualBadge(blue:Boolean,footerCount:Int?,chartMarker:Long?):Int? =
     if(!blue) null else footerCount?.takeIf{it>0} ?: chartMarker?.takeIf{it in ladder}?.let{1}
   fun shouldPauseForBadge(blue:Boolean):Boolean=blue
+  fun readBadgeCount(labels:List<VisualLabel>):Int? {
+    val numbers=labels.filter {
+      it.left>=.185f && it.right<=.255f && it.top>=.865f && it.bottom<=.915f &&
+        it.right-it.left<=.055f && it.bottom-it.top<=.04f
+    }.mapNotNull{it.text.trim().takeIf{s->s.matches(Regex("""[1-9][0-9]?"""))}?.toIntOrNull()}.distinct()
+    return numbers.singleOrNull()
+  }
+  // Asynchronous verification: never confuse a requested amount with a confirmed amount.
+  class EditReadback(val target:Long,val started:Long){
+    private var firstAt:Long?=null
+    fun observe(value:Long?,at:Long,quiet:Boolean):Boolean{
+      if(!quiet || value!=target || at-started !in 0L..12_000L){firstAt=null;return false}
+      val first=firstAt
+      if(first==null || at-first>4_000L){firstAt=at;return false}
+      return at-first>=1_000L
+    }
+    fun expired(now:Long)=now-started>12_000L
+  }
 
   // Active order amount printed beside the chart marker, not the input field.
   fun readActiveStake(labels:List<VisualLabel>):Long? {

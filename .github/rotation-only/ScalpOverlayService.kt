@@ -67,8 +67,13 @@ class ScalpOverlayService : Service() {
   private var latestQuietFrame=0L
   private data class QueuedMg(val pkg:String,val pair:String,val old:Long,val target:Long,val balance:Long)
   private var queuedMg:QueuedMg?=null
+  private var verifyingMg:Pair<QueuedMg,LiveMartingalePreview637.EditReadback>?=null
+  private var mgEditBlocked:String?=null
   private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
-    if(positive)queuedMg=null
+    if(positive){
+      queuedMg=null
+      if(verifyingMg!=null){verifyingMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"}
+    }
     if(at<latestPositionFrame && !positive)return
     latestPositionFrame=maxOf(at,latestPositionFrame)
     latestQuietFrame=if(!positive && quiet)at else 0L
@@ -150,6 +155,17 @@ class ScalpOverlayService : Service() {
             }else handler.post{if(!stopped && projection===p)observeTrade(at,positive,quiet)}
           },
           settlement={handler.post{if(!stopped && projection===p)tradePause.settle()}},
+          stakeReadback={pkg,pair,value,balance,at,quiet ->
+            val pending=verifyingMg
+            if(!stopped && projection===p && pending!=null && Looper.myLooper()==handler.looper){
+              val (request,check)=pending
+              if(check.observe(value,at,quiet && pkg==request.pkg && pair==request.pair && balance==request.balance)){
+                verifyingMg=null;mgEditBlocked=null
+                val msg="MG CONFIRMAT "+LiveMartingalePreview637.format(request.target)
+                liveReader?.reportEdit(msg);liveStatus?.text=msg
+              }
+            }
+          },
           applyStake={pkg,pair,old,target,balance ->
             if(stopped || projection!==p) "MG • LIVE OPRIT"
             else if(Looper.myLooper()!=handler.looper || !tradePause.isLocked()) "MG • FĂRĂ AUTORIZARE"
@@ -305,11 +321,28 @@ class ScalpOverlayService : Service() {
           TouchTestService.applyVerifiedMg637(request.pkg,request.pair,request.old,request.target,request.balance,
             visualClosureVerified=true)
         else "MG • EDITARE BLOCATĂ"
-        liveStatus?.text=result
-        liveReader?.reportEdit(result)
+        if(result=="MG • SET_TEXT TRIMIS"){
+          verifyingMg=request to LiveMartingalePreview637.EditReadback(request.target,now)
+        }else{
+          mgEditBlocked=result+" • ȚINTĂ "+LiveMartingalePreview637.format(request.target)
+        }
+        liveStatus?.text=mgEditBlocked ?: result
+        liveReader?.reportEdit(mgEditBlocked ?: result)
       }
-      say("ÎNCHIDERE CONFIRMATĂ • REIAU ROTAȚIA")
+      say(if(verifyingMg!=null)"MG • VERIFIC MIZA" else if(mgEditBlocked!=null)"MG • MIZĂ NECONFIRMATĂ" else "ÎNCHIDERE CONFIRMATĂ • REIAU ROTAȚIA")
       return 500L
+    }
+    val verification=verifyingMg
+    if(verification!=null){
+      if(verification.second.expired(now)){
+        verifyingMg=null
+        mgEditBlocked="MG • MIZĂ NEVERIFICATĂ • ȚINTĂ "+LiveMartingalePreview637.format(verification.first.target)
+        liveReader?.reportEdit(mgEditBlocked!!)
+      }
+      say("MG • VERIFIC MIZA");return 500L
+    }
+    if(mgEditBlocked!=null){
+      say("MG • MIZĂ NECONFIRMATĂ");liveStatus?.text=mgEditBlocked;return 1_000L
     }
     // No new selector actions while LIVE has not supplied a recent position frame.
     if(latestPositionFrame==0L || now-latestPositionFrame>3_500L){

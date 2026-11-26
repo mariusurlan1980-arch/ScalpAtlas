@@ -122,7 +122,7 @@ object RotationPayoutReader {
     val stakes=if(anchor==null || captions.any{
       kotlin.math.abs(it.rect.centerY()-anchor.rect.centerY())>h*.035f
     }) emptyList() else labels.filter{
-      it.node.isEditable && it.node.isEnabled &&
+      it.node.isEnabled && it.node.actionList.any{a->a.id==AccessibilityNodeInfo.ACTION_SET_TEXT} &&
       it.rect.centerX()>=anchor.rect.left-w*.04f && it.rect.centerX()<=anchor.rect.right+w*.18f &&
       it.rect.centerY()>=anchor.rect.bottom-h*.015f && it.rect.centerY()<=anchor.rect.bottom+h*.065f
     }.mapNotNull{exactCents637(it.value)}.distinct()
@@ -158,6 +158,7 @@ object RotationPayoutReader {
       return "MG • CONT/PAYOUT NECONFIRMAT"
     val snap=readLiveSnapshot637(svc) ?: return "MG • DATE NECITITE"
     val open=snap.openCount ?: if(visualClosureVerified && positiveOpenBadge637(svc)==null)0 else null
+    if(snap.stake==null)return "MG • CÂMP SUMĂ FĂRĂ EDITARE"
     if(snap.pkg!=expectedPackage ||
         !LiveMartingalePreview637.permitsEdit(previous,target,snap.stake,snap.balance,open,expectedBalance))
       return "MG • MIZĂ NESCHIMBATĂ"
@@ -171,7 +172,7 @@ object RotationPayoutReader {
       kotlin.math.abs(it.rect.centerX()-anchor.rect.centerX())>w*.15f })
       return "MG • MAI MULTE CÂMPURI SUMĂ"
     val inputs=labels.filter {
-      it.node.isEditable && it.node.isEnabled && it.node.isVisibleToUser &&
+      it.node.isEnabled && it.node.isVisibleToUser &&
       it.node.packageName?.toString()==expectedPackage &&
       it.rect.centerX()>=anchor.rect.left-w*.04f && it.rect.centerX()<=anchor.rect.right+w*.18f &&
       it.rect.centerY()>=anchor.rect.bottom-h*.015f && it.rect.centerY()<=anchor.rect.bottom+h*.065f &&
@@ -188,12 +189,9 @@ object RotationPayoutReader {
       val sent=try{input.node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,payload)}catch(_:Throwable){false}
       if(!sent)return "MG • EDITARE REFUZATĂ"
     }
-    val after=readLiveSnapshot637(svc)
-    if(!stillAuthorized() || after==null || after.pkg!=expectedPackage ||
-        after.stake!=target || after.balance!=expectedBalance ||
-        (after.openCount ?: if(visualClosureVerified && positiveOpenBadge637(svc)==null)0 else -1)!=0)
-      return "MG • EDITARE NEVERIFICATĂ"
-    return "MG CONFIRMAT "+LiveMartingalePreview637.format(target)
+    // The broker's UI may update asynchronously. The caller verifies two
+    // fresh, matching chart readings before allowing rotation to resume.
+    return "MG • SET_TEXT TRIMIS"
   }
 
 
