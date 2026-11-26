@@ -115,6 +115,31 @@ internal object LiveMartingalePreview637 {
       java.text.Normalizer.Form.NFD).replace(Regex("""\p{M}"""),"")
     return Regex("""^(?:tranzactii|transactions|trades)(?:\s*[:·]?\s*[0-9]{1,3})?$""").matches(folded)
   }
+  // Read only the account balance in the top-right broker header.
+  // Require a decimal amount, never the overlay's old balance or a chart price.
+  fun readHeaderBalance(labels:List<VisualLabel>):Long? {
+    val values=labels.filter{
+      it.left>=.48f && it.right<=.88f && it.top>=.045f && it.bottom<=.135f &&
+        it.bottom-it.top<=.045f
+    }.mapNotNull{
+      val raw=it.text.trim().removePrefix("$").trim()
+      val normalized=when {
+        Regex("""^\d{1,3}(,\d{3})+\.\d{2}$""").matches(raw)->raw.replace(",","")
+        Regex("""^\d{1,3}(\.\d{3})+,\d{2}$""").matches(raw)->raw.replace(".","").replace(",",".")
+        Regex("""^\d{1,7}[.,]\d{2}$""").matches(raw)->raw.replace(",",".")
+        else->return@mapNotNull null
+      }
+      val parts=normalized.split(".")
+      val whole=parts[0].toLongOrNull() ?: return@mapNotNull null
+      val frac=parts[1].toLongOrNull() ?: return@mapNotNull null
+      whole*100L+frac
+    }.distinct()
+    return values.singleOrNull()
+  }
+  fun stableIdleSample(previousBalance:Long?,previousStake:Long?,balance:Long,stake:Long,
+    age:Long,sameAccount:Boolean):Boolean =
+    sameAccount && previousBalance==balance && previousStake==stake && age in 1_000L..15_000L
+
   data class PositionHint(val tabSeen:Boolean,val positive:Int?)
   fun readPositionHint(labels:List<VisualLabel>):PositionHint {
     val tabs=labels.filter {

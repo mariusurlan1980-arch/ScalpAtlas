@@ -117,13 +117,17 @@ internal class LivePageObserver637(
     if(snap==null || pair==null){
       if(badge==null)position(captured,false,false)
       zeroAt=0L;zeroLastAt=0L;zeroResult=null
-      idleCandidate=null;idleCandidateAt=0L
+      if(captured-idleCandidateAt>15_000L){idleCandidate=null;idleCandidateAt=0L}
       health(1,captured,if(badge!=null)"Trade activ • selector deschis" else "Grafic QT Demo sau payout 92% neconfirmat")
       render(if(badge!=null)"LIVE • TRADE ACTIV • ÎNCHIDE LISTA" else reported ?: "LIVE • AȘTEPT GRAFICUL")
       return
     }
     val stake=snap.stake
-    val bal=snap.balance
+    // OCR and accessibility may refer to different moments just after a tap.
+    // Use the balance from the captured frame, rejecting conflicting reads.
+    val visualBalance=if(demoFrame)LiveMartingalePreview637.readHeaderBalance(labels) else null
+    val bal=if(visualBalance!=null && snap.balance!=null && visualBalance!=snap.balance)
+      null else visualBalance ?: snap.balance
     // Eye state is diagnostic only: it cannot grant stake or rotation permission.
     val pairText=pair.uppercase(java.util.Locale.ROOT).replace(Regex("""[\s()]"""),"")
     val chartText=compact.contains("QTDEMO") && compact.contains(pairText)
@@ -142,7 +146,8 @@ internal class LivePageObserver637(
     health(if(freshChart)2 else 1,captured,
       "Pereche: "+pair+" • sumă: "+stakeDetail+
         " • sold: "+(if(bal!=null)"citit" else "necunoscut")+
-        " • poziții: "+(snap.openCount?.toString()?:"necunoscute"))
+        " • poziții: "+(snap.openCount?.toString() ?: if(visualQuiet)"liber vizual" else "necunoscute")+
+        " • MG: "+(if(baseline!=null)"sold memorat" else "aștept sold stabil"))
     val fmt=LiveMartingalePreview637::format
     val now=SystemClock.elapsedRealtime()
     val pending=attempt
@@ -168,15 +173,17 @@ internal class LivePageObserver637(
           displayedStake!=null && bal!=null && displayedStake in LiveMartingalePreview637.ladder){
         val current=Sample(pair,snap.pkg,displayedStake,bal)
         val idle=idleCandidate
-        if(idle!=null && idle.pkg==current.pkg && idle.stake==current.stake &&
-            idle.balance==current.balance && captured-idleCandidateAt in 1_000L..5_000L){
+        if(idle!=null && LiveMartingalePreview637.stableIdleSample(idle.balance,idle.stake,
+            current.balance,current.stake,captured-idleCandidateAt,idle.pkg==current.pkg)){
           baseline=current;baselineAt=captured
+          idleCandidate=current;idleCandidateAt=captured
+        }else if(idle==null || idle.pkg!=current.pkg || idle.stake!=current.stake ||
+          idle.balance!=current.balance || captured-idleCandidateAt>15_000L){
+          idleCandidate=current;idleCandidateAt=captured
         }
-        idleCandidate=current;idleCandidateAt=captured
       }else {
-        idleCandidate=null;idleCandidateAt=0L
-        // Preserve a recent known balance across brief selector transitions,
-        // but not across a detected active trade of unknown origin.
+        if(captured-idleCandidateAt>15_000L){idleCandidate=null;idleCandidateAt=0L}
+        // Briefly unreadable OCR frames do not discard a verified idle sample.
       }
       val detail="LIVE • MIZĂ "+(displayedStake?.let(fmt)?:"?")+" • SOLD "+(bal?.let(fmt)?:"?")
       val armed=baseline?.let{
