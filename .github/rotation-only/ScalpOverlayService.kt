@@ -214,7 +214,7 @@ class ScalpOverlayService : Service() {
         refreshEye()
       }
     }
-    liveRow.addView(eye,LinearLayout.LayoutParams(dp(32),dp(26)))
+    liveRow.addView(eye,LinearLayout.LayoutParams(dp(44),dp(32)))
     liveRow.addView(liveLabel,LinearLayout.LayoutParams(0,-2,1f))
     root.addView(liveRow,LinearLayout.LayoutParams(-1,-2))
     root.addView(detail,LinearLayout.LayoutParams(-1,-2))

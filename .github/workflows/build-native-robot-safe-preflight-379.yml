@@ -2557,6 +2557,8 @@ jobs:
           assert 'eyeWatchdog' in s and 'age>5_000L' in s and 'detail.visibility=if' in s
           eye=(d/'LiveWatchEye637.kt').read_text()
           assert 'postInvalidateDelayed' in eye and 'state==2' in eye
+          assert 'now%8_000L' in eye and 'now%7_600L' in eye and 'drawArc' in eye
+          assert 'LinearLayout.LayoutParams(dp(44),dp(32))' in s
           for forbidden in ('TouchTestService','performAction','dispatchGesture','applyStake'):
               assert forbidden not in eye, forbidden
           assert 'onlyPair=requested,realAccount=false' in s
