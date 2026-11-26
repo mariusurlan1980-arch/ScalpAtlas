@@ -1864,6 +1864,46 @@ class TouchTestService : AccessibilityService() {
         else elapsed >= 5 * 60_000L
     }
 
+    // 634: An explicit account-wide open-position count, not a missing
+    // badge, an empty chart, a historical result, or a balance inference.
+    internal fun parseExplicitOpenCount634(labels: List<String>): Int? {
+      val prefix = Regex("""(?i)^(?:open (?:positions|trades)|poziții deschise|pozitii deschise|tranzacții deschise|tranzactii deschise)\s*:\s*(\d{1,4})$""")
+      val suffix = Regex("""(?i)^(\d{1,4})\s+(?:open (?:positions|trades)|poziții deschise|pozitii deschise|tranzacții deschise|tranzactii deschise)$""")
+      val counts = labels.mapNotNull { raw ->
+        val value = raw.trim().replace(Regex("""\s+"""), " ")
+        (prefix.matchEntire(value) ?: suffix.matchEntire(value))?.groupValues?.get(1)?.toIntOrNull()
+      }.distinct()
+      return counts.singleOrNull()
+    }
+
+    fun inspectExplicitZeroOpenOnDemoChart634(expectedPackage: String, expectedPair: String): Boolean {
+      val svc = connected ?: return false
+      val root = svc.rootInActiveWindow ?: return false
+      if (root.packageName?.toString() != expectedPackage ||
+          !BrokerAdapterRegistry.hasDemoExecutor(expectedPackage) ||
+          !demoFxAccountInForeground() || realFxAccountVisible() ||
+          readVisibleDemoPair() != expectedPair ||
+          readFxChartPayout(expectedPair,false) != 92) return false
+      val queue = ArrayDeque<AccessibilityNodeInfo>()
+      queue.add(root)
+      val labels = ArrayList<String>()
+      var visited = 0
+      while (queue.isNotEmpty() && visited++ < 350) {
+        val node = queue.removeFirst()
+        if (node.isVisibleToUser && node.packageName?.toString() == expectedPackage) {
+          node.text?.toString()?.let { labels.add(it.take(120)) }
+          node.contentDescription?.toString()?.let { labels.add(it.take(120)) }
+        }
+        for (i in 0 until node.childCount.coerceAtMost(40))
+          node.getChild(i)?.let(queue::addLast)
+      }
+      if (queue.isNotEmpty() || parseExplicitOpenCount634(labels) != 0 ||
+          inspectVisibleDemoOpenBadgeReadOnly().startsWith("QT DEMO • INDICATOR ")) return false
+      return svc.rootInActiveWindow?.packageName?.toString() == expectedPackage &&
+        demoFxAccountInForeground() && !realFxAccountVisible() &&
+        readVisibleDemoPair() == expectedPair
+    }
+
     fun inspectVisibleDemoOpenBadgeReadOnly(): String {
       val svc = connected ?: return "CONT NECUNOSCUT • ACCESIBILITATE OPRITĂ"
       val root = readOnlyBrokerRoot(svc)
