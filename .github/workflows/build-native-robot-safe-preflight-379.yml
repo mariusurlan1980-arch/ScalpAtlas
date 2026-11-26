@@ -1,4 +1,4 @@
-name: Build Scalp Atlas 630 DEMO chart-only diagnostics
+name: Build Scalp Atlas 631 DEMO chart-only diagnostics
 
 on:
   push:
@@ -148,7 +148,7 @@ jobs:
           expo['version']='3.3.1'
           expo['orientation']='default'
           expo['android']['package']='com.scalpatlas.livealerts'
-          expo['android']['versionCode']=630
+          expo['android']['versionCode']=631
           expo['ios']['bundleIdentifier']='com.scalpatlas.livealerts'
           permissions=expo['android'].setdefault('permissions',[])
           permissions[:]=[v for v in permissions if v!='CAMERA']
@@ -233,7 +233,7 @@ jobs:
           grep -Fq 'putBoolean("freePosition500", false)' .github/native-overlay/ScalpOverlayService.kt
           # 503: use a strict 30s normal rotation, with no 501 adaptive
           # 5-minute observation. Keep independent order/receipt protections.
-          grep -Fq 'dwell(pair, android.os.SystemClock.elapsedRealtime() + 60_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
+          grep -Fq 'dwell(pair, android.os.SystemClock.elapsedRealtime() + 30_000L, 12)' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'mayObserveLonger501' .github/native-overlay/ScalpOverlayService.kt
           ! grep -Fq 'extendedM5Dwell501' .github/native-overlay/ScalpOverlayService.kt
           # 504: stale internal HTML analyzer may reload only while fresh
@@ -2625,11 +2625,11 @@ jobs:
           fi
           unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
           test "$(stat -c %s "$APK")" -lt 95000000
-          cp "$APK" ScalpAtlas-630-DEMO-CHART-TEST-G24.apk
+          cp "$APK" ScalpAtlas-631-DEMO-CHART-TEST-G24.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ScalpAtlas-630-DEMO-CHART-TEST-G24
-          path: ScalpAtlas-630-DEMO-CHART-TEST-G24.apk
+          name: ScalpAtlas-631-DEMO-CHART-TEST-G24
+          path: ScalpAtlas-631-DEMO-CHART-TEST-G24.apk
           if-no-files-found: error
           retention-days: 30
