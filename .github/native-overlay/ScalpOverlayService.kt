@@ -1934,13 +1934,20 @@ class ScalpOverlayService : Service() {
         if (prefs.getString("chartEvidenceAttempt628",null) == attemptKey627)
           prefs.edit().putBoolean("chartEvidenceConflict628",true).commit()
         chartResultConflict627 = true
+        resetChartResult619()
+        return
       } else if (prefs.getString("chartEvidenceAttempt628",null) == attemptKey627 &&
           prefs.getLong("chartEvidenceAt628",-1L) - wall in 300_000L..345_000L) {
         val saved = prefs.getString("chartEvidenceOutcome628",null)
         if (saved != null && saved in listOf("WIN","LOSS"))
           retryChartBalance629(prefs,pkg,pair,wall,stake,saved)
       }
-      resetChartResult619()
+      // A single unreadable OCR frame must not erase the first valid
+      // sample of a short-lived receipt. Retain it only on the same verified
+      // DEMO attempt, for at most four seconds. A missing frame never counts.
+      if (!chartResultCandidate619.startsWith(attemptKey627) ||
+          capturedAt - chartResultLastAt619 !in 0L..4_000L)
+        resetChartResult619()
       return
     }
     val key = attemptKey627 + outcome
@@ -1976,7 +1983,8 @@ class ScalpOverlayService : Service() {
       chartResultConflict627 = false
     }
     if (chartResultCandidate619 != key ||
-        capturedAt - chartResultFirstAt619 !in 0L..8_000L) {
+        capturedAt - chartResultFirstAt619 !in 0L..8_000L ||
+        capturedAt - chartResultLastAt619 > 4_000L) {
       chartResultCandidate619 = key
       chartResultFirstAt619 = capturedAt
       chartResultReads619 = 1
