@@ -141,15 +141,16 @@ object RotationPayoutReader {
   // One exact input edit, only after independently observed settlement.
   internal fun editVerifiedStake637(
     svc:AccessibilityService, expectedPackage:String, previous:Long, target:Long,
-    expectedBalance:Long, stillAuthorized:()->Boolean
+    expectedBalance:Long, visualClosureVerified:Boolean, stillAuthorized:()->Boolean
   ):String {
     if(!stillAuthorized())return "MG • CONT NECONFIRMAT"
     val chart=readChart(svc,false).first ?: return "MG • GRAFIC NECITIT"
     if(chart.pkg!=expectedPackage || readChartPayout(chart).first!=92)
       return "MG • CONT/PAYOUT NECONFIRMAT"
     val snap=readLiveSnapshot637(svc) ?: return "MG • DATE NECITITE"
+    val open=snap.openCount ?: if(visualClosureVerified && positiveOpenBadge637(svc)==null)0 else null
     if(snap.pkg!=expectedPackage ||
-        !LiveMartingalePreview637.permitsEdit(previous,target,snap.stake,snap.balance,snap.openCount,expectedBalance))
+        !LiveMartingalePreview637.permitsEdit(previous,target,snap.stake,snap.balance,open,expectedBalance))
       return "MG • MIZĂ NESCHIMBATĂ"
     val (_,_,w,h,labels)=chart
     val anchors=labels.filter {
@@ -169,7 +170,7 @@ object RotationPayoutReader {
       it.node.actionList.any { a->a.id==AccessibilityNodeInfo.ACTION_SET_TEXT }
     }.distinctBy { it.rect.toShortString() }
     val input=inputs.singleOrNull() ?: return "MG • CÂMP SUMĂ NECONFIRMAT"
-    if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root)
+    if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)
       return "MG • GRAFIC SCHIMBAT"
     if(previous!=target){
       val payload=Bundle()
@@ -180,7 +181,8 @@ object RotationPayoutReader {
     }
     val after=readLiveSnapshot637(svc)
     if(!stillAuthorized() || after==null || after.pkg!=expectedPackage ||
-        after.stake!=target || after.balance!=expectedBalance || after.openCount!=0)
+        after.stake!=target || after.balance!=expectedBalance ||
+        (after.openCount ?: if(visualClosureVerified && positiveOpenBadge637(svc)==null)0 else -1)!=0)
       return "MG • EDITARE NEVERIFICATĂ"
     return "MG CONFIRMAT "+LiveMartingalePreview637.format(target)
   }

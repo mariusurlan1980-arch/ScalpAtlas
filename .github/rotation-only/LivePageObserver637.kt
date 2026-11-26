@@ -40,6 +40,8 @@ internal class LivePageObserver637(
   private var candidateAt=0L
   private var confirmedResult=false
   private var zeroAt=0L
+  private var zeroLastAt=0L
+  private var zeroResult:LiveMartingalePreview637.Result?=null
   private var reported:String?=null
 
   fun start(projection:MediaProjection) {
@@ -111,6 +113,7 @@ internal class LivePageObserver637(
     val pair=TouchTestService.readVisibleFxPair(false)
     if(snap==null || pair==null){
       if(badge==null)position(captured,false,false)
+      zeroAt=0L;zeroLastAt=0L;zeroResult=null
       health(1,captured,if(badge!=null)"Trade activ • selector deschis" else "Grafic QT Demo sau payout 92% neconfirmat")
       render(if(badge!=null)"LIVE • TRADE ACTIV • ÎNCHIDE LISTA" else reported ?: "LIVE • AȘTEPT GRAFICUL")
       return
@@ -149,7 +152,7 @@ internal class LivePageObserver637(
       if(positive || debit){
         if(debit && previous!=null && (snap.openCount==1 || badge==1)){
           attempt=Attempt(previous,now)
-          candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;reported=null
+          candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;zeroLastAt=0;zeroResult=null;reported=null
           baseline=null
         }
       }else if((snap.openCount==0 || visualQuiet) && displayedStake!=null && bal!=null &&
@@ -177,31 +180,39 @@ internal class LivePageObserver637(
       if(candidate==null){candidate=result;candidateAt=captured}
       else if(captured-candidateAt>=1_000L) confirmedResult=true
     }
-    // Retain two matching receipt samples while reading two independent
-    // zero-open balances. Missing OCR never counts as a receipt.
-    val verified=candidate
-    if(confirmedResult && verified!=null){
-      val before=pending.baseline.balance
-      if(!positive && (snap.openCount==0 || visualQuiet) && bal!=null && bal-before==verified.net){
-        if(zeroAt==0L)zeroAt=captured
-        else if(captured-zeroAt>=1_000L){
-          val next=LiveMartingalePreview637.next(pending.baseline.stake,verified)
-          // Consume this observation before the single edit. No delayed retry.
-          attempt=null;baseline=null;candidate=null;zeroAt=0;confirmedResult=false
-          val editStatus=if(verified.draw) "MG • MIZĂ PĂSTRATĂ"
-            else if(next==null) "MG STOP • LIMITĂ 10"
-            else if(!LiveMartingalePreview637.permitsEdit(pending.baseline.stake,next,
-              stake,bal,snap.openCount,before+verified.net)) "MG • MIZĂ NESCHIMBATĂ"
-            else try { applyStake(snap.pkg,pair,pending.baseline.stake,next,bal) }
-              catch(_:Throwable) { "MG • EDITARE NEVERIFICATĂ" }
-          settlement()
-          reported=(if(verified.draw)"DRAW" else if(verified.win)"WIN" else "LOSS")+" • "+editStatus
-          render(reported!!);return
-        }
-      }else zeroAt=0
-    }
-    render("LIVE • AȘTEPT DOVADĂ WIN/LOSS")
+    // No ephemeral receipt is required if the one observed debit and stable
+    // post-expiry balance agree exactly and the visible Trades badge is gone.
+    val before=pending.baseline.balance
+    val quiet=chartText && !positive && (snap.openCount==0 || visualQuiet)
+    val inferred=bal?.let{LiveMartingalePreview637.settledBalance(pair,pending.baseline.stake,before,it,
+      now-pending.opened,quiet)}
+    val verified=if(inferred!=null && (candidate==null || candidate==inferred)) inferred else null
+    if(verified!=null && displayedStake==pending.baseline.stake && bal!=null && bal-before==verified.net){
+      if(zeroResult!=verified || zeroAt==0L || captured-zeroLastAt>4_000L){
+        zeroResult=verified;zeroAt=captured
+      }
+      zeroLastAt=captured
+      if(captured-zeroAt>=3_000L){
+        val next=LiveMartingalePreview637.next(pending.baseline.stake,verified)
+        val old=pending.baseline.stake
+        // Consume this trade once. The overlay performs one edit only after
+        // releasing the existing five-minute protection.
+        attempt=null;baseline=null;candidate=null;zeroAt=0;zeroLastAt=0;zeroResult=null;confirmedResult=false
+        val editStatus=if(verified.draw) "MG • MIZĂ PĂSTRATĂ"
+          else if(next==null) "MG STOP • LIMITĂ 10"
+          else if(!LiveMartingalePreview637.permitsEdit(old,next,displayedStake,bal,0,before+verified.net))
+            "MG • MIZĂ NESCHIMBATĂ"
+          else try { applyStake(snap.pkg,pair,old,next,bal) }
+            catch(_:Throwable) { "MG • EDITARE NEVERIFICATĂ" }
+        settlement()
+        reported=(if(verified.draw)"DRAW" else if(verified.win)"WIN" else "LOSS")+" • "+editStatus
+        render(reported!!);return
+      }
+    }else {zeroAt=0;zeroLastAt=0;zeroResult=null}
+    render(if(positive)"LIVE • TRADE ACTIV" else "LIVE • VERIFIC SOLD FINAL")
   }
+
+  fun reportEdit(value:String){reported=value;render(value)}
 
   fun close(){
     closed=true

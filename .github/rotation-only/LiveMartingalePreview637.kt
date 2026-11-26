@@ -29,6 +29,18 @@ internal object LiveMartingalePreview637 {
     }.distinct()
     return candidates.singleOrNull()
   }
+  // Requires an observed single entry debit, an unchanged account/pair and
+  // independently repeated empty chart readings AFTER the full expiry.
+  fun settledBalance(pair:String,stake:Long,before:Long,after:Long,age:Long,quiet:Boolean):Result? {
+    if(stake !in ladder || age<300_000L || !quiet || before<stake || after<0L)return null
+    val net=after-before
+    return when {
+      net == -stake -> Result(pair,net,false)
+      net == 0L -> Result(pair,net,false,true)
+      net in (stake*92/100)..((stake*92+99)/100) -> Result(pair,net,true)
+      else -> null
+    }
+  }
   fun next(stake: Long, result: Result): Long? {
     val index=ladder.indexOf(stake)
     if(index<0) return null

@@ -415,7 +415,7 @@ class TouchTestService : AccessibilityService() {
       return RotationPayoutReader.readLiveSnapshot637(svc)
     }
 
-    internal fun applyVerifiedMg637(pkg:String,pair:String,previous:Long,target:Long,balance:Long):String {
+    internal fun applyVerifiedMg637(pkg:String,pair:String,previous:Long,target:Long,balance:Long,visualClosureVerified:Boolean=false):String {
       val svc=connected ?: return "MG • ACCESIBILITATE INDISPONIBILĂ"
       val allowed={
         connected===svc && demoFxAccountInForeground() &&
@@ -423,7 +423,7 @@ class TouchTestService : AccessibilityService() {
           !fxListVisible(false) && readVisibleFxPair(false)==pair
       }
       if(!allowed())return "MG • QT DEMO NECONFIRMAT"
-      return RotationPayoutReader.editVerifiedStake637(svc,pkg,previous,target,balance,allowed)
+      return RotationPayoutReader.editVerifiedStake637(svc,pkg,previous,target,balance,visualClosureVerified,allowed)
     }
 
     fun readFxChartPayout(pair: String, realAccount: Boolean): Int? {

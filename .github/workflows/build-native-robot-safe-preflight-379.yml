@@ -2557,7 +2557,7 @@ jobs:
           assert 'eyeWatchdog' in s and 'age>5_000L' in s and 'detail.visibility=if' in s
           eye=(d/'LiveWatchEye637.kt').read_text()
           assert 'postInvalidateDelayed' in eye and 'state==2' in eye
-          assert 'now%8_000L' in eye and 'now%7_600L' in eye and 'drawArc' in eye
+          assert 'now%7_600L' in eye and 'drawArc' in eye and 'Color.rgb(12,192,235)' in eye
           assert 'LinearLayout.LayoutParams(dp(44),dp(32))' in s
           for forbidden in ('TouchTestService','performAction','dispatchGesture','applyStake'):
               assert forbidden not in eye, forbidden
@@ -2580,7 +2580,7 @@ jobs:
           assert 'tradePause.remaining(now)' in s and 'TRADE ACTIV' in s
           pause=(d/'TradePause637.kt').read_text()
           assert 'age>=300_000L && quiet && settled' in pause and 'age>=420_000L' not in pause
-          assert 'queuedMg=QueuedMg' in s and 'if(!tradePause.isLocked() &&' in s
+          assert 'queuedMg=QueuedMg' in s and 'if(!tradePause.isLocked() &&' in s and 'freshQuiet' in s
           assert s.index('tradePause.remaining(now)') < s.index('TouchTestService.applyVerifiedMg637(request.pkg')
           assert s.index('tradePause.remaining(now)') < s.index('val result=TouchTestService.navigateOpenFxList')
           assert 'position(captured,true,false)' in observer and 'settlement()' in observer
@@ -2589,11 +2589,13 @@ jobs:
           assert 'latestPositionFrame' in s
           assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer
           assert 'readDisplayedStake(labels)' in observer and 'displayedStake?.let(fmt)' in observer
-          assert 'permitsEdit(pending.baseline.stake,next,' in observer and 'stake,bal,snap.openCount' in observer
+          assert 'settledBalance' in observer and 'captured-zeroAt>=3_000L' in observer
+          assert 'permitsEdit(old,next,displayedStake,bal,0,' in observer
           assert 'applyVerifiedMg637' in s and 'editVerifiedStake637' in t
           editor=(d/'RotationPayoutReader.kt').read_text()
           assert 'ACTION_SET_TEXT' in editor and 'permitsEdit' in editor and 'after.stake!=target' in editor
-          assert 'if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root)' in editor
+          assert 'visualClosureVerified' in editor and 'positiveOpenBadge637(svc)==null' in editor
+          assert 'if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)' in editor
           for forbidden in ('dispatchGesture','ACTION_CLICK','performGlobalAction','advanceDemoHistory'):
               assert forbidden not in editor, forbidden
           for forbidden in ('dispatchGesture','performAction','ACTION_SET_TEXT','pressVerifiedDemoStakeOnce429','advanceDemoHistory','getSharedPreferences'):

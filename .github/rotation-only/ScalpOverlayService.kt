@@ -64,12 +64,14 @@ class ScalpOverlayService : Service() {
   private val tradePause=TradePause637()
   private var wasTradePaused=false
   private var latestPositionFrame=0L
+  private var latestQuietFrame=0L
   private data class QueuedMg(val pkg:String,val pair:String,val old:Long,val target:Long,val balance:Long)
   private var queuedMg:QueuedMg?=null
   private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
     if(positive)queuedMg=null
     if(at<latestPositionFrame && !positive)return
     latestPositionFrame=maxOf(at,latestPositionFrame)
+    latestQuietFrame=if(!positive && quiet)at else 0L
     tradePause.observe(at,positive,quiet)
   }
   private var stopped = false
@@ -296,12 +298,15 @@ class ScalpOverlayService : Service() {
       // The guard has released only after verified closure. Recheck open count
       // and the current graph independently immediately before a single edit.
       if(request!=null){
-        val result=if(!tradePause.isLocked() &&
+        val freshQuiet=latestQuietFrame>0L && now-latestQuietFrame in 0L..3_000L
+        val result=if(!tradePause.isLocked() && freshQuiet &&
           TouchTestService.positiveOpenBadge637()==null &&
-          TouchTestService.readLiveSnapshot637()?.openCount==0)
-          TouchTestService.applyVerifiedMg637(request.pkg,request.pair,request.old,request.target,request.balance)
+          TouchTestService.readLiveSnapshot637()?.let{it.openCount==null || it.openCount==0}==true)
+          TouchTestService.applyVerifiedMg637(request.pkg,request.pair,request.old,request.target,request.balance,
+            visualClosureVerified=true)
         else "MG • EDITARE BLOCATĂ"
         liveStatus?.text=result
+        liveReader?.reportEdit(result)
       }
       say("ÎNCHIDERE CONFIRMATĂ • REIAU ROTAȚIA")
       return 500L
