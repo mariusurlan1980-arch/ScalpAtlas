@@ -38,6 +38,8 @@ internal class LivePageObserver637(
   private var idleCandidate:Sample?=null
   private var idleCandidateAt=0L
   private var unmatchedActive=false
+  private var entryLatch:LiveMartingalePreview637.EntryLatch?=null
+  private var entryFailure=""
   private var attempt:Attempt?=null
   private var candidate:LiveMartingalePreview637.Result?=null
   private var candidateAt=0L
@@ -46,6 +48,18 @@ internal class LivePageObserver637(
   private var zeroLastAt=0L
   private var zeroResult:LiveMartingalePreview637.Result?=null
   private var reported:String?=null
+
+  // Runs on the main handler, before reading any post-tap chart fields.
+  private fun freezeEntry(at:Long) {
+    if(attempt!=null || unmatchedActive)return
+    unmatchedActive=true
+    val saved=baseline
+    if(saved!=null && at-baselineAt in 0L..45_000L){
+      entryLatch=LiveMartingalePreview637.EntryLatch(saved.pkg,saved.stake,saved.balance,at)
+      entryFailure="AȘTEPT DEBITUL"
+    }else entryFailure="SOLD INIȚIAL NECONFIRMAT"
+    idleCandidate=null;idleCandidateAt=0L
+  }
 
   fun start(projection:MediaProjection) {
     val m=context.resources.displayMetrics
@@ -78,7 +92,10 @@ internal class LivePageObserver637(
       // Immediate positive signal even if OCR is slow or the selector is open.
       if(visualBadge)main.post{
         if(!closed && TouchTestService.demoFxAccountInForeground() &&
-           !TouchTestService.realFxAccountVisible())position(captured,true,false)
+           !TouchTestService.realFxAccountVisible()){
+          freezeEntry(captured)
+          position(captured,true,false)
+        }
       }
       try{
         recognizer.process(InputImage.fromBitmap(bitmap,0))
@@ -111,7 +128,10 @@ internal class LivePageObserver637(
       ?: if(visualBadge)1 else null else null
     // Positive badge must be processed BEFORE requiring a chart snapshot.
     if(demoFrame && badge!=null && TouchTestService.demoFxAccountInForeground() &&
-       !TouchTestService.realFxAccountVisible())position(captured,true,false)
+       !TouchTestService.realFxAccountVisible()){
+      freezeEntry(captured)
+      position(captured,true,false)
+    }
     val snap=TouchTestService.readLiveSnapshot637()
     val pair=TouchTestService.readVisibleFxPair(false)
     if(snap==null || pair==null){
@@ -136,6 +156,7 @@ internal class LivePageObserver637(
     val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
     val freshChart=chartText && displayedStake!=null && bal!=null
     val positive=(snap.openCount ?: 0)>0 || badge!=null || visualBadge
+    if(positive)freezeEntry(captured)
     val visualQuiet=chartText && (hint.tabSeen || snap.tradesFooterSeen) && badge==null && !visualBadge && (snap.openCount==null || snap.openCount==0)
     position(captured,positive,visualQuiet || (snap.openCount==0 && !positive))
     val stakeDetail=when {
@@ -156,18 +177,36 @@ internal class LivePageObserver637(
       val debit=chartText && previous!=null &&
         LiveMartingalePreview637.entryDebit(displayedStake,previous.balance,bal,
           captured-baselineAt,previous.pkg==snap.pkg && previous.stake==displayedStake)
-      // Never overwrite the last idle balance with the just-debited balance.
-      // A confirmed entry can happen immediately after rotating to another pair.
-      if(debit)position(captured,true,false)
-      if(positive || debit){
-        idleCandidate=null;idleCandidateAt=0L
-        unmatchedActive=true
-        if(debit && previous!=null && (snap.openCount==1 || badge==1)){
-          val actual=Sample(pair,snap.pkg,previous.stake,previous.balance)
-          attempt=Attempt(actual,captured)
-          unmatchedActive=false
-          candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;zeroLastAt=0;zeroResult=null;reported=null
-          baseline=null
+      if(debit){
+        freezeEntry(captured)
+        position(captured,true,false)
+      }
+      if(positive || debit || unmatchedActive){
+        val frozen=entryLatch
+        val marker=if(chartText && positive)LiveMartingalePreview637.readActiveStake(labels) else null
+        val observedStake=when{
+          displayedStake!=null && marker!=null && displayedStake!=marker -> null
+          displayedStake!=null -> displayedStake
+          else -> marker
+        }
+        val single=(snap.openCount==1 || badge==1) &&
+          (snap.openCount ?: 1)<=1 && (badge ?: 1)<=1
+        if(frozen!=null && chartText && positive){
+          if(frozen.verify(pair,snap.pkg,observedStake,bal,captured,single)){
+            val actual=Sample(pair,snap.pkg,frozen.stake,frozen.before)
+            attempt=Attempt(actual,frozen.detectedAt)
+            unmatchedActive=false;entryLatch=null;entryFailure=""
+            candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;zeroLastAt=0;zeroResult=null;reported=null
+            baseline=null
+          }else entryFailure=when {
+            captured-frozen.detectedAt>45_000L -> "DEBIT NECONFIRMAT"
+            observedStake==null -> "AȘTEPT MIZA ORDINULUI"
+            observedStake!=frozen.stake -> "MIZĂ DIFERITĂ"
+            bal==null -> "AȘTEPT SOLDUL DUPĂ ORDIN"
+            frozen.before-bal!=frozen.stake -> "DEBIT DIFERIT"
+            !single -> "NUMĂR ORDINE NECONFIRMAT"
+            else -> "CONFIRM DEBITUL"
+          }
         }
       }else if(!unmatchedActive && chartText && (snap.openCount==0 || visualQuiet) &&
           displayedStake!=null && bal!=null && displayedStake in LiveMartingalePreview637.ladder){
@@ -193,7 +232,7 @@ internal class LivePageObserver637(
       }==true
       render(when {
         attempt!=null -> "MG • TRADE MEMORAT • "+(bal?.let(fmt)?:"?")
-        unmatchedActive -> "MG • SOLD INIȚIAL NECONFIRMAT"
+        unmatchedActive -> "MG • "+entryFailure.ifEmpty{"SOLD INIȚIAL NECONFIRMAT"}
         armed -> "MG ARMAT • "+fmt(baseline!!.balance)+" • "+fmt(baseline!!.stake)
         !chartText -> "MG • VERIFIC GRAFICUL"
         displayedStake==null || bal==null -> "MG • VERIFIC MIZĂ/SOLD"
@@ -203,7 +242,7 @@ internal class LivePageObserver637(
       return
     }
     if(pending.baseline.pkg!=snap.pkg || pair!=pending.baseline.pair || snap.openCount?.let{it>1}==true || badge?.let{it>1}==true || now-pending.opened>420_000L){
-      attempt=null;baseline=null;candidate=null;zeroAt=0;unmatchedActive=true
+      attempt=null;baseline=null;candidate=null;zeroAt=0;unmatchedActive=true;entryFailure="REZULTAT NECONFIRMAT"
       reported="MG • REZULTAT NECONFIRMAT"
       render(reported!!);return
     }
@@ -213,7 +252,7 @@ internal class LivePageObserver637(
     val result=LiveMartingalePreview637.parse(blocks,pending.baseline.pair,pending.baseline.stake)
     if(result!=null){
       if(candidate!=null && candidate!=result){
-        attempt=null;baseline=null;candidate=null;unmatchedActive=true;reported="MG • DATE CONTRADICTORII"
+        attempt=null;baseline=null;candidate=null;unmatchedActive=true;entryFailure="DATE CONTRADICTORII";reported="MG • DATE CONTRADICTORII"
         render(reported!!);return
       }
       if(candidate==null){candidate=result;candidateAt=captured}
@@ -237,7 +276,7 @@ internal class LivePageObserver637(
         // Consume this trade once. The overlay performs one edit only after
         // releasing the existing five-minute protection.
         attempt=null;baseline=null;candidate=null;zeroAt=0;zeroLastAt=0;zeroResult=null;confirmedResult=false
-        unmatchedActive=false;idleCandidate=null;idleCandidateAt=0L
+        unmatchedActive=false;entryLatch=null;entryFailure="";idleCandidate=null;idleCandidateAt=0L
         val editStatus=if(verified.draw) "MG • MIZĂ PĂSTRATĂ"
           else if(next==null) "MG STOP • LIMITĂ 10"
           else if(!LiveMartingalePreview637.permitsEdit(old,next,displayedStake,bal,0,before+verified.net))

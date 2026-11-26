@@ -35,6 +35,23 @@ internal object LiveMartingalePreview637 {
     sameAccount && stake!=null && stake in ladder && before!=null && after!=null &&
       age in 0L..45_000L && before>=stake && before-after==stake
 
+  // Keep the original, already-armed balance for the whole entry transition.
+  // A missing OCR field is not an authorization; verify exact debit twice.
+  class EntryLatch(val pkg:String,val stake:Long,val before:Long,val detectedAt:Long){
+    private var firstAt:Long?=null
+    private var firstPair:String?=null
+    fun verify(pair:String,account:String,visibleStake:Long?,balance:Long?,at:Long,single:Boolean):Boolean {
+      if(account!=pkg || at-detectedAt !in 0L..45_000L || !single ||
+        !entryDebit(visibleStake,before,balance,at-detectedAt,account==pkg) || visibleStake!=stake){
+        firstAt=null;firstPair=null;return false
+      }
+      val previous=firstAt
+      if(previous==null || firstPair!=pair || at-previous>10_000L){
+        firstAt=at;firstPair=pair;return false
+      }
+      return at-previous>=1_000L
+    }
+  }
   // Requires an observed single entry debit, an unchanged account/pair and
   // independently repeated empty chart readings AFTER the full expiry.
   fun settledBalance(pair:String,stake:Long,before:Long,after:Long,age:Long,quiet:Boolean):Result? {
@@ -108,6 +125,21 @@ internal object LiveMartingalePreview637 {
       }
     }
     return false
+  }
+
+  // Active order amount printed beside the chart marker, not the input field.
+  fun readActiveStake(labels:List<VisualLabel>):Long? {
+    val values=labels.filter{
+      it.left>=.15f && it.right<=.83f && it.top>=.19f && it.bottom<=.69f &&
+        it.bottom-it.top<=.055f
+    }.mapNotNull{
+      val m=Regex("""^[▲▼△▽↗↘]?\s*\$\s*(\d{1,5})[.,](\d{2})$""")
+        .matchEntire(it.text.trim()) ?: return@mapNotNull null
+      val whole=m.groupValues[1].toLongOrNull() ?: return@mapNotNull null
+      val fraction=m.groupValues[2].toLongOrNull() ?: return@mapNotNull null
+      (whole*100L+fraction).takeIf{it in ladder}
+    }
+    return values.singleOrNull()
   }
 
   fun isTradesFooter(text:String):Boolean {
