@@ -78,6 +78,27 @@ internal object LiveMartingalePreview637 {
     if(result.win) return ladder.first()
     return ladder.getOrNull(index+1)
   }
+  // Calculator input is a broker-owned string, not Android's IME.
+  // Refuse a sequence if a key produces anything other than its expected echo.
+  data class CalculatorKey(val key:String,val before:String,val after:String)
+  fun calculatorKeys(from:String,target:Long):List<CalculatorKey>? {
+    if(!Regex("""\d{1,5}\.\d{2}""").matches(from) || target !in ladder)return null
+    val desired=String.format(java.util.Locale.ROOT,"%d.%02d",target/100L,target%100L)
+    val prefix=from.zip(desired).takeWhile{it.first==it.second}.size
+    val steps=mutableListOf<CalculatorKey>()
+    var current=from
+    while(current.length>prefix){
+      val next=current.dropLast(1)
+      steps.add(CalculatorKey("DELETE",current,next))
+      current=next
+    }
+    for(ch in desired.drop(prefix)){
+      val next=current+ch
+      steps.add(CalculatorKey(ch.toString(),current,next))
+      current=next
+    }
+    return steps
+  }
   fun permitsEdit(previous:Long,target:Long?,current:Long?,balance:Long?,open:Int?,expectedBalance:Long):Boolean =
     previous in ladder && target != null && target in ladder &&
       current == previous && balance != null && balance == expectedBalance &&

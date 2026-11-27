@@ -1,5 +1,12 @@
 package com.scalpatlas.app
 fun main(){
+  check(LiveMartingalePreview637.calculatorKeys("1.09",228L)?.map{it.key}==
+    listOf("DELETE","DELETE","DELETE","DELETE","2",".","2","8"))
+  check(LiveMartingalePreview637.calculatorKeys("2.28",109L)?.last()?.after=="1.09")
+  check(LiveMartingalePreview637.calculatorKeys("1.09",109L)?.isEmpty()==true)
+  check(LiveMartingalePreview637.calculatorKeys("1.09",999999L)==null)
+  check(LiveMartingalePreview637.calculatorKeys("x",228L)==null)
+
   val p=LiveMartingalePreview637
   val pair="AED/CNY OTC"
   check(p.parse(listOf("AED/CNY OTC WIN Profit net: +1.00"),pair,109)?.let{p.next(109,it)}==109L)

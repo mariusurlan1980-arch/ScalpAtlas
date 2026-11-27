@@ -2,6 +2,8 @@ package com.scalpatlas.app
 
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect
+import android.graphics.Path
+import android.accessibilityservice.GestureDescription
 import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import android.content.Context
@@ -161,7 +163,7 @@ object RotationPayoutReader {
   // One exact input edit, only after independently observed settlement.
   internal fun editVerifiedStake637(
     svc:AccessibilityService, expectedPackage:String, previous:Long, target:Long,
-    expectedBalance:Long, visualClosureVerified:Boolean, allowOpen:Boolean, stillAuthorized:()->Boolean
+    expectedBalance:Long, visualClosureVerified:Boolean, allowOpen:Boolean, overlayBounds:Rect, stillAuthorized:()->Boolean
   ):String {
     if(!stillAuthorized())return "MG • CONT NECONFIRMAT"
     val chart=readChart(svc,false).first ?: return "MG • GRAFIC NECITIT"
@@ -206,10 +208,18 @@ object RotationPayoutReader {
         }
         found
       }.distinctBy{val r=Rect();it.getBoundsInScreen(r);r.toShortString()}
-      val control=targets.singleOrNull() ?: return "MG • CONTROL SUMĂ NEIDENTIFICAT"
+      if(targets.size>1)return "MG • MAI MULTE CONTROALE SUMĂ"
+      val control=targets.singleOrNull()
       if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)
         return "MG • GRAFIC SCHIMBAT"
-      val opened=try{control.performAction(AccessibilityNodeInfo.ACTION_CLICK)}catch(_:Throwable){false}
+      val opened=if(control!=null)try{control.performAction(AccessibilityNodeInfo.ACTION_CLICK)}catch(_:Throwable){false}
+        else {
+          val field=amounts.map{it.rect}.distinct().singleOrNull()
+            ?:return "MG • CONTROL SUMĂ NEIDENTIFICAT"
+          // The exact observed amount label is above SELL, not a fixed coordinate.
+          if(field.bottom>=sellTop || field.left<w*.48f)return "MG • CONTROL SUMĂ NEIDENTIFICAT"
+          tapAmountPoint637(svc,chart,field.centerX(),field.centerY(),overlayBounds,stillAuthorized)
+        }
       return if(opened)"MG • EDITOR DESCHIS" else "MG • DESCHIDERE REFUZATĂ"
     }
     if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)
@@ -226,6 +236,108 @@ object RotationPayoutReader {
     return "MG • SET_TEXT TRIMIS"
   }
 
+
+  private fun tapAmountPoint637(svc:AccessibilityService,chart:Chart,x:Int,y:Int,
+    overlay:Rect,allowed:()->Boolean):Boolean {
+    if(x !in 1 until chart.w || y !in 1 until chart.h || overlay.contains(x,y) ||
+      !allowed() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)return false
+    val path=Path().apply{moveTo(x.toFloat(),y.toFloat())}
+    val gesture=GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path,0L,70L)).build()
+    return try{svc.dispatchGesture(gesture,null,null)}catch(_:Throwable){false}
+  }
+
+  class CalculatorSession(val previous:Long,val target:Long){
+    val steps=LiveMartingalePreview637.calculatorKeys(
+      String.format(Locale.ROOT,"%d.%02d",previous/100L,previous%100L),target).orEmpty()
+    var index=0
+    var sentAt=0L
+    var closing=false
+  }
+
+  internal fun calculatorStep637(svc:AccessibilityService,expectedPackage:String,expectedBalance:Long,
+    session:CalculatorSession,now:Long,overlay:Rect,allowed:()->Boolean):String {
+    if(!allowed())return "MG • CONT NECONFIRMAT"
+    val chart=readChart(svc,false).first ?: return "MG • CALCULATOR NECITIT"
+    if(chart.pkg!=expectedPackage || readChartPayout(chart).first!=92 ||
+      positiveOpenBadge637(svc)!=null)return "MG • CONT/PAYOUT/ORDIN NECONFIRMAT"
+    val (_,_,w,h,labels)=chart
+    val header=labels.map{LiveMartingalePreview637.VisualLabel(it.value,it.rect.left.toFloat()/w,
+      it.rect.top.toFloat()/h,it.rect.right.toFloat()/w,it.rect.bottom.toFloat()/h)}
+    val balance=LiveMartingalePreview637.readHeaderBalance(header)
+    if(balance!=expectedBalance || balance<session.target)return "MG • SOLD NECONFIRMAT"
+    if((readLiveSnapshot637(svc)?.openCount ?: 0)>0)return "MG • ORDIN ACTIV"
+    val calculator=labels.filter{it.value.equals("Calculator",true) &&
+      it.rect.centerY() in (h*.37f).toInt()..(h*.50f).toInt() && it.rect.left<w*.40f}
+      .distinctBy{it.rect.toShortString()}.singleOrNull()
+    if(calculator==null){
+      if(session.closing && readLiveSnapshot637(svc)?.stake==session.target)
+        return "MG • SET_TEXT TRIMIS"
+      return "MG • CALCULATOR NECONFIRMAT"
+    }
+    val history=labels.filter{it.value.equals("Istoric tranzacții",true) ||
+      it.value.equals("Istoric tranzactii",true) || it.value.equals("Trade history",true)}
+      .filter{it.rect.top>calculator.rect.bottom && it.rect.bottom<h*.72f}
+      .distinctBy{it.rect.toShortString()}.singleOrNull() ?: return "MG • PANOU CALCULATOR NECONFIRMAT"
+    val keys=mutableMapOf<String,Rect>()
+    val rows=listOf(listOf("7","8","9"),listOf("4","5","6"),listOf("1","2","3"),listOf(".","0"))
+    for(row in rows)for(key in row){
+      val matches=labels.filter{it.value.trim()==key && it.rect.top>calculator.rect.bottom &&
+        it.rect.bottom<history.rect.top && it.rect.left>=w*.08f && it.rect.right<=w*.92f &&
+        it.rect.height()<=h*.06f}.map{it.rect}.distinct()
+      keys[key]=matches.singleOrNull() ?: return "MG • TASTE CALCULATOR NECONFIRMATE"
+    }
+    val rowY=rows.map{row->keys.getValue(row.first()).centerY()}
+    if(rowY.zipWithNext().any{(a,b)->b-a !in (h*.025f).toInt()..(h*.065f).toInt()})
+      return "MG • RÂNDURI CALCULATOR NECONFIRMATE"
+    val columns=listOf(keys.getValue("7").centerX(),keys.getValue("8").centerX(),keys.getValue("9").centerX())
+    if(columns.zipWithNext().any{(a,b)->b-a !in (w*.15f).toInt()..(w*.32f).toInt()})
+      return "MG • COLOANE CALCULATOR NECONFIRMATE"
+    for((ri,row) in rows.withIndex())for((ci,key) in row.withIndex()){
+      val rect=keys.getValue(key)
+      if(kotlin.math.abs(rect.centerY()-rowY[ri])>h*.012f ||
+        kotlin.math.abs(rect.centerX()-columns[ci])>w*.04f)return "MG • TASTĂ AMBIGUĂ"
+    }
+    // Screenshot-confirmed backspace is the third cell of the final row.
+    // Use its relative position only after all eleven labeled keys and
+    // both panel anchors match the observed layout.
+    val deleteX=columns[2]; val deleteY=rowY[3]
+    val rawValues=labels.filter{it.rect.centerY() in (h*.34f).toInt() until calculator.rect.top &&
+      it.rect.left<w*.68f && it.rect.right<=w*.68f && it.value.trim().startsWith("$")}
+      .map{it.value.trim().removePrefix("$").trim()}
+      .filter{it.matches(Regex("""\d{0,5}(?:\.\d{0,2})?"""))}.distinct()
+    val raw=rawValues.singleOrNull() ?: return "MG • VALOARE CALCULATOR NECITITĂ"
+    val desired=String.format(Locale.ROOT,"%d.%02d",session.target/100L,session.target%100L)
+    if(session.closing)return "MG • AȘTEPT ÎNCHIDERE CALCULATOR"
+    if(session.sentAt>0L){
+      val last=session.steps.getOrNull(session.index-1) ?: return "MG • STARE CALCULATOR INVALIDĂ"
+      if(raw!=last.after){
+        if(raw==last.before && now-session.sentAt<1_800L)return "MG • AȘTEPT CIFRA"
+        return "MG • CIFRĂ NECONFIRMATĂ"
+      }
+      session.sentAt=0L
+    }
+    if(session.index==session.steps.size){
+      if(raw!=desired)return "MG • SUMĂ CALCULATOR DIFERITĂ"
+      val fields=labels.filter{exactCents637(it.value)==session.target &&
+        it.rect.left>=w*.48f && it.rect.centerY() in (h*.73f).toInt()..(h*.78f).toInt() &&
+        it.rect.bottom<h*.783f}.map{it.rect}.distinct()
+      val field=fields.singleOrNull() ?: return "MG • SUMĂ FINALĂ NECONFIRMATĂ"
+      if(!tapAmountPoint637(svc,chart,field.centerX(),field.centerY(),overlay,allowed))
+        return "MG • ÎNCHIDERE CALCULATOR REFUZATĂ"
+      session.closing=true
+      return "MG • AȘTEPT ÎNCHIDERE CALCULATOR"
+    }
+    val step=session.steps[session.index]
+    if(raw!=step.before)return "MG • VALOARE INIȚIALĂ DIFERITĂ"
+    val rect=keys[step.key]
+    val x=if(step.key=="DELETE")deleteX else rect?.centerX() ?: return "MG • TASTĂ NECITITĂ"
+    val y=if(step.key=="DELETE")deleteY else rect?.centerY() ?: return "MG • TASTĂ NECITITĂ"
+    if(y<=calculator.rect.bottom || y>=history.rect.top ||
+      !tapAmountPoint637(svc,chart,x,y,overlay,allowed))return "MG • TASTĂ REFUZATĂ"
+    session.index++
+    session.sentAt=now
+    return "MG • VERIFIC CIFRA"
+  }
 
   // Positive badge only. Its absence cannot authorize a stake edit.
   internal fun positiveOpenBadge637(svc:AccessibilityService):Int? {

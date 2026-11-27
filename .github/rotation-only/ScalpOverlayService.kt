@@ -69,12 +69,13 @@ class ScalpOverlayService : Service() {
   private var queuedMg:QueuedMg?=null
   private var verifyingMg:Pair<QueuedMg,LiveMartingalePreview637.EditReadback>?=null
   private var openingMg:Pair<QueuedMg,Long>?=null
+  private var calculatorMg:RotationPayoutReader.CalculatorSession?=null
   private var mgEditBlocked:String?=null
   private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
     if(positive){
       queuedMg=null
       if(verifyingMg!=null || openingMg!=null){
-        verifyingMg=null;openingMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"
+        verifyingMg=null;openingMg=null;calculatorMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"
         liveReader?.suspendMg(mgEditBlocked!!)
       }
     }
@@ -331,12 +332,13 @@ class ScalpOverlayService : Service() {
           TouchTestService.positiveOpenBadge637()==null &&
           TouchTestService.readLiveSnapshot637()?.let{it.openCount==null || it.openCount==0}==true)
           TouchTestService.applyVerifiedMg637(request.pkg,request.pair,request.old,request.target,request.balance,
-            visualClosureVerified=true)
+            visualClosureVerified=true,overlayBounds=bounds())
         else "MG • EDITARE BLOCATĂ"
         if(result=="MG • SET_TEXT TRIMIS"){
           verifyingMg=request to LiveMartingalePreview637.EditReadback(request.target,now)
         }else if(result=="MG • EDITOR DESCHIS"){
           openingMg=request to now
+          calculatorMg=RotationPayoutReader.CalculatorSession(request.old,request.target)
         }else{
           mgEditBlocked=result+" • ȚINTĂ "+LiveMartingalePreview637.format(request.target)
           liveReader?.suspendMg(mgEditBlocked!!)
@@ -351,18 +353,19 @@ class ScalpOverlayService : Service() {
     if(opening!=null){
       val (request,started)=opening
       if(now-started<600L)return 500L
-      val freshQuiet=latestQuietFrame>0L && now-latestQuietFrame in 0L..3_000L
-      val result=if(!tradePause.isLocked() && freshQuiet &&
+      val session=calculatorMg
+      val freshPosition=latestPositionFrame>0L && now-latestPositionFrame in 0L..3_500L
+      val result=if(session!=null && !tradePause.isLocked() && freshPosition &&
         TouchTestService.positiveOpenBadge637()==null)
-        TouchTestService.applyVerifiedMg637(request.pkg,request.pair,request.old,request.target,request.balance,
-          visualClosureVerified=true,allowOpen=false)
-      else "MG • AȘTEPT EDITORUL"
+        TouchTestService.stepCalculator637(request.pkg,request.pair,request.balance,session,now,bounds())
+      else "MG • AȘTEPT CALCULATORUL"
       if(result=="MG • SET_TEXT TRIMIS"){
-        openingMg=null
+        openingMg=null;calculatorMg=null
         verifyingMg=request to LiveMartingalePreview637.EditReadback(request.target,now)
         liveReader?.reportEdit(result)
-      }else if(now-started>=8_000L){
-        openingMg=null
+      }else if(now-started>=25_000L || result=="MG • CIFRĂ NECONFIRMATĂ" ||
+        result=="MG • VALOARE INIȚIALĂ DIFERITĂ" || result=="MG • SUMĂ CALCULATOR DIFERITĂ"){
+        openingMg=null;calculatorMg=null
         mgEditBlocked=result+" • ȚINTĂ "+LiveMartingalePreview637.format(request.target)
         liveReader?.suspendMg(mgEditBlocked!!)
         liveStatus?.text=mgEditBlocked
@@ -380,7 +383,7 @@ class ScalpOverlayService : Service() {
       say("MG • VERIFIC MIZA");return 500L
     }
     // A failed MG edit disables further edits, not the navigation motor.
-    if(mgEditBlocked!=null){liveStatus?.text=mgEditBlocked}
+    if(mgEditBlocked!=null){liveStatus?.text=mgEditBlocked; say("MG • VERIFICĂ SUMA"); return 1_000L}
     // No new selector actions while LIVE has not supplied a recent position frame.
     if(latestPositionFrame==0L || now-latestPositionFrame>3_500L){
       say("AȘTEPT VERIFICAREA TRADE");return 500L
