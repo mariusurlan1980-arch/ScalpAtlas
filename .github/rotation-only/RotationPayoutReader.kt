@@ -97,7 +97,7 @@ object RotationPayoutReader {
     return payout.takeIf { svc.rootInActiveWindow == chart.root }
   }
 
-  internal data class LiveSnapshot(val pkg:String,val stake:Long?,val balance:Long?,val openCount:Int?,val tradesFooterSeen:Boolean=false)
+  internal data class LiveSnapshot(val pkg:String,val stake:Long?,val balance:Long?,val openCount:Int?,val tradesFooterSeen:Boolean=false,val payout:Int=92)
 
   private fun exactCents637(raw:String):Long? {
     val clean=raw.trim().replace(Regex("""(?i)^USD\s*|\s*USD$"""),"").trim().removePrefix("$").trim()
@@ -130,9 +130,11 @@ object RotationPayoutReader {
       it.rect.height()<=h*.075f && exactCents637(it.value)!=null}
   }
 
-  internal fun readLiveSnapshot637(svc:AccessibilityService):LiveSnapshot? {
+  internal fun readLiveSnapshot637(svc:AccessibilityService,readOnlyAnyPayout:Boolean=false):LiveSnapshot? {
     val chart=readChart(svc,false).first ?: return null
-    if(readChartPayout(chart).first != 92) return null
+    val payout=readChartPayout(chart).first ?: return null
+    // Non-92 snapshots are diagnostics/navigation evidence only.
+    if(!readOnlyAnyPayout && payout!=92)return null
     val (_,pkg,w,h,labels)=chart
     // Read the displayed amount even when the broker exposes it as a
     // clickable label rather than an editable Android input.
@@ -156,7 +158,7 @@ object RotationPayoutReader {
         LiveMartingalePreview637.isTradesFooter(it.value)
     }.mapNotNull{Regex("[1-9][0-9]{0,2}$").find(it.value.trim())?.value?.toIntOrNull()}
     val open=(counts+footerCounts).filter{it>0}.maxOrNull() ?: counts.singleOrNull()
-    return LiveSnapshot(pkg,stakes.singleOrNull(),balance,open,footer)
+    return LiveSnapshot(pkg,stakes.singleOrNull(),balance,open,footer,payout)
   }
 
 

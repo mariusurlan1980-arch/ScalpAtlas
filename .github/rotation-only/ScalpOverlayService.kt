@@ -430,9 +430,6 @@ class ScalpOverlayService : Service() {
     if(latestPositionFrame==0L || now-latestPositionFrame>3_500L){
       say("AȘTEPT VERIFICAREA TRADE");return 500L
     }
-    if(!startupChecked && !TouchTestService.fxListVisible(false)){
-      say("MG • VERIFIC MIZA INIȚIALĂ");return 500L
-    }
     if (TouchTestService.fxListVisible(false)) {
       val requested=pendingPair
       if (requested != null) {
@@ -489,6 +486,14 @@ class ScalpOverlayService : Service() {
       say("PAYOUT NECITIT"); return 2_000L
     }
     val eligiblePair=TouchTestService.isPreferredFxPair517(current) && payout==92
+    if(!startupChecked && eligiblePair){
+      say("MG • VERIFIC MIZA INIȚIALĂ");return 500L
+    }
+    // Reject a non-eligible chart before startup MG can hold rotation.
+    // A fresh, independently quiet chart is still mandatory for navigation.
+    if(!eligiblePair && (latestQuietFrame==0L || now-latestQuietFrame !in 0L..3_000L)){
+      say("AȘTEPT GRAFIC LIBER • PAYOUT "+payout+"%");return 500L
+    }
     var selectedConfirmed=false
     val requested=pendingPair
     if (requested != null) {

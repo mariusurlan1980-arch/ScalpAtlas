@@ -409,10 +409,10 @@ class TouchTestService : AccessibilityService() {
       return RotationPayoutReader.positiveOpenBadge637(svc)
     }
 
-    internal fun readLiveSnapshot637(): RotationPayoutReader.LiveSnapshot? {
+    internal fun readLiveSnapshot637(readOnlyAnyPayout:Boolean=false): RotationPayoutReader.LiveSnapshot? {
       val svc=connected ?: return null
       if (!demoFxAccountInForeground() || realFxAccountVisible() || fxListVisible(false)) return null
-      return RotationPayoutReader.readLiveSnapshot637(svc)
+      return RotationPayoutReader.readLiveSnapshot637(svc,readOnlyAnyPayout)
     }
 
     internal fun applyVerifiedMg637(pkg:String,pair:String,previous:Long,target:Long,balance:Long,visualClosureVerified:Boolean=false,allowOpen:Boolean=true,overlayBounds:Rect=Rect(),startupRepair:Boolean=false):String {

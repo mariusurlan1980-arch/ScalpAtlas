@@ -145,7 +145,7 @@ internal class LivePageObserver637(
       freezeEntry(captured)
       position(captured,true,false)
     }
-    val snap=TouchTestService.readLiveSnapshot637()
+    val snap=TouchTestService.readLiveSnapshot637(readOnlyAnyPayout=true)
     val pair=TouchTestService.readVisibleFxPair(false)
     if(snap==null || pair==null){
       keypadFrame=null
@@ -167,7 +167,7 @@ internal class LivePageObserver637(
     val chartText=compact.contains("QTDEMO") && compact.contains(pairText)
     val visualStake=if(chartText) LiveMartingalePreview637.readDisplayedStake(labels,lineLabels) else null
     // Reject conflicting sources. OCR alone is a display reading, not an editable field.
-    keypadFrame=if(demoFrame && chartText && !visualBadge && badge==null &&
+    keypadFrame=if(snap.payout==92 && demoFrame && chartText && !visualBadge && badge==null &&
       (snap.openCount ?: 0)==0 && visualBalance!=null &&
       (snap.balance==null || snap.balance==visualBalance)){
       LiveMartingalePreview637.calculatorLayout(labels,lineLabels)?.let{
@@ -184,6 +184,17 @@ internal class LivePageObserver637(
     val clearChart=chartText && !positive && !visualBadge && marker==null &&
       (snap.openCount==0 || visualQuiet) && bal!=null && displayedStake!=null
     position(captured,positive,clearChart)
+    // A non-eligible chart can still show the live balance and prove a quiet
+    // navigation frame, but must never arm MG, verify an edit or settle a trade.
+    if(snap.payout!=92){
+      if(attempt==null && !unmatchedActive){baseline=null;idleCandidate=null;idleCandidateAt=0L}
+      zeroAt=0L;zeroLastAt=0L;zeroResult=null
+      health(if(freshChart)2 else 1,captured,
+        "Payout "+snap.payout+"% • sold: "+(bal?.let(LiveMartingalePreview637::format)?:"necunoscut")+
+        " • caut 92%")
+      render("LIVE • SOLD "+(bal?.let(LiveMartingalePreview637::format)?:"?")+" • PAYOUT "+snap.payout+"%")
+      return
+    }
     stakeReadback(snap.pkg,pair,displayedStake,bal,captured,clearChart)
     val stakeDetail=when {
       displayedStake==null -> "necunoscută"
