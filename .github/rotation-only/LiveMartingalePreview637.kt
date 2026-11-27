@@ -85,14 +85,14 @@ internal object LiveMartingalePreview637 {
 
   // Read-only OCR evidence. Deliberately separate from stake-edit authorization.
   data class VisualLabel(val text:String,val left:Float,val top:Float,val right:Float,val bottom:Float)
-  fun readDisplayedStake(labels:List<VisualLabel>):Long? {
+  fun readDisplayedStake(labels:List<VisualLabel>, lineLabels:List<VisualLabel> = emptyList()):Long? {
     val anchors=labels.filter {
       it.left in .43f.. .82f && it.top in .60f.. .83f &&
         it.right<=.95f && it.bottom-it.top<=.055f &&
         Regex("""(?i)^sum[ăa]\s*:?$""").matches(it.text.trim())
     }
     val anchor=anchors.singleOrNull() ?: return null
-    val candidates=labels.filter {
+    val candidates=(labels+lineLabels).filter {
       it.left in (anchor.left-.045f)..(anchor.left+.15f) &&
         it.top>=anchor.bottom-.005f && it.top<=anchor.bottom+.055f &&
         it.bottom<=anchor.bottom+.09f && it.right<=.93f &&
@@ -168,8 +168,8 @@ internal object LiveMartingalePreview637 {
   }
 
   // Active order amount printed beside the chart marker, not the input field.
-  fun readActiveStake(labels:List<VisualLabel>):Long? {
-    val values=labels.filter{
+  fun readActiveStake(labels:List<VisualLabel>, lineLabels:List<VisualLabel> = emptyList()):Long? {
+    fun candidates(source:List<VisualLabel>)=source.filter{
       it.left>=.15f && it.right<=.83f && it.top>=.19f && it.bottom<=.69f &&
         it.bottom-it.top<=.055f
     }.mapNotNull{
@@ -179,7 +179,10 @@ internal object LiveMartingalePreview637 {
       val fraction=m.groupValues[2].toLongOrNull() ?: return@mapNotNull null
       (whole*100L+fraction).takeIf{it in ladder}
     }
-    return values.singleOrNull()
+    val values=candidates(labels)
+    val lines=candidates(lineLabels)
+    if(values.size>1 || lines.size>1)return null
+    return (values+lines).distinct().singleOrNull()
   }
 
   fun isTradesFooter(text:String):Boolean {
@@ -189,8 +192,8 @@ internal object LiveMartingalePreview637 {
   }
   // Read only the account balance in the top-right broker header.
   // Require a decimal amount, never the overlay's old balance or a chart price.
-  fun readHeaderBalance(labels:List<VisualLabel>):Long? {
-    val values=labels.filter{
+  fun readHeaderBalance(labels:List<VisualLabel>, lineLabels:List<VisualLabel> = emptyList()):Long? {
+    val values=(labels+lineLabels).filter{
       it.left>=.48f && it.right<=.88f && it.top>=.045f && it.bottom<=.135f &&
         it.bottom-it.top<=.045f
     }.mapNotNull{
