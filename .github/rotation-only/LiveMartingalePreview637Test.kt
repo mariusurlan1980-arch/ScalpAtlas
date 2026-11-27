@@ -191,5 +191,14 @@ fun main(){
   stillOpen.observe(1000L,true)
   for(at in 300000L..312000L step 2000L)stillOpen.observe(at,true)
   check(stillOpen.remaining(312000L)!=null)
+  // Simulate OCR splitting the dollar symbol or thousands separator into elements.
+  val fullBalance=label("1,562.24",.57f,.075f)
+  check(p.readHeaderBalance(listOf(label("1,",.57f,.075f),label("562.24",.64f,.075f)),listOf(fullBalance))==null)
+  check(p.readHeaderBalance(listOf(label("1,562",.57f,.075f),label(".24",.67f,.075f)),listOf(fullBalance))==156224L)
+  check(p.readHeaderBalance(listOf(header),listOf(fullBalance))==null)
+  check(p.readActiveStake(listOf(label("$",.50f,.34f),label("1.09",.54f,.34f)),listOf(label("$"+"1.09",.50f,.34f)))==109L)
+  check(p.readActiveStake(listOf(marker),listOf(label("$"+"2.28",.54f,.45f)))==null)
+  check(p.readDisplayedStake(listOf(anchor),listOf(amount))==109L)
+  check(p.readDisplayedStake(listOf(anchor,amount),listOf(label("2.28",.53f,.75f)))==null)
   println("PASS: badge, exact entry, stake readback and independent navigation recovery")
 }
