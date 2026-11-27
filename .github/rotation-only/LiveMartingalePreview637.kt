@@ -94,6 +94,28 @@ internal object LiveMartingalePreview637 {
   // Calculator input is a broker-owned string, not Android's IME.
   // Refuse a sequence if a key produces anything other than its expected echo.
   data class CalculatorKey(val key:String,val before:String,val after:String)
+  // Broker renders trailing zeroes and a trailing decimal point inconsistently.
+  // Use exact cents, never floating point, and reject unexpected digits.
+  fun calculatorEcho(raw:String,expected:String):Boolean {
+    fun cents(value:String):Long? {
+      val v=value.trim().replace(',','.')
+      if(!v.matches(Regex("""\d{0,5}(?:\.\d{0,2})?""")))return null
+      val whole=v.substringBefore('.').ifEmpty{"0"}.toLongOrNull() ?: return null
+      val fraction=if('.' in v)v.substringAfter('.').padEnd(2,'0').toLongOrNull() ?: return null else 0L
+      return whole*100L+fraction
+    }
+    val a=cents(raw) ?: return false
+    val b=cents(expected) ?: return false
+    return a==b
+  }
+  // The broker may display its minimum 1 while the editable buffer is empty.
+  // Allow this only after the final deletion, not as a final stake confirmation.
+  fun calculatorStepEcho(raw:String,step:CalculatorKey):Boolean =
+    calculatorEcho(raw,step.after) ||
+      (step.key=="DELETE" && step.after.isEmpty() && calculatorEcho(raw,"1"))
+  fun calculatorBeforeEcho(raw:String,step:CalculatorKey):Boolean =
+    calculatorEcho(raw,step.before) ||
+      (step.before.isEmpty() && step.key!="DELETE" && calculatorEcho(raw,"1"))
   fun calculatorKeys(from:String,target:Long):List<CalculatorKey>? {
     if(!Regex("""\d{1,5}\.\d{2}""").matches(from) || target !in ladder)return null
     val desired=String.format(java.util.Locale.ROOT,"%d.%02d",target/100L,target%100L)

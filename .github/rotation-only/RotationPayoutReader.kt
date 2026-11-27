@@ -269,7 +269,7 @@ object RotationPayoutReader {
     val accessible=LiveMartingalePreview637.calculatorLayout(header)
     val optical=visual?.takeIf{now-it.at in 0L..2_500L && it.at>session.sentAt}?.layout
     if(visual!=null && optical==null && session.sentAt>0L)return "MG • AȘTEPT CITIREA CIFREI"
-    if(accessible!=null && optical!=null && accessible.raw!=optical.raw)
+    if(accessible!=null && optical!=null && !LiveMartingalePreview637.calculatorEcho(accessible.raw,optical.raw))
       return "MG • CITIRI CALCULATOR DIFERITE"
     val layout=optical ?: accessible
     if(layout==null){
@@ -283,14 +283,18 @@ object RotationPayoutReader {
     if(session.closing)return "MG • AȘTEPT ÎNCHIDERE CALCULATOR"
     if(session.sentAt>0L){
       val last=session.steps.getOrNull(session.index-1) ?: return "MG • STARE CALCULATOR INVALIDĂ"
-      if(raw!=last.after){
-        if(raw==last.before && now-session.sentAt<1_800L)return "MG • AȘTEPT CIFRA"
-        return "MG • CIFRĂ NECONFIRMATĂ"
+      // Even when two adjacent input states render the same numeric value,
+      // wait for a new observation and the UI to settle before the next key.
+      if(now-session.sentAt<900L)return "MG • AȘTEPT CIFRA"
+      if(!LiveMartingalePreview637.calculatorStepEcho(raw,last)){
+        if(LiveMartingalePreview637.calculatorBeforeEcho(raw,last) && now-session.sentAt<4_000L)
+          return "MG • AȘTEPT CIFRA"
+        return "MG • CIFRĂ NECONFIRMATĂ • "+last.key+" • VĂD "+raw+" • AȘTEPT "+last.after
       }
       session.sentAt=0L
     }
     if(session.index==session.steps.size){
-      if(raw!=desired)return "MG • SUMĂ CALCULATOR DIFERITĂ"
+      if(!LiveMartingalePreview637.calculatorEcho(raw,desired))return "MG • SUMĂ CALCULATOR DIFERITĂ"
       val fields=labels.filter{exactCents637(it.value)==session.target &&
         it.rect.left>=w*.48f && it.rect.centerY() in (h*.73f).toInt()..(h*.78f).toInt() &&
         it.rect.bottom<h*.783f}.map{it.rect}.distinct()
@@ -301,7 +305,8 @@ object RotationPayoutReader {
       return "MG • AȘTEPT ÎNCHIDERE CALCULATOR"
     }
     val step=session.steps[session.index]
-    if(raw!=step.before)return "MG • VALOARE INIȚIALĂ DIFERITĂ"
+    if(!LiveMartingalePreview637.calculatorBeforeEcho(raw,step))
+      return "MG • VALOARE INIȚIALĂ DIFERITĂ • VĂD "+raw+" • AȘTEPT "+step.before
     val point=layout.keys[step.key] ?: return "MG • TASTĂ NECITITĂ"
     val x=(point.x*w).toInt(); val y=(point.y*h).toInt()
     if(point.y<=layout.top || point.y>=layout.bottom ||

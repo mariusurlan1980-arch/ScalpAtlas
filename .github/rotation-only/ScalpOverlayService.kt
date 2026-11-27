@@ -366,8 +366,8 @@ class ScalpOverlayService : Service() {
         openingMg=null;calculatorMg=null
         verifyingMg=request to LiveMartingalePreview637.EditReadback(request.target,now)
         liveReader?.reportEdit(result)
-      }else if(now-started>=25_000L || result=="MG • CIFRĂ NECONFIRMATĂ" ||
-        result=="MG • VALOARE INIȚIALĂ DIFERITĂ" || result=="MG • SUMĂ CALCULATOR DIFERITĂ"){
+      }else if(now-started>=60_000L || result.startsWith("MG • CIFRĂ NECONFIRMATĂ") ||
+        result.startsWith("MG • VALOARE INIȚIALĂ DIFERITĂ") || result=="MG • SUMĂ CALCULATOR DIFERITĂ"){
         openingMg=null;calculatorMg=null
         mgEditBlocked=result+" • ȚINTĂ "+LiveMartingalePreview637.format(request.target)
         liveReader?.suspendMg(mgEditBlocked!!)
