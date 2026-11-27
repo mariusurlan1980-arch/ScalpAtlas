@@ -253,6 +253,7 @@ object RotationPayoutReader {
     var startupPrepared=false
     var index=0
     var sentAt=0L
+    var retriedIndex=-1
     var closing=false
   }
 
@@ -276,8 +277,10 @@ object RotationPayoutReader {
     val layout=optical ?: accessible
     if(layout==null){
       val panelVisible=labels.any{it.value.equals("Calculator",true)}
-      if(session.closing && !panelVisible && visual==null &&
-        readLiveSnapshot637(svc)?.stake==session.target)return "MG • SET_TEXT TRIMIS"
+      if(LiveMartingalePreview637.calculatorReadyForReadback(
+          session.closing,session.steps.isNotEmpty() && session.index==session.steps.size,
+          panelVisible,visual!=null,readLiveSnapshot637(svc)?.stake,session.target))
+        return "MG • SET_TEXT TRIMIS"
       return "MG • TASTE CALCULATOR NECONFIRMATE"
     }
     val raw=layout.raw
@@ -297,9 +300,20 @@ object RotationPayoutReader {
       if(cleared!=null){
         session.steps=cleared
         session.index=0
+        session.retriedIndex=-1
       }else if(!LiveMartingalePreview637.calculatorStepEcho(raw,last)){
         if(LiveMartingalePreview637.calculatorBeforeEcho(raw,last) && now-session.sentAt<4_000L)
           return "MG • AȘTEPT CIFRA"
+        if(LiveMartingalePreview637.canRetryUnchangedKey(raw,last,now-session.sentAt,
+            session.retriedIndex==session.index-1,optical!=null)){
+          val point=layout.keys[last.key] ?: return "MG • TASTĂ NECITITĂ"
+          val x=(point.x*w).toInt();val y=(point.y*h).toInt()
+          if(point.y<=layout.top || point.y>=layout.bottom ||
+            !tapAmountPoint637(svc,chart,x,y,overlay,allowed))return "MG • TASTĂ REFUZATĂ"
+          session.retriedIndex=session.index-1
+          session.sentAt=now
+          return "MG • REÎNCERC TASTA "+last.key+" • ȚINTĂ "+desired
+        }
         return "MG • CIFRĂ NECONFIRMATĂ • "+last.key+" • VĂD "+raw+" • AȘTEPT "+last.after
       }
       session.sentAt=0L

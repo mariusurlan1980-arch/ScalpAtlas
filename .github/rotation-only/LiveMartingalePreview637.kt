@@ -116,6 +116,12 @@ internal object LiveMartingalePreview637 {
   fun calculatorBeforeEcho(raw:String,step:CalculatorKey):Boolean =
     calculatorEcho(raw,step.before) ||
       (step.before.isEmpty() && step.key!="DELETE" && calculatorEcho(raw,"1"))
+  // Retry only a key whose numeric effect is distinguishable, and only
+  // when a fresh optical observation still shows the exact previous value.
+  // A decimal separator or invisible trailing zero cannot be safely retried.
+  fun canRetryUnchangedKey(raw:String,step:CalculatorKey,elapsed:Long,retried:Boolean,freshOptical:Boolean):Boolean =
+    !retried && freshOptical && elapsed>=4_000L &&
+      calculatorEcho(raw,step.before) && !calculatorStepEcho(raw,step)
   // A verified zero immediately following DELETE is an empty entry buffer.
   // Do not continue the old deletion plan: rebuild only the typing suffix.
   fun keysAfterVerifiedClear(raw:String,previousKey:String,target:Long):List<CalculatorKey>? {
@@ -127,6 +133,12 @@ internal object LiveMartingalePreview637 {
       CalculatorKey(ch.toString(),current,next).also{current=next}
     }
   }
+  // Some broker versions dismiss the editor immediately after the last key.
+  // This is only an invitation to the independent chart readback, not proof
+  // of a confirmed edit. An open or ambiguous calculator never qualifies.
+  fun calculatorReadyForReadback(closing:Boolean,allKeysSent:Boolean,panelVisible:Boolean,
+    opticalPanel:Boolean,chartStake:Long?,target:Long):Boolean =
+    (closing || allKeysSent) && !panelVisible && !opticalPanel && chartStake==target
   fun calculatorKeys(from:String,target:Long):List<CalculatorKey>? {
     if(!Regex("""\d{1,5}\.\d{2}""").matches(from) || target !in ladder)return null
     val desired=String.format(java.util.Locale.ROOT,"%d.%02d",target/100L,target%100L)
