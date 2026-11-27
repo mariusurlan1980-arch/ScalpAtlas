@@ -2,7 +2,7 @@ name: Build Scalp Atlas 637 - rotation live and demo MG
 
 on:
   push:
-    branches: [test/chart-result-transient-ocr]
+    branches: [test/chart-result-transient-ocr, test/637-demo-debit-recovery]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
