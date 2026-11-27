@@ -110,22 +110,31 @@ object RotationPayoutReader {
       (parts.getOrNull(1).orEmpty().padEnd(2,'0').toLongOrNull() ?: return null)
   }
 
+  private fun stakeFieldItems(chart:Chart):List<Item> {
+    val (_,_,w,h,labels)=chart
+    val captions=labels.filter {
+      it.rect.centerX()>w*.46f && it.rect.centerY() in (h*.62f).toInt()..(h*.88f).toInt() &&
+      it.rect.width()<=w*.48f && Regex("""(?i)^Sum[ăa]\s*:?$""").matches(it.value)
+    }
+    val anchor=captions.firstOrNull() ?: return emptyList()
+    if(captions.any{kotlin.math.abs(it.rect.centerY()-anchor.rect.centerY())>h*.035f ||
+      kotlin.math.abs(it.rect.left-anchor.rect.left)>w*.06f})return emptyList()
+    val sellTop=labels.filter{it.rect.centerX()>w*.51f &&
+      Regex("""(?i)^(?:VINDEȚI|VINDETI)(?:\s+\d{1,3}\s*%)?$""").matches(it.value.replace('\n',' ').trim())}
+      .minOfOrNull{it.rect.top} ?: return emptyList()
+    return labels.filter{it.node.isEnabled && it.rect.left>=w*.48f && it.rect.right<=w*.96f &&
+      it.rect.top>=anchor.rect.bottom-h*.008f && it.rect.bottom<sellTop &&
+      it.rect.centerY()<=anchor.rect.bottom+h*.065f &&
+      it.rect.height()<=h*.075f && exactCents637(it.value)!=null}
+  }
+
   internal fun readLiveSnapshot637(svc:AccessibilityService):LiveSnapshot? {
     val chart=readChart(svc,false).first ?: return null
     if(readChartPayout(chart).first != 92) return null
     val (_,pkg,w,h,labels)=chart
-    val captions=labels.filter {
-      it.rect.centerX()>w*.46f && it.rect.centerY() in (h*.62f).toInt()..(h*.88f).toInt() &&
-        Regex("""(?i)^Sum[ăa]\s*:?$""").matches(it.value)
-    }
-    val anchor=captions.firstOrNull()
-    val stakes=if(anchor==null || captions.any{
-      kotlin.math.abs(it.rect.centerY()-anchor.rect.centerY())>h*.035f
-    }) emptyList() else labels.filter{
-      it.node.isEnabled && it.node.actionList.any{a->a.id==AccessibilityNodeInfo.ACTION_SET_TEXT} &&
-      it.rect.centerX()>=anchor.rect.left-w*.04f && it.rect.centerX()<=anchor.rect.right+w*.18f &&
-      it.rect.centerY()>=anchor.rect.bottom-h*.015f && it.rect.centerY()<=anchor.rect.bottom+h*.065f
-    }.mapNotNull{exactCents637(it.value)}.distinct()
+    // Read the displayed amount even when the broker exposes it as a
+    // clickable label rather than an editable Android input.
+    val stakes=stakeFieldItems(chart).mapNotNull{exactCents637(it.value)}.distinct()
     val headerLabels=labels.map{
       LiveMartingalePreview637.VisualLabel(it.value,it.rect.left.toFloat()/w,
         it.rect.top.toFloat()/h,it.rect.right.toFloat()/w,it.rect.bottom.toFloat()/h)
@@ -152,7 +161,7 @@ object RotationPayoutReader {
   // One exact input edit, only after independently observed settlement.
   internal fun editVerifiedStake637(
     svc:AccessibilityService, expectedPackage:String, previous:Long, target:Long,
-    expectedBalance:Long, visualClosureVerified:Boolean, stillAuthorized:()->Boolean
+    expectedBalance:Long, visualClosureVerified:Boolean, allowOpen:Boolean, stillAuthorized:()->Boolean
   ):String {
     if(!stillAuthorized())return "MG • CONT NECONFIRMAT"
     val chart=readChart(svc,false).first ?: return "MG • GRAFIC NECITIT"
@@ -165,23 +174,44 @@ object RotationPayoutReader {
         !LiveMartingalePreview637.permitsEdit(previous,target,snap.stake,snap.balance,open,expectedBalance))
       return "MG • MIZĂ NESCHIMBATĂ"
     val (_,_,w,h,labels)=chart
-    val anchors=labels.filter {
-      it.rect.centerX()>w*.46f && it.rect.centerY() in (h*.62f).toInt()..(h*.88f).toInt() &&
-      it.rect.width()<=w*.48f && Regex("""(?i)^Sum[ăa]\s*:?$""").matches(it.value)
-    }
-    val anchor=anchors.firstOrNull() ?: return "MG • ETICHETĂ SUMĂ NECITITĂ"
-    if(anchors.any { kotlin.math.abs(it.rect.centerY()-anchor.rect.centerY())>h*.035f ||
-      kotlin.math.abs(it.rect.centerX()-anchor.rect.centerX())>w*.15f })
-      return "MG • MAI MULTE CÂMPURI SUMĂ"
-    val inputs=labels.filter {
+    val amounts=stakeFieldItems(chart).filter{exactCents637(it.value)==previous}
+    val inputs=amounts.filter{
       it.node.isEnabled && it.node.isVisibleToUser &&
       it.node.packageName?.toString()==expectedPackage &&
-      it.rect.centerX()>=anchor.rect.left-w*.04f && it.rect.centerX()<=anchor.rect.right+w*.18f &&
-      it.rect.centerY()>=anchor.rect.bottom-h*.015f && it.rect.centerY()<=anchor.rect.bottom+h*.065f &&
-      it.rect.height()<=h*.09f && exactCents637(it.value)==previous &&
       it.node.actionList.any { a->a.id==AccessibilityNodeInfo.ACTION_SET_TEXT }
-    }.distinctBy { it.rect.toShortString() }
-    val input=inputs.singleOrNull() ?: return "MG • CÂMP SUMĂ NECONFIRMAT"
+    }.distinctBy{it.rect.toShortString()}
+    if(inputs.size>1)return "MG • MAI MULTE CÂMPURI SUMĂ"
+    val input=inputs.singleOrNull()
+    if(input==null){
+      if(!allowOpen)return "MG • EDITOR SUMĂ NEIDENTIFICAT"
+      // Open only the existing amount control, never a coordinate or a
+      // trade button. The exact displayed amount and account were verified above.
+      val sellTop=labels.filter{it.rect.centerX()>w*.51f &&
+        Regex("""(?i)^(?:VINDEȚI|VINDETI)(?:\s+\d{1,3}\s*%)?$""").matches(it.value.replace('\n',' ').trim())}
+        .minOfOrNull{it.rect.top} ?: return "MG • LIMITĂ SUMĂ NECONFIRMATĂ"
+      val targets=amounts.mapNotNull{item->
+        var n:AccessibilityNodeInfo?=item.node
+        var found:AccessibilityNodeInfo?=null
+        for(depth in 0..2){
+          val candidate=n ?: break
+          val r=Rect();candidate.getBoundsInScreen(r)
+          if(candidate.packageName?.toString()!=expectedPackage || !candidate.isEnabled ||
+            !candidate.isVisibleToUser || r.left<w*.48f || r.right>w*.96f ||
+            r.top<item.rect.top-h*.025f || r.bottom>=sellTop || r.height()>h*.075f ||
+            !r.contains(item.rect))break
+          if(candidate.actionList.any{it.id==AccessibilityNodeInfo.ACTION_CLICK}){
+            found=candidate;break
+          }
+          n=candidate.parent
+        }
+        found
+      }.distinctBy{val r=Rect();it.getBoundsInScreen(r);r.toShortString()}
+      val control=targets.singleOrNull() ?: return "MG • CONTROL SUMĂ NEIDENTIFICAT"
+      if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)
+        return "MG • GRAFIC SCHIMBAT"
+      val opened=try{control.performAction(AccessibilityNodeInfo.ACTION_CLICK)}catch(_:Throwable){false}
+      return if(opened)"MG • EDITOR DESCHIS" else "MG • DESCHIDERE REFUZATĂ"
+    }
     if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)
       return "MG • GRAFIC SCHIMBAT"
     if(previous!=target){

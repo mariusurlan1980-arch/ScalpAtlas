@@ -68,12 +68,13 @@ class ScalpOverlayService : Service() {
   private data class QueuedMg(val pkg:String,val pair:String,val old:Long,val target:Long,val balance:Long)
   private var queuedMg:QueuedMg?=null
   private var verifyingMg:Pair<QueuedMg,LiveMartingalePreview637.EditReadback>?=null
+  private var openingMg:Pair<QueuedMg,Long>?=null
   private var mgEditBlocked:String?=null
   private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
     if(positive){
       queuedMg=null
-      if(verifyingMg!=null){
-        verifyingMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"
+      if(verifyingMg!=null || openingMg!=null){
+        verifyingMg=null;openingMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"
         liveReader?.suspendMg(mgEditBlocked!!)
       }
     }
@@ -334,6 +335,8 @@ class ScalpOverlayService : Service() {
         else "MG • EDITARE BLOCATĂ"
         if(result=="MG • SET_TEXT TRIMIS"){
           verifyingMg=request to LiveMartingalePreview637.EditReadback(request.target,now)
+        }else if(result=="MG • EDITOR DESCHIS"){
+          openingMg=request to now
         }else{
           mgEditBlocked=result+" • ȚINTĂ "+LiveMartingalePreview637.format(request.target)
           liveReader?.suspendMg(mgEditBlocked!!)
@@ -341,7 +344,30 @@ class ScalpOverlayService : Service() {
         liveStatus?.text=mgEditBlocked ?: result
         liveReader?.reportEdit(mgEditBlocked ?: result)
       }
-      say(if(verifyingMg!=null)"MG • VERIFIC MIZA" else if(mgEditBlocked!=null)"MG • MIZĂ NECONFIRMATĂ" else "ÎNCHIDERE CONFIRMATĂ • REIAU ROTAȚIA")
+      say(if(openingMg!=null)"MG • ACTIVEZ SUMA" else if(verifyingMg!=null)"MG • VERIFIC MIZA" else if(mgEditBlocked!=null)"MG • MIZĂ NECONFIRMATĂ" else "ÎNCHIDERE CONFIRMATĂ • REIAU ROTAȚIA")
+      return 500L
+    }
+    val opening=openingMg
+    if(opening!=null){
+      val (request,started)=opening
+      if(now-started<600L)return 500L
+      val freshQuiet=latestQuietFrame>0L && now-latestQuietFrame in 0L..3_000L
+      val result=if(!tradePause.isLocked() && freshQuiet &&
+        TouchTestService.positiveOpenBadge637()==null)
+        TouchTestService.applyVerifiedMg637(request.pkg,request.pair,request.old,request.target,request.balance,
+          visualClosureVerified=true,allowOpen=false)
+      else "MG • AȘTEPT EDITORUL"
+      if(result=="MG • SET_TEXT TRIMIS"){
+        openingMg=null
+        verifyingMg=request to LiveMartingalePreview637.EditReadback(request.target,now)
+        liveReader?.reportEdit(result)
+      }else if(now-started>=8_000L){
+        openingMg=null
+        mgEditBlocked=result+" • ȚINTĂ "+LiveMartingalePreview637.format(request.target)
+        liveReader?.suspendMg(mgEditBlocked!!)
+        liveStatus?.text=mgEditBlocked
+      }
+      say("MG • VERIFIC EDITOR SUMĂ")
       return 500L
     }
     val verification=verifyingMg
