@@ -116,6 +116,17 @@ internal object LiveMartingalePreview637 {
   fun calculatorBeforeEcho(raw:String,step:CalculatorKey):Boolean =
     calculatorEcho(raw,step.before) ||
       (step.before.isEmpty() && step.key!="DELETE" && calculatorEcho(raw,"1"))
+  // A verified zero immediately following DELETE is an empty entry buffer.
+  // Do not continue the old deletion plan: rebuild only the typing suffix.
+  fun keysAfterVerifiedClear(raw:String,previousKey:String,target:Long):List<CalculatorKey>? {
+    if(previousKey!="DELETE" || !calculatorEcho(raw,"0") || target !in ladder)return null
+    val desired=String.format(java.util.Locale.ROOT,"%d.%02d",target/100L,target%100L)
+    var current=""
+    return desired.map{ch->
+      val next=current+ch
+      CalculatorKey(ch.toString(),current,next).also{current=next}
+    }
+  }
   fun calculatorKeys(from:String,target:Long):List<CalculatorKey>? {
     if(!Regex("""\d{1,5}\.\d{2}""").matches(from) || target !in ladder)return null
     val desired=String.format(java.util.Locale.ROOT,"%d.%02d",target/100L,target%100L)

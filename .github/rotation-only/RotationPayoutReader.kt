@@ -293,7 +293,11 @@ object RotationPayoutReader {
       // Even when two adjacent input states render the same numeric value,
       // wait for a new observation and the UI to settle before the next key.
       if(now-session.sentAt<900L)return "MG • AȘTEPT CIFRA"
-      if(!LiveMartingalePreview637.calculatorStepEcho(raw,last)){
+      val cleared=LiveMartingalePreview637.keysAfterVerifiedClear(raw,last.key,session.target)
+      if(cleared!=null){
+        session.steps=cleared
+        session.index=0
+      }else if(!LiveMartingalePreview637.calculatorStepEcho(raw,last)){
         if(LiveMartingalePreview637.calculatorBeforeEcho(raw,last) && now-session.sentAt<4_000L)
           return "MG • AȘTEPT CIFRA"
         return "MG • CIFRĂ NECONFIRMATĂ • "+last.key+" • VĂD "+raw+" • AȘTEPT "+last.after

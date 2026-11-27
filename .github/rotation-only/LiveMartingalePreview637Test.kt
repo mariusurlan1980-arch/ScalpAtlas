@@ -1,5 +1,18 @@
 package com.scalpatlas.app
 fun main(){
+  val clearPreview=LiveMartingalePreview637
+  val zeroPlan=checkNotNull(clearPreview.keysAfterVerifiedClear("0","DELETE",228))
+  check(zeroPlan.map{it.key}==listOf("2",".","2","8"))
+  val zeroEchoes=listOf("0","2","2","2.2","2.28")
+  zeroPlan.forEachIndexed{i,step->
+    check(clearPreview.calculatorBeforeEcho(zeroEchoes[i],step))
+    check(clearPreview.calculatorStepEcho(zeroEchoes[i+1],step))
+  }
+  check(clearPreview.keysAfterVerifiedClear("0.00","DELETE",109)?.last()?.after=="1.09")
+  check(clearPreview.keysAfterVerifiedClear("1","DELETE",228)==null)
+  check(clearPreview.keysAfterVerifiedClear("0","2",228)==null)
+  check(clearPreview.keysAfterVerifiedClear("0","DELETE",999999)==null)
+
   val bootPreview=LiveMartingalePreview637
   check(bootPreview.permitsStartupRepair(100,109,100,155633,0,155633))
   check(!bootPreview.permitsStartupRepair(100,228,100,155633,0,155633))
