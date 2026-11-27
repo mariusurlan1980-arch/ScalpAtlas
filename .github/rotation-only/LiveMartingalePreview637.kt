@@ -192,24 +192,38 @@ internal object LiveMartingalePreview637 {
   }
   // Read only the account balance in the top-right broker header.
   // Require a decimal amount, never the overlay's old balance or a chart price.
+  private fun moneyText(raw:String):String=raw.trim()
+    .replace(Regex("""(?i)^USD\s*|\s*USD$"""),"").trim().removePrefix("$").trim()
+    .replace(Regex("""\s*([,.])\s*"""),"$1")
+    .replace(Regex("""[\u00a0\u202f]""")," ")
+  private fun headerCents(raw:String):Long? {
+    val value=moneyText(raw)
+    val normalized=when {
+      Regex("""^\d{1,3}(,\d{3})+\.\d{2}$""").matches(value)->value.replace(",","")
+      Regex("""^\d{1,3}(\.\d{3})+,\d{2}$""").matches(value)->value.replace(".","").replace(",",".")
+      Regex("""^\d{1,3}( \d{3})+[.,]\d{2}$""").matches(value)->value.replace(" ","").replace(",",".")
+      Regex("""^\d{1,7}[.,]\d{2}$""").matches(value)->value.replace(",",".")
+      else->return null
+    }
+    val parts=normalized.split(".")
+    return (parts[0].toLongOrNull() ?: return null)*100L+
+      (parts[1].toLongOrNull() ?: return null)
+  }
   fun readHeaderBalance(labels:List<VisualLabel>, lineLabels:List<VisualLabel> = emptyList()):Long? {
-    val values=(labels+lineLabels).filter{
-      it.left>=.48f && it.right<=.88f && it.top>=.045f && it.bottom<=.135f &&
-        it.bottom-it.top<=.045f
-    }.mapNotNull{
-      val raw=it.text.trim().removePrefix("$").trim()
-      val normalized=when {
-        Regex("""^\d{1,3}(,\d{3})+\.\d{2}$""").matches(raw)->raw.replace(",","")
-        Regex("""^\d{1,3}(\.\d{3})+,\d{2}$""").matches(raw)->raw.replace(".","").replace(",",".")
-        Regex("""^\d{1,7}[.,]\d{2}$""").matches(raw)->raw.replace(",",".")
-        else->return@mapNotNull null
-      }
-      val parts=normalized.split(".")
-      val whole=parts[0].toLongOrNull() ?: return@mapNotNull null
-      val frac=parts[1].toLongOrNull() ?: return@mapNotNull null
-      whole*100L+frac
-    }.distinct()
-    return values.singleOrNull()
+    fun valid(l:VisualLabel)=l.left>=.48f && l.right<=.88f &&
+      l.top>=.045f && l.bottom<=.135f && l.bottom-l.top<=.055f
+    val lines=lineLabels.filter(::valid).mapNotNull{l->headerCents(l.text)?.let{l to it}}
+    val elements=labels.filter(::valid).mapNotNull{l->headerCents(l.text)?.let{l to it}}
+    // A complete line may include a smaller OCR element that is just its suffix
+    // (for example 561.15 inside 1,561.15). Ignore only geometrically nested
+    // literal fragments. Independent or conflicting full readings still block.
+    val independent=elements.filterNot{(part,amount)->lines.any{(whole,total)->
+      amount!=total && part.left>=whole.left-.005f && part.right<=whole.right+.005f &&
+        part.top>=whole.top-.005f && part.bottom<=whole.bottom+.005f &&
+        whole.right-whole.left>part.right-part.left+.008f &&
+        moneyText(whole.text).contains(moneyText(part.text))
+    }}
+    return (lines+independent).map{it.second}.distinct().singleOrNull()
   }
   fun stableIdleSample(previousBalance:Long?,previousStake:Long?,balance:Long,stake:Long,
     age:Long,sameAccount:Boolean):Boolean =

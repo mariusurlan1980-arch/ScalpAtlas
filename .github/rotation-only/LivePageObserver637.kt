@@ -215,7 +215,8 @@ internal class LivePageObserver637(
             captured-frozen.detectedAt>270_000L -> "DEBIT NECONFIRMAT"
             observedStake==null -> "AȘTEPT MIZA ORDINULUI"
             observedStake!=frozen.stake -> "MIZĂ DIFERITĂ"
-            bal==null -> "AȘTEPT SOLDUL DUPĂ ORDIN"
+            bal==null -> if(visualBalance!=null && snap.balance!=null)
+              "SOLDURI DIFERITE OCR/ANDROID" else "SOLD DUPĂ ORDIN NECITIT"
             frozen.before-bal!=frozen.stake -> "DEBIT DIFERIT"
             !single -> "NUMĂR ORDINE NECONFIRMAT"
             else -> "CONFIRM DEBITUL"

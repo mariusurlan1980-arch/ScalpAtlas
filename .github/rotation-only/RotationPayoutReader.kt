@@ -126,9 +126,11 @@ object RotationPayoutReader {
       it.rect.centerX()>=anchor.rect.left-w*.04f && it.rect.centerX()<=anchor.rect.right+w*.18f &&
       it.rect.centerY()>=anchor.rect.bottom-h*.015f && it.rect.centerY()<=anchor.rect.bottom+h*.065f
     }.mapNotNull{exactCents637(it.value)}.distinct()
-    val balances=labels.filter{
-      it.rect.centerX() in (w*.48f).toInt()..(w*.86f).toInt() && it.rect.centerY()<h*.17f
-    }.mapNotNull{exactCents637(it.value)}.distinct()
+    val headerLabels=labels.map{
+      LiveMartingalePreview637.VisualLabel(it.value,it.rect.left.toFloat()/w,
+        it.rect.top.toFloat()/h,it.rect.right.toFloat()/w,it.rect.bottom.toFloat()/h)
+    }
+    val balance=LiveMartingalePreview637.readHeaderBalance(headerLabels)
     val countPattern=Regex("""(?i)^(?:open (?:positions|trades)|poziții deschise|pozitii deschise|tranzacții deschise|tranzactii deschise)\s*:\s*(\d{1,4})$""")
     val counts=labels.mapNotNull{
       countPattern.matchEntire(it.value.trim())?.groupValues?.get(1)?.toIntOrNull()
@@ -143,7 +145,7 @@ object RotationPayoutReader {
         LiveMartingalePreview637.isTradesFooter(it.value)
     }.mapNotNull{Regex("[1-9][0-9]{0,2}$").find(it.value.trim())?.value?.toIntOrNull()}
     val open=(counts+footerCounts).filter{it>0}.maxOrNull() ?: counts.singleOrNull()
-    return LiveSnapshot(pkg,stakes.singleOrNull(),balances.singleOrNull(),open,footer)
+    return LiveSnapshot(pkg,stakes.singleOrNull(),balance,open,footer)
   }
 
 
