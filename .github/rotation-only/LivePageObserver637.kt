@@ -201,14 +201,16 @@ internal class LivePageObserver637(
         val single=(snap.openCount==1 || badge==1) &&
           (snap.openCount ?: 1)<=1 && (badge ?: 1)<=1
         if(frozen!=null && chartText && positive){
-          if(frozen.verify(pair,snap.pkg,observedStake,bal,captured,single)){
+          val conflicting=(snap.openCount ?: 0)>1 || (badge ?: 0)>1 ||
+            (displayedStake!=null && activeMarker!=null && displayedStake!=activeMarker)
+          if(frozen.verify(pair,snap.pkg,observedStake,bal,captured,single,conflicting)){
             val actual=Sample(pair,snap.pkg,frozen.stake,frozen.before)
             attempt=Attempt(actual,frozen.detectedAt)
             unmatchedActive=false;entryLatch=null;entryFailure=""
             candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;zeroLastAt=0;zeroResult=null;reported=null
             baseline=null
           }else entryFailure=when {
-            captured-frozen.detectedAt>45_000L -> "DEBIT NECONFIRMAT"
+            captured-frozen.detectedAt>270_000L -> "DEBIT NECONFIRMAT"
             observedStake==null -> "AȘTEPT MIZA ORDINULUI"
             observedStake!=frozen.stake -> "MIZĂ DIFERITĂ"
             bal==null -> "AȘTEPT SOLDUL DUPĂ ORDIN"
