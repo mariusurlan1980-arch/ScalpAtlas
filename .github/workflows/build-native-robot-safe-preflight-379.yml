@@ -47,7 +47,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -357,8 +357,16 @@ jobs:
 
       - name: Generate launcher icon
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq librsvg2-bin
+          if ! command -v rsvg-convert >/dev/null 2>&1; then
+            source_list=/etc/apt/sources.list.d/ubuntu.sources
+            if [ ! -f "$source_list" ]; then
+              source_list=/etc/apt/sources.list
+            fi
+            test -s "$source_list"
+            # Use the runner's signed Ubuntu archive only; no Microsoft packages needed.
+            sudo apt-get -o Dir::Etc::sourcelist="$source_list" -o Dir::Etc::sourceparts=- update -qq
+            sudo apt-get -o Dir::Etc::sourcelist="$source_list" -o Dir::Etc::sourceparts=- install -y -qq librsvg2-bin
+          fi
           rsvg-convert -w 1024 -h 1024 scalp-atlas-new/assets/app-icon.svg -o scalp-atlas-new/assets/app-icon.png
 
       - name: Validate isolated touch practice panel
