@@ -40,9 +40,16 @@ internal object LiveMartingalePreview637 {
   class EntryLatch(val pkg:String,val stake:Long,val before:Long,val detectedAt:Long){
     private var firstAt:Long?=null
     private var firstPair:String?=null
-    fun verify(pair:String,account:String,visibleStake:Long?,balance:Long?,at:Long,single:Boolean):Boolean {
-      if(account!=pkg || at-detectedAt !in 0L..45_000L || !single ||
-        !entryDebit(visibleStake,before,balance,at-detectedAt,account==pkg) || visibleStake!=stake){
+    private var boundPair:String?=null
+    private var invalid=false
+    // Late OCR recovery is allowed only for an order identified early, with
+    // the original pre-entry balance and the same single active DEMO position.
+    fun verify(pair:String,account:String,visibleStake:Long?,balance:Long?,at:Long,single:Boolean,conflicting:Boolean=false):Boolean {
+      val age=at-detectedAt
+      if(conflicting || account!=pkg || (boundPair!=null && boundPair!=pair))invalid=true
+      if(!invalid && boundPair==null && single && visibleStake==stake && age in 0L..45_000L)boundPair=pair
+      if(invalid || boundPair!=pair || age !in 0L..270_000L || !single ||
+        visibleStake!=stake || balance==null || before<stake || before-balance!=stake){
         firstAt=null;firstPair=null;return false
       }
       val previous=firstAt
