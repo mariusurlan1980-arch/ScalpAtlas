@@ -317,7 +317,7 @@ class ScalpOverlayService : Service() {
       val request=queuedMg;queuedMg=null
       if(tradePause.releasedWithoutResult){
         verifyingMg=null
-        mgEditBlocked="MG OPRIT • REZULTAT NECONFIRMAT"
+        mgEditBlocked="MG OPRIT • "+(liveReader?.diagnostic() ?: "REZULTAT NECONFIRMAT")
         liveReader?.suspendMg(mgEditBlocked!!)
         say("REIAU ROTAȚIA • FĂRĂ MG")
         return 500L
