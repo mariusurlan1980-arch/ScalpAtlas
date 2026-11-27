@@ -71,8 +71,12 @@ class ScalpOverlayService : Service() {
   private var openingMg:Pair<QueuedMg,Long>?=null
   private var calculatorMg:RotationPayoutReader.CalculatorSession?=null
   private var mgEditBlocked:String?=null
+  private var startupChecked=false
+  private var startupSample:Pair<QueuedMg,Long>?=null
+  private var startupRequest:QueuedMg?=null
   private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
     if(positive){
+      startupChecked=true;startupSample=null;startupRequest=null
       queuedMg=null
       if(verifyingMg!=null || openingMg!=null){
         verifyingMg=null;openingMg=null;calculatorMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"
@@ -161,6 +165,22 @@ class ScalpOverlayService : Service() {
           },
           settlement={handler.post{if(!stopped && projection===p)tradePause.settle()}},
           stakeReadback={pkg,pair,value,balance,at,quiet ->
+            if(!stopped && projection===p && !startupChecked && !tradePause.isLocked() &&
+              Looper.myLooper()==handler.looper){
+              if(!quiet || value==null || balance==null){startupSample=null}
+              else if(value==100L && balance>=109L){
+                val req=QueuedMg(pkg,pair,100L,109L,balance)
+                val prior=startupSample
+                if(prior!=null && prior.first==req && at-prior.second in 1_000L..4_000L){
+                  startupRequest=req;startupChecked=true;startupSample=null
+                }else startupSample=req to at
+              }else if(value in LiveMartingalePreview637.ladder){
+                startupChecked=true;startupSample=null
+              }else{
+                startupChecked=true;startupSample=null
+                mgEditBlocked="MG • MIZĂ INIȚIALĂ NECUNOSCUTĂ"
+              }
+            }
             val pending=verifyingMg
             if(!stopped && projection===p && pending!=null && Looper.myLooper()==handler.looper){
               val (request,check)=pending
@@ -351,6 +371,24 @@ class ScalpOverlayService : Service() {
       say(if(openingMg!=null)"MG • ACTIVEZ SUMA" else if(verifyingMg!=null)"MG • VERIFIC MIZA" else if(mgEditBlocked!=null)"MG • MIZĂ NECONFIRMATĂ" else "ÎNCHIDERE CONFIRMATĂ • REIAU ROTAȚIA")
       return 500L
     }
+    val boot=startupRequest
+    if(boot!=null){
+      startupRequest=null
+      val fresh=latestQuietFrame>0L && now-latestQuietFrame in 0L..3_000L
+      val result=if(fresh && !tradePause.isLocked() && TouchTestService.positiveOpenBadge637()==null)
+        TouchTestService.applyVerifiedMg637(boot.pkg,boot.pair,boot.old,boot.target,boot.balance,
+          visualClosureVerified=true,overlayBounds=bounds(),startupRepair=true)
+        else "MG • CORECȚIE INIȚIALĂ BLOCATĂ"
+      if(result=="MG • SET_TEXT TRIMIS")
+        verifyingMg=boot to LiveMartingalePreview637.EditReadback(boot.target,now)
+      else if(result=="MG • EDITOR DESCHIS"){
+        openingMg=boot to now;calculatorMg=RotationPayoutReader.CalculatorSession(boot.old,boot.target)
+      }else{
+        mgEditBlocked=result;liveReader?.suspendMg(result)
+      }
+      say("MG • REFAC MIZA INIȚIALĂ")
+      return 500L
+    }
     val opening=openingMg
     if(opening!=null){
       val (request,started)=opening
@@ -391,6 +429,9 @@ class ScalpOverlayService : Service() {
     // No new selector actions while LIVE has not supplied a recent position frame.
     if(latestPositionFrame==0L || now-latestPositionFrame>3_500L){
       say("AȘTEPT VERIFICAREA TRADE");return 500L
+    }
+    if(!startupChecked && !TouchTestService.fxListVisible(false)){
+      say("MG • VERIFIC MIZA INIȚIALĂ");return 500L
     }
     if (TouchTestService.fxListVisible(false)) {
       val requested=pendingPair

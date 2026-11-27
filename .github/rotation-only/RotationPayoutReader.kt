@@ -163,7 +163,7 @@ object RotationPayoutReader {
   // One exact input edit, only after independently observed settlement.
   internal fun editVerifiedStake637(
     svc:AccessibilityService, expectedPackage:String, previous:Long, target:Long,
-    expectedBalance:Long, visualClosureVerified:Boolean, allowOpen:Boolean, overlayBounds:Rect, stillAuthorized:()->Boolean
+    expectedBalance:Long, visualClosureVerified:Boolean, allowOpen:Boolean, overlayBounds:Rect, stillAuthorized:()->Boolean, startupRepair:Boolean=false
   ):String {
     if(!stillAuthorized())return "MG • CONT NECONFIRMAT"
     val chart=readChart(svc,false).first ?: return "MG • GRAFIC NECITIT"
@@ -172,8 +172,9 @@ object RotationPayoutReader {
     val snap=readLiveSnapshot637(svc) ?: return "MG • DATE NECITITE"
     val open=snap.openCount ?: if(visualClosureVerified && positiveOpenBadge637(svc)==null)0 else null
     if(snap.stake==null)return "MG • CÂMP SUMĂ FĂRĂ EDITARE"
-    if(snap.pkg!=expectedPackage ||
-        !LiveMartingalePreview637.permitsEdit(previous,target,snap.stake,snap.balance,open,expectedBalance))
+    val permitted=if(startupRepair)LiveMartingalePreview637.permitsStartupRepair(previous,target,snap.stake,snap.balance,open,expectedBalance)
+      else LiveMartingalePreview637.permitsEdit(previous,target,snap.stake,snap.balance,open,expectedBalance)
+    if(snap.pkg!=expectedPackage || !permitted)
       return "MG • MIZĂ NESCHIMBATĂ"
     val (_,_,w,h,labels)=chart
     val amounts=stakeFieldItems(chart).filter{exactCents637(it.value)==previous}
@@ -247,8 +248,9 @@ object RotationPayoutReader {
   }
 
   internal class CalculatorSession(val previous:Long,val target:Long){
-    val steps=LiveMartingalePreview637.calculatorKeys(
+    var steps=LiveMartingalePreview637.calculatorKeys(
       String.format(Locale.ROOT,"%d.%02d",previous/100L,previous%100L),target).orEmpty()
+    var startupPrepared=false
     var index=0
     var sentAt=0L
     var closing=false
@@ -279,6 +281,11 @@ object RotationPayoutReader {
       return "MG • TASTE CALCULATOR NECONFIRMATE"
     }
     val raw=layout.raw
+    if(session.previous==100L && session.target==109L && !session.startupPrepared){
+      session.steps=LiveMartingalePreview637.startupCalculatorKeys(raw)
+        ?: return "MG • VALOARE INIȚIALĂ DIFERITĂ"
+      session.startupPrepared=true
+    }
     val desired=String.format(Locale.ROOT,"%d.%02d",session.target/100L,session.target%100L)
     if(session.closing)return "MG • AȘTEPT ÎNCHIDERE CALCULATOR"
     if(session.sentAt>0L){

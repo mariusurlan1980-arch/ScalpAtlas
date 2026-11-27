@@ -1,5 +1,17 @@
 package com.scalpatlas.app
 fun main(){
+  val bootPreview=LiveMartingalePreview637
+  check(bootPreview.permitsStartupRepair(100,109,100,155633,0,155633))
+  check(!bootPreview.permitsStartupRepair(100,228,100,155633,0,155633))
+  check(!bootPreview.permitsStartupRepair(228,109,228,155633,0,155633))
+  check(!bootPreview.permitsStartupRepair(100,109,100,155633,1,155633))
+  check(!bootPreview.permitsStartupRepair(100,109,100,155633,null,155633))
+  check(!bootPreview.permitsStartupRepair(100,109,100,155632,0,155633))
+  check(!bootPreview.permitsEdit(100,109,100,155633,0,155633))
+  check(bootPreview.startupCalculatorKeys("1")?.map{it.key}==listOf(".","0","9"))
+  check(bootPreview.startupCalculatorKeys("1.00")?.map{it.key}==listOf("DELETE","9"))
+  check(bootPreview.startupCalculatorKeys("1.09")==null)
+
   val echo=LiveMartingalePreview637
   check(echo.calculatorEcho("1","1.0"))
   check(echo.calculatorEcho("1.00","1."))

@@ -134,6 +134,28 @@ internal object LiveMartingalePreview637 {
     }
     return steps
   }
+  // Narrow recovery of the minimum amount left by the interrupted editor.
+  // It is not a trade outcome and cannot authorize a Martingale increase.
+  fun permitsStartupRepair(previous:Long,target:Long,current:Long?,balance:Long?,open:Int?,expectedBalance:Long):Boolean =
+    previous==100L && target==ladder.first() && current==previous &&
+      balance!=null && balance==expectedBalance && balance>=target && open==0
+  fun startupCalculatorKeys(raw:String):List<CalculatorKey>? {
+    if(!calculatorEcho(raw,"1"))return null
+    val from=raw.trim().replace(',','.')
+    val desired="1.09"
+    val prefix=from.zip(desired).takeWhile{it.first==it.second}.size
+    var current=from
+    val steps=mutableListOf<CalculatorKey>()
+    while(current.length>prefix){
+      val next=current.dropLast(1)
+      steps.add(CalculatorKey("DELETE",current,next));current=next
+    }
+    for(ch in desired.drop(prefix)){
+      val next=current+ch
+      steps.add(CalculatorKey(ch.toString(),current,next));current=next
+    }
+    return steps
+  }
   fun permitsEdit(previous:Long,target:Long?,current:Long?,balance:Long?,open:Int?,expectedBalance:Long):Boolean =
     previous in ladder && target != null && target in ladder &&
       current == previous && balance != null && balance == expectedBalance &&
