@@ -2625,6 +2625,7 @@ jobs:
           assert 'openingMg' in s and 'stepCalculator637' in s
           assert editor.count('dispatchGesture(')==1 and 'tapAmountPoint637' in editor
           assert 'TASTE CALCULATOR NECONFIRMATE' in editor and 'calculatorKeys' in preview
+          assert 'calculatorLayout' in preview and 'calculatorFrame' in observer and 'calculatorFrame' in s
           for forbidden in ('dispatchGesture','performAction','ACTION_SET_TEXT','pressVerifiedDemoStakeOnce429','advanceDemoHistory','getSharedPreferences'):
               assert forbidden not in observer and forbidden not in preview, forbidden
           print('PASS independent reader, guarded stake editor, no order paths')

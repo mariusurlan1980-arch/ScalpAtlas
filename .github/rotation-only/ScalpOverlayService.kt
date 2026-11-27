@@ -357,7 +357,8 @@ class ScalpOverlayService : Service() {
       val freshPosition=latestPositionFrame>0L && now-latestPositionFrame in 0L..3_500L
       val result=if(session!=null && !tradePause.isLocked() && freshPosition &&
         TouchTestService.positiveOpenBadge637()==null)
-        TouchTestService.stepCalculator637(request.pkg,request.pair,request.balance,session,now,bounds())
+        TouchTestService.stepCalculator637(request.pkg,request.pair,request.balance,session,now,bounds(),
+          liveReader?.calculatorFrame(now,request.pair,request.balance))
       else "MG • AȘTEPT CALCULATORUL"
       if(result=="MG • SET_TEXT TRIMIS"){
         openingMg=null;calculatorMg=null
@@ -370,7 +371,8 @@ class ScalpOverlayService : Service() {
         liveReader?.suspendMg(mgEditBlocked!!)
         liveStatus?.text=mgEditBlocked
       }
-      say("MG • VERIFIC EDITOR SUMĂ")
+      if(openingMg!=null){liveReader?.reportEdit(result);liveStatus?.text=result}
+      say("MG • CALCULATOR")
       return 500L
     }
     val verification=verifyingMg

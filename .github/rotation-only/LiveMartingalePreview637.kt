@@ -119,6 +119,51 @@ internal object LiveMartingalePreview637 {
 
   // Read-only OCR evidence. Deliberately separate from stake-edit authorization.
   data class VisualLabel(val text:String,val left:Float,val top:Float,val right:Float,val bottom:Float)
+  data class KeyPoint(val x:Float,val y:Float)
+  data class CalculatorLayout(val raw:String,val keys:Map<String,KeyPoint>,val top:Float,val bottom:Float)
+  data class CalculatorFrame(val at:Long,val pair:String,val balance:Long,val layout:CalculatorLayout)
+  // Calculator and history captions are independent boundaries. All ten digits
+  // must form the screenshot-confirmed grid before deriving dot/backspace.
+  fun calculatorLayout(labels:List<VisualLabel>,lines:List<VisualLabel> = emptyList()):CalculatorLayout? {
+    val all=labels+lines
+    fun center(l:VisualLabel)=KeyPoint((l.left+l.right)/2,(l.top+l.bottom)/2)
+    fun unique(items:List<VisualLabel>):VisualLabel? {
+      val first=items.minByOrNull{(it.right-it.left)*(it.bottom-it.top)} ?: return null
+      if(items.any{kotlin.math.abs(center(it).x-center(first).x)>.035f ||
+        kotlin.math.abs(center(it).y-center(first).y)>.015f})return null
+      return first
+    }
+    val title=unique(all.filter{it.text.trim().equals("Calculator",true) &&
+      it.left in .08f.. .40f && center(it).y in .37f.. .50f}) ?: return null
+    fun historyText(raw:String)=java.text.Normalizer.normalize(raw.trim().lowercase(java.util.Locale.ROOT),
+      java.text.Normalizer.Form.NFD).replace(Regex("""\p{M}"""),"").replace(Regex("""\s+""")," ")
+    val history=unique(all.filter{historyText(it.text) in listOf("istoric tranzactii","trade history") &&
+      it.left in .08f.. .40f && center(it).y in .60f.. .72f}) ?: return null
+    val keys=mutableMapOf<String,KeyPoint>()
+    val rows=listOf(listOf("7","8","9"),listOf("4","5","6"),listOf("1","2","3"))
+    for(key in rows.flatten()+listOf("0")){
+      val label=unique(all.filter{it.text.trim()==key && it.top>title.bottom &&
+        it.bottom<history.top && it.left>=.08f && it.right<=.92f &&
+        it.bottom-it.top<=.06f}) ?: return null
+      keys[key]=center(label)
+    }
+    val ys=rows.map{row->keys.getValue(row.first()).y}+keys.getValue("0").y
+    val xs=rows.first().map{keys.getValue(it).x}
+    if(ys.zipWithNext().any{(a,b)->b-a !in .025f.. .065f} ||
+      xs.zipWithNext().any{(a,b)->b-a !in .15f.. .32f})return null
+    for((ri,row) in rows.withIndex())for((ci,key) in row.withIndex()){
+      val point=keys.getValue(key)
+      if(kotlin.math.abs(point.y-ys[ri])>.012f || kotlin.math.abs(point.x-xs[ci])>.04f)return null
+    }
+    if(kotlin.math.abs(keys.getValue("0").x-xs[1])>.04f)return null
+    keys["."]=KeyPoint(xs[0],ys[3]);keys["DELETE"]=KeyPoint(xs[2],ys[3])
+    val values=all.filter{center(it).y>=.34f && center(it).y<title.top && it.left<.68f && it.right<=.68f &&
+      it.text.trim().startsWith("$")}
+      .map{it.text.trim().removePrefix("$").trim().replace(',','.')}
+      .filter{it.matches(Regex("""\d{0,5}(?:\.\d{0,2})?"""))}.distinct()
+    val raw=values.singleOrNull() ?: return null
+    return CalculatorLayout(raw,keys,title.bottom,history.top)
+  }
   fun readDisplayedStake(labels:List<VisualLabel>, lineLabels:List<VisualLabel> = emptyList()):Long? {
     val anchors=labels.filter {
       it.left in .43f.. .82f && it.top in .60f.. .83f &&

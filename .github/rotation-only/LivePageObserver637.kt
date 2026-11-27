@@ -50,6 +50,10 @@ internal class LivePageObserver637(
   private var zeroResult:LiveMartingalePreview637.Result?=null
   private var reported:String?=null
   private var mgSuspended:String?=null
+  private var keypadFrame:LiveMartingalePreview637.CalculatorFrame?=null
+  fun calculatorFrame(now:Long,pair:String,balance:Long)=keypadFrame?.takeIf{
+    now-it.at in 0L..2_500L && it.pair==pair && it.balance==balance
+  }
 
   // Runs on the main handler, before reading any post-tap chart fields.
   private fun freezeEntry(at:Long) {
@@ -142,6 +146,7 @@ internal class LivePageObserver637(
     val snap=TouchTestService.readLiveSnapshot637()
     val pair=TouchTestService.readVisibleFxPair(false)
     if(snap==null || pair==null){
+      keypadFrame=null
       if(badge==null && !visualBadge)position(captured,false,false)
       zeroAt=0L;zeroLastAt=0L;zeroResult=null
       if(captured-idleCandidateAt>15_000L){idleCandidate=null;idleCandidateAt=0L}
@@ -160,6 +165,13 @@ internal class LivePageObserver637(
     val chartText=compact.contains("QTDEMO") && compact.contains(pairText)
     val visualStake=if(chartText) LiveMartingalePreview637.readDisplayedStake(labels,lineLabels) else null
     // Reject conflicting sources. OCR alone is a display reading, not an editable field.
+    keypadFrame=if(demoFrame && chartText && !visualBadge && badge==null &&
+      (snap.openCount ?: 0)==0 && visualBalance!=null &&
+      (snap.balance==null || snap.balance==visualBalance)){
+      LiveMartingalePreview637.calculatorLayout(labels,lineLabels)?.let{
+        LiveMartingalePreview637.CalculatorFrame(captured,pair,visualBalance,it)
+      }
+    }else null
     val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
     val freshChart=chartText && displayedStake!=null && bal!=null
     val positive=(snap.openCount ?: 0)>0 || badge!=null || (demoFrame && visualBadge)

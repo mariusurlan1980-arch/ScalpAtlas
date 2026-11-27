@@ -255,7 +255,7 @@ object RotationPayoutReader {
   }
 
   internal fun calculatorStep637(svc:AccessibilityService,expectedPackage:String,expectedBalance:Long,
-    session:CalculatorSession,now:Long,overlay:Rect,allowed:()->Boolean):String {
+    session:CalculatorSession,now:Long,overlay:Rect,visual:LiveMartingalePreview637.CalculatorFrame?,allowed:()->Boolean):String {
     if(!allowed())return "MG • CONT NECONFIRMAT"
     val chart=readChart(svc,false).first ?: return "MG • CALCULATOR NECITIT"
     if(chart.pkg!=expectedPackage || readChartPayout(chart).first!=92 ||
@@ -264,48 +264,21 @@ object RotationPayoutReader {
     val header=labels.map{LiveMartingalePreview637.VisualLabel(it.value,it.rect.left.toFloat()/w,
       it.rect.top.toFloat()/h,it.rect.right.toFloat()/w,it.rect.bottom.toFloat()/h)}
     val balance=LiveMartingalePreview637.readHeaderBalance(header)
-    if(balance!=expectedBalance || balance<session.target)return "MG • SOLD NECONFIRMAT"
+    if((balance!=null && balance!=expectedBalance) || (balance==null && visual?.balance!=expectedBalance) || expectedBalance<session.target)return "MG • SOLD NECONFIRMAT"
     if((readLiveSnapshot637(svc)?.openCount ?: 0)>0)return "MG • ORDIN ACTIV"
-    val calculator=labels.filter{it.value.equals("Calculator",true) &&
-      it.rect.centerY() in (h*.37f).toInt()..(h*.50f).toInt() && it.rect.left<w*.40f}
-      .distinctBy{it.rect.toShortString()}.singleOrNull()
-    if(calculator==null){
-      if(session.closing && readLiveSnapshot637(svc)?.stake==session.target)
-        return "MG • SET_TEXT TRIMIS"
-      return "MG • CALCULATOR NECONFIRMAT"
+    val accessible=LiveMartingalePreview637.calculatorLayout(header)
+    val optical=visual?.takeIf{now-it.at in 0L..2_500L && it.at>session.sentAt}?.layout
+    if(visual!=null && optical==null && session.sentAt>0L)return "MG • AȘTEPT CITIREA CIFREI"
+    if(accessible!=null && optical!=null && accessible.raw!=optical.raw)
+      return "MG • CITIRI CALCULATOR DIFERITE"
+    val layout=optical ?: accessible
+    if(layout==null){
+      val panelVisible=labels.any{it.value.equals("Calculator",true)}
+      if(session.closing && !panelVisible && visual==null &&
+        readLiveSnapshot637(svc)?.stake==session.target)return "MG • SET_TEXT TRIMIS"
+      return "MG • TASTE CALCULATOR NECONFIRMATE"
     }
-    val history=labels.filter{it.value.equals("Istoric tranzacții",true) ||
-      it.value.equals("Istoric tranzactii",true) || it.value.equals("Trade history",true)}
-      .filter{it.rect.top>calculator.rect.bottom && it.rect.bottom<h*.72f}
-      .distinctBy{it.rect.toShortString()}.singleOrNull() ?: return "MG • PANOU CALCULATOR NECONFIRMAT"
-    val keys=mutableMapOf<String,Rect>()
-    val rows=listOf(listOf("7","8","9"),listOf("4","5","6"),listOf("1","2","3"),listOf(".","0"))
-    for(row in rows)for(key in row){
-      val matches=labels.filter{it.value.trim()==key && it.rect.top>calculator.rect.bottom &&
-        it.rect.bottom<history.rect.top && it.rect.left>=w*.08f && it.rect.right<=w*.92f &&
-        it.rect.height()<=h*.06f}.map{it.rect}.distinct()
-      keys[key]=matches.singleOrNull() ?: return "MG • TASTE CALCULATOR NECONFIRMATE"
-    }
-    val rowY=rows.map{row->keys.getValue(row.first()).centerY()}
-    if(rowY.zipWithNext().any{(a,b)->b-a !in (h*.025f).toInt()..(h*.065f).toInt()})
-      return "MG • RÂNDURI CALCULATOR NECONFIRMATE"
-    val columns=listOf(keys.getValue("7").centerX(),keys.getValue("8").centerX(),keys.getValue("9").centerX())
-    if(columns.zipWithNext().any{(a,b)->b-a !in (w*.15f).toInt()..(w*.32f).toInt()})
-      return "MG • COLOANE CALCULATOR NECONFIRMATE"
-    for((ri,row) in rows.withIndex())for((ci,key) in row.withIndex()){
-      val rect=keys.getValue(key)
-      if(kotlin.math.abs(rect.centerY()-rowY[ri])>h*.012f ||
-        kotlin.math.abs(rect.centerX()-columns[ci])>w*.04f)return "MG • TASTĂ AMBIGUĂ"
-    }
-    // Screenshot-confirmed backspace is the third cell of the final row.
-    // Use its relative position only after all eleven labeled keys and
-    // both panel anchors match the observed layout.
-    val deleteX=columns[2]; val deleteY=rowY[3]
-    val rawValues=labels.filter{it.rect.centerY() in (h*.34f).toInt() until calculator.rect.top &&
-      it.rect.left<w*.68f && it.rect.right<=w*.68f && it.value.trim().startsWith("$")}
-      .map{it.value.trim().removePrefix("$").trim()}
-      .filter{it.matches(Regex("""\d{0,5}(?:\.\d{0,2})?"""))}.distinct()
-    val raw=rawValues.singleOrNull() ?: return "MG • VALOARE CALCULATOR NECITITĂ"
+    val raw=layout.raw
     val desired=String.format(Locale.ROOT,"%d.%02d",session.target/100L,session.target%100L)
     if(session.closing)return "MG • AȘTEPT ÎNCHIDERE CALCULATOR"
     if(session.sentAt>0L){
@@ -329,10 +302,9 @@ object RotationPayoutReader {
     }
     val step=session.steps[session.index]
     if(raw!=step.before)return "MG • VALOARE INIȚIALĂ DIFERITĂ"
-    val rect=keys[step.key]
-    val x=if(step.key=="DELETE")deleteX else rect?.centerX() ?: return "MG • TASTĂ NECITITĂ"
-    val y=if(step.key=="DELETE")deleteY else rect?.centerY() ?: return "MG • TASTĂ NECITITĂ"
-    if(y<=calculator.rect.bottom || y>=history.rect.top ||
+    val point=layout.keys[step.key] ?: return "MG • TASTĂ NECITITĂ"
+    val x=(point.x*w).toInt(); val y=(point.y*h).toInt()
+    if(point.y<=layout.top || point.y>=layout.bottom ||
       !tapAmountPoint637(svc,chart,x,y,overlay,allowed))return "MG • TASTĂ REFUZATĂ"
     session.index++
     session.sentAt=now

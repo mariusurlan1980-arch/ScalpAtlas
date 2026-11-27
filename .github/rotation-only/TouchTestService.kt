@@ -427,11 +427,11 @@ class TouchTestService : AccessibilityService() {
     }
 
     internal fun stepCalculator637(pkg:String,pair:String,balance:Long,session:RotationPayoutReader.CalculatorSession,
-      now:Long,overlay:Rect):String {
+      now:Long,overlay:Rect,visual:LiveMartingalePreview637.CalculatorFrame?):String {
       val svc=connected ?: return "MG • ACCESIBILITATE INDISPONIBILĂ"
       val allowed={connected===svc && demoFxAccountInForeground() && !realFxAccountInForeground() &&
         !realFxAccountVisible() && !fxListVisible(false) && readVisibleFxPair(false)==pair}
-      return RotationPayoutReader.calculatorStep637(svc,pkg,balance,session,now,overlay,allowed)
+      return RotationPayoutReader.calculatorStep637(svc,pkg,balance,session,now,overlay,visual,allowed)
     }
 
     fun readFxChartPayout(pair: String, realAccount: Boolean): Int? {

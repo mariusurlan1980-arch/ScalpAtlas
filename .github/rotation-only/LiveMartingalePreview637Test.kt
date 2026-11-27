@@ -1,5 +1,20 @@
 package com.scalpatlas.app
 fun main(){
+  // Geometry fixture derived from the 686 x 1536 calculator screenshot.
+  fun klabel(value:String,x:Int,y:Int,w:Int=16,h:Int=25)=LiveMartingalePreview637.VisualLabel(
+    value,(x-w/2f)/686,(y-h/2f)/1536,(x+w/2f)/686,(y+h/2f)/1536)
+  val keypad=listOf(klabel("Calculator",130,662,100),klabel("Istoric tranzacții",166,1002,164),
+    klabel("$1.09",260,580,100,35),klabel("7",168,718),klabel("8",342,718),klabel("9",518,718),
+    klabel("4",168,786),klabel("5",342,786),klabel("6",518,786),
+    klabel("1",168,853),klabel("2",342,853),klabel("3",518,853),klabel("0",342,920))
+  val layout=checkNotNull(LiveMartingalePreview637.calculatorLayout(keypad))
+  check(layout.raw=="1.09" && layout.keys.size==12)
+  check(kotlin.math.abs(layout.keys.getValue("DELETE").x-518f/686)<.01f)
+  check(kotlin.math.abs(layout.keys.getValue(".").x-168f/686)<.01f)
+  check(LiveMartingalePreview637.calculatorLayout(keypad.filter{it.text!="9"})==null)
+  check(LiveMartingalePreview637.calculatorLayout(keypad+klabel("7",500,950))==null)
+  check(LiveMartingalePreview637.calculatorLayout(keypad.filter{!it.text.startsWith("$")})==null)
+
   check(LiveMartingalePreview637.entryBalance(155897L,109L,155788L,155897L,true)==155788L)
   check(LiveMartingalePreview637.entryBalance(155897L,109L,155897L,155788L,true)==155788L)
   check(LiveMartingalePreview637.entryBalance(155897L,109L,155788L,155700L,true)==null)
