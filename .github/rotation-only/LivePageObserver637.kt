@@ -205,20 +205,19 @@ internal class LivePageObserver637(
         if(frozen!=null && chartText && positive){
           val conflicting=(snap.openCount ?: 0)>1 || (badge ?: 0)>1 ||
             (displayedStake!=null && activeMarker!=null && displayedStake!=activeMarker)
-          if(frozen.verify(pair,snap.pkg,observedStake,bal,captured,single,conflicting)){
+          val entryBal=LiveMartingalePreview637.entryBalance(frozen.before,frozen.stake,visualBalance,snap.balance,single)
+          if(frozen.verify(pair,snap.pkg,observedStake,entryBal,captured,single,conflicting)){
             val actual=Sample(pair,snap.pkg,frozen.stake,frozen.before)
             attempt=Attempt(actual,frozen.detectedAt)
             unmatchedActive=false;entryLatch=null;entryFailure=""
             candidate=null;candidateAt=0;confirmedResult=false;zeroAt=0;zeroLastAt=0;zeroResult=null;reported=null
             baseline=null
           }else entryFailure=when {
-            captured-frozen.detectedAt>270_000L -> "DEBIT NECONFIRMAT"
+            captured-frozen.detectedAt>270_000L -> "DEBIT EXPIRAT • "+entryFailure.removePrefix("DEBIT EXPIRAT • ").take(55)
             observedStake==null -> "AȘTEPT MIZA ORDINULUI"
             observedStake!=frozen.stake -> "MIZĂ DIFERITĂ"
-            bal==null -> if(visualBalance!=null && snap.balance!=null)
-              "SOLDURI DIFERITE OCR/ANDROID" else "SOLD DUPĂ ORDIN NECITIT"
-            frozen.before-bal!=frozen.stake -> "DEBIT DIFERIT"
             !single -> "NUMĂR ORDINE NECONFIRMAT"
+            entryBal==null -> "B:"+fmt(frozen.before)+" V:"+(visualBalance?.let(fmt)?:"?")+" A:"+(snap.balance?.let(fmt)?:"?")
             else -> "CONFIRM DEBITUL"
           }
         }

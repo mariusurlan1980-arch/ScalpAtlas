@@ -35,6 +35,19 @@ internal object LiveMartingalePreview637 {
     sameAccount && stake!=null && stake in ladder && before!=null && after!=null &&
       age in 0L..45_000L && before>=stake && before-after==stake
 
+  // When one reader still exposes the exact pre-order balance, the other
+  // may prove the debit. Never resolve unrelated conflicting amounts.
+  // The caller must also prove the single active order; EntryLatch repeats it.
+  fun entryBalance(before:Long,stake:Long,visual:Long?,android:Long?,single:Boolean):Long? {
+    if(!single || stake !in ladder || before<stake)return null
+    val expected=before-stake
+    if(visual!=null && android!=null && visual!=android){
+      if((visual==before && android==expected) || (android==before && visual==expected))
+        return expected
+      return null
+    }
+    return (visual ?: android)?.takeIf{it==expected}
+  }
   // Keep the original, already-armed balance for the whole entry transition.
   // A missing OCR field is not an authorization; verify exact debit twice.
   class EntryLatch(val pkg:String,val stake:Long,val before:Long,val detectedAt:Long){

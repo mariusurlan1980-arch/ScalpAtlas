@@ -1,5 +1,12 @@
 package com.scalpatlas.app
 fun main(){
+  check(LiveMartingalePreview637.entryBalance(155897L,109L,155788L,155897L,true)==155788L)
+  check(LiveMartingalePreview637.entryBalance(155897L,109L,155897L,155788L,true)==155788L)
+  check(LiveMartingalePreview637.entryBalance(155897L,109L,155788L,155700L,true)==null)
+  check(LiveMartingalePreview637.entryBalance(155897L,109L,155788L,155897L,false)==null)
+  check(LiveMartingalePreview637.entryBalance(155897L,109L,155897L,155897L,true)==null)
+  check(LiveMartingalePreview637.entryBalance(155897L,109L,155788L,null,true)==155788L)
+
   check(LiveMartingalePreview637.calculatorKeys("1.09",228L)?.map{it.key}==
     listOf("DELETE","DELETE","DELETE","DELETE","2",".","2","8"))
   check(LiveMartingalePreview637.calculatorKeys("2.28",109L)?.last()?.after=="1.09")
