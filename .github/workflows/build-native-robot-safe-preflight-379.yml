@@ -2594,13 +2594,13 @@ jobs:
           assert observer.index('if(demoFrame && badge!=null') < observer.index('val snap=TouchTestService.readLiveSnapshot637()')
           assert 'latestPositionFrame' in s
           assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer
-          assert 'readDisplayedStake(labels)' in observer and 'displayedStake?.let(fmt)' in observer
+          assert 'readDisplayedStake(labels,lineLabels)' in observer and 'displayedStake?.let(fmt)' in observer
           assert 'settledBalance' in observer and 'captured-zeroAt>=3_000L' in observer
           assert 'entryDebit' in observer and 'Sample(pair,snap.pkg,frozen.stake,frozen.before)' in observer
-          assert 'freezeEntry(captured)' in observer and 'frozen.verify' in observer and 'readActiveStake(labels)' in observer
+          assert 'freezeEntry(captured)' in observer and 'frozen.verify' in observer and 'readActiveStake(labels,lineLabels)' in observer
           assert 'MG • TRADE MEMORAT' in observer and 'SOLD INIȚIAL NECONFIRMAT' in observer
           assert 'MG ARMAT' in observer and 'snap.tradesFooterSeen' in observer
-          assert 'readHeaderBalance(labels)' in observer and 'stableIdleSample' in observer
+          assert 'readHeaderBalance(labels,lineLabels)' in observer and 'stableIdleSample' in observer
           assert 'permitsEdit(old,next,displayedStake,bal,0,' in observer
           assert 'applyVerifiedMg637' in s and 'editVerifiedStake637' in t
           editor=(d/'RotationPayoutReader.kt').read_text()
