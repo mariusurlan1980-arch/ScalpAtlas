@@ -8,10 +8,10 @@ fun main(){
   check(!echo.calculatorEcho("12","2"))
   check(!echo.calculatorEcho("2.280","2.28"))
   val seq=checkNotNull(echo.calculatorKeys("1.09",228L))
-  val actual=listOf("1","1","1","1","2","2","2.2","2.28")
+  val keypadEchoes=listOf("1","1","1","1","2","2","2.2","2.28")
   for((index,step) in seq.withIndex()){
-    check(echo.calculatorBeforeEcho(if(index==0)"1.09" else actual[index-1],step))
-    check(echo.calculatorStepEcho(actual[index],step))
+    check(echo.calculatorBeforeEcho(if(index==0)"1.09" else keypadEchoes[index-1],step))
+    check(echo.calculatorStepEcho(keypadEchoes[index],step))
   }
   check(!echo.calculatorStepEcho("12",seq[4]))
   check(!echo.calculatorEcho("1","2.28"))
