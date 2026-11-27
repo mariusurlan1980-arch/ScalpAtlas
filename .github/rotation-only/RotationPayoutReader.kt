@@ -246,7 +246,7 @@ object RotationPayoutReader {
     return try{svc.dispatchGesture(gesture,null,null)}catch(_:Throwable){false}
   }
 
-  class CalculatorSession(val previous:Long,val target:Long){
+  internal class CalculatorSession(val previous:Long,val target:Long){
     val steps=LiveMartingalePreview637.calculatorKeys(
       String.format(Locale.ROOT,"%d.%02d",previous/100L,previous%100L),target).orEmpty()
     var index=0
