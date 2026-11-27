@@ -226,6 +226,35 @@ internal object LiveMartingalePreview637 {
   // settlement are independently checked. Unknown badge count is not one.
   fun confirmedVisualBadge(blue:Boolean,footerCount:Int?,chartMarker:Long?):Int? =
     if(!blue) null else footerCount?.takeIf{it>0} ?: chartMarker?.takeIf{it in ladder}?.let{1}
+  // OCR digit tied to the Trades footer and a chart marker provides an
+  // alternative if Android or the pixel-color badge detector misses the count.
+  // Never infer one order from the stake or debit alone.
+  fun corroboratedOrderCount(android:Int?,visual:Int?,footer:PositionHint,zone:Int?,marker:Long?):Int? {
+    val counts=listOfNotNull(android?.takeIf{it>0},visual?.takeIf{it>0},
+      footer.positive?.takeIf{footer.tabSeen},zone?.takeIf{footer.tabSeen && marker in ladder})
+    if(counts.any{it>1})return counts.maxOrNull()
+    if(android==1 || visual==1)return 1
+    return 1.takeIf{footer.tabSeen && marker in ladder && (footer.positive==1 || zone==1)}
+  }
+
+  // Only a new stable idle baseline may rearm an unverified receipt.
+  // Never use this path for a partially edited amount or an unknown active order.
+  class QuietRearm {
+    private var previous:Triple<String,Long,Long>?=null
+    private var first=0L
+    private var last=0L
+    fun observe(pkg:String,stake:Long?,balance:Long?,at:Long,quiet:Boolean):Boolean{
+      if(!quiet || stake==null || stake !in ladder || balance==null || balance<stake){
+        previous=null;first=0L;last=0L;return false
+      }
+      val sample=Triple(pkg,stake,balance)
+      if(previous!=sample || at<=last || at-last>4_000L){
+        previous=sample;first=at;last=at;return false
+      }
+      last=at
+      return at-first>=4_000L
+    }
+  }
   fun shouldPauseForBadge(blue:Boolean):Boolean=blue
   fun readBadgeCount(labels:List<VisualLabel>):Int? {
     val numbers=labels.filter {

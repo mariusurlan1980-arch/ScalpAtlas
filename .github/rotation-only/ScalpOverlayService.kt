@@ -319,9 +319,11 @@ class ScalpOverlayService : Service() {
       val request=queuedMg;queuedMg=null
       if(tradePause.releasedWithoutResult){
         verifyingMg=null
-        mgEditBlocked="MG OPRIT • "+(liveReader?.diagnostic() ?: "REZULTAT NECONFIRMAT")
-        liveReader?.suspendMg(mgEditBlocked!!)
-        say("REIAU ROTAȚIA • FĂRĂ MG")
+        val reason="MG • ORDIN NECONFIRMAT • "+(liveReader?.diagnostic() ?: "REZULTAT NECONFIRMAT")
+        // Do not clear a previously failed stake edit. Only receipt failures
+        // can rearm for a new manual order after a clean idle baseline.
+        if(mgEditBlocked==null)liveReader?.suspendMg(reason,allowQuietRearm=true)
+        say("REVERIFIC SOLDUL • FĂRĂ EDITARE")
         return 500L
       }
       // Only a verified settlement may reach the editor. Recheck open count

@@ -1,5 +1,20 @@
 package com.scalpatlas.app
 fun main(){
+  val one=LiveMartingalePreview637.PositionHint(true,1)
+  val absent=LiveMartingalePreview637.PositionHint(false,null)
+  check(LiveMartingalePreview637.corroboratedOrderCount(null,null,one,1,109L)==1)
+  check(LiveMartingalePreview637.corroboratedOrderCount(null,null,one,1,null)==null)
+  check(LiveMartingalePreview637.corroboratedOrderCount(null,null,absent,1,109L)==null)
+  check(LiveMartingalePreview637.corroboratedOrderCount(2,null,one,1,109L)==2)
+  check(LiveMartingalePreview637.corroboratedOrderCount(1,null,one,2,109L)==2)
+  val rearm=LiveMartingalePreview637.QuietRearm()
+  check(!rearm.observe("demo",109L,155650L,1000L,true))
+  check(!rearm.observe("demo",109L,155650L,3000L,true))
+  check(rearm.observe("demo",109L,155650L,5000L,true))
+  check(!rearm.observe("demo",109L,155650L,6000L,false))
+  check(!rearm.observe("demo",109L,155650L,7000L,true))
+  check(!rearm.observe("demo",109L,155541L,9000L,true))
+
   // Geometry fixture derived from the 686 x 1536 calculator screenshot.
   fun klabel(value:String,x:Int,y:Int,w:Int=16,h:Int=25)=LiveMartingalePreview637.VisualLabel(
     value,(x-w/2f)/686,(y-h/2f)/1536,(x+w/2f)/686,(y+h/2f)/1536)

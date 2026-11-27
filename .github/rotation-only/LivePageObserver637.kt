@@ -50,6 +50,7 @@ internal class LivePageObserver637(
   private var zeroResult:LiveMartingalePreview637.Result?=null
   private var reported:String?=null
   private var mgSuspended:String?=null
+  private var quietRearm:LiveMartingalePreview637.QuietRearm?=null
   private var keypadFrame:LiveMartingalePreview637.CalculatorFrame?=null
   fun calculatorFrame(now:Long,pair:String,balance:Long)=keypadFrame?.takeIf{
     now-it.at in 0L..2_500L && it.pair==pair && it.balance==balance
@@ -131,12 +132,13 @@ internal class LivePageObserver637(
     val screenText=blocks.joinToString(" ").uppercase(java.util.Locale.ROOT)
     val compact=screenText.replace(Regex("""[\s()]"""),"")
     val hint=LiveMartingalePreview637.readPositionHint(labels)
+    val zoneCount=LiveMartingalePreview637.readBadgeCount(labels)
     val demoFrame=compact.contains("QTDEMO") && !compact.contains("QTREAL")
     val marker=if(demoFrame)LiveMartingalePreview637.readActiveStake(labels,lineLabels) else null
     val visualCount=LiveMartingalePreview637.confirmedVisualBadge(visualBadge,
-      LiveMartingalePreview637.readBadgeCount(labels) ?: hint.positive,marker)
+      zoneCount ?: hint.positive,marker)
     val accessibleBadge=if(demoFrame)TouchTestService.positiveOpenBadge637() else null
-    val badge=if(demoFrame) listOfNotNull(accessibleBadge,visualCount).maxOrNull() else null
+    val badge=if(demoFrame) LiveMartingalePreview637.corroboratedOrderCount(accessibleBadge,visualCount,hint,zoneCount,marker) else null
     // Positive badge must be processed BEFORE requiring a chart snapshot.
     if(demoFrame && badge!=null && TouchTestService.demoFxAccountInForeground() &&
        !TouchTestService.realFxAccountVisible()){
@@ -193,7 +195,20 @@ internal class LivePageObserver637(
         " • sold: "+(if(bal!=null)"citit" else "necunoscut")+
         " • poziții: "+(snap.openCount?.toString() ?: if(visualQuiet)"liber vizual" else "necunoscute")+
         " • MG: "+(if(baseline!=null)"sold memorat" else "aștept sold stabil"))
-    mgSuspended?.let{render(it);return}
+    mgSuspended?.let{reason->
+      val recovery=quietRearm
+      if(recovery==null || !recovery.observe(snap.pkg,displayedStake,bal,captured,clearChart)){
+        render(reason);return
+      }
+      // This is a fresh independent order baseline, not a recovered result.
+      // Do not fabricate the missed result or retroactively increase the stake.
+      if(displayedStake==null || bal==null)return
+      baseline=Sample(pair,snap.pkg,displayedStake,bal);baselineAt=captured
+      idleCandidate=baseline;idleCandidateAt=captured
+      mgSuspended=null;quietRearm=null;reported=null
+      render("MG REARMAT • ORDIN VECHI NECONFIRMAT")
+      return
+    }
     val fmt=LiveMartingalePreview637::format
     val now=SystemClock.elapsedRealtime()
     val pending=attempt
@@ -327,8 +342,9 @@ internal class LivePageObserver637(
     else -> "SOLD INIȚIAL NECONFIRMAT"
   }
   fun reportEdit(value:String){reported=value;render(value)}
-  fun suspendMg(reason:String){
+  fun suspendMg(reason:String,allowQuietRearm:Boolean=false){
     mgSuspended=reason
+    quietRearm=if(allowQuietRearm)LiveMartingalePreview637.QuietRearm() else null
     attempt=null;baseline=null;entryLatch=null;unmatchedActive=false
     idleCandidate=null;idleCandidateAt=0L;candidate=null;zeroResult=null
     zeroAt=0L;zeroLastAt=0L;reported=reason
