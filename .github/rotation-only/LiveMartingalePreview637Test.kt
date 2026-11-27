@@ -43,15 +43,15 @@ fun main(){
 
   // A gesture accepted by Android may have no effect in the broker.
   // Retry exactly once only with fresh optical proof of an unchanged value.
-  val retryDigit=echo.CalculatorKey("8","2.2","2.28")
+  val retryDigit=LiveMartingalePreview637.CalculatorKey("8","2.2","2.28")
   check(echo.canRetryUnchangedKey("2.20",retryDigit,4000,false,true))
   check(!echo.canRetryUnchangedKey("2.28",retryDigit,4000,false,true))
   check(!echo.canRetryUnchangedKey("2.20",retryDigit,4000,true,true))
   check(!echo.canRetryUnchangedKey("2.20",retryDigit,4000,false,false))
   check(!echo.canRetryUnchangedKey("2.20",retryDigit,3999,false,true))
   check(!echo.canRetryUnchangedKey("2.25",retryDigit,4000,false,true))
-  check(!echo.canRetryUnchangedKey("2",echo.CalculatorKey(".","2","2."),4000,false,true))
-  check(!echo.canRetryUnchangedKey("1",echo.CalculatorKey("DELETE","1.0","1."),4000,false,true))
+  check(!echo.canRetryUnchangedKey("2",LiveMartingalePreview637.CalculatorKey(".","2","2."),4000,false,true))
+  check(!echo.canRetryUnchangedKey("1",LiveMartingalePreview637.CalculatorKey("DELETE","1.0","1."),4000,false,true))
   check(echo.calculatorReadyForReadback(false,true,false,false,228,228))
   check(echo.calculatorReadyForReadback(true,true,false,false,228,228))
   check(!echo.calculatorReadyForReadback(false,false,false,false,228,228))
