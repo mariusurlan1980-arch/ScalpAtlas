@@ -231,10 +231,10 @@ internal object LiveMartingalePreview637 {
   // Never infer one order from the stake or debit alone.
   fun corroboratedOrderCount(android:Int?,visual:Int?,footer:PositionHint,zone:Int?,marker:Long?):Int? {
     val counts=listOfNotNull(android?.takeIf{it>0},visual?.takeIf{it>0},
-      footer.positive?.takeIf{footer.tabSeen},zone?.takeIf{footer.tabSeen && marker in ladder})
+      footer.positive?.takeIf{footer.tabSeen},zone?.takeIf{footer.tabSeen && marker!=null && marker in ladder})
     if(counts.any{it>1})return counts.maxOrNull()
     if(android==1 || visual==1)return 1
-    return 1.takeIf{footer.tabSeen && marker in ladder && (footer.positive==1 || zone==1)}
+    return 1.takeIf{footer.tabSeen && marker!=null && marker in ladder && (footer.positive==1 || zone==1)}
   }
 
   // Only a new stable idle baseline may rearm an unverified receipt.
