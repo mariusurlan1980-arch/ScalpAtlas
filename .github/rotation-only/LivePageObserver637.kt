@@ -104,14 +104,15 @@ internal class LivePageObserver637(
         recognizer.process(InputImage.fromBitmap(bitmap,0))
           .addOnSuccessListener{ result ->
             if(!closed) {
-              val labels=result.textBlocks.flatMap{block->block.lines.flatMap{line->line.elements}}
-                .mapNotNull{element ->
-                  val rect=element.boundingBox ?: return@mapNotNull null
-                  LiveMartingalePreview637.VisualLabel(element.text,
-                    rect.left.toFloat()/bitmap.width,rect.top.toFloat()/bitmap.height,
-                    rect.right.toFloat()/bitmap.width,rect.bottom.toFloat()/bitmap.height)
-                }
-              inspect(result.textBlocks.map{it.text},labels,captured,visualBadge)
+              fun label(text:String,rect:android.graphics.Rect?)=rect?.let {
+                LiveMartingalePreview637.VisualLabel(text,
+                  it.left.toFloat()/bitmap.width,it.top.toFloat()/bitmap.height,
+                  it.right.toFloat()/bitmap.width,it.bottom.toFloat()/bitmap.height)
+              }
+              val lines=result.textBlocks.flatMap{it.lines}
+              val labels=lines.flatMap{line->line.elements.mapNotNull{label(it.text,it.boundingBox)}}
+              val lineLabels=lines.mapNotNull{label(it.text,it.boundingBox)}
+              inspect(result.textBlocks.map{it.text},labels,lineLabels,captured,visualBadge)
             }
           }
           .addOnCompleteListener{
@@ -121,16 +122,17 @@ internal class LivePageObserver637(
     },handler)
   }
 
-  private fun inspect(blocks:List<String>, labels:List<LiveMartingalePreview637.VisualLabel>, captured:Long,visualBadge:Boolean) {
+  private fun inspect(blocks:List<String>, labels:List<LiveMartingalePreview637.VisualLabel>, lineLabels:List<LiveMartingalePreview637.VisualLabel>, captured:Long,visualBadge:Boolean) {
     if(closed || SystemClock.elapsedRealtime()-captured !in 0L..2_500L)return
     val screenText=blocks.joinToString(" ").uppercase(java.util.Locale.ROOT)
     val compact=screenText.replace(Regex("""[\s()]"""),"")
     val hint=LiveMartingalePreview637.readPositionHint(labels)
     val demoFrame=compact.contains("QTDEMO") && !compact.contains("QTREAL")
-    val marker=if(demoFrame)LiveMartingalePreview637.readActiveStake(labels) else null
+    val marker=if(demoFrame)LiveMartingalePreview637.readActiveStake(labels,lineLabels) else null
     val visualCount=LiveMartingalePreview637.confirmedVisualBadge(visualBadge,
       LiveMartingalePreview637.readBadgeCount(labels) ?: hint.positive,marker)
-    val badge=if(demoFrame) TouchTestService.positiveOpenBadge637() ?: visualCount else null
+    val accessibleBadge=if(demoFrame)TouchTestService.positiveOpenBadge637() else null
+    val badge=if(demoFrame) listOfNotNull(accessibleBadge,visualCount).maxOrNull() else null
     // Positive badge must be processed BEFORE requiring a chart snapshot.
     if(demoFrame && badge!=null && TouchTestService.demoFxAccountInForeground() &&
        !TouchTestService.realFxAccountVisible()){
@@ -150,13 +152,13 @@ internal class LivePageObserver637(
     val stake=snap.stake
     // OCR and accessibility may refer to different moments just after a tap.
     // Use the balance from the captured frame, rejecting conflicting reads.
-    val visualBalance=if(demoFrame)LiveMartingalePreview637.readHeaderBalance(labels) else null
+    val visualBalance=if(demoFrame)LiveMartingalePreview637.readHeaderBalance(labels,lineLabels) else null
     val bal=if(visualBalance!=null && snap.balance!=null && visualBalance!=snap.balance)
       null else visualBalance ?: snap.balance
     // Eye state is diagnostic only: it cannot grant stake or rotation permission.
     val pairText=pair.uppercase(java.util.Locale.ROOT).replace(Regex("""[\s()]"""),"")
     val chartText=compact.contains("QTDEMO") && compact.contains(pairText)
-    val visualStake=if(chartText) LiveMartingalePreview637.readDisplayedStake(labels) else null
+    val visualStake=if(chartText) LiveMartingalePreview637.readDisplayedStake(labels,lineLabels) else null
     // Reject conflicting sources. OCR alone is a display reading, not an editable field.
     val displayedStake=if(stake!=null && visualStake!=null && stake!=visualStake) null else stake ?: visualStake
     val freshChart=chartText && displayedStake!=null && bal!=null
@@ -307,6 +309,11 @@ internal class LivePageObserver637(
     render(if(positive)"LIVE • TRADE ACTIV" else "LIVE • VERIFIC SOLD FINAL")
   }
 
+  fun diagnostic():String=when {
+    attempt!=null -> "SOLD FINAL NECONFIRMAT"
+    entryFailure.isNotEmpty() -> entryFailure
+    else -> "SOLD INIȚIAL NECONFIRMAT"
+  }
   fun reportEdit(value:String){reported=value;render(value)}
   fun suspendMg(reason:String){
     mgSuspended=reason
