@@ -312,5 +312,27 @@ fun main(){
   check(p.readActiveStake(listOf(marker),listOf(label("$"+"2.28",.54f,.45f)))==null)
   check(p.readDisplayedStake(listOf(anchor),listOf(amount))==109L)
   check(p.readDisplayedStake(listOf(anchor,amount),listOf(label("2.28",.53f,.75f)))==null)
+  // Exhaustive simulated transitions: no broker gestures or orders.
+  for ((i, stake) in p.ladder.withIndex()) {
+    val winResult=LiveMartingalePreview637.Result(pair,stake*92/100,true)
+    val drawResult=LiveMartingalePreview637.Result(pair,0,false,true)
+    val lossResult=LiveMartingalePreview637.Result(pair,-stake,false)
+    check(p.next(stake,winResult)==109L)
+    check(p.next(stake,drawResult)==stake)
+    check(p.next(stake,lossResult)==p.ladder.getOrNull(i+1))
+    for(target in listOfNotNull(109L,stake,p.ladder.getOrNull(i+1)).distinct()){
+      val from=String.format(java.util.Locale.ROOT,"%d.%02d",stake/100,stake%100)
+      val to=String.format(java.util.Locale.ROOT,"%d.%02d",target/100,target%100)
+      val keys=checkNotNull(p.calculatorKeys(from,target))
+      var buffer=from
+      for(key in keys){
+        check(key.before==buffer)
+        buffer=if(key.key=="DELETE")buffer.dropLast(1) else buffer+key.key
+        check(buffer==key.after)
+      }
+      check(buffer==to)
+    }
+  }
+  println("PASS: 10-level simulated LOSS/WIN/DRAW and exact keypad buffer transitions")
   println("PASS: badge, exact entry, stake readback and independent navigation recovery")
 }
