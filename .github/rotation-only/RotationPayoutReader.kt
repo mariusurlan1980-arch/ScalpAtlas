@@ -215,14 +215,17 @@ object RotationPayoutReader {
       val control=targets.singleOrNull()
       if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)
         return "MG • GRAFIC SCHIMBAT"
-      val opened=if(control!=null)try{control.performAction(AccessibilityNodeInfo.ACTION_CLICK)}catch(_:Throwable){false}
-        else {
-          val field=amounts.map{it.rect}.distinct().singleOrNull()
-            ?:return "MG • CONTROL SUMĂ NEIDENTIFICAT"
-          // The exact observed amount label is above SELL, not a fixed coordinate.
-          if(field.bottom>=sellTop || field.left<w*.48f)return "MG • CONTROL SUMĂ NEIDENTIFICAT"
-          tapAmountPoint637(svc,chart,field.centerX(),field.centerY(),overlayBounds,stillAuthorized)
-        }
+      // A successful ACTION_CLICK can be acknowledged without opening the
+      // broker's calculator. Use one physical tap on the verified amount field
+      // instead; never issue ACTION_CLICK followed by a second opening tap.
+      val field=amounts.map{it.rect}.distinct().singleOrNull()
+        ?:return "MG • CONTROL SUMĂ NEIDENTIFICAT"
+      if(field.bottom>=sellTop || field.left<w*.48f)return "MG • CONTROL SUMĂ NEIDENTIFICAT"
+      if(control!=null){
+        val controlBounds=Rect();control.getBoundsInScreen(controlBounds)
+        if(!controlBounds.contains(field))return "MG • CONTROL SUMĂ NEIDENTIFICAT"
+      }
+      val opened=tapAmountPoint637(svc,chart,field.centerX(),field.centerY(),overlayBounds,stillAuthorized)
       return if(opened)"MG • EDITOR DESCHIS" else "MG • DESCHIDERE REFUZATĂ"
     }
     if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)
@@ -285,7 +288,9 @@ object RotationPayoutReader {
           session.closing,session.steps.isNotEmpty() && session.index==session.steps.size,
           panelVisible,visual!=null,readLiveSnapshot637(svc)?.stake,session.target))
         return "MG • SET_TEXT TRIMIS"
-      return "MG • TASTE CALCULATOR NECONFIRMATE"
+      return if(!panelVisible && visual==null && session.index==0 && !session.closing)
+        "MG • DESCHIDERE CALCULATOR NECONFIRMATĂ"
+      else "MG • TASTE CALCULATOR NECONFIRMATE"
     }
     val raw=layout.raw
     if(session.previous==100L && session.target==109L && !session.startupPrepared){
