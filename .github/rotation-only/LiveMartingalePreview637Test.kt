@@ -87,7 +87,7 @@ fun main(){
   check(!echo.deferWinReset(228,109,1000,true))
   check(!echo.deferWinReset(109,228,1000,false))
   check(!echo.deferWinReset(228,475,1000,false))
-  val raisedRearm=echo.QuietRearm()
+  val raisedRearm=LiveMartingalePreview637.QuietRearm()
   for (at in listOf(1000L,3000L,5000L,7000L)){
     check(!raisedRearm.observe("demo",228L,155650L,at,true))
   }
