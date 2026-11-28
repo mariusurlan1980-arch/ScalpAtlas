@@ -330,6 +330,13 @@ internal object LiveMartingalePreview637 {
     }.mapNotNull{it.text.trim().takeIf{s->s.matches(Regex("""[1-9][0-9]?"""))}?.toIntOrNull()}.distinct()
     return numbers.singleOrNull()
   }
+  // Read-only recovery: the amount field and optical chart must independently
+  // agree, the calculator must be absent, and the original receipt context intact.
+  fun canRecoverClosedEdit(target:Long,accessible:Long?,optical:Long?,panelVisible:Boolean,
+    quiet:Boolean,sameContext:Boolean,elapsed:Long):Boolean =
+    target in ladder && accessible==target && optical==target && !panelVisible &&
+      quiet && sameContext && elapsed in 0L..60_000L
+
   // Asynchronous verification: never confuse a requested amount with a confirmed amount.
   class EditReadback(val target:Long,val started:Long){
     private var firstAt:Long?=null
