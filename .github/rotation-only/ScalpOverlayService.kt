@@ -67,6 +67,7 @@ class ScalpOverlayService : Service() {
   private var latestQuietFrame=0L
   private data class QueuedMg(val pkg:String,val pair:String,val old:Long,val target:Long,val balance:Long)
   private var queuedMg:QueuedMg?=null
+  private var resetWaitStarted:Long?=null
   private var verifyingMg:Pair<QueuedMg,LiveMartingalePreview637.EditReadback>?=null
   private var openingMg:Pair<QueuedMg,Long>?=null
   private var calculatorMg:RotationPayoutReader.CalculatorSession?=null
@@ -77,7 +78,7 @@ class ScalpOverlayService : Service() {
   private fun observeTrade(at:Long,positive:Boolean,quiet:Boolean=false){
     if(positive){
       startupChecked=true;startupSample=null;startupRequest=null
-      queuedMg=null
+      queuedMg=null;resetWaitStarted=null
       if(verifyingMg!=null || openingMg!=null){
         verifyingMg=null;openingMg=null;calculatorMg=null;mgEditBlocked="MG • ORDIN NOU ÎN TIMPUL VERIFICĂRII"
         liveReader?.suspendMg(mgEditBlocked!!)
@@ -355,7 +356,7 @@ class ScalpOverlayService : Service() {
       wasTradePaused=false;deadline=0L;pendingPair=null;pendingChartReads=0;pendingPhysicalRetry=false
       val request=queuedMg;queuedMg=null
       if(tradePause.releasedWithoutResult){
-        verifyingMg=null
+        verifyingMg=null;resetWaitStarted=null
         val reason="MG • ORDIN NECONFIRMAT • "+(liveReader?.diagnostic() ?: "REZULTAT NECONFIRMAT")
         // Do not clear a previously failed stake edit. Only receipt failures
         // can rearm for a new manual order after a clean idle baseline.
@@ -367,9 +368,17 @@ class ScalpOverlayService : Service() {
       // and the current graph independently immediately before a single edit.
       if(request!=null){
         val freshQuiet=latestQuietFrame>0L && now-latestQuietFrame in 0L..3_000L
-        val result=if(!tradePause.isLocked() && freshQuiet &&
+        val ready= !tradePause.isLocked() && freshQuiet &&
           TouchTestService.positiveOpenBadge637()==null &&
-          TouchTestService.readLiveSnapshot637()?.let{it.openCount==null || it.openCount==0}==true)
+          TouchTestService.readLiveSnapshot637()?.let{it.openCount==null || it.openCount==0}==true
+        val waitStart=resetWaitStarted ?: now
+        if(LiveMartingalePreview637.deferWinReset(request.old,request.target,now-waitStart,ready)){
+          resetWaitStarted=waitStart;queuedMg=request;wasTradePaused=true
+          say("MG • WIN CONFIRMAT • AȘTEPT RESET 1,09")
+          return 500L
+        }
+        resetWaitStarted=null
+        val result=if(!tradePause.isLocked() && ready)
           TouchTestService.applyVerifiedMg637(request.pkg,request.pair,request.old,request.target,request.balance,
             visualClosureVerified=true,overlayBounds=bounds())
         else "MG • EDITARE BLOCATĂ"
