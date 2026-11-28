@@ -257,10 +257,12 @@ object RotationPayoutReader {
     var sentAt=0L
     var retriedIndex=-1
     var closing=false
+    var closeRejected=false
   }
 
   internal fun calculatorStep637(svc:AccessibilityService,expectedPackage:String,expectedBalance:Long,
     session:CalculatorSession,now:Long,overlay:Rect,visual:LiveMartingalePreview637.CalculatorFrame?,allowed:()->Boolean):String {
+    if(session.closeRejected)return "MG • ÎNCHIDERE CALCULATOR REFUZATĂ"
     if(!allowed())return "MG • CONT NECONFIRMAT"
     val chart=readChart(svc,false).first ?: return "MG • CALCULATOR NECITIT"
     if(chart.pkg!=expectedPackage || readChartPayout(chart).first!=92 ||
@@ -326,9 +328,13 @@ object RotationPayoutReader {
         it.rect.left>=w*.48f && it.rect.centerY() in (h*.73f).toInt()..(h*.78f).toInt() &&
         it.rect.bottom<h*.783f}.map{it.rect}.distinct()
       val field=fields.singleOrNull() ?: return "MG • SUMĂ FINALĂ NECONFIRMATĂ"
-      if(!tapAmountPoint637(svc,chart,field.centerX(),field.centerY(),overlay,allowed))
-        return "MG • ÎNCHIDERE CALCULATOR REFUZATĂ"
+      // Consume the single close attempt before dispatch. A false or uncertain
+      // Android response must never cause another outside-calculator tap.
       session.closing=true
+      if(!tapAmountPoint637(svc,chart,field.centerX(),field.centerY(),overlay,allowed)){
+        session.closeRejected=true
+        return "MG • ÎNCHIDERE CALCULATOR REFUZATĂ"
+      }
       return "MG • AȘTEPT ÎNCHIDERE CALCULATOR"
     }
     val step=session.steps[session.index]
