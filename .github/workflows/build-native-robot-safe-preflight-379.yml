@@ -2599,7 +2599,7 @@ jobs:
           assert 'confirmedVisualBadge' in observer and 'confirmedVisualBadge' in preview
           assert 'if(positive || unmatchedActive)' in observer and 'if(positive || debit' not in observer
           assert 'shouldPauseForBadge(visualBadge)' in observer and 'shouldPauseForBadge' in preview
-          assert observer.index('if(demoFrame && badge!=null') < observer.index('val snap=TouchTestService.readLiveSnapshot637()')
+          assert observer.index('if(demoFrame && badge!=null') < observer.index('val snap=TouchTestService.readLiveSnapshot637(readOnlyAnyPayout=true)')
           assert 'latestPositionFrame' in s
           assert 'bal-before==verified.net' in observer and 'applyStake(snap.pkg,pair' in observer
           assert 'readDisplayedStake(labels,lineLabels)' in observer and 'displayedStake?.let(fmt)' in observer
@@ -2626,6 +2626,9 @@ jobs:
           assert editor.count('dispatchGesture(')==1 and 'tapAmountPoint637' in editor
           assert 'TASTE CALCULATOR NECONFIRMATE' in editor and 'calculatorKeys' in preview
           assert 'calculatorLayout' in preview and 'calculatorFrame' in observer and 'calculatorFrame' in s
+          assert editor.index('session.closing=true') < editor.index('if(!tapAmountPoint637(svc,chart,field.centerX(),field.centerY(),overlay,allowed))')
+          assert 'session.closeRejected=true' in editor and 'if(session.closeRejected)return' in editor
+          assert 'result=="MG • ÎNCHIDERE CALCULATOR REFUZATĂ"' in s
           for forbidden in ('dispatchGesture','performAction','ACTION_SET_TEXT','pressVerifiedDemoStakeOnce429','advanceDemoHistory','getSharedPreferences'):
               assert forbidden not in observer and forbidden not in preview, forbidden
           print('PASS independent reader, guarded stake editor, no order paths')
