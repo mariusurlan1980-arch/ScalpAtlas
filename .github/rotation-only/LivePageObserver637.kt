@@ -214,7 +214,9 @@ internal class LivePageObserver637(
     mgSuspended?.let{reason->
       val recovery=quietRearm
       if(recovery==null || !recovery.observe(snap.pkg,displayedStake,bal,captured,clearChart)){
-        render(reason);return
+        render(if(recovery!=null && displayedStake!=null && displayedStake>LiveMartingalePreview637.ladder.first())
+          "MG • REZULTAT NECONFIRMAT • MIZĂ RIDICATĂ • NU REARMEZ"
+          else reason);return
       }
       // This is a fresh independent order baseline, not a recovered result.
       // Do not fabricate the missed result or retroactively increase the stake.
