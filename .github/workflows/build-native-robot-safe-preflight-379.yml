@@ -2,7 +2,7 @@ name: Build Scalp Atlas 637 - rotation live and demo MG
 
 on:
   push:
-    branches: [test/chart-result-transient-ocr, test/637-demo-debit-recovery]
+    branches: [test/chart-result-transient-ocr, test/637-demo-debit-recovery, fix/637-calculator-readback-recovery]
     paths:
       - '.github/workflows/build-native-robot-safe-preflight-379.yml'
       - '.github/native-overlay/TouchTestActivity.kt'
@@ -2619,7 +2619,10 @@ jobs:
           assert 'if(!stillAuthorized() || svc.rootInActiveWindow!=chart.root || positiveOpenBadge637(svc)!=null)' in editor
           for forbidden in ('performGlobalAction','advanceDemoHistory'):
               assert forbidden not in editor, forbidden
-          assert editor.count('performAction(AccessibilityNodeInfo.ACTION_CLICK)')==1
+          assert editor.count('performAction(AccessibilityNodeInfo.ACTION_CLICK)')==0
+          assert editor.count('val opened=tapAmountPoint637(svc,chart,field.centerX(),field.centerY(),overlayBounds,stillAuthorized)')==1
+          assert 'canRecoverClosedEdit' in preview and 'canRecoverClosedEdit' in s
+          assert 'clearChart && !calculatorVisible' in observer
           assert 'if(!allowOpen)return' in editor and 'r.bottom>=sellTop' in editor
           assert 'stakeFieldItems(chart)' in editor and 'targets.singleOrNull()' in editor
           assert 'openingMg' in s and 'stepCalculator637' in s
