@@ -80,6 +80,21 @@ fun main(){
   check(LiveMartingalePreview637.corroboratedOrderCount(null,null,absent,1,109L)==null)
   check(LiveMartingalePreview637.corroboratedOrderCount(2,null,one,1,109L)==2)
   check(LiveMartingalePreview637.corroboratedOrderCount(1,null,one,2,109L)==2)
+  // Verified WIN reset remains pending during transient preflight loss.
+  check(echo.deferWinReset(228,109,0,false))
+  check(echo.deferWinReset(475,109,11999,false))
+  check(!echo.deferWinReset(228,109,12001,false))
+  check(!echo.deferWinReset(228,109,1000,true))
+  check(!echo.deferWinReset(109,228,1000,false))
+  check(!echo.deferWinReset(228,475,1000,false))
+  val raisedRearm=echo.QuietRearm()
+  for (at in listOf(1000L,3000L,5000L,7000L)){
+    check(!raisedRearm.observe("demo",228L,155650L,at,true))
+  }
+  val resetSequence=checkNotNull(echo.calculatorKeys("2.28",109L))
+  check(resetSequence.last().after=="1.09")
+  val sampleWin=checkNotNull(echo.settledBalance("AED/CNY OTC",228,155000,155210,300000,true))
+  check(sampleWin.win && echo.next(228,sampleWin)==109L)
   val rearm=LiveMartingalePreview637.QuietRearm()
   check(!rearm.observe("demo",109L,155650L,1000L,true))
   check(!rearm.observe("demo",109L,155650L,3000L,true))
