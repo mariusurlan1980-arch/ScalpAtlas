@@ -60,6 +60,19 @@ fun main(){
   check(!echo.calculatorReadyForReadback(false,true,false,false,109,228))
   check(!echo.calculatorReadyForReadback(false,true,false,false,null,228))
 
+  // Read-only recovery never treats the requested amount alone as evidence.
+  check(echo.canRecoverClosedEdit(228,228,228,false,true,true,1500))
+  check(!echo.canRecoverClosedEdit(228,109,228,false,true,true,1500))
+  check(!echo.canRecoverClosedEdit(228,228,null,false,true,true,1500))
+  check(!echo.canRecoverClosedEdit(228,228,228,true,true,true,1500))
+  check(!echo.canRecoverClosedEdit(228,228,228,false,false,true,1500))
+  check(!echo.canRecoverClosedEdit(228,228,228,false,true,false,1500))
+  check(!echo.canRecoverClosedEdit(228,228,228,false,true,true,-1))
+  check(!echo.canRecoverClosedEdit(228,228,228,false,true,true,60001))
+  for (target in echo.ladder) {
+    check(echo.canRecoverClosedEdit(target,target,target,false,true,true,3000))
+  }
+
   val one=LiveMartingalePreview637.PositionHint(true,1)
   val absent=LiveMartingalePreview637.PositionHint(false,null)
   check(LiveMartingalePreview637.corroboratedOrderCount(null,null,one,1,109L)==1)
