@@ -304,6 +304,12 @@ internal object LiveMartingalePreview637 {
     return 1.takeIf{footer.tabSeen && marker!=null && marker in ladder && (footer.positive==1 || zone==1)}
   }
 
+  // A verified WIN reset may wait for fresh read-only evidence before the
+  // first editor attempt. Never use this to retry a dispatched edit.
+  fun deferWinReset(previous:Long,target:Long,elapsed:Long,preflightReady:Boolean):Boolean =
+    previous in ladder && previous>ladder.first() && target==ladder.first() &&
+      elapsed in 0L..12_000L && !preflightReady
+
   // Only a new stable idle baseline may rearm an unverified receipt.
   // Never use this path for a partially edited amount or an unknown active order.
   class QuietRearm {
@@ -311,7 +317,7 @@ internal object LiveMartingalePreview637 {
     private var first=0L
     private var last=0L
     fun observe(pkg:String,stake:Long?,balance:Long?,at:Long,quiet:Boolean):Boolean{
-      if(!quiet || stake==null || stake !in ladder || balance==null || balance<stake){
+      if(!quiet || stake==null || stake!=ladder.first() || balance==null || balance<stake){
         previous=null;first=0L;last=0L;return false
       }
       val sample=Triple(pkg,stake,balance)
