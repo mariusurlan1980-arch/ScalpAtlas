@@ -164,7 +164,7 @@ class ScalpOverlayService : Service() {
             }else handler.post{if(!stopped && projection===p)observeTrade(at,positive,quiet)}
           },
           settlement={handler.post{if(!stopped && projection===p)tradePause.settle()}},
-          stakeReadback={pkg,pair,value,balance,at,quiet ->
+          stakeReadback={pkg,pair,value,balance,at,quiet,accessibleStake,opticalStake,calculatorVisible ->
             if(!stopped && projection===p && !startupChecked && !tradePause.isLocked() &&
               Looper.myLooper()==handler.looper){
               if(!quiet || value==null || balance==null){startupSample=null}
@@ -179,6 +179,23 @@ class ScalpOverlayService : Service() {
               }else{
                 startupChecked=true;startupSample=null
                 mgEditBlocked="MG • MIZĂ INIȚIALĂ NECUNOSCUTĂ"
+              }
+            }
+            // If the broker already applied the exact amount and returned to the
+            // chart, stop sending keys. Confirm a second fresh frame using the
+            // original readback gate. Never reopen or tap outside the calculator.
+            val opening=openingMg
+            if(!stopped && projection===p && opening!=null && !tradePause.isLocked() &&
+              Looper.myLooper()==handler.looper){
+              val (request,started)=opening
+              val same=pkg==request.pkg && pair==request.pair && balance==request.balance &&
+                TouchTestService.demoFxAccountInForeground() && !TouchTestService.realFxAccountVisible() &&
+                TouchTestService.positiveOpenBadge637()==null
+              if(LiveMartingalePreview637.canRecoverClosedEdit(request.target,accessibleStake,opticalStake,
+                  calculatorVisible,quiet,same,at-started)){
+                openingMg=null;calculatorMg=null
+                verifyingMg=request to LiveMartingalePreview637.EditReadback(request.target,at)
+                liveReader?.reportEdit("MG • MIZĂ CITITĂ • AȘTEPT CONFIRMAREA")
               }
             }
             val pending=verifyingMg
@@ -425,7 +442,7 @@ class ScalpOverlayService : Service() {
       }
       say("MG • VERIFIC MIZA");return 500L
     }
-    // A failed MG edit disables further edits, not the navigation motor.
+    // An unverified amount blocks navigation and further edits; fail closed.
     if(mgEditBlocked!=null){liveStatus?.text=mgEditBlocked; say("MG • VERIFICĂ SUMA"); return 1_000L}
     // No new selector actions while LIVE has not supplied a recent position frame.
     if(latestPositionFrame==0L || now-latestPositionFrame>3_500L){
