@@ -22,7 +22,7 @@ internal class LivePageObserver637(
   private val health:(Int,Long,String)->Unit,
   private val position:(Long,Boolean,Boolean)->Unit,
   private val settlement:()->Unit,
-  private val stakeReadback:(String,String,Long?,Long?,Long,Boolean)->Unit,
+  private val stakeReadback:(String,String,Long?,Long?,Long,Boolean,Long?,Long?,Boolean)->Unit,
   private val applyStake:(String,String,Long,Long,Long)->String
 ) {
   private val worker=HandlerThread("ScalpLiveRead637")
@@ -195,7 +195,12 @@ internal class LivePageObserver637(
       render("LIVE • SOLD "+(bal?.let(LiveMartingalePreview637::format)?:"?")+" • PAYOUT "+snap.payout+"%")
       return
     }
-    stakeReadback(snap.pkg,pair,displayedStake,bal,captured,clearChart)
+    // An unreadable keypad is not evidence that the calculator has closed.
+    val calculatorVisible=keypadFrame!=null || (labels+lineLabels).any {
+      it.text.trim().equals("Calculator",true) && it.top in .30f.. .65f
+    }
+    stakeReadback(snap.pkg,pair,displayedStake,bal,captured,clearChart && !calculatorVisible,
+      stake,visualStake,calculatorVisible)
     val stakeDetail=when {
       displayedStake==null -> "necunoscută"
       stake==null -> "OCR (doar citire)"
